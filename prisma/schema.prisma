@@ -1,0 +1,259 @@
+// NeoBIM Workflow Builder - Prisma Schema
+// https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// USER & AUTH
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  role          UserRole  @default(FREE)
+  bio           String?
+  apiKeys       Json?     @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts       Account[]
+  sessions       Session[]
+  workflows      Workflow[]
+  executions     Execution[]
+  publications   CommunityPublication[]
+  reviews        Review[]
+  clones         WorkflowClone[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum UserRole {
+  FREE
+  PRO
+  TEAM_ADMIN
+  PLATFORM_ADMIN
+}
+
+// ============================================================
+// WORKFLOWS
+// ============================================================
+
+model Workflow {
+  id          String         @id @default(cuid())
+  ownerId     String
+  name        String
+  description String?
+  tags        String[]
+  tileGraph   Json           @default("{\"nodes\": [], \"edges\": []}")
+  version     Int            @default(1)
+  isPublished Boolean        @default(false)
+  isTemplate  Boolean        @default(false)
+  thumbnail   String?
+  category    String?
+  complexity  WorkflowComplexity @default(SIMPLE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  owner        User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tiles        TileInstance[]
+  executions   Execution[]
+  publications CommunityPublication[]
+  clones       WorkflowClone[]
+
+  @@index([ownerId])
+  @@index([isTemplate])
+  @@map("workflows")
+}
+
+enum WorkflowComplexity {
+  SIMPLE
+  INTERMEDIATE
+  ADVANCED
+}
+
+model TileInstance {
+  id            String   @id @default(cuid())
+  workflowId    String
+  tileType      String   // e.g. "IN-001", "TR-002", "GN-001"
+  positionX     Float    @default(0)
+  positionY     Float    @default(0)
+  configuration Json     @default("{}")
+  createdAt     DateTime @default(now())
+
+  workflow  Workflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  artifacts Artifact[]
+
+  @@index([workflowId])
+  @@map("tile_instances")
+}
+
+// ============================================================
+// EXECUTION
+// ============================================================
+
+model Execution {
+  id          String          @id @default(cuid())
+  workflowId  String
+  userId      String
+  status      ExecutionStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+  tileResults Json            @default("[]")
+  errorMessage String?
+  createdAt   DateTime        @default(now())
+
+  workflow  Workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artifacts Artifact[]
+
+  @@index([workflowId])
+  @@index([userId])
+  @@map("executions")
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+model Artifact {
+  id             String       @id @default(cuid())
+  executionId    String
+  tileInstanceId String
+  type           ArtifactType
+  dataUri        String?
+  data           Json?
+  metadata       Json         @default("{}")
+  createdAt      DateTime     @default(now())
+
+  execution    Execution    @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  tileInstance TileInstance @relation(fields: [tileInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@map("artifacts")
+}
+
+enum ArtifactType {
+  TEXT
+  JSON
+  IMAGE
+  THREE_D
+  FILE
+  TABLE
+  KPI
+}
+
+// ============================================================
+// COMMUNITY
+// ============================================================
+
+model CommunityPublication {
+  id           String   @id @default(cuid())
+  workflowId   String
+  authorId     String
+  title        String
+  description  String
+  tags         String[]
+  thumbnailUri String?
+  ratingAvg    Float    @default(0)
+  cloneCount   Int      @default(0)
+  version      Int      @default(1)
+  isFeatured   Boolean  @default(false)
+  isReported   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reviews  Review[]
+
+  @@index([authorId])
+  @@index([ratingAvg])
+  @@index([cloneCount])
+  @@map("community_publications")
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  publicationId String
+  userId        String
+  stars         Int
+  comment       String?
+  createdAt     DateTime @default(now())
+
+  publication CommunityPublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([publicationId, userId])
+  @@map("reviews")
+}
+
+model WorkflowClone {
+  id           String   @id @default(cuid())
+  workflowId   String
+  userId       String
+  sourceId     String?  // ID of the original community publication
+  createdAt    DateTime @default(now())
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([userId])
+  @@map("workflow_clones")
+}

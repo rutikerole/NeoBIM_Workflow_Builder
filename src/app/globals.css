@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #0A0A0F;
+    color: #F0F0F5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #12121A;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2A2A3E;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3A3A4E;
+  }
+
+  .react-flow__minimap {
+    background-color: #12121A !important;
+    border: 1px solid #1E1E2E !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+  }
+
+  .react-flow__controls {
+    background-color: #12121A !important;
+    border: 1px solid #1E1E2E !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .react-flow__controls-button {
+    background-color: #12121A !important;
+    border-bottom: 1px solid #1E1E2E !important;
+    color: #8888A0 !important;
+  }
+
+  .react-flow__controls-button:hover {
+    background-color: #1A1A26 !important;
+    color: #F0F0F5 !important;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, #F0F0F5 0%, #8888A0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-blue {
+    background: linear-gradient(135deg, #4F8AFF 0%, #8B5CF6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass {
+    background: rgba(18, 18, 26, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(30, 30, 46, 0.8);
+  }
+
+  .canvas-grid-bg {
+    background-image: radial-gradient(circle, #1E1E2E 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-color: #0E0E16;
+  }
+}
