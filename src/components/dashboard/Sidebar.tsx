@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Workflow,
@@ -10,75 +11,126 @@ import {
   BookOpen,
   Settings,
   Zap,
-  ChevronRight,
   Plus,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+
+// ─── Nav items ───────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    exact: true,
-  },
-  {
-    href: "/dashboard/workflows",
-    label: "My Workflows",
-    icon: Workflow,
-  },
-  {
-    href: "/dashboard/templates",
-    label: "Templates",
-    icon: BookOpen,
-    badge: "10",
-  },
-  {
-    href: "/dashboard/community",
-    label: "Community",
-    icon: Globe,
-  },
-  {
-    href: "/dashboard/settings",
-    label: "Settings",
-    icon: Settings,
-  },
+  { href: "/dashboard",            label: "Dashboard",   icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/workflows",  label: "My Workflows",icon: Workflow },
+  { href: "/dashboard/templates",  label: "Templates",   icon: BookOpen,  badge: "10" },
+  { href: "/dashboard/community",  label: "Community",   icon: Globe },
+  { href: "/dashboard/settings",   label: "Settings",    icon: Settings },
 ];
 
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname    = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Delay label appearance on expand so the sidebar opens first
+  const [showLabels, setShowLabels] = useState(true);
+  useEffect(() => {
+    if (!collapsed) {
+      const t = setTimeout(() => setShowLabels(true), 130);
+      return () => clearTimeout(t);
+    }
+  }, [collapsed]);
 
   return (
-    <aside className="flex flex-col h-full w-[220px] bg-[#0A0A0F] border-r border-[#1E1E2E]">
-      {/* Logo */}
-      <div className="px-5 py-4 border-b border-[#1E1E2E]">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#4F8AFF] to-[#8B5CF6] flex items-center justify-center">
-            <Zap size={14} className="text-white" fill="white" />
+    <motion.aside
+      animate={{ width: collapsed ? 48 : 220 }}
+      transition={{ type: "spring", stiffness: 360, damping: 34 }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "#0A0A0F",
+        borderRight: "1px solid #1E1E2E",
+        overflow: "hidden",
+        flexShrink: 0,
+      }}
+    >
+      {/* ── Logo row ─────────────────────────────────────────────────────── */}
+      <div style={{
+        display: "flex", alignItems: "center",
+        justifyContent: collapsed ? "center" : "space-between",
+        padding: collapsed ? "12px 0" : "12px 16px 12px 18px",
+        borderBottom: "1px solid #1E1E2E",
+        minHeight: 52, flexShrink: 0,
+      }}>
+        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", overflow: "hidden" }}>
+          {/* Logo icon */}
+          <div style={{
+            width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+            background: "linear-gradient(135deg, #4F8AFF 0%, #8B5CF6 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 2px 8px rgba(79,138,255,0.25)",
+          }}>
+            <Zap size={14} color="white" fill="white" />
           </div>
-          <span className="text-[15px] font-bold text-[#F0F0F5] tracking-tight">
-            Neo<span className="text-[#4F8AFF]">BIM</span>
-          </span>
+
+          {showLabels && (
+            <span style={{
+              fontSize: 15, fontWeight: 700, color: "#F0F0F5",
+              letterSpacing: "-0.3px", whiteSpace: "nowrap",
+            }}>
+              Neo<span style={{ color: "#4F8AFF" }}>BIM</span>
+            </span>
+          )}
         </Link>
+
+        {/* Collapse button — visible only when expanded */}
+        {showLabels && (
+          <button
+            onClick={() => { setCollapsed(true); setShowLabels(false); }}
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+            style={{
+              width: 20, height: 20, borderRadius: 4, border: "none",
+              background: "transparent", cursor: "pointer", flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#2E2E40", transition: "color 0.1s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#8888A0"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#2E2E40"; }}
+          >
+            <ChevronLeft size={13} />
+          </button>
+        )}
       </div>
 
-      {/* New Workflow Button */}
-      <div className="px-3 pt-4">
+      {/* ── New Workflow button ───────────────────────────────────────────── */}
+      <div style={{ padding: collapsed ? "10px 8px" : "10px 10px", flexShrink: 0 }}>
         <Link
           href="/dashboard/workflows/new"
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-            "bg-[#4F8AFF] text-white hover:bg-[#3D7AFF] active:bg-[#2B6AEF]",
-            "shadow-sm"
-          )}
+          style={{
+            display: "flex", alignItems: "center",
+            justifyContent: "center", gap: 6,
+            padding: collapsed ? "8px" : "7px 12px",
+            borderRadius: 8,
+            background: "linear-gradient(135deg, #4F8AFF 0%, #6D6AF6 100%)",
+            color: "white", fontWeight: 600, fontSize: 12,
+            textDecoration: "none",
+            boxShadow: "0 2px 10px rgba(79,138,255,0.28)",
+            transition: "opacity 0.15s",
+            whiteSpace: "nowrap",
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.85"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
         >
-          <Plus size={14} />
-          New Workflow
+          <Plus size={13} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+          {showLabels && <span>New Workflow</span>}
         </Link>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      {/* ── Nav ──────────────────────────────────────────────────────────── */}
+      <nav aria-label="Main navigation" style={{ flex: 1, padding: "4px 8px", display: "flex", flexDirection: "column", gap: 1, overflowY: "auto" }}>
         {NAV_ITEMS.map((item) => {
           const isActive = item.exact
             ? pathname === item.href
@@ -86,56 +138,169 @@ export function Sidebar() {
           const Icon = item.icon;
 
           return (
-            <Link
+            <NavItem
               key={item.href}
               href={item.href}
-              className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                isActive
-                  ? "bg-[#1A1A26] text-[#F0F0F5] border border-[#2A2A3E]"
-                  : "text-[#8888A0] hover:text-[#F0F0F5] hover:bg-[#12121A]"
-              )}
-            >
-              <Icon
-                size={15}
-                className={cn(
-                  "shrink-0 transition-colors",
-                  isActive ? "text-[#4F8AFF]" : "text-[#55556A] group-hover:text-[#8888A0]"
-                )}
-                strokeWidth={isActive ? 2 : 1.5}
-              />
-              <span className="flex-1">{item.label}</span>
-              {item.badge && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#2A2A3E] text-[#55556A]">
-                  {item.badge}
-                </span>
-              )}
-              {isActive && (
-                <ChevronRight size={12} className="text-[#4F8AFF] shrink-0" />
-              )}
-            </Link>
+              label={item.label}
+              badge={item.badge}
+              icon={<Icon size={15} strokeWidth={isActive ? 2 : 1.5} style={{ color: isActive ? "#4F8AFF" : "#55556A", flexShrink: 0, transition: "color 0.12s" }} />}
+              isActive={isActive}
+              collapsed={collapsed}
+              showLabels={showLabels}
+            />
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-[#1E1E2E]">
-        <div className="rounded-lg bg-[#12121A] border border-[#1E1E2E] p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
-            <span className="text-[10px] font-medium text-[#10B981]">Free Plan</span>
+      {/* ── Free plan card ───────────────────────────────────────────────── */}
+      {showLabels && (
+        <div style={{ padding: "10px 10px 12px", borderTop: "1px solid #1E1E2E", flexShrink: 0 }}>
+          {/* Gradient border wrapper */}
+          <div style={{
+            borderRadius: 10,
+            padding: "1px",
+            background: "linear-gradient(135deg, rgba(79,138,255,0.5) 0%, rgba(139,92,246,0.5) 100%)",
+          }}>
+            <div style={{ borderRadius: 9, background: "#0E0E16", padding: "10px 11px" }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#10B981" }}>Free Plan</span>
+                </div>
+                <span style={{ fontSize: 9, color: "#3A3A50", fontVariantNumeric: "tabular-nums" }}>3 / 10 runs</span>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ height: 3, borderRadius: 2, background: "#1A1A26", marginBottom: 8, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", width: "30%", borderRadius: 2,
+                  background: "linear-gradient(90deg, #4F8AFF 0%, #8B5CF6 100%)",
+                }} />
+              </div>
+
+              <p style={{ fontSize: 10, color: "#55556A", lineHeight: 1.5, margin: "0 0 7px" }}>
+                Upgrade for unlimited executions &amp; publishing.
+              </p>
+
+              <Link
+                href="/dashboard/settings"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  fontSize: 10, fontWeight: 600, color: "#4F8AFF",
+                  textDecoration: "none", transition: "color 0.1s",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#7AABFF"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#4F8AFF"; }}
+              >
+                <TrendingUp size={9} />
+                Upgrade to Pro
+              </Link>
+            </div>
           </div>
-          <p className="text-[10px] text-[#55556A] leading-relaxed">
-            Upgrade to Pro for unlimited executions and community publishing.
-          </p>
-          <Link
-            href="/dashboard/settings"
-            className="mt-2 block text-[10px] font-medium text-[#4F8AFF] hover:text-[#3D7AFF] transition-colors"
-          >
-            Upgrade →
-          </Link>
         </div>
-      </div>
-    </aside>
+      )}
+
+      {/* ── Expand button (collapsed state footer) ───────────────────────── */}
+      {collapsed && (
+        <div style={{ padding: "8px", borderTop: "1px solid #1E1E2E", flexShrink: 0 }}>
+          <button
+            onClick={() => setCollapsed(false)}
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+            style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "8px 0", borderRadius: 8, border: "none",
+              background: "transparent", cursor: "pointer",
+              color: "#2E2E40", transition: "color 0.1s, background 0.1s",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = "#8888A0";
+              e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = "#2E2E40";
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+    </motion.aside>
+  );
+}
+
+// ─── NavItem ─────────────────────────────────────────────────────────────────
+
+interface NavItemProps {
+  href: string;
+  label: string;
+  badge?: string;
+  icon: React.ReactNode;
+  isActive: boolean;
+  collapsed: boolean;
+  showLabels: boolean;
+}
+
+function NavItem({ href, label, badge, icon, isActive, collapsed, showLabels }: NavItemProps) {
+  const [hovered, setHovered] = useState(false);
+
+  const activeBg   = "rgba(79,138,255,0.07)";
+  const hoverBg    = "rgba(255,255,255,0.03)";
+  const borderBar  = isActive ? "#4F8AFF" : "transparent";
+
+  return (
+    <Link
+      href={href}
+      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
+      aria-current={isActive ? "page" : undefined}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        padding: collapsed ? "9px 0" : "8px 10px",
+        justifyContent: collapsed ? "center" : "flex-start",
+        borderRadius: 8,
+        /* Active 3-px left bar */
+        borderLeft: `3px solid ${borderBar}`,
+        /* Subtle bg for active / hovered */
+        background: isActive ? activeBg : (hovered ? hoverBg : "transparent"),
+        textDecoration: "none",
+        transition: "background 0.1s",
+        overflow: "hidden",
+      }}
+    >
+      {icon}
+
+      {showLabels && (
+        <>
+          <span style={{
+            flex: 1,
+            fontSize: 13,
+            fontWeight: isActive ? 600 : 400,
+            color: isActive ? "#E8E8F0" : "#8888A0",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            transition: "color 0.12s",
+          }}>
+            {label}
+          </span>
+
+          {badge && (
+            <span style={{
+              fontSize: 9, padding: "1px 5px", borderRadius: 10, flexShrink: 0,
+              background: "#1A1A26", color: "#4A4A60", fontWeight: 600,
+            }}>
+              {badge}
+            </span>
+          )}
+        </>
+      )}
+    </Link>
   );
 }

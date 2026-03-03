@@ -9,12 +9,12 @@ import { generateId } from "@/lib/utils";
 import type { Execution } from "@/types/execution";
 import type { WorkflowNode } from "@/types/nodes";
 
+const FLOW_DURATION_MS = 1600;
+
 export function useExecution() {
-  const { nodes, edges, currentWorkflow } = useWorkflowStore();
-  const { updateNodeStatus } = useWorkflowStore();
+  const { nodes, currentWorkflow, updateNodeStatus, setEdgeFlowing } = useWorkflowStore();
   const {
     startExecution,
-    updateExecutionStatus,
     addTileResult,
     addArtifact,
     completeExecution,
@@ -29,7 +29,6 @@ export function useExecution() {
       return;
     }
 
-    // Create execution record
     const executionId = generateId();
     const execution: Execution = {
       id: executionId,
@@ -42,31 +41,23 @@ export function useExecution() {
     };
 
     startExecution(execution);
-    toast.success("Workflow running...", { duration: 2000 });
+    toast.success("Workflow running…", { duration: 2000 });
 
-    // Topological sort — simple L-to-R order based on x position
+    // Left-to-right topological order based on x position
     const orderedNodes = [...nodes].sort((a, b) => a.position.x - b.position.x);
 
     let hasError = false;
 
     for (let i = 0; i < orderedNodes.length; i++) {
       const node = orderedNodes[i] as WorkflowNode;
-      const progress = Math.round(((i) / orderedNodes.length) * 100);
-      setProgress(progress);
+      setProgress(Math.round((i / orderedNodes.length) * 100));
 
-      // Set node to running
       updateNodeStatus(node.id, "running");
 
       try {
-        const artifact = await executeNode(
-          node.data.catalogueId,
-          executionId,
-          node.id
-        );
+        const artifact = await executeNode(node.data.catalogueId, executionId, node.id);
 
-        // Store artifact
         addArtifact(node.id, artifact);
-
         addTileResult({
           tileInstanceId: node.id,
           catalogueId: node.data.catalogueId,
@@ -76,13 +67,15 @@ export function useExecution() {
           artifact,
         });
 
-        // Set node to success
         updateNodeStatus(node.id, "success");
+
+        // Animate outgoing edges as data flows to the next node
+        setEdgeFlowing(node.id, true);
+        setTimeout(() => setEdgeFlowing(node.id, false), FLOW_DURATION_MS);
 
       } catch (error) {
         hasError = true;
         updateNodeStatus(node.id, "error");
-
         addTileResult({
           tileInstanceId: node.id,
           catalogueId: node.data.catalogueId,
@@ -91,40 +84,35 @@ export function useExecution() {
           completedAt: new Date(),
           errorMessage: error instanceof Error ? error.message : "Unknown error",
         });
-
         toast.error(`Node "${node.data.label}" failed`, { duration: 4000 });
-        break; // Stop pipeline on error
+        break;
       }
     }
 
     setProgress(100);
-    const finalStatus = hasError ? "partial" : "success";
-    completeExecution(finalStatus);
+    completeExecution(hasError ? "partial" : "success");
 
     if (!hasError) {
-      toast.success("Workflow completed successfully!", {
+      toast.success("Workflow completed", {
         description: `${orderedNodes.length} nodes executed`,
         duration: 4000,
       });
     }
   }, [
     nodes,
-    edges,
     currentWorkflow,
     isExecuting,
     startExecution,
     updateNodeStatus,
+    setEdgeFlowing,
     addArtifact,
     addTileResult,
     completeExecution,
     setProgress,
-    updateExecutionStatus,
   ]);
 
   const resetExecution = useCallback(() => {
-    nodes.forEach((node) => {
-      updateNodeStatus(node.id, "idle");
-    });
+    nodes.forEach((node) => updateNodeStatus(node.id, "idle"));
   }, [nodes, updateNodeStatus]);
 
   return { runWorkflow, resetExecution, isExecuting };

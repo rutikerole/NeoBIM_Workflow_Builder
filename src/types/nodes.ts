@@ -50,6 +50,7 @@ export interface WorkflowNodeData extends Record<string, unknown> {
   inputs: NodePort[];
   outputs: NodePort[];
   icon: string;
+  executionTime?: string; // e.g. "< 2s"
   artifactId?: string;   // ID of artifact produced during execution
 }
 
@@ -61,4 +62,10 @@ export interface WorkflowEdge {
   targetHandle: string;
   type?: string;
   animated?: boolean;
+  data?: {
+    sourceColor?: string;
+    targetColor?: string;
+    isFlowing?: boolean;
+    [key: string]: unknown;
+  };
 }

@@ -1,5 +1,5 @@
 import { Header } from "@/components/dashboard/Header";
-import { User, Key, Bell, Shield, Palette } from "lucide-react";
+import { User, Key, Shield } from "lucide-react";
 
 export const metadata = { title: "Settings" };
 

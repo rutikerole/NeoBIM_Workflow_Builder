@@ -1,10 +1,4 @@
 import type { WorkflowTemplate } from "@/types/workflow";
-import { generateId } from "@/lib/utils";
-
-function makeNode(catalogueId: string, x: number, y: number) {
-  const id = `${catalogueId}-${generateId()}`;
-  return { id, catalogueId, x, y };
-}
 
 export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
   {

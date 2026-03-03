@@ -33,6 +33,7 @@ interface WorkflowState {
   addEdge: (edge: WorkflowEdge) => void;
   removeEdge: (edgeId: string) => void;
   setEdges: (edges: WorkflowEdge[]) => void;
+  setEdgeFlowing: (sourceNodeId: string, flowing: boolean) => void;
 
   // Persistence
   markDirty: () => void;
@@ -44,7 +45,7 @@ interface WorkflowState {
 }
 
 export const useWorkflowStore = create<WorkflowState>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set) => ({
     currentWorkflow: null,
     nodes: [],
     edges: [],
@@ -161,6 +162,15 @@ export const useWorkflowStore = create<WorkflowState>()(
       })),
 
     setEdges: (edges) => set({ edges, isDirty: true }),
+
+    setEdgeFlowing: (sourceNodeId, flowing) =>
+      set((state) => ({
+        edges: state.edges.map((e) =>
+          e.source === sourceNodeId
+            ? { ...e, data: { ...e.data, isFlowing: flowing } }
+            : e
+        ),
+      })),
 
     markDirty: () => set({ isDirty: true }),
     markClean: () => set({ isDirty: false }),

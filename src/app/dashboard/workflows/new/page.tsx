@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { MousePointer2, Sparkles, GitMerge, ArrowRight, ArrowLeft, ChevronRight } from "lucide-react";
+import { MousePointer2, Sparkles, GitMerge, ArrowRight, ArrowLeft } from "lucide-react";
 import { Header } from "@/components/dashboard/Header";
 import { useWorkflowStore } from "@/stores/workflow-store";
 import type { CreationMode } from "@/types/workflow";

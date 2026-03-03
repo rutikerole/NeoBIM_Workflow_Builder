@@ -35,6 +35,7 @@ interface ExecutionState {
 
   // Artifacts
   getArtifactForTile: (tileInstanceId: string) => ExecutionArtifact | undefined;
+  removeArtifact: (tileInstanceId: string) => void;
   clearArtifacts: () => void;
 }
 
@@ -113,6 +114,13 @@ export const useExecutionStore = create<ExecutionState>()((set, get) => ({
   getArtifactForTile: (tileInstanceId) => {
     return get().artifacts.get(tileInstanceId);
   },
+
+  removeArtifact: (tileInstanceId) =>
+    set((state) => {
+      const newArtifacts = new Map(state.artifacts);
+      newArtifacts.delete(tileInstanceId);
+      return { artifacts: newArtifacts };
+    }),
 
   clearArtifacts: () => set({ artifacts: new Map() }),
 }));

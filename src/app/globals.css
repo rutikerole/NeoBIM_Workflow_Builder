@@ -40,30 +40,62 @@
     background: #3A3A4E;
   }
 
-  .react-flow__minimap {
-    background-color: #12121A !important;
-    border: 1px solid #1E1E2E !important;
-    border-radius: 10px !important;
-    overflow: hidden;
+  /* ── Library search placeholder ── */
+  input::placeholder {
+    color: #55556A;
   }
 
+  /* ── Minimap ── */
+  .react-flow__minimap {
+    background-color: rgba(18,18,26,0.92) !important;
+    border: 1px solid #1E1E2E !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+  }
+
+  .react-flow__minimap-viewport {
+    fill: rgba(79, 138, 255, 0.15) !important;
+    stroke: rgba(79, 138, 255, 0.5) !important;
+    stroke-width: 1.5 !important;
+  }
+
+  /* ── Controls ── */
   .react-flow__controls {
-    background-color: #12121A !important;
+    background-color: rgba(18,18,26,0.9) !important;
     border: 1px solid #1E1E2E !important;
     border-radius: 10px !important;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(8px);
   }
 
   .react-flow__controls-button {
-    background-color: #12121A !important;
+    background-color: transparent !important;
+    border: none !important;
     border-bottom: 1px solid #1E1E2E !important;
-    color: #8888A0 !important;
+    color: #55556A !important;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: color 0.15s ease, background 0.15s ease !important;
+  }
+
+  .react-flow__controls-button:last-child {
+    border-bottom: none !important;
   }
 
   .react-flow__controls-button:hover {
-    background-color: #1A1A26 !important;
+    background-color: rgba(79, 138, 255, 0.08) !important;
     color: #F0F0F5 !important;
+  }
+
+  .react-flow__controls-button svg {
+    width: 13px !important;
+    height: 13px !important;
   }
 }
 
@@ -93,5 +125,120 @@
     background-image: radial-gradient(circle, #1E1E2E 1px, transparent 1px);
     background-size: 20px 20px;
     background-color: #0E0E16;
+  }
+
+  /* ── Edge animations ── */
+  @keyframes edge-dash-idle {
+    to { stroke-dashoffset: -23; }
+  }
+
+  .edge-dash-idle {
+    animation: edge-dash-idle 4s linear infinite;
+  }
+
+  /* Connection line while dragging */
+  .react-flow__connection-path {
+    stroke: rgba(79, 138, 255, 0.6) !important;
+    stroke-width: 2 !important;
+    stroke-dasharray: 6 4 !important;
+  }
+
+  /* Node progress bar shimmer for running state */
+  @keyframes node-shimmer {
+    0% { transform: translateX(-200%); }
+    100% { transform: translateX(500%); }
+  }
+
+  .node-shimmer {
+    animation: node-shimmer 1.2s ease-in-out infinite;
+  }
+
+  /* Canvas vignette overlay */
+  .canvas-vignette {
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(10, 10, 15, 0.6) 100%);
+    pointer-events: none;
+  }
+
+  /* ── Sonner Toasts ────────────────────────────────────────────────────── */
+
+  /* Force 360px width */
+  [data-sonner-toaster] {
+    --width: 360px !important;
+  }
+
+  [data-sonner-toast] {
+    width: 360px !important;
+  }
+
+  /* 3px left color bar per type */
+  [data-sonner-toast][data-type="success"] {
+    border-left: 3px solid #10B981 !important;
+  }
+  [data-sonner-toast][data-type="error"] {
+    border-left: 3px solid #EF4444 !important;
+  }
+  [data-sonner-toast][data-type="warning"] {
+    border-left: 3px solid #F59E0B !important;
+  }
+  [data-sonner-toast][data-type="info"] {
+    border-left: 3px solid #4F8AFF !important;
+  }
+  [data-sonner-toast][data-type="loading"] {
+    border-left: 3px solid #8888A0 !important;
+  }
+  [data-sonner-toast]:not([data-type]),
+  [data-sonner-toast][data-type="default"] {
+    border-left: 3px solid #4F8AFF !important;
+  }
+
+  /* Typography inside toasts */
+  [data-sonner-toast] [data-title] {
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    color: #F0F0F5 !important;
+  }
+
+  [data-sonner-toast] [data-description] {
+    font-size: 11px !important;
+    color: #8888A0 !important;
+    margin-top: 2px !important;
+  }
+
+  /* Icon color per type */
+  [data-sonner-toast][data-type="success"] [data-icon] svg { color: #10B981 !important; }
+  [data-sonner-toast][data-type="error"]   [data-icon] svg { color: #EF4444 !important; }
+  [data-sonner-toast][data-type="warning"] [data-icon] svg { color: #F59E0B !important; }
+  [data-sonner-toast][data-type="info"]    [data-icon] svg { color: #4F8AFF !important; }
+
+  /* ── Focus rings (keyboard nav accessibility) ──────────────────────── */
+
+  /* Remove default outline everywhere */
+  *:focus { outline: none; }
+
+  /* Show ring only on keyboard focus */
+  *:focus-visible {
+    outline: 2px solid rgba(79, 138, 255, 0.7);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid rgba(79, 138, 255, 0.7);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* ── Reduced motion ─────────────────────────────────────────────────── */
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

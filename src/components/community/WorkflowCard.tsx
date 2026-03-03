@@ -1,29 +1,78 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { Star, GitFork, Clock, Zap, ArrowRight } from "lucide-react";
+import { Star, GitFork, Zap, Clock, Crown } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/Badge";
+import { MiniWorkflowDiagram } from "@/components/shared/MiniWorkflowDiagram";
 import type { WorkflowTemplate } from "@/types/workflow";
 import type { NodeCategory } from "@/types/nodes";
 
-const COMPLEXITY_COLORS: Record<string, string> = {
-  simple: "#10B981",
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const COMPLEXITY_COLOR: Record<string, string> = {
+  simple:       "#10B981",
   intermediate: "#F59E0B",
-  advanced: "#EF4444",
+  advanced:     "#EF4444",
 };
 
-const CATEGORY_BADGE_VARIANTS: Record<string, "input" | "transform" | "generate" | "export" | "default"> = {
-  "Concept Design": "input",
-  "Visualization": "generate",
-  "BIM Export": "export",
-  "Cost Estimation": "transform",
-  "Full Pipeline": "info" as "input",
-  "Compliance": "error" as "input",
+const CATEGORY_COLOR: Record<string, string> = {
+  "Concept Design":   "#3B82F6",
+  "Visualization":    "#10B981",
+  "BIM Export":       "#F59E0B",
+  "Cost Estimation":  "#8B5CF6",
+  "Full Pipeline":    "#06B6D4",
+  "Compliance":       "#EF4444",
+  "Site Analysis":    "#10B981",
 };
+
+function hexToRgb(hex: string): string {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!r) return "79, 138, 255";
+  return `${parseInt(r[1], 16)}, ${parseInt(r[2], 16)}, ${parseInt(r[3], 16)}`;
+}
+
+// Avatar from initials
+function AuthorAvatar({ name, size = 22 }: { name: string; size?: number }) {
+  const initials = name.split(" ").slice(0, 2).map(p => p[0]).join("").toUpperCase();
+  // Deterministic color from name
+  let hash = 0;
+  for (let c = 0; c < name.length; c++) hash = name.charCodeAt(c) + ((hash << 5) - hash);
+  const colors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444", "#06B6D4", "#EC4899"];
+  const color = colors[Math.abs(hash) % colors.length];
+
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      background: `rgba(${hexToRgb(color)}, 0.2)`,
+      border: `1px solid rgba(${hexToRgb(color)}, 0.4)`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.38, fontWeight: 700, color, flexShrink: 0,
+    }}>
+      {initials}
+    </div>
+  );
+}
+
+// Star rating display
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+      {[1, 2, 3, 4, 5].map(s => (
+        <Star
+          key={s}
+          size={9}
+          style={{ color: s <= Math.round(rating) ? "#F59E0B" : "#2A2A3E" }}
+          fill={s <= Math.round(rating) ? "#F59E0B" : "none"}
+        />
+      ))}
+      <span style={{ fontSize: 10, color: "#8888A0", marginLeft: 2 }}>
+        {rating.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+// ─── Props ───────────────────────────────────────────────────────────────────
 
 interface WorkflowCardProps {
   workflow: WorkflowTemplate;
@@ -32,209 +81,214 @@ interface WorkflowCardProps {
   showCloneButton?: boolean;
   ratingAvg?: number;
   cloneCount?: number;
+  authorName?: string;
+  publishedAt?: string;
+  isFeatured?: boolean;
+  buttonLabel?: string;
   index?: number;
 }
 
+// ─── Card ────────────────────────────────────────────────────────────────────
+
 export function WorkflowCard({
   workflow,
-  href,
   onClone,
   showCloneButton = false,
   ratingAvg,
   cloneCount,
+  authorName,
+  publishedAt,
+  isFeatured = false,
+  buttonLabel = "Use Template",
   index = 0,
 }: WorkflowCardProps) {
-  const nodeCount = workflow.tileGraph.nodes.length;
-  const complexityColor = COMPLEXITY_COLORS[workflow.complexity] ?? "#55556A";
-  const categoryBadgeVariant = CATEGORY_BADGE_VARIANTS[workflow.category ?? ""] ?? "default";
+  const nodeCount       = workflow.tileGraph.nodes.length;
+  const complexityColor = COMPLEXITY_COLOR[workflow.complexity] ?? "#55556A";
+  const catColor        = CATEGORY_COLOR[workflow.category ?? ""] ?? "#4F8AFF";
+
+  const diagramNodes = workflow.tileGraph.nodes.map(n => ({
+    label:    n.data.label,
+    category: n.data.category as NodeCategory,
+  }));
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}
-      className={cn(
-        "group relative rounded-xl border border-[#1E1E2E] bg-[#12121A] overflow-hidden",
-        "transition-all duration-200",
-        "hover:border-[#2A2A3E] hover:shadow-[0_4px_30px_rgba(0,0,0,0.4)]",
-        href && "cursor-pointer"
-      )}
+      transition={{ duration: 0.22, delay: index * 0.04, ease: "easeOut" }}
+      whileHover={{ y: -3, transition: { duration: 0.15 } }}
+      style={{
+        borderRadius: 12,
+        border: isFeatured
+          ? "1px solid rgba(245,158,11,0.4)"
+          : "1px solid #1E1E2E",
+        background: "#12121A",
+        overflow: "hidden",
+        cursor: "default",
+        position: "relative",
+        boxShadow: isFeatured
+          ? "0 0 24px rgba(245,158,11,0.08)"
+          : "none",
+        transition: "border-color 0.15s, box-shadow 0.15s",
+      }}
+      onMouseEnter={e => {
+        if (!isFeatured) (e.currentTarget as HTMLElement).style.borderColor = "#2A2A3E";
+      }}
+      onMouseLeave={e => {
+        if (!isFeatured) (e.currentTarget as HTMLElement).style.borderColor = "#1E1E2E";
+      }}
     >
-      {href ? (
-        <Link href={href} className="block">
-          <CardContent
-            workflow={workflow}
-            nodeCount={nodeCount}
-            complexityColor={complexityColor}
-            categoryBadgeVariant={categoryBadgeVariant}
-            ratingAvg={ratingAvg}
-            cloneCount={cloneCount}
-          />
-        </Link>
-      ) : (
-        <CardContent
-          workflow={workflow}
-          nodeCount={nodeCount}
-          complexityColor={complexityColor}
-          categoryBadgeVariant={categoryBadgeVariant}
-          ratingAvg={ratingAvg}
-          cloneCount={cloneCount}
-        />
-      )}
-
-      {/* Clone button */}
-      {showCloneButton && onClone && (
-        <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              onClone(workflow.id);
-            }}
-            className="flex items-center gap-1.5 rounded-lg bg-[#4F8AFF] px-2.5 py-1.5 text-xs font-medium text-white shadow-md hover:bg-[#3D7AFF] transition-colors"
-          >
-            <GitFork size={10} />
-            Clone
-          </button>
+      {/* Featured badge */}
+      {isFeatured && (
+        <div style={{
+          position: "absolute", top: 8, right: 8, zIndex: 10,
+          display: "flex", alignItems: "center", gap: 4,
+          padding: "3px 8px", borderRadius: 20,
+          background: "rgba(245,158,11,0.15)",
+          border: "1px solid rgba(245,158,11,0.35)",
+          fontSize: 9, fontWeight: 700, color: "#F59E0B",
+          letterSpacing: "0.4px",
+        }}>
+          <Crown size={9} />
+          FEATURED
         </div>
       )}
-    </motion.div>
-  );
-}
 
-function CardContent({
-  workflow,
-  nodeCount,
-  complexityColor,
-  categoryBadgeVariant,
-  ratingAvg,
-  cloneCount,
-}: {
-  workflow: WorkflowTemplate;
-  nodeCount: number;
-  complexityColor: string;
-  categoryBadgeVariant: string;
-  ratingAvg?: number;
-  cloneCount?: number;
-}) {
-  return (
-    <>
-      {/* Thumbnail */}
-      <div className="relative h-36 bg-[#0A0A0F] overflow-hidden">
-        {workflow.thumbnail ? (
-          <Image
-            src={workflow.thumbnail}
-            alt={workflow.name}
-            fill
-            className="object-cover opacity-70 group-hover:opacity-90 transition-opacity"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        ) : (
-          <WorkflowDiagram workflow={workflow} />
-        )}
+      {/* Top: Mini diagram */}
+      <div style={{
+        height: 130,
+        background: `linear-gradient(180deg, #0C0C14 0%, #0E0E18 100%)`,
+        borderBottom: "1px solid #1A1A26",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {/* Category accent top bar */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: 2,
+          background: catColor,
+          opacity: 0.7,
+        }} />
 
-        {/* Category badge overlay */}
-        <div className="absolute top-2 left-2">
-          <Badge variant={categoryBadgeVariant as "default"} size="sm">
-            {workflow.category}
-          </Badge>
-        </div>
+        <MiniWorkflowDiagram nodes={diagramNodes} size="md" animated />
 
-        {/* Complexity indicator */}
-        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-[rgba(0,0,0,0.7)] px-2 py-0.5">
-          <div
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: complexityColor }}
-          />
-          <span className="text-[9px] font-medium capitalize" style={{ color: complexityColor }}>
-            {workflow.complexity}
-          </span>
+        {/* Category chip */}
+        <div style={{
+          position: "absolute", bottom: 8, left: 8,
+          fontSize: 9, padding: "2px 7px", borderRadius: 10,
+          background: `rgba(${hexToRgb(catColor)}, 0.12)`,
+          border: `1px solid rgba(${hexToRgb(catColor)}, 0.25)`,
+          color: catColor, fontWeight: 600, textTransform: "uppercase" as const,
+          letterSpacing: "0.4px",
+        }}>
+          {workflow.category}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-3.5">
-        <h3 className="text-sm font-semibold text-[#F0F0F5] line-clamp-1 group-hover:text-[#4F8AFF] transition-colors">
+      {/* Bottom: Content */}
+      <div style={{ padding: "13px 14px 12px" }}>
+        {/* Title */}
+        <h3 style={{
+          fontSize: 13, fontWeight: 600, color: "#E8E8F0",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          marginBottom: 5,
+        }}>
           {workflow.name}
         </h3>
-        <p className="text-[11px] text-[#55556A] mt-1 line-clamp-2 leading-relaxed">
+
+        {/* Description */}
+        <p style={{
+          fontSize: 11, color: "#55556A", lineHeight: 1.5,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical" as const,
+          overflow: "hidden",
+          margin: "0 0 9px",
+        }}>
           {workflow.description}
         </p>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-1 mt-2.5">
-          {workflow.tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="text-[9px] px-1.5 py-0.5 rounded bg-[#1A1A26] border border-[#2A2A3E] text-[#55556A]"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        {/* Author row (community) */}
+        {authorName && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <AuthorAvatar name={authorName} size={20} />
+            <span style={{ fontSize: 11, color: "#6B6B85" }}>{authorName}</span>
+            {publishedAt && (
+              <span style={{ fontSize: 10, color: "#3A3A50", marginLeft: "auto" }}>{publishedAt}</span>
+            )}
+          </div>
+        )}
+
+        {/* Ratings (community) */}
+        {ratingAvg !== undefined && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
+            <StarRating rating={ratingAvg} />
+            {cloneCount !== undefined && (
+              <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 10, color: "#4A4A60" }}>
+                <GitFork size={9} />
+                <span>{cloneCount.toLocaleString()} clones</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Meta row */}
-        <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[#1E1E2E]">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-[10px] text-[#55556A]">
-              <Zap size={10} className="text-[#4F8AFF]" />
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          paddingTop: 9, borderTop: "1px solid #1A1A26",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* Complexity */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 4,
+              fontSize: 9, fontWeight: 600, textTransform: "capitalize" as const,
+              color: complexityColor,
+            }}>
+              <div style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: complexityColor, flexShrink: 0,
+              }} />
+              {workflow.complexity}
+            </div>
+            {/* Node count */}
+            <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 10, color: "#3A3A50" }}>
+              <Zap size={9} style={{ color: "#4F8AFF" }} />
               {nodeCount} nodes
             </div>
+            {/* Time */}
             {workflow.estimatedRunTime && (
-              <div className="flex items-center gap-1 text-[10px] text-[#55556A]">
-                <Clock size={10} />
+              <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 10, color: "#3A3A50" }}>
+                <Clock size={9} />
                 {workflow.estimatedRunTime}
               </div>
             )}
           </div>
 
-          {ratingAvg !== undefined && (
-            <div className="flex items-center gap-1 text-[10px] text-[#55556A]">
-              <Star size={10} className="text-[#F59E0B]" fill="#F59E0B" />
-              {ratingAvg.toFixed(1)}
-              {cloneCount !== undefined && (
-                <span className="ml-1 flex items-center gap-0.5">
-                  <GitFork size={9} />
-                  {cloneCount}
-                </span>
-              )}
-            </div>
+          {/* Action button */}
+          {showCloneButton && onClone && (
+            <button
+              onClick={() => onClone(workflow.id)}
+              style={{
+                padding: "4px 10px", borderRadius: 6,
+                background: "rgba(79,138,255,0.1)",
+                border: "1px solid rgba(79,138,255,0.2)",
+                fontSize: 10, fontWeight: 600, color: "#4F8AFF",
+                cursor: "pointer", transition: "all 0.12s",
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = "rgba(79,138,255,0.18)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(79,138,255,0.4)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = "rgba(79,138,255,0.1)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(79,138,255,0.2)";
+              }}
+            >
+              {buttonLabel}
+            </button>
           )}
         </div>
       </div>
-    </>
-  );
-}
-
-// Simplified workflow diagram for thumbnail
-function WorkflowDiagram({ workflow }: { workflow: WorkflowTemplate }) {
-  const CATEGORY_COLORS: Record<NodeCategory, string> = {
-    input: "#3B82F6",
-    transform: "#8B5CF6",
-    generate: "#10B981",
-    export: "#F59E0B",
-  };
-
-  return (
-    <div className="h-full flex items-center justify-center px-4 gap-1.5 overflow-hidden">
-      {workflow.tileGraph.nodes.map((node, i) => {
-        const category = node.data.category as NodeCategory;
-        const color = CATEGORY_COLORS[category] ?? "#4F8AFF";
-
-        return (
-          <React.Fragment key={node.id}>
-            <div
-              className="rounded-lg border px-2 py-1.5 bg-[#0A0A0F] shrink-0"
-              style={{ borderColor: `${color}40` }}
-            >
-              <div className="h-1 w-8 rounded" style={{ backgroundColor: `${color}80` }} />
-              <div className="h-0.5 w-6 rounded mt-1" style={{ backgroundColor: `${color}40` }} />
-            </div>
-            {i < workflow.tileGraph.nodes.length - 1 && (
-              <div className="h-px w-3 bg-[#2A2A3E] shrink-0" />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
+    </motion.div>
   );
 }

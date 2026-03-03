@@ -1,205 +1,274 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as LucideIcons from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { WorkflowNodeData, NodeCategory, NodeStatus } from "@/types/nodes";
-import { CATEGORY_CONFIG } from "@/constants/node-catalogue";
 
-// Icon resolver
-function getIcon(name: string, size = 16): React.ReactNode {
-  const icons = LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; strokeWidth?: number }>>;
-  const IconComponent = icons[name];
-  if (IconComponent) {
-    return <IconComponent size={size} strokeWidth={1.5} />;
-  }
-  const FallbackIcon = LucideIcons.Box;
-  return <FallbackIcon size={size} strokeWidth={1.5} />;
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function hexToRgb(hex: string): string {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!r) return "79, 138, 255";
+  return `${parseInt(r[1], 16)}, ${parseInt(r[2], 16)}, ${parseInt(r[3], 16)}`;
 }
 
-const CATEGORY_STYLES: Record<
-  NodeCategory,
-  { border: string; headerBg: string; accentBar: string; glowClass: string; handleColor: string }
-> = {
-  input: {
-    border: "border-[rgba(59,130,246,0.3)]",
-    headerBg: "bg-[rgba(59,130,246,0.08)]",
-    accentBar: "bg-[#3B82F6]",
-    glowClass: "hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]",
-    handleColor: "#3B82F6",
-  },
-  transform: {
-    border: "border-[rgba(139,92,246,0.3)]",
-    headerBg: "bg-[rgba(139,92,246,0.08)]",
-    accentBar: "bg-[#8B5CF6]",
-    glowClass: "hover:shadow-[0_0_20px_rgba(139,92,246,0.15)]",
-    handleColor: "#8B5CF6",
-  },
-  generate: {
-    border: "border-[rgba(16,185,129,0.3)]",
-    headerBg: "bg-[rgba(16,185,129,0.08)]",
-    accentBar: "bg-[#10B981]",
-    glowClass: "hover:shadow-[0_0_20px_rgba(16,185,129,0.15)]",
-    handleColor: "#10B981",
-  },
-  export: {
-    border: "border-[rgba(245,158,11,0.3)]",
-    headerBg: "bg-[rgba(245,158,11,0.08)]",
-    accentBar: "bg-[#F59E0B]",
-    glowClass: "hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]",
-    handleColor: "#F59E0B",
-  },
+function getIcon(name: string, size = 14): React.ReactNode {
+  const icons = LucideIcons as unknown as Record<
+    string,
+    React.ComponentType<{ size?: number; strokeWidth?: number }>
+  >;
+  const Icon = icons[name];
+  if (Icon) return <Icon size={size} strokeWidth={1.5} />;
+  const Fallback = LucideIcons.Box;
+  return <Fallback size={size} strokeWidth={1.5} />;
+}
+
+function portPercent(index: number, total: number): number {
+  if (total === 1) return 50;
+  return ((index + 1) / (total + 1)) * 100;
+}
+
+// ─── category colours ────────────────────────────────────────────────────────
+
+const CATEGORY_COLOR: Record<NodeCategory, string> = {
+  input:     "#3B82F6",
+  transform: "#8B5CF6",
+  generate:  "#10B981",
+  export:    "#F59E0B",
 };
 
-const STATUS_STYLES: Record<NodeStatus, string> = {
-  idle: "",
-  running: "shadow-[0_0_20px_rgba(59,130,246,0.3)] border-[rgba(59,130,246,0.6)]",
-  success: "shadow-[0_0_20px_rgba(16,185,129,0.2)] border-[rgba(16,185,129,0.5)]",
-  error: "shadow-[0_0_20px_rgba(239,68,68,0.2)] border-[rgba(239,68,68,0.5)]",
-};
+// ─── NodeHandle ──────────────────────────────────────────────────────────────
 
-const STATUS_INDICATOR: Record<NodeStatus, { color: string; label: string }> = {
-  idle: { color: "#55556A", label: "Ready" },
-  running: { color: "#3B82F6", label: "Running" },
-  success: { color: "#10B981", label: "Done" },
-  error: { color: "#EF4444", label: "Error" },
-};
+interface NodeHandleProps {
+  port: { id: string; label: string; type: string };
+  handleType: "source" | "target";
+  position: Position;
+  topPct: number;
+  color: string;
+}
 
-type BaseNodeProps = NodeProps & {
-  data: WorkflowNodeData;
-};
+function NodeHandle({ port, handleType, position, topPct, color }: NodeHandleProps) {
+  const [hovered, setHovered] = useState(false);
+  const rgb = hexToRgb(color);
+
+  return (
+    <Handle
+      type={handleType}
+      position={position}
+      id={port.id}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      title={`${handleType === "source" ? "Output" : "Input"}: ${port.label}`}
+      style={{
+        top: `${topPct}%`,
+        width:  hovered ? 12 : 8,
+        height: hovered ? 12 : 8,
+        background: handleType === "source" ? color : "rgba(18,18,26,0.95)",
+        border: `2px solid ${color}`,
+        borderRadius: "50%",
+        boxShadow: hovered ? `0 0 8px rgba(${rgb}, 0.7)` : "none",
+        transition: "all 0.15s ease",
+        cursor: "crosshair",
+        zIndex: 10,
+      }}
+    />
+  );
+}
+
+// ─── ProgressBar ─────────────────────────────────────────────────────────────
+
+function ProgressBar({ status, color }: { status: NodeStatus; color: string }) {
+  const rgb = hexToRgb(color);
+
+  return (
+    <div
+      style={{
+        height: 4,
+        flex: 1,
+        background: "rgba(88, 88, 112, 0.18)",
+        borderRadius: 2,
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
+      {(status === "success" || status === "error") && (
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: "100%" }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          style={{
+            position: "absolute",
+            left: 0, top: 0, bottom: 0,
+            borderRadius: 2,
+            background: status === "success" ? "#10B981" : "#EF4444",
+          }}
+        />
+      )}
+      {status === "running" && (
+        <div
+          className="node-shimmer"
+          style={{
+            position: "absolute",
+            left: 0, top: 0, bottom: 0,
+            width: "40%",
+            borderRadius: 2,
+            background: `linear-gradient(90deg, transparent, rgba(${rgb}, 0.75), transparent)`,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── BaseNode ─────────────────────────────────────────────────────────────────
+
+type BaseNodeProps = NodeProps & { data: WorkflowNodeData };
 
 export const BaseNode = memo(function BaseNode({ data, selected }: BaseNodeProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const prefersReduced = useReducedMotion();
+
   const category = data.category as NodeCategory;
-  const styles = CATEGORY_STYLES[category];
-  const status = data.status as NodeStatus;
-  const statusInfo = STATUS_INDICATOR[status];
-  const config = CATEGORY_CONFIG[category];
+  const status   = data.status   as NodeStatus;
+  const color    = CATEGORY_COLOR[category];
+  const rgb      = hexToRgb(color);
+
+  const borderColor =
+    status === "error"   ? "#EF4444" :
+    status === "success" ? "#10B981" :
+    color;
+  const borderRgb     = hexToRgb(borderColor);
+  const borderOpacity = selected ? 1.0 : isHovered ? 0.5 : 0.2;
+  const glowOpacity   = selected ? 0.3 : isHovered ? 0.15 : 0;
+
+  const inLabel  = data.inputs .map(p => p.label).join(", ");
+  const outLabel = data.outputs.map(p => p.label).join(", ");
+  const typeLabel =
+    inLabel && outLabel ? `${inLabel} → ${outLabel}` :
+    outLabel            ? `→ ${outLabel}` :
+    inLabel             ? `${inLabel} →` :
+    null;
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: 8 }}
+      initial={prefersReduced ? false : { opacity: 0, scale: 0.88, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      className={cn(
-        "relative w-[200px] rounded-xl border bg-[#12121A]",
-        "transition-all duration-150 cursor-pointer",
-        "overflow-hidden",
-        styles.border,
-        styles.glowClass,
-        STATUS_STYLES[status],
-        selected && "shadow-[0_0_30px_rgba(79,138,255,0.2)] border-[rgba(79,138,255,0.6)] scale-[1.01]"
-      )}
+      transition={{ duration: prefersReduced ? 0 : 0.18, ease: "easeOut" }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        width: 220,
+        background: "rgba(18, 18, 26, 0.88)",
+        border: `1px solid rgba(${borderRgb}, ${borderOpacity})`,
+        borderRadius: 10,
+        boxShadow: `0 4px 20px rgba(0,0,0,0.35), 0 0 20px rgba(${rgb}, ${glowOpacity})`,
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        transform: isHovered && !selected ? "scale(1.015)" : "scale(1)",
+        transition: "transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease",
+        overflow: "hidden",
+        cursor: "pointer",
+        position: "relative",
+      }}
     >
       {/* Left accent bar */}
-      <div
-        className={cn("absolute left-0 top-0 bottom-0 w-[3px]", styles.accentBar)}
-      />
+      <div style={{
+        position: "absolute",
+        left: 0, top: 0, bottom: 0,
+        width: 3,
+        background: color,
+      }} />
 
-      {/* Running animation overlay */}
+      {/* Running border pulse */}
       {status === "running" && (
         <motion.div
-          className="absolute inset-0 rounded-xl"
+          style={{
+            position: "absolute", inset: 0,
+            borderRadius: 10, pointerEvents: "none",
+          }}
           animate={{
             boxShadow: [
-              "inset 0 0 0 1px rgba(59,130,246,0.2)",
-              "inset 0 0 0 1px rgba(59,130,246,0.5)",
-              "inset 0 0 0 1px rgba(59,130,246,0.2)",
+              `inset 0 0 0 1px rgba(${rgb}, 0.2)`,
+              `inset 0 0 0 1px rgba(${rgb}, 0.55)`,
+              `inset 0 0 0 1px rgba(${rgb}, 0.2)`,
             ],
           }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         />
       )}
 
-      {/* Header */}
-      <div className={cn("flex items-center gap-2 px-3 pl-5 py-2.5", styles.headerBg)}>
-        <div style={{ color: config.color }}>
-          {getIcon(data.icon, 16)}
+      {/* Content */}
+      <div style={{ padding: "10px 12px 10px 16px" }}>
+
+        {/* Row 1: icon + name + status */}
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <div style={{ color, flexShrink: 0 }}>
+            {getIcon(data.icon, 14)}
+          </div>
+          <span style={{
+            fontSize: 13, fontWeight: 600, color: "#F0F0F5",
+            flex: 1, overflow: "hidden", textOverflow: "ellipsis",
+            whiteSpace: "nowrap", lineHeight: 1.2,
+          }}>
+            {data.label}
+          </span>
+          <AnimatePresence mode="wait">
+            {status === "success" && (
+              <motion.div key="s"
+                initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }} transition={{ duration: 0.2, ease: "backOut" }}
+                style={{ color: "#10B981", flexShrink: 0 }}>
+                <CheckCircle2 size={12} />
+              </motion.div>
+            )}
+            {status === "error" && (
+              <motion.div key="e"
+                initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }} transition={{ duration: 0.2, ease: "backOut" }}
+                style={{ color: "#EF4444", flexShrink: 0 }}>
+                <AlertCircle size={12} />
+              </motion.div>
+            )}
+            {status === "running" && (
+              <motion.div key="r"
+                style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }}
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+            )}
+          </AnimatePresence>
         </div>
-        <span className="text-[13px] font-semibold text-[#F0F0F5] truncate flex-1">
-          {data.label}
-        </span>
-        {/* Status dot */}
-        <div className="flex items-center gap-1 shrink-0">
-          {status === "running" ? (
-            <motion.div
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: statusInfo.color }}
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            />
-          ) : (
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: statusInfo.color }}
-            />
-          )}
+
+        {/* Row 2: type label */}
+        {typeLabel && (
+          <div style={{
+            fontSize: 11, color: "#55556A", marginTop: 5, lineHeight: 1.3,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {typeLabel}
+          </div>
+        )}
+
+        {/* Row 3: progress + time */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
+          <ProgressBar status={status} color={color} />
+          <span style={{ fontSize: 10, color: "#3A3A4E", whiteSpace: "nowrap", flexShrink: 0 }}>
+            {data.executionTime ?? "< 2s"}
+          </span>
         </div>
       </div>
 
-      {/* Input/Output type labels */}
-      <div className="px-3 pl-5 py-2 flex items-center justify-between border-t border-[#1E1E2E]">
-        <div className="text-[10px] text-[#55556A] font-medium">
-          {data.inputs.length > 0 ? (
-            <span className="text-[#55556A]">
-              ← {data.inputs.map((p) => p.label).join(", ")}
-            </span>
-          ) : (
-            <span className="text-[#4F8AFF] text-[10px]">Trigger</span>
-          )}
-        </div>
-        <div className="text-[10px] text-[#55556A] font-medium">
-          {data.outputs.length > 0 ? (
-            <span>{data.outputs.map((p) => p.label).join(", ")} →</span>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Category label */}
-      <div className="px-3 pl-5 pb-2">
-        <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: config.color, opacity: 0.7 }}>
-          {config.label}
-        </span>
-      </div>
-
-      {/* Input handles */}
-      {data.inputs.map((port, index) => (
-        <Handle
-          key={port.id}
-          type="target"
-          position={Position.Left}
-          id={port.id}
-          style={{
-            top: `${30 + (index * 20)}%`,
-            left: -5,
-            width: 10,
-            height: 10,
-            background: "#12121A",
-            borderColor: styles.handleColor,
-            borderWidth: 2,
-          }}
-        />
+      {/* Handles */}
+      {data.inputs.map((port, i) => (
+        <NodeHandle key={port.id} port={port} handleType="target"
+          position={Position.Left} topPct={portPercent(i, data.inputs.length)} color={color} />
       ))}
-
-      {/* Output handles */}
-      {data.outputs.map((port, index) => (
-        <Handle
-          key={port.id}
-          type="source"
-          position={Position.Right}
-          id={port.id}
-          style={{
-            top: `${30 + (index * 20)}%`,
-            right: -5,
-            width: 10,
-            height: 10,
-            background: styles.handleColor,
-            borderColor: styles.handleColor,
-            borderWidth: 2,
-          }}
-        />
+      {data.outputs.map((port, i) => (
+        <NodeHandle key={port.id} port={port} handleType="source"
+          position={Position.Right} topPct={portPercent(i, data.outputs.length)} color={color} />
       ))}
     </motion.div>
   );
