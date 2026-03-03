@@ -16,13 +16,14 @@ import {
   ChevronRight,
   TrendingUp,
 } from "lucide-react";
+import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 
 // ─── Nav items ───────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
   { href: "/dashboard",            label: "Dashboard",   icon: LayoutDashboard, exact: true },
   { href: "/dashboard/workflows",  label: "My Workflows",icon: Workflow },
-  { href: "/dashboard/templates",  label: "Templates",   icon: BookOpen,  badge: "10" },
+  { href: "/dashboard/templates",  label: "Templates",   icon: BookOpen,  badge: String(PREBUILT_WORKFLOWS.length) },
   { href: "/dashboard/community",  label: "Community",   icon: Globe },
   { href: "/dashboard/settings",   label: "Settings",    icon: Settings },
 ];
