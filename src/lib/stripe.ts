@@ -67,11 +67,11 @@ export const STRIPE_PLANS = {
   },
 } as const;
 
-// Helper to get plan by price ID
-export function getPlanByPriceId(priceId: string | null) {
+// Helper to get plan by price ID (returns Prisma UserRole enum)
+export function getPlanByPriceId(priceId: string | null): 'FREE' | 'PRO' | 'TEAM_ADMIN' {
   if (!priceId) return 'FREE';
   if (priceId === STRIPE_PLANS.PRO.priceId) return 'PRO';
-  if (priceId === STRIPE_PLANS.TEAM.priceId) return 'TEAM';
+  if (priceId === STRIPE_PLANS.TEAM.priceId) return 'TEAM_ADMIN'; // Map TEAM to TEAM_ADMIN
   return 'FREE';
 }
 
