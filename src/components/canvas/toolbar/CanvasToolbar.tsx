@@ -493,7 +493,7 @@ export function CanvasToolbar({
                 display: "flex", alignItems: "center", gap: 7,
                 height: 56, padding: "0 24px", borderRadius: 12,
                 background: "#EF4444", border: "none",
-                color: "#fff", fontSize: 15, fontWeight: 600,
+                color: "#fff", fontSize: 17, fontWeight: 700,
                 cursor: "pointer", transition: "background 0.15s ease",
                 boxShadow: "0 0 24px rgba(239, 68, 68, 0.4)",
               }}
@@ -518,7 +518,7 @@ export function CanvasToolbar({
                     ? "linear-gradient(135deg, #4F8AFF 0%, #8B5CF6 100%)"
                     : "#3A3A50",
                   border: "none",
-                  color: "#fff", fontSize: 15, fontWeight: 600,
+                  color: "#fff", fontSize: 17, fontWeight: 700,
                   cursor: isWorkflowReady ? "pointer" : "not-allowed",
                   transition: "all 0.15s ease",
                   animation: isWorkflowReady ? "runButtonPulse 2s ease-in-out infinite" : "none",
@@ -533,8 +533,8 @@ export function CanvasToolbar({
                   e.currentTarget.style.filter = "brightness(1)";
                 }}
               >
-                <Play size={16} fill="white" />
-                ▶ Run Workflow
+                <Play size={20} fill="white" />
+                RUN WORKFLOW
               </button>
 
               {/* Chevron - matched to 56px height */}
@@ -684,7 +684,7 @@ export function CanvasToolbar({
             ) : (
               <>
                 <Play size={18} fill="white" />
-                ▶ Run Workflow
+                RUN WORKFLOW
               </>
             )}
           </button>
