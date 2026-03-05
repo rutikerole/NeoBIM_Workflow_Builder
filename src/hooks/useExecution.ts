@@ -24,6 +24,9 @@ interface APIErrorResponse {
   details?: string;
 }
 
+// Input node IDs whose user-supplied value should pass through directly
+const INPUT_NODE_IDS = new Set(["IN-001", "IN-005", "IN-006"]);
+
 // Route execution to real API or mock
 async function executeNode(
   node: WorkflowNode,
@@ -32,6 +35,25 @@ async function executeNode(
   useRealExecution = false
 ): Promise<ExecutionArtifact> {
   const { catalogueId, inputValue } = node.data as { catalogueId: string; inputValue?: string };
+
+  // For input nodes, pass through the user's actual typed/selected value
+  // instead of using the mock executor (which returns hardcoded placeholder text)
+  if (INPUT_NODE_IDS.has(catalogueId)) {
+    await new Promise(r => setTimeout(r, 400)); // brief delay for UX
+    return {
+      id: generateId(),
+      executionId,
+      tileInstanceId: node.id,
+      type: "text",
+      data: {
+        content: inputValue ?? "",
+        prompt: inputValue ?? "",
+        label: "User Input",
+      },
+      metadata: { source: "user-input" },
+      createdAt: new Date(),
+    };
+  }
 
   if (useRealExecution && REAL_NODE_IDS.has(catalogueId)) {
     const res = await fetch("/api/execute-node", {
