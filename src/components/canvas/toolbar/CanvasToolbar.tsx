@@ -481,40 +481,44 @@ export function CanvasToolbar({
 
           <Sep />
 
-          {/* Run / Stop - ENHANCED with pulse animation */}
+          {/* SPACER - 30px separation before Run button to make it IMPOSSIBLE TO MISS */}
+          <div style={{ width: 30 }} />
+
+          {/* Run / Stop - CRITICAL P0: IMPOSSIBLE TO MISS - 56px height, gradient, continuous pulse */}
           {isExecuting ? (
             <button
               onClick={onStop}
               title="Stop execution (Esc)"
               style={{
-                display: "flex", alignItems: "center", gap: 6,
-                height: 48, padding: "0 20px", borderRadius: 10,
+                display: "flex", alignItems: "center", gap: 7,
+                height: 56, padding: "0 24px", borderRadius: 12,
                 background: "#EF4444", border: "none",
-                color: "#fff", fontSize: 14, fontWeight: 600,
+                color: "#fff", fontSize: 15, fontWeight: 600,
                 cursor: "pointer", transition: "background 0.15s ease",
+                boxShadow: "0 0 24px rgba(239, 68, 68, 0.4)",
               }}
               onMouseEnter={e => { e.currentTarget.style.background = "#DC2626"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "#EF4444"; }}
             >
-              <Square size={12} fill="white" />
+              <Square size={14} fill="white" />
               Stop
             </button>
           ) : (
             <div style={{ display: "flex", position: "relative" }} ref={runMenuRef}>
-              {/* Run - ENHANCED: larger, gradient, pulse */}
+              {/* Run - CRITICAL P0: 56px height minimum, gradient blue→purple, CONTINUOUS pulse */}
               <button
                 onClick={onRun}
                 title="Run workflow (⌘↵)"
                 disabled={!isWorkflowReady}
                 style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  height: 48, paddingLeft: 20, paddingRight: 14,
-                  borderRadius: "10px 0 0 10px",
+                  display: "flex", alignItems: "center", gap: 8,
+                  height: 56, paddingLeft: 24, paddingRight: 18,
+                  borderRadius: "12px 0 0 12px",
                   background: isWorkflowReady
                     ? "linear-gradient(135deg, #4F8AFF 0%, #8B5CF6 100%)"
                     : "#3A3A50",
                   border: "none",
-                  color: "#fff", fontSize: 14, fontWeight: 600,
+                  color: "#fff", fontSize: 15, fontWeight: 600,
                   cursor: isWorkflowReady ? "pointer" : "not-allowed",
                   transition: "all 0.15s ease",
                   animation: isWorkflowReady ? "runButtonPulse 2s ease-in-out infinite" : "none",
@@ -529,11 +533,11 @@ export function CanvasToolbar({
                   e.currentTarget.style.filter = "brightness(1)";
                 }}
               >
-                <Play size={14} fill="white" />
-                Run Workflow
+                <Play size={16} fill="white" />
+                ▶ Run Workflow
               </button>
 
-              {/* Chevron - ENHANCED: larger */}
+              {/* Chevron - matched to 56px height */}
               <button
                 onClick={() => setShowRunMenu(v => !v)}
                 aria-label="More run options"
@@ -542,8 +546,8 @@ export function CanvasToolbar({
                 disabled={!isWorkflowReady}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 28, height: 48, padding: 0,
-                  borderRadius: "0 10px 10px 0",
+                  width: 32, height: 56, padding: 0,
+                  borderRadius: "0 12px 12px 0",
                   background: isWorkflowReady ? "#3D7AFF" : "#32324A",
                   border: "none",
                   borderLeft: "1px solid rgba(255,255,255,0.12)",
@@ -555,7 +559,7 @@ export function CanvasToolbar({
                 onMouseEnter={e => { if (isWorkflowReady) e.currentTarget.style.background = "#3472EB"; }}
                 onMouseLeave={e => { if (isWorkflowReady) e.currentTarget.style.background = "#3D7AFF"; }}
               >
-                <ChevronDown size={11} />
+                <ChevronDown size={12} />
               </button>
 
               {/* Run dropdown */}
@@ -628,7 +632,7 @@ export function CanvasToolbar({
             onClick={onStop}
             style={{
               width: "100%",
-              height: 56,
+              height: 60,
               borderRadius: 12,
               display: "flex",
               alignItems: "center",
@@ -641,6 +645,7 @@ export function CanvasToolbar({
               fontWeight: 600,
               cursor: "pointer",
               transition: "background 0.15s ease",
+              boxShadow: "0 0 24px rgba(239, 68, 68, 0.4)",
             }}
           >
             <Square size={16} fill="white" />
@@ -652,7 +657,7 @@ export function CanvasToolbar({
             disabled={!isWorkflowReady}
             style={{
               width: "100%",
-              height: 56,
+              height: 60,
               borderRadius: 12,
               display: "flex",
               alignItems: "center",
@@ -679,7 +684,7 @@ export function CanvasToolbar({
             ) : (
               <>
                 <Play size={18} fill="white" />
-                Run Workflow
+                ▶ Run Workflow
               </>
             )}
           </button>
