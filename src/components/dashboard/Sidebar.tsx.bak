@@ -30,7 +30,6 @@ const NAV_ITEMS = [
   { href: "/dashboard/history",    label: "History",     icon: History },
   { href: "/dashboard/templates",  label: "Templates",   icon: BookOpen,  badge: String(PREBUILT_WORKFLOWS.length) },
   { href: "/dashboard/community",  label: "Community",   icon: Globe },
-  { href: "/dashboard/billing",    label: "Billing",     icon: CreditCard },
   { href: "/dashboard/settings",   label: "Settings",    icon: Settings },
 ];
 
