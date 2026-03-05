@@ -6,6 +6,11 @@ import type { ExecutionArtifact } from "@/types/execution";
 import OpenAI from "openai";
 import * as XLSX from "xlsx";
 import { checkRateLimit, logRateLimitHit } from "@/lib/rate-limit";
+import {
+  findUnitRate,
+  applyRegionalFactor,
+  calculateTotalCost,
+} from "@/lib/cost-database";
 
 // Node IDs that have real implementations
 const REAL_NODE_IDS = new Set(["TR-003", "GN-003", "TR-008", "EX-002"]);
@@ -128,26 +133,77 @@ export async function POST(req: NextRequest) {
       };
 
     } else if (catalogueId === "TR-008") {
-      // BOQ Cost Mapper — GPT-4o-mini structured JSON
-      const openai = new OpenAI({ apiKey: apiKey ?? process.env.OPENAI_API_KEY });
-      const elementsJson = JSON.stringify(inputData?.elements ?? inputData?.rows ?? []);
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: "You are an AEC cost estimator. Given a list of building elements, generate a Bill of Quantities with realistic UK/European unit rates.\nRespond with JSON: { \"rows\": [[description, unit, qty, rate, total], ...], \"currency\": \"GBP\", \"totalCost\": number }",
-          },
-          {
-            role: "user",
-            content: "Generate BOQ for these building elements: " + elementsJson,
-          },
-        ],
-      });
-
-      const boqData = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+      // BOQ Cost Mapper — Real unit rates with regional factors
+      const elements = inputData?.elements ?? inputData?.rows ?? [];
+      const region = inputData?.region ?? "USA (baseline)";
+      
+      const rows: string[][] = [];
+      let hardCostSubtotal = 0;
+      
+      // Process each element
+      for (const elem of elements) {
+        const description = typeof elem === "string" ? elem : elem.description ?? elem[0];
+        let quantity = typeof elem === "object" ? (elem.quantity ?? elem[2] ?? 1) : 1;
+        
+        // Find matching unit rate from database
+        const unitRateData = findUnitRate(description);
+        
+        if (unitRateData && unitRateData.category === "hard") {
+          // Apply regional factor
+          const { adjustedRate, multiplier } = applyRegionalFactor(
+            unitRateData.baseRate,
+            region
+          );
+          
+          const lineTotal = quantity * adjustedRate;
+          hardCostSubtotal += lineTotal;
+          
+          rows.push([
+            description,
+            unitRateData.unit,
+            quantity.toFixed(2),
+            `$${adjustedRate.toFixed(2)}`,
+            `$${lineTotal.toFixed(2)}`,
+          ]);
+        } else {
+          // Fallback: estimate for unknown items
+          const fallbackRate = 100; // $100 per EA as placeholder
+          const lineTotal = quantity * fallbackRate;
+          hardCostSubtotal += lineTotal;
+          
+          rows.push([
+            description + " (estimated)",
+            "EA",
+            quantity.toString(),
+            `$${fallbackRate.toFixed(2)}`,
+            `$${lineTotal.toFixed(2)}`,
+          ]);
+        }
+      }
+      
+      // Calculate soft costs
+      const costSummary = calculateTotalCost(hardCostSubtotal, true, true);
+      
+      // Add soft cost rows
+      rows.push(["", "", "", "", ""]);
+      rows.push(["HARD COSTS SUBTOTAL", "", "", "", `$${costSummary.hardCosts.toFixed(2)}`]);
+      rows.push(["", "", "", "", ""]);
+      rows.push(["SOFT COSTS", "", "", "", ""]);
+      
+      for (const softItem of costSummary.breakdown) {
+        rows.push([
+          softItem.item,
+          "%",
+          softItem.percentage.toString(),
+          "",
+          `$${softItem.amount.toFixed(2)}`,
+        ]);
+      }
+      
+      rows.push(["", "", "", "", ""]);
+      rows.push(["SOFT COSTS SUBTOTAL", "", "", "", `$${costSummary.softCosts.toFixed(2)}`]);
+      rows.push(["", "", "", "", ""]);
+      rows.push(["TOTAL PROJECT COST", "", "", "", `$${costSummary.totalCost.toFixed(2)}`]);
 
       artifact = {
         id: generateId(),
@@ -155,13 +211,16 @@ export async function POST(req: NextRequest) {
         tileInstanceId,
         type: "table",
         data: {
-          label: "Bill of Quantities (AI Generated)",
+          label: `Bill of Quantities (${region})`,
           headers: ["Description", "Unit", "Qty", "Rate", "Total"],
-          rows: boqData.rows ?? [],
-          _currency: boqData.currency ?? "GBP",
-          _totalCost: boqData.totalCost,
+          rows,
+          _currency: "USD",
+          _totalCost: costSummary.totalCost,
+          _hardCosts: costSummary.hardCosts,
+          _softCosts: costSummary.softCosts,
+          _region: region,
         },
-        metadata: { model: "gpt-4o-mini", real: true },
+        metadata: { model: "cost-database-v1", real: true },
         createdAt: new Date(),
       };
 
