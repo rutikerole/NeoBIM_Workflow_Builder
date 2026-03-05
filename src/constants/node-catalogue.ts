@@ -169,8 +169,8 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
   },
   {
     id: "TR-006",
-    name: "Zoning Compliance Checker",
-    description: "Cross-check building design against zoning regulations",
+    name: "Zoning Compliance Checker (Coming Soon)",
+    description: "AI-assisted zoning guidance and code-aware recommendations (Coming Soon - Not for regulatory compliance)",
     category: "transform",
     icon: "ShieldCheck",
     inputs: [
@@ -185,7 +185,7 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
   {
     id: "TR-007",
     name: "Quantity Extractor",
-    description: "Extract quantities from IFC model (walls, slabs, windows, etc.)",
+    description: "Extract conceptual quantities from IFC model - ⚠️ SAMPLE DATA for demonstration only",
     category: "transform",
     icon: "Calculator",
     inputs: [{ id: "ifc-in", label: "IFC Model", type: "ifc" }],
@@ -275,7 +275,7 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
   {
     id: "GN-001",
     name: "Massing Generator",
-    description: "Generate simple 3D building massing from building description or parameters",
+    description: "Generate BIM-compatible 3D massing models from building description or parameters",
     category: "generate",
     icon: "Box",
     inputs: [{ id: "req-in", label: "Requirements", type: "json" }],
@@ -368,8 +368,8 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
   // ============================================================
   {
     id: "EX-001",
-    name: "IFC Exporter",
-    description: "Export geometry and metadata as a IFC-format export (basic)",
+    name: "IFC Exporter (Coming Soon)",
+    description: "Export BIM-compatible massing as IFC file (Coming Soon - Basic conceptual export only)",
     category: "export",
     icon: "Download",
     inputs: [

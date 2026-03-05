@@ -297,7 +297,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
     id: "wf-05",
     name: "Massing → IFC Export",
     description:
-      "Bridge to BIM. Take any 3D massing model and export it as a IFC-format export (basic) ready for use in Revit, ArchiCAD, or any BIM viewer.",
+      "BIM-compatible massing export (Coming Soon). Conceptual design only - not for construction documentation.",
     tags: ["ifc", "bim", "export", "bridge"],
     category: "BIM Export",
     complexity: "simple",
@@ -367,7 +367,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
     id: "wf-09",
     name: "IFC → Quantity Takeoff → BOQ",
     description:
-      "Automated quantity extraction and cost estimation. Upload an IFC model and get a complete Bill of Quantities with downloadable XLSX export.",
+      "⚠️ SAMPLE DATA - Conceptual quantity takeoff for demonstration. Not for construction bidding or engineering analysis. Verify all quantities with licensed professionals.",
     tags: ["ifc", "qto", "boq", "cost", "quantities", "estimating"],
     category: "Cost Estimation",
     complexity: "intermediate",
