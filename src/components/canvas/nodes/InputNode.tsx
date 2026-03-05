@@ -25,8 +25,10 @@ export function TextPromptInput({ nodeId, data }: { nodeId: string; data: Workfl
   const value = (data.inputValue as string) ?? "";
 
   const onChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    updateNode(nodeId, { data: { ...data, inputValue: e.target.value } });
-  }, [nodeId, updateNode]); // Fixed: removed 'data' to prevent stale closure
+    const currentNode = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
+    if (!currentNode) return;
+    updateNode(nodeId, { data: { ...currentNode.data, inputValue: e.target.value } });
+  }, [nodeId, updateNode]);
 
   const isEmpty = !value.trim();
 
