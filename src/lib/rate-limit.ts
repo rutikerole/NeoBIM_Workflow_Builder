@@ -1,5 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { prisma } from "@/lib/db";
+import { isSubscriptionActive } from "@/lib/stripe";
 
 // Initialize Redis client for Upstash
 let redis: Redis;
@@ -46,7 +48,7 @@ export const proTierRateLimit = new Ratelimit({
 });
 
 /**
- * Check rate limit based on user tier
+ * Check rate limit based on user tier and subscription status
  * @param userId - User ID for rate limit key
  * @param userRole - User role (FREE, PRO, TEAM_ADMIN, PLATFORM_ADMIN)
  * @param userEmail - User email (for admin bypass check)
@@ -70,7 +72,22 @@ export async function checkRateLimit(
     };
   }
 
-  // Pro, Team Admin, and Platform Admin users have unlimited access
+  // Check subscription status for PRO/TEAM users
+  if (userRole === "PRO" || userRole === "TEAM_ADMIN") {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCurrentPeriodEnd: true },
+    });
+
+    // If subscription is not active, downgrade to FREE tier limits
+    if (!user || !isSubscriptionActive(user.stripeCurrentPeriodEnd)) {
+      console.warn("[rate-limit] Subscription expired for user:", userId);
+      // Apply FREE tier limits even if role is PRO/TEAM
+      return await freeTierRateLimit.limit(userId);
+    }
+  }
+
+  // Pro, Team Admin, and Platform Admin users with active subscription have unlimited access
   if (userRole === "PRO" || userRole === "TEAM_ADMIN" || userRole === "PLATFORM_ADMIN") {
     return await proTierRateLimit.limit(userId);
   }
