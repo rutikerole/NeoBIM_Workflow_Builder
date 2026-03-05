@@ -40,6 +40,34 @@ export default function DashboardPage() {
       ));
     }
   }, [workflowCount, executionCount]);
+  const [hoursSaved, setHoursSaved] = useState<number>(0);
+
+  useEffect(() => {
+    if (executionCount !== null) {
+      // Estimate 30 minutes saved per execution
+      const hours = Math.round((executionCount * 0.5) * 10) / 10;
+      setHoursSaved(hours);
+    }
+  }, [executionCount]);
+  const [checklistItems, setChecklistItems] = useState([
+    { id: 1, label: "Create your first workflow", completed: false, href: "/dashboard/workflows/new" },
+    { id: 2, label: "Run a template workflow", completed: false, href: "/dashboard/templates" },
+    { id: 3, label: "Explore the node library", completed: false, href: "/dashboard/canvas" },
+    { id: 4, label: "Join the community", completed: false, href: "/dashboard/community" },
+  ]);
+
+  useEffect(() => {
+    if (workflowCount && workflowCount > 0) {
+      setChecklistItems(prev => prev.map(item => 
+        item.id === 1 ? { ...item, completed: true } : item
+      ));
+    }
+    if (executionCount && executionCount > 0) {
+      setChecklistItems(prev => prev.map(item => 
+        item.id === 2 ? { ...item, completed: true } : item
+      ));
+    }
+  }, [workflowCount, executionCount]);
 
   useEffect(() => {
     api.workflows.list()
@@ -61,8 +89,10 @@ export default function DashboardPage() {
 
   const stats = [
     const stats = [
+    const stats = [
     { label: "My Workflows", value: workflowCount === null ? "..." : String(workflowCount), icon: "⬡", color: "#4F8AFF", topBorder: "#4F8AFF", href: "/dashboard/workflows" },
     { label: "Executions", value: executionCount === null ? "..." : String(executionCount), icon: "▶", color: "#10B981", topBorder: "#10B981", href: "/dashboard/history" },
+    { label: "Hours Saved", value: hoursSaved === 0 ? "..." : String(hoursSaved) + "h", icon: "⏱", color: "#F59E0B", topBorder: "#F59E0B", href: "/dashboard/history" },
     { label: "Hours Saved", value: hoursSaved === 0 ? "..." : String(hoursSaved) + "h", icon: "⏱", color: "#F59E0B", topBorder: "#F59E0B", href: "/dashboard/history" },
     { label: "Templates", value: `${PREBUILT_WORKFLOWS.length}`, icon: "⊞", color: "#8B5CF6", topBorder: "#8B5CF6", href: "/dashboard/templates" },
   ];

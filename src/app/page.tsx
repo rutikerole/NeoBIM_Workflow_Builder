@@ -471,6 +471,43 @@ export default function LandingPage() {
             </div>
           </div>
 
+          {/* ROI Calculator */}
+          <div style={{
+            background: "rgba(79,138,255,0.08)",
+            border: "1px solid rgba(79,138,255,0.2)",
+            borderRadius: 12,
+            padding: "16px 20px",
+            marginBottom: 32,
+            maxWidth: 540,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: "linear-gradient(135deg, #4F8AFF, #8B5CF6)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18,
+              }}>
+                💰
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: "#9898B0", marginBottom: 4 }}>
+                  Time saved per project
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F5" }}>
+                  10 hours × ,
+          }}>
+            Turn project briefs into 3D massing models, renders, and IFC files. 
+            No-code workflows built for architects who value their time.
+          </p>00/hr = <span style={{ color: "#10B981" }}>,
+          }}>
+            Turn project briefs into 3D massing models, renders, and IFC files. 
+            No-code workflows built for architects who value their time.
+          </p>,000 saved</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
             <Link href="/dashboard" style={{
               display: "flex", alignItems: "center", gap: 8,
@@ -977,6 +1014,9 @@ export default function LandingPage() {
               <div style={{ marginBottom: 24, padding: "8px 12px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
                 <span style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>💰 Pays for itself in 1 project</span>
               </div>
+              <div style={{ marginBottom: 24, padding: "8px 12px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                <span style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>💰 Pays for itself in 1 project</span>
+              </div>
               <Link href="/dashboard" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px 24px", borderRadius: 9, background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)", color: "white", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 28, boxShadow: "0 0 0 1px rgba(79,138,255,0.3), 0 4px 16px rgba(79,138,255,0.25)" }}>Start Free Trial</Link>
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#9898B0", marginBottom: 14 }}>Everything in Free, plus:</div>
@@ -1094,6 +1134,101 @@ export default function LandingPage() {
         <span style={{ fontSize: 11, color: "#3A3A50" }}>
           Built for the AEC community
         </span>
+      
+      {/* Mobile Responsive Styles */}
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          /* Hero section - stack vertically */
+          section[style*="minHeight: calc(100vh - 60px)"] {
+            flex-direction: column !important;
+            padding: 40px 24px !important;
+            gap: 32px !important;
+          }
+          
+          section[style*="minHeight: calc(100vh - 60px)"] > div {
+            flex: 1 !important;
+            max-width: 100% !important;
+          }
+
+          /* Hero title */
+          h1[style*="fontSize: 56"] {
+            font-size: 36px !important;
+          }
+
+          /* All grid layouts - 1 column on mobile */
+          div[style*="gridTemplateColumns: repeat(3, 1fr)"],
+          div[style*="gridTemplateColumns: repeat(4, 1fr)"] {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          /* How it works section - stack the steps */
+          div[style*="gridTemplateColumns: 1fr 40px 1fr 40px 1fr"] {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          /* Hide arrows between steps on mobile */
+          div[style*="gridTemplateColumns: 1fr 40px 1fr 40px 1fr"] > div[style*="display: flex"][style*="justifyContent: center"]:has(svg) {
+            display: none !important;
+          }
+
+          /* Navigation - adjust padding */
+          nav[style*="padding: 0 48px"] {
+            padding: 0 20px !important;
+          }
+
+          /* Sections - reduce padding */
+          section[style*="padding: 88px 48px"] {
+            padding: 48px 24px !important;
+          }
+
+          section[style*="padding: 48px 48px 88px"] {
+            padding: 32px 24px 48px !important;
+          }
+
+          /* CTAs - stack buttons vertically */
+          div[style*="display: flex"][style*="gap: 12"] > a {
+            width: 100%;
+            justify-content: center;
+          }
+
+          /* Increase touch target size for mobile */
+          a[style*="padding"][style*="borderRadius"] {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          /* Logo strip - scroll on mobile */
+          div[style*="Trusted by teams"] {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          /* Hero animation - smaller on mobile */
+          div[style*="borderRadius: 16"][style*="boxShadow"] {
+            transform: scale(0.9) !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          /* Extra small screens */
+          h1[style*="fontSize: 56"] {
+            font-size: 28px !important;
+          }
+
+          nav span[style*="fontSize: 17"] {
+            font-size: 15px !important;
+          }
+
+          /* Sticky nav - hide on very small screens */
+          nav[style*="position: fixed"] {
+            display: none !important;
+          }
+        }
+      `}</style>
       
       {/* Mobile Responsive Styles */}
       <style jsx global>{`
