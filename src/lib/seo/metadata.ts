@@ -1,7 +1,7 @@
 // 🔍 SEO HELPER - Reusable metadata generators for pages
 import { Metadata } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://neobim.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://buildflow.vercel.app";
 
 interface PageMetadataProps {
   title: string;
@@ -49,7 +49,7 @@ export function generatePageMetadata({
       title,
       description,
       url: fullUrl,
-      siteName: "Workflow Builder",
+      siteName: "BuildFlow",
       images: [
         {
           url: `${siteUrl}${ogImage}`,
@@ -75,7 +75,7 @@ export function generatePageMetadata({
  */
 export const pageSEO = {
   home: generatePageMetadata({
-    title: "Workflow Builder — AI-Powered Workflows for AEC",
+    title: "BuildFlow — AI-Powered Workflows for AEC",
     description:
       "Build AI-powered AEC workflows visually. Drag-and-drop nodes to create pipelines from PDF briefs to 3D massing to concept renders — without writing code.",
     keywords: [
@@ -112,21 +112,21 @@ export const pageSEO = {
   community: generatePageMetadata({
     title: "Community Workflows",
     description:
-      "Discover and use workflows shared by the Workflow Builder community. Learn from other architects and engineers.",
+      "Discover and use workflows shared by the BuildFlow community. Learn from other architects and engineers.",
     keywords: ["AEC community", "shared workflows", "architecture community"],
     path: "/dashboard/community",
   }),
   
   login: generatePageMetadata({
     title: "Sign In",
-    description: "Sign in to your Workflow Builder account",
+    description: "Sign in to your BuildFlow account",
     path: "/login",
     noIndex: true,
   }),
   
   signup: generatePageMetadata({
     title: "Sign Up",
-    description: "Create your free Workflow Builder account",
+    description: "Create your free BuildFlow account",
     path: "/signup",
     noIndex: true,
   }),

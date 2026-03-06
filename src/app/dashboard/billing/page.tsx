@@ -23,28 +23,6 @@ function SecurityBadge({ icon: Icon, label }: { icon: any; label: string }) {
   );
 }
 
-// Testimonial Component
-function Testimonial({ quote, author, role, company }: { quote: string; author: string; role: string; company: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-5 rounded-[14px] bg-[#12121E] border border-[rgba(255,255,255,0.06)]"
-    >
-      <p className="text-sm text-[#C0C0D0] leading-relaxed mb-3">"{quote}"</p>
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4F8AFF] to-[#8B5CF6] flex items-center justify-center text-xs font-bold text-white">
-          {author.split(' ').map(n => n[0]).join('')}
-        </div>
-        <div>
-          <div className="text-xs font-semibold text-[#F0F0F5]">{author}</div>
-          <div className="text-[10px] text-[#5C5C78]">{role} at {company}</div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 export default function BillingPage() {
   const { data: session } = useSession();
   const [usage, setUsage] = useState<UsageStats | null>(null);
@@ -129,7 +107,7 @@ export default function BillingPage() {
       name: "Free",
       price: "$0",
       period: "forever",
-      description: "Perfect for exploring Workflow Builder",
+      description: "Perfect for exploring BuildFlow",
       features: [
         "3 workflow runs per day",
         "Access to all node types",
@@ -144,10 +122,10 @@ export default function BillingPage() {
     },
     {
       name: "Pro",
-      price: "$79",
+      price: "$29",
       period: "per month",
-      description: "Pays for itself in 1 project",
-      savings: "Save $2,000 per project · 25x ROI",
+      description: "Most popular for solo architects",
+      savings: "Unlimited workflows + priority execution",
       features: [
         "Unlimited workflow runs",
         "Priority execution queue",
@@ -166,7 +144,7 @@ export default function BillingPage() {
     },
     {
       name: "Team",
-      price: "$149",
+      price: "$99",
       period: "per month",
       description: "Collaborate with your team",
       features: [
@@ -421,7 +399,7 @@ export default function BillingPage() {
                   }`}
                   style={plan.highlighted && !plan.ctaDisabled && upgradingTo === null ? { background: plan.gradient } : {}}
                 >
-                  {upgradingTo === plan.planType ? (
+                  {upgradingTo !== null && upgradingTo === plan.planType ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
                       Processing...
@@ -435,39 +413,17 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Social Proof / Testimonials */}
+        {/* Product highlights */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
         >
           <div className="text-center mb-6">
-            <h3 className="text-lg font-bold text-[#F0F0F5] mb-2">Trusted by AEC professionals worldwide</h3>
-            <div className="flex items-center justify-center gap-2 text-sm text-[#9898B0]">
-              <Users size={16} />
-              <span>2,400+ architects and engineers use Workflow Builder</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <Testimonial
-              quote="Workflow Builder reduced our concept design time from 2 weeks to 3 hours. The ROI is insane."
-              author="Sarah Chen"
-              role="Design Director"
-              company="Studio Arch"
-            />
-            <Testimonial
-              quote="The AI workflow generation is a game-changer. We're closing deals faster than ever."
-              author="Michael Ross"
-              role="Principal Architect"
-              company="RossBuilt"
-            />
-            <Testimonial
-              quote="Finally, a tool that speaks AEC. The IFC export alone is worth the subscription."
-              author="Priya Patel"
-              role="BIM Manager"
-              company="UrbanFlow"
-            />
+            <h3 className="text-lg font-bold text-[#F0F0F5] mb-2">Built for AEC professionals</h3>
+            <p className="text-sm text-[#9898B0]">
+              31 specialized nodes, 7 ready-made templates, IFC/PDF/CSV export
+            </p>
           </div>
         </motion.div>
 

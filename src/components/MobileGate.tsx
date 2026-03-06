@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Monitor } from "lucide-react";
 
-const DISMISSED_KEY = "neobim_mobile_gate_dismissed";
+const DISMISSED_KEY = "buildflow_mobile_gate_dismissed";
 
 export function MobileGate({ children }: { children: React.ReactNode }) {
   const [isSmall, setIsSmall] = useState(false);
@@ -77,7 +77,7 @@ export function MobileGate({ children }: { children: React.ReactNode }) {
               lineHeight: 1.65,
             }}
           >
-            Workflow Builder is designed for screens 1024px and wider.
+            BuildFlow is designed for screens 1024px and wider.
             Open it on a desktop or laptop for the best experience.
           </p>
         </div>

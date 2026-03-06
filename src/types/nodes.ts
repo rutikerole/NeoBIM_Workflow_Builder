@@ -1,4 +1,4 @@
-// Node type system for NeoBIM Workflow Builder
+// Node type system for BuildFlow Workflow Builder
 
 export type NodeCategory = "input" | "transform" | "generate" | "export";
 

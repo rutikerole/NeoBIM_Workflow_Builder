@@ -107,7 +107,7 @@ function LoginForm() {
           Welcome back
         </h2>
         <p style={{ fontSize: 14, color: "#9898B0" }}>
-          Sign in to continue to Workflow Builder
+          Sign in to continue to BuildFlow
         </p>
       </div>
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 
-const STORAGE_KEY = "neobim_onboarded";
+const STORAGE_KEY = "buildflow_onboarded";
 
 const STEPS = [
   {

@@ -200,7 +200,7 @@ function HeroAnimation() {
         {["#EF4444", "#F59E0B", "#10B981"].map(c => (
           <div key={c} style={{ width: 8, height: 8, borderRadius: "50%", background: c, opacity: 0.6 }} />
         ))}
-        <span style={{ marginLeft: 8, fontSize: 10, color: "#3A3A50", fontWeight: 500 }}>Workflow Builder</span>
+        <span style={{ marginLeft: 8, fontSize: 10, color: "#3A3A50", fontWeight: 500 }}>BuildFlow</span>
         <div style={{
           marginLeft: "auto", padding: "3px 10px", borderRadius: 6,
           background: "rgba(79,138,255,0.1)", border: "1px solid rgba(79,138,255,0.2)",
@@ -312,7 +312,7 @@ const FEATURES = [
   },
 ];
 
-const COMPANIES = ["Leading AEC Firms", "Architecture Studios", "Engineering Teams", "BIM Consultants", "Design Agencies", "Construction Tech"];
+const USE_CASES = ["Architecture Studios", "Engineering Teams", "BIM Consultants", "Design Agencies", "Construction Tech"];
 
 // ─── Showcase workflows ───────────────────────────────────────────────────────
 
@@ -434,7 +434,7 @@ export default function LandingPage() {
             No-code workflows built for architects who value their time.
           </p>
 
-          {/* ROI Calculator */}
+          {/* What you get */}
           <div style={{
             background: "rgba(79,138,255,0.08)",
             border: "1px solid rgba(79,138,255,0.2)",
@@ -450,46 +450,14 @@ export default function LandingPage() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 18,
               }}>
-                💰
+                ⚡
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, color: "#9898B0", marginBottom: 4 }}>
-                  Time saved per project
+                  From brief to concept in minutes
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F5" }}>
-                  10 hours × $100/hr = <span style={{ color: "#10B981" }}>$1,000 saved*</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ROI Calculator */}
-          <p style={{ fontSize: 11, color: "#5C5C78", marginTop: 8, fontStyle: "italic" }}>
-            * Estimated savings based on typical AEC project workflows
-          </p>
-          <div style={{
-            background: "rgba(79,138,255,0.08)",
-            border: "1px solid rgba(79,138,255,0.2)",
-            borderRadius: 12,
-            padding: "16px 20px",
-            marginBottom: 32,
-            maxWidth: 540,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10,
-                background: "linear-gradient(135deg, #4F8AFF, #8B5CF6)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18,
-              }}>
-                💰
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: "#9898B0", marginBottom: 4 }}>
-                  Time saved per project
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F5" }}>
-                  10 hours × $100/hr = <span style={{ color: "#10B981" }}>$1,000 saved*</span>
+                  31 nodes · 7 templates · <span style={{ color: "#10B981" }}>Free to start</span>
                 </div>
               </div>
             </div>
@@ -657,7 +625,7 @@ export default function LandingPage() {
           }}>
             <div style={{ height: 1, width: 40, background: "rgba(255,255,255,0.06)" }} />
             <span style={{ fontSize: 11, color: "#5C5C78", whiteSpace: "nowrap", fontWeight: 500 }}>
-              Trusted by teams at
+              Built for
             </span>
             <div style={{ height: 1, width: 40, background: "rgba(255,255,255,0.06)" }} />
           </div>
@@ -666,7 +634,7 @@ export default function LandingPage() {
             maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
             WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
           }}>
-            {COMPANIES.map(c => (
+            {USE_CASES.map(c => (
               <span key={c} style={{
                 fontSize: 13, fontWeight: 600, color: "#5C5C78",
                 letterSpacing: "0.5px",
@@ -775,7 +743,7 @@ export default function LandingPage() {
               From brief to building in minutes
             </h2>
             <p style={{ fontSize: 16, color: "#9898B0" }}>
-              See how Workflow Builder transforms AEC processes
+              See how BuildFlow transforms AEC processes
             </p>
           </motion.div>
 
@@ -999,10 +967,7 @@ export default function LandingPage() {
                 <span style={{ fontSize: 15, color: "#7878A0", marginLeft: 8 }}>/month</span>
               </div>
               <div style={{ marginBottom: 24, padding: "8px 12px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                <span style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>💰 Save $2,000 per project, pay $79/month = 25x ROI</span>
-              </div>
-              <div style={{ marginBottom: 24, padding: "8px 12px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                <span style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>💰 Save $2,000 per project, pay $79/month = 25x ROI</span>
+                <span style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>Unlimited workflows + 500 executions/month</span>
               </div>
               <Link href="/dashboard" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px 24px", borderRadius: 9, background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)", color: "white", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 28, boxShadow: "0 0 0 1px rgba(79,138,255,0.3), 0 4px 16px rgba(79,138,255,0.25)" }}>Start Free Trial</Link>
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
@@ -1020,7 +985,7 @@ export default function LandingPage() {
               <div style={{ marginBottom: 28 }}>
                 <span style={{ fontSize: 32, fontWeight: 800, color: "#F0F0F5" }}>Custom</span>
               </div>
-              <a href="mailto:sales@neobim.com" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px 24px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "#1A1A2A", color: "#F0F0F5", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 28 }}>Contact Sales</a>
+              <a href="mailto:sales@buildflow.com" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px 24px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "#1A1A2A", color: "#F0F0F5", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 28 }}>Contact Sales</a>
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#9898B0", marginBottom: 14 }}>Everything in Pro, plus:</div>
                 {["Unlimited executions", "SSO & SAML", "Dedicated support", "Custom integrations", "SLA guarantee", "On-premise deployment"].map(f => (<div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}><span style={{ color: "#8B5CF6" }}>✓</span><span style={{ fontSize: 14, color: "#9898B0" }}>{f}</span></div>))}
@@ -1108,7 +1073,7 @@ export default function LandingPage() {
             <Zap size={10} color="white" fill="white" />
           </div>
           <span style={{ fontSize: 12, color: "#5C5C78", fontWeight: 600 }}>
-            © 2026 NeoBIM
+            © 2026 BuildFlow
           </span>
         </div>
         <div style={{ margin: "0 auto", display: "flex", gap: 20 }}>

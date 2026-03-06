@@ -129,10 +129,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             }}
           >
             {[
-              { icon: <Users size={20} />, value: "2,400+", label: "Professionals" },
-              { icon: <Workflow size={20} />, value: "28,000+", label: "Workflows Created" },
-              { icon: <TrendingUp size={20} />, value: "99.9%", label: "Uptime" },
-              { icon: <Zap size={20} />, value: "2-3 min", label: "Avg Generation" },
+              { icon: <Zap size={20} />, value: "31", label: "AEC Node Types" },
+              { icon: <Workflow size={20} />, value: "7", label: "Ready-Made Templates" },
+              { icon: <TrendingUp size={20} />, value: "Free", label: "To Start" },
+              { icon: <Users size={20} />, value: "2-3 min", label: "Avg Generation" },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -179,7 +179,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             ))}
           </div>
 
-          {/* Testimonial */}
+          {/* Product highlight */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -199,37 +199,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 color: "#D0D0E0",
                 lineHeight: 1.6,
                 marginBottom: 14,
-                fontStyle: "italic",
               }}
             >
-              "Workflow Builder reduced our concept design phase from 2 weeks to 4 hours.
-              The ROI was immediate."
+              From PDF brief to 3D massing, concept renders, and BOQ exports — all in one visual pipeline. No code required.
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #8B5CF6, #4F8AFF)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "white",
-                }}
-              >
-                SC
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#F0F0F5" }}>
-                  Sarah Chen
-                </div>
-                <div style={{ fontSize: 12, color: "#7878A0" }}>
-                  Design Director, Foster+Partners
-                </div>
-              </div>
+            <div style={{ fontSize: 12, color: "#7878A0" }}>
+              Built for architects, engineers, and BIM managers
             </div>
           </motion.div>
         </motion.div>

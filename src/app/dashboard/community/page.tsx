@@ -22,13 +22,13 @@ interface CommunityWorkflow extends WorkflowTemplate {
 
 // Extend prebuilts with community data
 const BASE: CommunityWorkflow[] = [
-  { ...PREBUILT_WORKFLOWS[0], authorName: "Sarah Chen",     publishedAt: "2 days ago",    ratingAvg: 4.8, cloneCount: 1847 },
-  { ...PREBUILT_WORKFLOWS[1], authorName: "Marcus Rivera",  publishedAt: "1 week ago",    ratingAvg: 4.6, cloneCount: 924  },
-  { ...PREBUILT_WORKFLOWS[2], authorName: "Priya Patel",    publishedAt: "3 days ago",    ratingAvg: 4.5, cloneCount: 612  },
-  { ...PREBUILT_WORKFLOWS[3], authorName: "James O'Brien",  publishedAt: "2 weeks ago",   ratingAvg: 4.3, cloneCount: 341  },
-  { ...PREBUILT_WORKFLOWS[4], authorName: "Aiko Tanaka",    publishedAt: "1 month ago",   ratingAvg: 4.7, cloneCount: 789  },
-  { ...PREBUILT_WORKFLOWS[5], authorName: "Lars Eriksson",  publishedAt: "5 days ago",    ratingAvg: 4.2, cloneCount: 203  },
-  { ...PREBUILT_WORKFLOWS[6], authorName: "Sarah Chen",     publishedAt: "3 months ago",  ratingAvg: 4.4, cloneCount: 1243 },
+  { ...PREBUILT_WORKFLOWS[0], authorName: "BuildFlow Team", publishedAt: "Built-in",      ratingAvg: 0, cloneCount: 0 },
+  { ...PREBUILT_WORKFLOWS[1], authorName: "BuildFlow Team", publishedAt: "Built-in",      ratingAvg: 0, cloneCount: 0 },
+  { ...PREBUILT_WORKFLOWS[2], authorName: "BuildFlow Team", publishedAt: "Built-in",      ratingAvg: 0, cloneCount: 0 },
+  { ...PREBUILT_WORKFLOWS[3], authorName: "BuildFlow Team", publishedAt: "Built-in",      ratingAvg: 0, cloneCount: 0 },
+  { ...PREBUILT_WORKFLOWS[4], authorName: "BuildFlow Team", publishedAt: "Built-in",      ratingAvg: 0, cloneCount: 0 },
+  { ...PREBUILT_WORKFLOWS[5], authorName: "BuildFlow Team", publishedAt: "Built-in",      ratingAvg: 0, cloneCount: 0 },
+  { ...PREBUILT_WORKFLOWS[6], authorName: "BuildFlow Team", publishedAt: "Built-in",      ratingAvg: 0, cloneCount: 0 },
 ];
 
 // Extra unique community workflows (derived from prebuilt data shapes)
@@ -41,10 +41,10 @@ const EXTRA: CommunityWorkflow[] = [
     category:    "Cost Estimation",
     complexity:  "intermediate",
     tags:        ["carbon", "sustainability", "ifc", "report"],
-    authorName:  "Priya Patel",
-    publishedAt: "2 hours ago",
-    ratingAvg:   4.9,
-    cloneCount:  87,
+    authorName:  "BuildFlow Team",
+    publishedAt: "Example",
+    ratingAvg:   0,
+    cloneCount:  0,
   },
   {
     ...PREBUILT_WORKFLOWS[1],
@@ -54,10 +54,10 @@ const EXTRA: CommunityWorkflow[] = [
     category:    "Concept Design",
     complexity:  "advanced",
     tags:        ["sketch", "floor-plan", "3d", "ocr"],
-    authorName:  "James O'Brien",
-    publishedAt: "4 days ago",
-    ratingAvg:   4.3,
-    cloneCount:  156,
+    authorName:  "BuildFlow Team",
+    publishedAt: "Example",
+    ratingAvg:   0,
+    cloneCount:  0,
   },
   {
     ...PREBUILT_WORKFLOWS[2],
@@ -67,10 +67,10 @@ const EXTRA: CommunityWorkflow[] = [
     category:    "Site Analysis",
     complexity:  "advanced",
     tags:        ["solar", "analysis", "comparison", "sustainability"],
-    authorName:  "Lars Eriksson",
-    publishedAt: "1 week ago",
-    ratingAvg:   4.6,
-    cloneCount:  312,
+    authorName:  "BuildFlow Team",
+    publishedAt: "Example",
+    ratingAvg:   0,
+    cloneCount:  0,
   },
   {
     ...PREBUILT_WORKFLOWS[3],
@@ -80,10 +80,10 @@ const EXTRA: CommunityWorkflow[] = [
     category:    "Cost Estimation",
     complexity:  "simple",
     tags:        ["boq", "cost", "nrm2", "excel"],
-    authorName:  "Marcus Rivera",
-    publishedAt: "3 weeks ago",
-    ratingAvg:   4.0,
-    cloneCount:  445,
+    authorName:  "BuildFlow Team",
+    publishedAt: "Example",
+    ratingAvg:   0,
+    cloneCount:  0,
   },
   {
     ...PREBUILT_WORKFLOWS[4],
@@ -93,10 +93,10 @@ const EXTRA: CommunityWorkflow[] = [
     category:    "Concept Design",
     complexity:  "intermediate",
     tags:        ["competition", "brief", "analysis", "program"],
-    authorName:  "Aiko Tanaka",
-    publishedAt: "12 days ago",
-    ratingAvg:   4.7,
-    cloneCount:  629,
+    authorName:  "BuildFlow Team",
+    publishedAt: "Example",
+    ratingAvg:   0,
+    cloneCount:  0,
   },
 ];
 
@@ -121,9 +121,9 @@ const CATEGORY_MAP: Record<string, string[]> = {
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
 const STATS = [
-  { label: "Published Workflows", value: "500+",   color: "#4F8AFF" },
-  { label: "Community Members",   value: "5,200+", color: "#10B981" },
-  { label: "Total Clones",        value: "28,400+",color: "#8B5CF6" },
+  { label: "Template Workflows",  value: String(PREBUILT_WORKFLOWS.length), color: "#4F8AFF" },
+  { label: "Node Types Available", value: "31",     color: "#10B981" },
+  { label: "Community",           value: "Beta",    color: "#8B5CF6" },
 ];
 
 // ─── Publish Dialog ───────────────────────────────────────────────────────────

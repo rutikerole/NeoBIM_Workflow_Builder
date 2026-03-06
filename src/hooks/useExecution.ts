@@ -328,49 +328,76 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
         setTimeout(() => setEdgeFlowing(node.id, false), FLOW_DURATION_MS);
 
       } catch (error) {
-        hasError = true;
-        updateNodeStatus(node.id, "error");
-        
         const errTitle = (error as any).title || "Error";
         const errMsg = error instanceof Error ? error.message : "Unknown error";
         const errAction = (error as any).action;
         const errActionUrl = (error as any).actionUrl;
-        
-        // Check if this is a rate limit error
+
+        // Check if this is a rate limit error — must stop execution
         if ((error as any).status === 429) {
+          hasError = true;
+          updateNodeStatus(node.id, "error");
           log("error", "Rate limit exceeded", errMsg);
-          
-          // Set rate limit info to trigger modal
           setRateLimitHit({
             title: errTitle,
             message: errMsg,
             action: errAction,
             actionUrl: errActionUrl,
           });
-        } else {
-          log("error", `${node.data.label} failed`, errMsg);
-          
-          // Show user-friendly error toast
-          toast.error(errTitle, {
-            description: errMsg,
-            duration: 6000,
-            action: errAction && errActionUrl ? {
-              label: errAction,
-              onClick: () => window.location.href = errActionUrl,
-            } : undefined,
+          addTileResult({
+            tileInstanceId: node.id,
+            catalogueId: node.data.catalogueId,
+            status: "error",
+            startedAt: new Date(),
+            completedAt: new Date(),
+            errorMessage: errMsg,
+          });
+          break;
+        }
+
+        // Non-fatal error — fall back to mock execution and continue
+        log("error", `${node.data.label} failed — falling back to mock`, errMsg);
+        toast.error(`${node.data.label}: using mock data`, {
+          description: errMsg,
+          duration: 5000,
+        });
+
+        try {
+          const upstreamArtifact = getUpstreamArtifact(node.id, workflowEdges, artifactMap);
+          const mockArtifact = await mockExecuteNode(
+            node.data.catalogueId,
+            executionId,
+            node.id,
+            ((upstreamArtifact?.data ?? {}) as Record<string, unknown>)
+          );
+          artifactMap.set(node.id, mockArtifact);
+          addArtifact(node.id, mockArtifact);
+          addTileResult({
+            tileInstanceId: node.id,
+            catalogueId: node.data.catalogueId,
+            status: "success",
+            startedAt: new Date(),
+            completedAt: new Date(),
+            artifact: mockArtifact,
+          });
+          updateNodeStatus(node.id, "success");
+          log("info", `${node.data.label} completed with mock fallback`);
+
+          setEdgeFlowing(node.id, true);
+          setTimeout(() => setEdgeFlowing(node.id, false), FLOW_DURATION_MS);
+        } catch {
+          // Mock also failed — mark error but continue pipeline
+          hasError = true;
+          updateNodeStatus(node.id, "error");
+          addTileResult({
+            tileInstanceId: node.id,
+            catalogueId: node.data.catalogueId,
+            status: "error",
+            startedAt: new Date(),
+            completedAt: new Date(),
+            errorMessage: errMsg,
           });
         }
-        
-        addTileResult({
-          tileInstanceId: node.id,
-          catalogueId: node.data.catalogueId,
-          status: "error",
-          startedAt: new Date(),
-          completedAt: new Date(),
-          errorMessage: errMsg,
-        });
-        
-        break;
       }
     }
 

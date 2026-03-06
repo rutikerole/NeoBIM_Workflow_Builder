@@ -21,8 +21,8 @@ const jetbrains = JetBrains_Mono({
 });
 
 // 🔍 SEO OPTIMIZATION - Maximum Discoverability
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://neobim.vercel.app";
-const siteName = "Workflow Builder";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://buildflow.vercel.app";
+const siteName = "BuildFlow";
 const siteDescription = "Build AI-powered AEC workflows visually. Drag-and-drop nodes to create pipelines from PDF briefs to 3D massing to concept renders — without writing code. Beta platform.";
 const siteKeywords = [
   // Primary keywords
@@ -50,16 +50,16 @@ const siteKeywords = [
 export const metadata: Metadata = {
   // Basic Meta
   title: {
-    default: "Workflow Builder — AI-Powered Workflows for AEC",
-    template: "%s | Workflow Builder",
+    default: "BuildFlow — AI-Powered Workflows for AEC",
+    template: "%s | BuildFlow",
   },
   description: siteDescription,
   keywords: siteKeywords,
   
   // Authors & Creator
-  authors: [{ name: "NeoBIM Team" }],
-  creator: "NeoBIM",
-  publisher: "NeoBIM",
+  authors: [{ name: "BuildFlow Team" }],
+  creator: "BuildFlow",
+  publisher: "BuildFlow",
   
   // Canonical & Alternates
   metadataBase: new URL(siteUrl),
@@ -86,14 +86,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: siteUrl,
     siteName,
-    title: "Workflow Builder — AI-Powered Workflows for AEC",
+    title: "BuildFlow — AI-Powered Workflows for AEC",
     description: "Transform AEC workflows with AI. Build visual pipelines from PDF briefs to 3D models to renders in minutes, not weeks. No coding required.",
     images: [
       {
         url: `${siteUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Workflow Builder - AI Workflows for Architecture, Engineering & Construction",
+        alt: "BuildFlow - AI Workflows for Architecture, Engineering & Construction",
         type: "image/png",
       },
     ],
@@ -102,9 +102,9 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    site: "@neobim",
-    creator: "@neobim",
-    title: "Workflow Builder — AI Workflows for AEC",
+    site: "@buildflow",
+    creator: "@buildflow",
+    title: "BuildFlow — AI Workflows for AEC",
     description: "Transform AEC workflows with AI. Build visual pipelines from PDF briefs to 3D models to renders — no code required.",
     images: [`${siteUrl}/twitter-card.png`],
   },
@@ -170,9 +170,9 @@ export default function RootLayout({
         description: siteDescription,
         sameAs: [
           // Add your social media profiles here
-          // "https://twitter.com/neobim",
-          // "https://linkedin.com/company/neobim",
-          // "https://github.com/neobim",
+          // "https://twitter.com/buildflow",
+          // "https://linkedin.com/company/buildflow",
+          // "https://github.com/buildflow",
         ],
       },
       // WebSite Schema
@@ -205,13 +205,6 @@ export default function RootLayout({
           price: "0",
           priceCurrency: "USD",
           description: "Free tier available",
-        },
-        aggregateRating: {
-          "@type": "AggregateRating",
-          ratingValue: "4.8",
-          ratingCount: "150",
-          bestRating: "5",
-          worstRating: "1",
         },
         description: siteDescription,
         screenshot: `${siteUrl}/screenshots/dashboard.png`,

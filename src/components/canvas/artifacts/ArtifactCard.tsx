@@ -155,17 +155,59 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
             transition={{ duration: 0.18, ease: "easeInOut" }}
             style={{ overflow: "hidden" }}
           >
-            {artifact.type === "text"  && <TextBody  data={artifact.data as TextArtifactData}  />}
-            {artifact.type === "json"  && <JsonBody  data={artifact.data as JsonArtifactData}  />}
-            {artifact.type === "image" && <ImageBody data={artifact.data as ImageArtifactData} />}
-            {artifact.type === "kpi"   && <KpiBody   data={artifact.data as KpiArtifactData}   accentColor={accentColor} />}
-            {artifact.type === "table" && <TableBody data={artifact.data as TableArtifactData} />}
-            {artifact.type === "file"  && <FileBody  data={artifact.data as FileArtifactData}  />}
+            <ArtifactErrorBoundary fallbackType={artifact.type}>
+              {artifact.type === "text"  && <TextBody  data={artifact.data as TextArtifactData}  />}
+              {artifact.type === "json"  && <JsonBody  data={artifact.data as JsonArtifactData}  />}
+              {artifact.type === "image" && <ImageBody data={artifact.data as ImageArtifactData} />}
+              {artifact.type === "kpi"   && <KpiBody   data={artifact.data as KpiArtifactData}   accentColor={accentColor} />}
+              {artifact.type === "table" && <TableBody data={artifact.data as TableArtifactData} />}
+              {artifact.type === "file"  && <FileBody  data={artifact.data as FileArtifactData}  />}
+            </ArtifactErrorBoundary>
           </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
   );
+}
+
+// ─── Safe wrapper for body renderers ──────────────────────────────────────────
+
+function SafeBody({ children, type }: { children: React.ReactNode; type: string }) {
+  try {
+    return <>{children}</>;
+  } catch {
+    return (
+      <div style={{ padding: "8px 14px", fontSize: 11, color: "#EF4444" }}>
+        Unable to render {type} artifact
+      </div>
+    );
+  }
+}
+
+// Error boundary for class-based catch
+class ArtifactErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallbackType: string },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallbackType: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: "8px 14px", fontSize: 11, color: "#EF4444" }}>
+          Unable to render {this.props.fallbackType} artifact
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 // ─── Body renderers ───────────────────────────────────────────────────────────

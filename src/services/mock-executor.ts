@@ -309,7 +309,7 @@ export async function executeNode(
       });
 
     case "EX-001": { // IFC Exporter
-      const ifcContent = `ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('NeoBIM Mock Export'),'2;1');\nFILE_NAME('mock_building.ifc','${new Date().toISOString().split("T")[0]}',('NeoBIM'),('NeoBIM'),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n#1=IFCPROJECT('0001',#2,$,'Mock Building Project',$,$,$,$,$);\nENDSEC;\nEND-ISO-10303-21;`;
+      const ifcContent = `ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('BuildFlow Mock Export'),'2;1');\nFILE_NAME('mock_building.ifc','${new Date().toISOString().split("T")[0]}',('BuildFlow'),('BuildFlow'),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n#1=IFCPROJECT('0001',#2,$,'Mock Building Project',$,$,$,$,$);\nENDSEC;\nEND-ISO-10303-21;`;
       const ifcBase64 = typeof Buffer !== "undefined" ? Buffer.from(ifcContent).toString("base64") : btoa(ifcContent);
       return mockArtifact(executionId, tileInstanceId, "file", {
         name: "oslo_mixeduse_v1.ifc",
@@ -333,7 +333,7 @@ export async function executeNode(
     }
 
     case "EX-003": { // PDF Report
-      const reportText = `NeoBIM Compliance Report\nGenerated: ${new Date().toISOString()}\n\nOverall Status: PASS (7/8 rules)\n\nResults:\n- Maximum building height: 21.6m / 22m — PASS\n- Site coverage: 54% / 60% — PASS\n- Front setback: 3m / 3m — PASS\n- Side setback (N): 2.8m / 3m — FAIL (0.2m non-compliant)\n- Residential daylight: 1.8% / >1.5% — PASS\n- Parking minimum: 0.5/unit — PASS\n- Active ground floor: 78% / >50% — PASS\n- Green roof: 30% / >25% — PASS\n\nNote: This is a mock report. Full PDF generation coming soon.`;
+      const reportText = `BuildFlow Compliance Report\nGenerated: ${new Date().toISOString()}\n\nOverall Status: PASS (7/8 rules)\n\nResults:\n- Maximum building height: 21.6m / 22m — PASS\n- Site coverage: 54% / 60% — PASS\n- Front setback: 3m / 3m — PASS\n- Side setback (N): 2.8m / 3m — FAIL (0.2m non-compliant)\n- Residential daylight: 1.8% / >1.5% — PASS\n- Parking minimum: 0.5/unit — PASS\n- Active ground floor: 78% / >50% — PASS\n- Green roof: 30% / >25% — PASS\n\nNote: This is a mock report. Full PDF generation coming soon.`;
       const reportBase64 = typeof Buffer !== "undefined" ? Buffer.from(reportText).toString("base64") : btoa(reportText);
       return mockArtifact(executionId, tileInstanceId, "file", {
         name: "compliance_report.txt",

@@ -88,7 +88,7 @@ export function Sidebar() {
               fontSize: 15, fontWeight: 700, color: "#F0F0F5",
               letterSpacing: "-0.3px", whiteSpace: "nowrap",
             }}>
-              Neo<span style={{ color: "#4F8AFF" }}>BIM</span>
+              Build<span style={{ color: "#4F8AFF" }}>Flow</span>
             </span>
           )}
         </Link>
