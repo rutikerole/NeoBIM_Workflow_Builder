@@ -26,6 +26,9 @@ interface UIState {
   promptValue: string;
   isGeneratingWorkflow: boolean;
 
+  // Demo mode
+  isDemoMode: boolean;
+
   // Actions
   setActivePanel: (panel: PanelId) => void;
   toggleNodeLibrary: () => void;
@@ -41,6 +44,8 @@ interface UIState {
 
   setPromptValue: (value: string) => void;
   setGeneratingWorkflow: (generating: boolean) => void;
+
+  setDemoMode: (demo: boolean) => void;
 }
 
 export const useUIStore = create<UIState>()((set) => ({
@@ -58,6 +63,8 @@ export const useUIStore = create<UIState>()((set) => ({
 
   promptValue: "",
   isGeneratingWorkflow: false,
+
+  isDemoMode: false,
 
   setActivePanel: (panel) =>
     set({
@@ -94,4 +101,6 @@ export const useUIStore = create<UIState>()((set) => ({
 
   setPromptValue: (value) => set({ promptValue: value }),
   setGeneratingWorkflow: (generating) => set({ isGeneratingWorkflow: generating }),
+
+  setDemoMode: (demo) => set({ isDemoMode: demo }),
 }));

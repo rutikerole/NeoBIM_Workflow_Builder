@@ -564,6 +564,75 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
       ],
     },
   },
+  {
+    id: "wf-11",
+    name: "Text Prompt → Floor Plan",
+    description:
+      "Generate a professional floor plan from a text description. Enter your building program and get an AI-generated schematic floor plan with room labels and areas.",
+    tags: ["floor-plan", "ai", "layout", "architecture", "quick-start"],
+    category: "Concept Design",
+    complexity: "simple",
+    estimatedRunTime: "~30 seconds",
+    requiredInputs: ["Text description of building program"],
+    expectedOutputs: ["Building description", "SVG floor plan with room labels"],
+    thumbnail: "https://picsum.photos/seed/wf11/600/400",
+    tileGraph: {
+      nodes: [
+        {
+          id: "n1",
+          type: "workflowNode",
+          position: { x: 100, y: 200 },
+          data: {
+            catalogueId: "IN-001",
+            label: "Text Prompt",
+            category: "input",
+            status: "idle",
+            inputs: [],
+            outputs: [{ id: "text-out", label: "Text", type: "text" }],
+            icon: "Type",
+          },
+        },
+        {
+          id: "n2",
+          type: "workflowNode",
+          position: { x: 380, y: 200 },
+          data: {
+            catalogueId: "TR-003",
+            label: "Building Description Generator",
+            category: "transform",
+            status: "idle",
+            inputs: [{ id: "json-in", label: "Requirements", type: "json" }],
+            outputs: [
+              { id: "text-out", label: "Description", type: "text" },
+              { id: "prog-out", label: "Program Blocks", type: "json" },
+            ],
+            icon: "Building2",
+          },
+        },
+        {
+          id: "n3",
+          type: "workflowNode",
+          position: { x: 660, y: 200 },
+          data: {
+            catalogueId: "GN-004",
+            label: "Floor Plan Generator",
+            category: "generate",
+            status: "idle",
+            inputs: [{ id: "prog-in", label: "Room Program", type: "json" }],
+            outputs: [
+              { id: "plan-out", label: "Floor Plan", type: "geometry" },
+              { id: "img-out", label: "Plan Image", type: "image" },
+            ],
+            icon: "LayoutGrid",
+          },
+        },
+      ],
+      edges: [
+        { id: "e1-2", source: "n1", sourceHandle: "text-out", target: "n2", targetHandle: "json-in", type: "animatedEdge" },
+        { id: "e2-3", source: "n2", sourceHandle: "prog-out", target: "n3", targetHandle: "prog-in", type: "animatedEdge" },
+      ],
+    },
+  },
 ];
 
 export const PREBUILT_WORKFLOWS_MAP = new Map(

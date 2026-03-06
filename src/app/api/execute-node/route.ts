@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { generateBuildingDescription, generateConceptImage } from "@/services/openai";
+import { generateBuildingDescription, generateConceptImage, generateFloorPlan } from "@/services/openai";
 import { generateId } from "@/lib/utils";
 import type { ExecutionArtifact } from "@/types/execution";
 import { checkRateLimit, logRateLimitHit } from "@/lib/rate-limit";
@@ -13,7 +13,7 @@ import { assertValidInput } from "@/lib/validation";
 import { APIError, UserErrors, formatErrorResponse } from "@/lib/user-errors";
 
 // Node IDs that have real implementations
-const REAL_NODE_IDS = new Set(["TR-003", "GN-003", "TR-007", "TR-008", "EX-002"]);
+const REAL_NODE_IDS = new Set(["TR-003", "GN-003", "GN-004", "TR-007", "TR-008", "EX-002"]);
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -137,6 +137,27 @@ export async function POST(req: NextRequest) {
         metadata: { model: "dall-e-3", real: true },
         createdAt: new Date(),
       };
+    } else if (catalogueId === "GN-004") {
+      // Floor Plan Generator — GPT-4o-mini SVG generation
+      const description = inputData?._raw ?? inputData ?? {};
+      const floorPlan = await generateFloorPlan(description, apiKey);
+
+      artifact = {
+        id: generateId(),
+        executionId: executionId ?? "local",
+        tileInstanceId,
+        type: "svg",
+        data: {
+          svg: floorPlan.svg,
+          label: "Floor Plan (AI Generated)",
+          roomList: floorPlan.roomList,
+          totalArea: floorPlan.totalArea,
+          floors: floorPlan.floors,
+        },
+        metadata: { model: "gpt-4o-mini", real: true },
+        createdAt: new Date(),
+      };
+
     } else if (catalogueId === "TR-007") {
       // Quantity Extractor — Real IFC parsing with net area calculations
       const ifcData = inputData?.ifcData ?? inputData?.content ?? null;

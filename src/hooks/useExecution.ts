@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useWorkflowStore } from "@/stores/workflow-store";
 import { useExecutionStore } from "@/stores/execution-store";
+import { useUIStore } from "@/stores/ui-store";
 import { executeNode as mockExecuteNode } from "@/services/mock-executor";
 import { generateId } from "@/lib/utils";
 import type { Execution, ExecutionArtifact } from "@/types/execution";
@@ -11,7 +12,7 @@ import type { WorkflowNode } from "@/types/nodes";
 import type { LogEntry } from "@/components/canvas/ExecutionLog";
 
 // Node IDs that have real API implementations
-const REAL_NODE_IDS = new Set(["TR-003", "GN-003", "TR-007", "TR-008", "EX-002"]);
+const REAL_NODE_IDS = new Set(["TR-003", "GN-003", "GN-004", "TR-007", "TR-008", "EX-002"]);
 
 interface APIErrorResponse {
   error: {
@@ -27,12 +28,16 @@ interface APIErrorResponse {
 // Input node IDs whose user-supplied value should pass through directly
 const INPUT_NODE_IDS = new Set(["IN-001", "IN-005", "IN-006"]);
 
-// Route execution to real API or mock
+// Demo-allowed node IDs (routed to /api/demo/execute)
+const DEMO_NODE_IDS = new Set(["TR-003", "GN-003"]);
+
+// Route execution to real API, demo API, or mock
 async function executeNode(
   node: WorkflowNode,
   executionId: string,
   previousArtifact?: ExecutionArtifact | null,
-  useRealExecution = false
+  useRealExecution = false,
+  demoMode = false
 ): Promise<ExecutionArtifact> {
   const { catalogueId, inputValue } = node.data as { catalogueId: string; inputValue?: string };
 
@@ -53,6 +58,28 @@ async function executeNode(
       metadata: { source: "user-input" },
       createdAt: new Date(),
     };
+  }
+
+  // Demo mode: route allowed nodes to unauthenticated demo endpoint
+  if (demoMode && DEMO_NODE_IDS.has(catalogueId)) {
+    const res = await fetch("/api/demo/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        catalogueId,
+        executionId,
+        tileInstanceId: node.id,
+        inputData: previousArtifact?.data ?? { prompt: inputValue ?? "" },
+      }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ error: { message: "Demo request failed" } }));
+      throw new Error(errData.error?.message ?? "Demo execution failed");
+    }
+
+    const { artifact } = await res.json() as { artifact: ExecutionArtifact };
+    return { ...artifact, createdAt: new Date() };
   }
 
   if (useRealExecution && REAL_NODE_IDS.has(catalogueId)) {
@@ -215,6 +242,7 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
     isExecuting,
   } = useExecutionStore();
   
+  const isDemoMode = useUIStore(s => s.isDemoMode);
   const [rateLimitHit, setRateLimitHit] = useState<RateLimitInfo | null>(null);
 
   const log = useCallback((type: LogEntry["type"], message: string, detail?: string) => {
@@ -247,10 +275,10 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
 
     toast.success("Workflow running…", { duration: 2000 });
 
-    // Persist execution to DB if workflow is saved
+    // Persist execution to DB if workflow is saved (skip in demo mode)
     let dbExecutionId: string | null = null;
     const workflowId = currentWorkflow?.id;
-    if (workflowId && workflowId !== "unsaved") {
+    if (!isDemoMode && workflowId && workflowId !== "unsaved") {
       try {
         const res = await fetch("/api/executions", {
           method: "POST",
@@ -284,7 +312,7 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
       try {
         // Get upstream data from connected nodes (via edges), not just previous in array
         const upstreamArtifact = getUpstreamArtifact(node.id, workflowEdges, artifactMap);
-        const artifact = await executeNode(node, executionId, upstreamArtifact, useReal);
+        const artifact = await executeNode(node, executionId, upstreamArtifact, useReal, isDemoMode);
         artifactMap.set(node.id, artifact);
 
         addArtifact(node.id, artifact);
@@ -428,6 +456,7 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
     workflowEdges,
     currentWorkflow,
     isExecuting,
+    isDemoMode,
     startExecution,
     updateNodeStatus,
     setEdgeFlowing,
