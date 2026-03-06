@@ -2,8 +2,14 @@
 
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Download, ChevronDown, X, FileText, Image as ImageIcon, Database, BarChart2, Table2, File, LayoutGrid } from "lucide-react";
+import { Download, ChevronDown, X, FileText, Image as ImageIcon, Database, BarChart2, Table2, File, LayoutGrid, Box } from "lucide-react";
 import DOMPurify from "dompurify";
+import dynamic from "next/dynamic";
+
+const MassingViewer = dynamic(() => import("./MassingViewer"), {
+  ssr: false,
+  loading: () => <div style={{ height: 220, background: "#0D0D1A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#3A3A50" }}>Loading 3D viewer…</span></div>,
+});
 
 import { formatBytes } from "@/lib/utils";
 import type {
@@ -45,7 +51,7 @@ const TYPE_ICON: Record<ArtifactType, React.ReactNode> = {
   kpi:   <BarChart2 size={9} />,
   table: <Table2 size={9} />,
   file:  <File size={9} />,
-  "3d":  <File size={9} />,
+  "3d":  <Box size={9} />,
   svg:   <LayoutGrid size={9} />,
 };
 
@@ -166,6 +172,7 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
               {artifact.type === "table" && <TableBody data={artifact.data as TableArtifactData} />}
               {artifact.type === "file"  && <FileBody  data={artifact.data as FileArtifactData}  />}
               {artifact.type === "svg"   && <SvgBody   data={artifact.data as SvgArtifactData}   />}
+              {artifact.type === "3d"    && <Massing3dBody data={artifact.data as Massing3dData} />}
             </ArtifactErrorBoundary>
           </motion.div>
         )}
@@ -409,6 +416,55 @@ function SvgBody({ data }: { data: SvgArtifactData }) {
         <div style={{ padding: "6px 14px 10px", fontSize: 10, color: "#5C5C78" }}>
           {data.roomList.length} rooms · {data.totalArea ?? "?"} m² total
           {data.floors ? ` · ${data.floors} floors` : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 3D massing data shape from GN-001
+interface Massing3dData {
+  floors: number;
+  height: number;
+  footprint: number;
+  gfa: number;
+  buildingType?: string;
+  metrics?: Array<{ label: string; value: string | number; unit?: string }>;
+}
+
+function Massing3dBody({ data }: { data: Massing3dData }) {
+  if (!data?.floors || !data?.height) {
+    return <div style={{ padding: "8px 14px", fontSize: 11, color: "#5C5C78" }}>No massing data</div>;
+  }
+  return (
+    <div style={{ padding: "0 8px 10px 10px" }}>
+      <MassingViewer
+        floors={data.floors}
+        height={data.height}
+        footprint={data.footprint ?? 500}
+        gfa={data.gfa ?? data.floors * (data.footprint ?? 500)}
+        buildingType={data.buildingType}
+      />
+      {data.metrics && data.metrics.length > 0 && (
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+          gap: 4, marginTop: 6,
+        }}>
+          {data.metrics.slice(0, 6).map((m, i) => (
+            <div key={i} style={{
+              background: "rgba(79,138,255,0.06)",
+              border: "1px solid rgba(79,138,255,0.1)",
+              borderRadius: 5, padding: "5px 7px", textAlign: "center",
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#F0F0F5", lineHeight: 1.1 }}>
+                {m.value}
+                {m.unit && <span style={{ fontSize: 8, fontWeight: 400, color: "#5C5C78", marginLeft: 2 }}>{m.unit}</span>}
+              </div>
+              <div style={{ fontSize: 8, color: "#5C5C78", marginTop: 2, textTransform: "uppercase" as const, letterSpacing: "0.3px" }}>
+                {m.label}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

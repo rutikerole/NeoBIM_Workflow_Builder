@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, CheckCircle2, XCircle, Loader2, RefreshCw,
   ChevronDown, ChevronUp, FileText, Image, Table2,
-  Zap, Filter, ExternalLink, AlertCircle
+  Zap, Filter, ExternalLink, AlertCircle, GitCompareArrows,
 } from "lucide-react";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
@@ -270,9 +270,11 @@ interface ExecutionRowProps {
   execution: Execution;
   onRerun: (execution: Execution) => void;
   onViewDetails: (execution: Execution) => void;
+  compareSelected?: boolean;
+  onToggleCompare?: (id: string) => void;
 }
 
-function ExecutionRow({ execution, onRerun, onViewDetails }: ExecutionRowProps) {
+function ExecutionRow({ execution, onRerun, onViewDetails, compareSelected, onToggleCompare }: ExecutionRowProps) {
   const router = useRouter();
   const dur = duration(execution.startedAt, execution.completedAt);
 
@@ -301,6 +303,24 @@ function ExecutionRow({ execution, onRerun, onViewDetails }: ExecutionRowProps) 
     >
       {/* Top row */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        {/* Compare checkbox */}
+        {onToggleCompare && (
+          <button
+            onClick={() => onToggleCompare(execution.id)}
+            title="Select for comparison"
+            style={{
+              width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 2,
+              border: compareSelected ? "2px solid #4F8AFF" : "2px solid #2A2A3E",
+              background: compareSelected ? "#4F8AFF" : "transparent",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "all 0.12s",
+            }}
+          >
+            {compareSelected && (
+              <CheckCircle2 size={12} style={{ color: "#fff" }} />
+            )}
+          </button>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span
@@ -416,6 +436,17 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedExecution, setSelectedExecution] = useState<Execution | null>(null);
+  const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
+
+  const toggleCompare = useCallback((id: string) => {
+    setCompareIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); }
+      else if (next.size < 2) { next.add(id); }
+      else { toast.info("Select at most 2 executions to compare"); }
+      return next;
+    });
+  }, []);
 
   const loadExecutions = useCallback(async () => {
     setLoading(true);
@@ -511,10 +542,26 @@ export default function HistoryPage() {
               {s}
             </button>
           ))}
+          {compareIds.size === 2 && (
+            <button
+              onClick={() => {
+                const [left, right] = Array.from(compareIds);
+                router.push(`/dashboard/compare?left=${left}&right=${right}`);
+              }}
+              style={{
+                marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
+                padding: "5px 12px", borderRadius: 6, border: "none",
+                background: "#4F8AFF", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              <GitCompareArrows size={12} /> Compare Selected
+            </button>
+          )}
           <button
             onClick={loadExecutions}
             style={{
-              marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
+              marginLeft: compareIds.size === 2 ? undefined : "auto",
+              display: "flex", alignItems: "center", gap: 4,
               padding: "4px 10px", borderRadius: 6, border: "1px solid #1E1E2E",
               background: "transparent", color: "#55556A", fontSize: 11, cursor: "pointer",
             }}
@@ -573,6 +620,8 @@ export default function HistoryPage() {
                 execution={execution}
                 onRerun={handleRerun}
                 onViewDetails={setSelectedExecution}
+                compareSelected={compareIds.has(execution.id)}
+                onToggleCompare={toggleCompare}
               />
             ))}
           </div>

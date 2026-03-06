@@ -12,7 +12,7 @@ import type { WorkflowNode } from "@/types/nodes";
 import type { LogEntry } from "@/components/canvas/ExecutionLog";
 
 // Node IDs that have real API implementations
-const REAL_NODE_IDS = new Set(["TR-001", "TR-003", "TR-004", "TR-012", "GN-003", "GN-004", "TR-007", "TR-008", "EX-002"]);
+const REAL_NODE_IDS = new Set(["TR-001", "TR-003", "TR-004", "TR-012", "GN-003", "GN-004", "TR-007", "TR-008", "EX-002", "EX-003"]);
 
 interface APIErrorResponse {
   error: {

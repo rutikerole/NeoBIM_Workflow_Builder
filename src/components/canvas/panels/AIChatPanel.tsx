@@ -2,13 +2,15 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Send, X, MessageSquare, Trash2 } from "lucide-react";
+import { Sparkles, Send, X, MessageSquare, Trash2, Zap } from "lucide-react";
 import { useWorkflowStore } from "@/stores/workflow-store";
 import { NODE_CATALOGUE_MAP } from "@/constants/node-catalogue";
 import type { WorkflowNodeData, NodeCategory } from "@/types/nodes";
 import type { WorkflowNode } from "@/types/nodes";
 import { generateId } from "@/lib/utils";
 import { toast } from "sonner";
+import { processWorkflowChat } from "@/services/ai-chat-service";
+import type { ChatAction } from "@/services/ai-chat-service";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -19,7 +21,13 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-// ─── Node catalogue helpers ───────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const COLORS: Record<NodeCategory, string> = {
+  input: "#3B82F6", transform: "#8B5CF6", generate: "#10B981", export: "#F59E0B",
+};
+
+// ─── Node catalogue helpers (keyword fallback) ───────────────────────────────
 
 function fuzzyFindNode(text: string) {
   const lower = text.toLowerCase();
@@ -28,7 +36,6 @@ function fuzzyFindNode(text: string) {
       return node;
     }
   }
-  // Partial match
   for (const [, node] of NODE_CATALOGUE_MAP) {
     const words = node.name.toLowerCase().split(" ");
     if (words.some(w => w.length > 3 && lower.includes(w))) {
@@ -38,9 +45,7 @@ function fuzzyFindNode(text: string) {
   return null;
 }
 
-// ─── Message parsing ──────────────────────────────────────────────────────────
-
-function parseAndExecute(
+function keywordFallback(
   message: string,
   nodes: WorkflowNode[],
   addNode: (n: WorkflowNode) => void,
@@ -49,82 +54,141 @@ function parseAndExecute(
 ): string {
   const lower = message.toLowerCase();
 
-  // ADD
   if (/\b(add|include|insert|append|put)\b/.test(lower)) {
     const found = fuzzyFindNode(message);
     if (!found) return "I couldn't find that node. Try something like: \"Add IFC Exporter at the end\".";
-
     const lastNode = nodes[nodes.length - 1];
     const x = lastNode ? lastNode.position.x + 260 : 300;
     const y = lastNode ? lastNode.position.y : 200;
-
-    const COLORS: Record<NodeCategory, string> = {
-      input: "#3B82F6", transform: "#8B5CF6", generate: "#10B981", export: "#F59E0B",
-    };
-
     const newNode: WorkflowNode = {
-      id: `${found.id}-${generateId()}`,
-      type: "workflowNode",
+      id: `${found.id}-${generateId()}`, type: "workflowNode",
       position: { x, y },
       data: {
-        catalogueId: found.id,
-        label: found.name,
-        category: found.category as NodeCategory,
-        status: "idle",
-        inputs: found.inputs,
-        outputs: found.outputs,
-        icon: found.icon,
-        executionTime: found.executionTime,
+        catalogueId: found.id, label: found.name, category: found.category as NodeCategory,
+        status: "idle", inputs: found.inputs, outputs: found.outputs,
+        icon: found.icon, executionTime: found.executionTime,
       } satisfies WorkflowNodeData,
     };
     addNode(newNode);
-
     if (lastNode) {
       addEdge({
-        id: `e${lastNode.id}-${newNode.id}`,
-        source: lastNode.id,
+        id: `e${lastNode.id}-${newNode.id}`, source: lastNode.id,
         sourceHandle: lastNode.data.outputs[0]?.id ?? "output",
-        target: newNode.id,
-        targetHandle: newNode.data.inputs[0]?.id ?? "input",
+        target: newNode.id, targetHandle: newNode.data.inputs[0]?.id ?? "input",
         type: "animatedEdge",
-        data: {
-          sourceColor: COLORS[lastNode.data.category as NodeCategory] ?? "#4F8AFF",
-          targetColor: COLORS[found.category as NodeCategory] ?? "#4F8AFF",
-        },
+        data: { sourceColor: COLORS[lastNode.data.category as NodeCategory] ?? "#4F8AFF", targetColor: COLORS[found.category as NodeCategory] ?? "#4F8AFF" },
       });
     }
-
-    return `Added **${found.name}** to your workflow. It ${
-      found.inputs.length > 0 ? `takes ${found.inputs.map(i => i.label).join(", ")} as input` : "starts a new chain"
-    } and produces ${found.outputs.map(o => o.label).join(", ")}.`;
+    return `Added **${found.name}** to your workflow.`;
   }
 
-  // REMOVE
   if (/\b(remove|delete|drop|take out)\b/.test(lower)) {
     const found = fuzzyFindNode(message);
-    if (!found) return "I couldn't find that node to remove. Try: \"Remove the Image Generator\".";
+    if (!found) return "I couldn't find that node to remove.";
     const nodeToRemove = nodes.find(n => n.data.catalogueId === found.id);
-    if (!nodeToRemove) return `I don't see **${found.name}** on the canvas right now.`;
+    if (!nodeToRemove) return `**${found.name}** is not on the canvas.`;
     removeNode(nodeToRemove.id);
     return `Removed **${found.name}** from your workflow.`;
   }
 
-  // EXPLAIN
   if (/\b(explain|what does|how|describe)\b/.test(lower)) {
     if (nodes.length === 0) return "Your canvas is empty. Add some nodes first!";
-    const lines = nodes.map(n => `• **${n.data.label}** — processes ${
-      n.data.inputs.length > 0 ? n.data.inputs.map(i => i.label).join(", ") : "no input"
-    } → produces ${
-      n.data.outputs.length > 0 ? n.data.outputs.map(o => o.label).join(", ") : "no output"
-    }`);
-    return `Your current workflow has ${nodes.length} nodes:\n${lines.join("\n")}`;
+    const lines = nodes.map(n => `• **${n.data.label}** — ${n.data.inputs.length > 0 ? n.data.inputs.map(i => i.label).join(", ") : "no input"} → ${n.data.outputs.length > 0 ? n.data.outputs.map(o => o.label).join(", ") : "no output"}`);
+    return `Your workflow has ${nodes.length} nodes:\n${lines.join("\n")}`;
   }
 
-  // FALLBACK
-  return `I can **add**, **remove**, or **explain** nodes. Try:\n• "Add IFC Exporter at the end"\n• "Remove the Image Generator"\n• "Explain my workflow"`;
+  return "";
 }
 
-// ─── Markdown-ish renderer ────────────────────────────────────────────────────
+// ─── Apply AI actions to canvas ──────────────────────────────────────────────
+
+function applyActions(
+  actions: ChatAction[],
+  nodes: WorkflowNode[],
+  addNode: (n: WorkflowNode) => void,
+  addEdge: ReturnType<typeof useWorkflowStore.getState>["addEdge"],
+  removeNode: (id: string) => void,
+) {
+  let changeCount = 0;
+
+  for (const action of actions) {
+    if (action.type === "add" && action.nodeId) {
+      const catalogueNode = NODE_CATALOGUE_MAP.get(action.nodeId);
+      if (!catalogueNode) continue;
+
+      // Find connection source
+      const connectFrom = action.connectFrom
+        ? nodes.find(n => n.data.catalogueId === action.connectFrom)
+        : nodes[nodes.length - 1];
+
+      const x = connectFrom ? connectFrom.position.x + 260 : 300;
+      const y = connectFrom ? connectFrom.position.y : 200;
+
+      const newNode: WorkflowNode = {
+        id: `${catalogueNode.id}-${generateId()}`, type: "workflowNode",
+        position: { x, y },
+        data: {
+          catalogueId: catalogueNode.id, label: catalogueNode.name,
+          category: catalogueNode.category as NodeCategory, status: "idle",
+          inputs: catalogueNode.inputs, outputs: catalogueNode.outputs,
+          icon: catalogueNode.icon, executionTime: catalogueNode.executionTime,
+        } satisfies WorkflowNodeData,
+      };
+      addNode(newNode);
+
+      if (connectFrom) {
+        addEdge({
+          id: `e${connectFrom.id}-${newNode.id}`, source: connectFrom.id,
+          sourceHandle: connectFrom.data.outputs[0]?.id ?? "output",
+          target: newNode.id, targetHandle: newNode.data.inputs[0]?.id ?? "input",
+          type: "animatedEdge",
+          data: {
+            sourceColor: COLORS[connectFrom.data.category as NodeCategory] ?? "#4F8AFF",
+            targetColor: COLORS[catalogueNode.category as NodeCategory] ?? "#4F8AFF",
+          },
+        });
+      }
+      // Track new node so subsequent actions can reference it
+      nodes = [...nodes, newNode];
+      changeCount++;
+    }
+
+    if (action.type === "remove" && action.nodeId) {
+      const target = nodes.find(n => n.data.catalogueId === action.nodeId);
+      if (target) {
+        removeNode(target.id);
+        nodes = nodes.filter(n => n.id !== target.id);
+        changeCount++;
+      }
+    }
+
+    if (action.type === "replace" && action.oldNodeId && action.newNodeId) {
+      const oldNode = nodes.find(n => n.data.catalogueId === action.oldNodeId);
+      const newCat = NODE_CATALOGUE_MAP.get(action.newNodeId);
+      if (oldNode && newCat) {
+        // Add replacement at same position
+        const replacement: WorkflowNode = {
+          id: `${newCat.id}-${generateId()}`, type: "workflowNode",
+          position: { ...oldNode.position },
+          data: {
+            catalogueId: newCat.id, label: newCat.name,
+            category: newCat.category as NodeCategory, status: "idle",
+            inputs: newCat.inputs, outputs: newCat.outputs,
+            icon: newCat.icon, executionTime: newCat.executionTime,
+          } satisfies WorkflowNodeData,
+        };
+        addNode(replacement);
+        removeNode(oldNode.id);
+        nodes = [...nodes.filter(n => n.id !== oldNode.id), replacement];
+        changeCount++;
+      }
+    }
+  }
+
+  return changeCount;
+}
+
+// ─── Markdown-ish renderer ───────────────────────────────────────────────────
 
 function renderMessage(text: string) {
   return text.split("\n").map((line, i) => (
@@ -139,7 +203,7 @@ function renderMessage(text: string) {
   ));
 }
 
-// ─── Panel ────────────────────────────────────────────────────────────────────
+// ─── Panel ───────────────────────────────────────────────────────────────────
 
 interface AIChatPanelProps {
   messages: ChatMessage[];
@@ -154,16 +218,17 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [aiMode, setAiMode] = useState<"gpt" | "keyword">("gpt");
 
-  const { nodes, addNode, addEdge, removeNode } = useWorkflowStore();
+  const { nodes, edges, addNode, addEdge, removeNode } = useWorkflowStore();
 
   useEffect(() => {
     if (isOpen) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isOpen]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || isTyping) return;
 
     const userMsg: ChatMessage = {
       id: generateId(), role: "user", content: text, timestamp: new Date(),
@@ -172,16 +237,52 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const reply = parseAndExecute(text, nodes, addNode, addEdge, removeNode);
-      const aiMsg: ChatMessage = {
-        id: generateId(), role: "ai", content: reply, timestamp: new Date(),
-      };
-      onAddMessage(aiMsg);
-      setIsTyping(false);
-      toast.success("Workflow updated", { duration: 1500 });
-    }, 400);
-  }, [input, nodes, addNode, addEdge, removeNode, onAddMessage]);
+    let replyText = "";
+
+    if (aiMode === "gpt") {
+      try {
+        // Build node/edge summaries for the AI
+        const nodeSummaries = nodes.map(n => ({
+          instanceId: n.id,
+          catalogueId: n.data.catalogueId,
+          label: n.data.label,
+        }));
+        const edgeSummaries = edges.map(e => ({
+          source: e.source,
+          target: e.target,
+        }));
+
+        const response = await processWorkflowChat(text, nodeSummaries, edgeSummaries);
+        replyText = response.message;
+
+        // Apply actions if any
+        if (response.actions.length > 0) {
+          const count = applyActions(response.actions, [...nodes], addNode, addEdge, removeNode);
+          if (count > 0) {
+            toast.success(`Workflow updated (${count} change${count > 1 ? "s" : ""})`, { duration: 2000 });
+          }
+        }
+      } catch {
+        // Fallback to keyword matching
+        replyText = keywordFallback(text, nodes, addNode, addEdge, removeNode);
+        if (!replyText) {
+          replyText = "I had trouble connecting to the AI. Try again, or use simpler commands like \"Add BOQ Exporter\".";
+        }
+      }
+    } else {
+      // Keyword mode
+      replyText = keywordFallback(text, nodes, addNode, addEdge, removeNode);
+      if (!replyText) {
+        replyText = `I can **add**, **remove**, or **explain** nodes. Try:\n• "Add IFC Exporter at the end"\n• "Remove the Image Generator"\n• "Explain my workflow"`;
+      }
+    }
+
+    const aiMsg: ChatMessage = {
+      id: generateId(), role: "ai", content: replyText, timestamp: new Date(),
+    };
+    onAddMessage(aiMsg);
+    setIsTyping(false);
+  }, [input, isTyping, nodes, edges, addNode, addEdge, removeNode, onAddMessage, aiMode]);
 
   const onKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     e.stopPropagation();
@@ -247,24 +348,35 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
               <span style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F5", flex: 1 }}>
                 AI Assistant
               </span>
+              {/* GPT / Keyword toggle */}
               <button
-                onClick={onClear}
-                title="Clear chat"
+                onClick={() => setAiMode(m => m === "gpt" ? "keyword" : "gpt")}
+                title={aiMode === "gpt" ? "Using GPT-4o-mini (click for keyword mode)" : "Using keyword mode (click for GPT)"}
                 style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  color: "#3A3A50", padding: 4, borderRadius: 4,
+                  background: aiMode === "gpt" ? "rgba(79,138,255,0.15)" : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${aiMode === "gpt" ? "rgba(79,138,255,0.3)" : "rgba(255,255,255,0.06)"}`,
+                  borderRadius: 5, padding: "2px 6px", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 3,
+                  color: aiMode === "gpt" ? "#4F8AFF" : "#5C5C78",
+                  fontSize: 10, fontWeight: 600,
                 }}
+              >
+                <Zap size={10} />
+                {aiMode === "gpt" ? "GPT" : "Basic"}
+              </button>
+              <button onClick={onClear} title="Clear chat" style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: "#3A3A50", padding: 4, borderRadius: 4,
+              }}
                 onMouseEnter={e => { e.currentTarget.style.color = "#5C5C78"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = "#3A3A50"; }}
               >
                 <Trash2 size={12} />
               </button>
-              <button
-                onClick={onToggle}
-                style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  color: "#3A3A50", padding: 4, borderRadius: 4,
-                }}
+              <button onClick={onToggle} style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: "#3A3A50", padding: 4, borderRadius: 4,
+              }}
                 onMouseEnter={e => { e.currentTarget.style.color = "#8888A0"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = "#3A3A50"; }}
               >
@@ -280,34 +392,39 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
                   color: "#3A3A50", fontSize: 12,
                 }}>
                   <MessageSquare size={28} style={{ margin: "0 auto 10px", opacity: 0.3 }} />
-                  <div style={{ fontWeight: 600, color: "#5C5C78", marginBottom: 6 }}>AI Workflow Assistant</div>
+                  <div style={{ fontWeight: 600, color: "#5C5C78", marginBottom: 6 }}>
+                    {aiMode === "gpt" ? "GPT-Powered Assistant" : "AI Workflow Assistant"}
+                  </div>
                   <div style={{ lineHeight: 1.5 }}>
-                    Tell me what to change:<br />
-                    • &ldquo;Add an IFC Exporter&rdquo;<br />
-                    • &ldquo;Remove the Image Generator&rdquo;<br />
-                    • &ldquo;Explain my workflow&rdquo;
+                    {aiMode === "gpt" ? (
+                      <>
+                        Ask me anything:<br />
+                        • &ldquo;Add cost estimation to this workflow&rdquo;<br />
+                        • &ldquo;What does this workflow do?&rdquo;<br />
+                        • &ldquo;Replace the image generator with a floor plan&rdquo;<br />
+                        • &ldquo;Suggest improvements&rdquo;
+                      </>
+                    ) : (
+                      <>
+                        Tell me what to change:<br />
+                        • &ldquo;Add an IFC Exporter&rdquo;<br />
+                        • &ldquo;Remove the Image Generator&rdquo;<br />
+                        • &ldquo;Explain my workflow&rdquo;
+                      </>
+                    )}
                   </div>
                 </div>
               )}
 
               {messages.map(msg => (
-                <div
-                  key={msg.id}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-                    gap: 2,
-                  }}
-                >
+                <div key={msg.id} style={{
+                  display: "flex", flexDirection: "column",
+                  alignItems: msg.role === "user" ? "flex-end" : "flex-start", gap: 2,
+                }}>
                   <div style={{
                     maxWidth: "85%", padding: "8px 11px", borderRadius: 10,
-                    background: msg.role === "user"
-                      ? "rgba(79,138,255,0.14)"
-                      : "rgba(255,255,255,0.04)",
-                    border: msg.role === "user"
-                      ? "1px solid rgba(79,138,255,0.25)"
-                      : "1px solid rgba(255,255,255,0.06)",
+                    background: msg.role === "user" ? "rgba(79,138,255,0.14)" : "rgba(255,255,255,0.04)",
+                    border: msg.role === "user" ? "1px solid rgba(79,138,255,0.25)" : "1px solid rgba(255,255,255,0.06)",
                     fontSize: 12, color: "#C0C0D0", lineHeight: 1.5,
                   }}>
                     {renderMessage(msg.content)}
@@ -348,7 +465,7 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
                 onKeyDown={onKeyDown}
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => e.stopPropagation()}
-                placeholder="Modify your workflow…"
+                placeholder={aiMode === "gpt" ? "Ask anything about your workflow…" : "Modify your workflow…"}
                 rows={2}
                 style={{
                   flex: 1, resize: "none", padding: "7px 9px",
@@ -360,12 +477,12 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
               />
               <button
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={!input.trim() || isTyping}
                 style={{
                   width: 32, height: 32, borderRadius: 7, border: "none",
-                  background: input.trim() ? "#4F8AFF" : "rgba(255,255,255,0.06)",
-                  color: input.trim() ? "#fff" : "#3A3A50",
-                  cursor: input.trim() ? "pointer" : "default",
+                  background: input.trim() && !isTyping ? "#4F8AFF" : "rgba(255,255,255,0.06)",
+                  color: input.trim() && !isTyping ? "#fff" : "#3A3A50",
+                  cursor: input.trim() && !isTyping ? "pointer" : "default",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0, transition: "all 0.15s",
                 }}

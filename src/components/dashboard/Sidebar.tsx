@@ -19,6 +19,7 @@ import {
   LogOut,
   History,
   CreditCard,
+  BarChart3,
 } from "lucide-react";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/dashboard",            label: "Dashboard",   icon: LayoutDashboard, exact: true },
   { href: "/dashboard/workflows",  label: "My Workflows",icon: Workflow },
   { href: "/dashboard/history",    label: "History",     icon: History },
+  { href: "/dashboard/analytics",  label: "Analytics",   icon: BarChart3 },
   { href: "/dashboard/templates",  label: "Templates",   icon: BookOpen,  badge: String(PREBUILT_WORKFLOWS.length) },
   { href: "/dashboard/community",  label: "Community",   icon: Globe },
   { href: "/dashboard/billing",    label: "Billing",     icon: CreditCard },

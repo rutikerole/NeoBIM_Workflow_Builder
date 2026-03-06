@@ -349,7 +349,14 @@ export async function executeNode(
       const footprint = 567;
       const totalGFA = jsonData?.total_gfa_m2 ? Number(jsonData.total_gfa_m2) : undefined;
       const gfa = totalGFA ?? Math.round(floors * footprint * 0.98);
-      return mockArtifact(executionId, tileInstanceId, "kpi", {
+      return mockArtifact(executionId, tileInstanceId, "3d", {
+        // 3D massing viewer data
+        floors,
+        height: parseFloat(height),
+        footprint,
+        gfa,
+        buildingType: jsonData?.building_type as string ?? "Mixed-Use",
+        // KPI metrics (also displayed below the 3D viewer)
         metrics: [
           { label: "GFA", value: gfa.toLocaleString(), unit: "m²" },
           { label: "Height", value: height, unit: "m" },
