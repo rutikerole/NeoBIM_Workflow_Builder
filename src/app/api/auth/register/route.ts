@@ -45,6 +45,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (password.length > 128) {
+      return NextResponse.json(
+        formatErrorResponse({ title: "Password too long", message: "Password must be 128 characters or fewer.", code: "PASSWORD_TOO_LONG" }),
+        { status: 400 }
+      );
+    }
+
     // Check if email already exists
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {

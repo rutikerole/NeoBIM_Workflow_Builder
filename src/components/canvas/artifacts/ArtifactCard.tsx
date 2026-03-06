@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Download, ChevronDown, X, FileText, Image as ImageIcon, Database, BarChart2, Table2, File, LayoutGrid } from "lucide-react";
+import DOMPurify from "dompurify";
 
 import { formatBytes } from "@/lib/utils";
 import type {
@@ -387,6 +388,10 @@ interface SvgArtifactData {
 
 function SvgBody({ data }: { data: SvgArtifactData }) {
   const svgHtml = data?.svg ?? "";
+  const sanitizedSvg = useMemo(
+    () => (typeof window !== "undefined" ? DOMPurify.sanitize(svgHtml, { USE_PROFILES: { svg: true, svgFilters: true } }) : ""),
+    [svgHtml]
+  );
 
   return (
     <div>
@@ -398,7 +403,7 @@ function SvgBody({ data }: { data: SvgArtifactData }) {
           maxHeight: 240,
           padding: 4,
         }}
-        dangerouslySetInnerHTML={{ __html: svgHtml }}
+        dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
       />
       {data?.roomList && data.roomList.length > 0 && (
         <div style={{ padding: "6px 14px 10px", fontSize: 10, color: "#5C5C78" }}>

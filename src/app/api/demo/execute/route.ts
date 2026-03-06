@@ -6,8 +6,43 @@ import type { ExecutionArtifact } from "@/types/execution";
 // Demo endpoint — no auth required, limited to WF-01 nodes only
 const DEMO_ALLOWED_IDS = new Set(["TR-003", "GN-003"]);
 
+// --- In-memory IP-based rate limiting ---
+const DEMO_RATE_LIMIT = 5; // max requests per window
+const DEMO_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkDemoRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + DEMO_RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= DEMO_RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
 export async function POST(req: NextRequest) {
+  // Rate limit by IP
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!checkDemoRateLimit(ip)) {
+    return NextResponse.json(
+      { error: { title: "Rate limited", message: "Demo is limited to 5 requests per hour. Please try again later.", code: "RATE_LIMITED" } },
+      { status: 429 }
+    );
+  }
+
   const { catalogueId, executionId, tileInstanceId, inputData } = await req.json();
+
+  // --- Input validation ---
+  if (!catalogueId || typeof catalogueId !== "string") {
+    return NextResponse.json(
+      { error: { title: "Invalid input", message: "catalogueId is required.", code: "INVALID_INPUT" } },
+      { status: 400 }
+    );
+  }
 
   if (!DEMO_ALLOWED_IDS.has(catalogueId)) {
     return NextResponse.json(
@@ -16,11 +51,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const rawPrompt = inputData?.prompt ?? inputData?.content ?? "";
+  if (typeof rawPrompt !== "string" || rawPrompt.length > 2000) {
+    return NextResponse.json(
+      { error: { title: "Invalid input", message: "Prompt must be a string under 2000 characters.", code: "INVALID_INPUT" } },
+      { status: 400 }
+    );
+  }
+  // Strip HTML tags from user input
+  const sanitizedPrompt = rawPrompt.replace(/<[^>]*>/g, "").trim();
+
   try {
     let artifact: ExecutionArtifact;
 
     if (catalogueId === "TR-003") {
-      const prompt = inputData?.prompt ?? inputData?.content ?? "Modern mixed-use building";
+      const prompt = sanitizedPrompt || "Modern mixed-use building";
       const description = await generateBuildingDescription(prompt);
 
       artifact = {
@@ -38,7 +83,7 @@ export async function POST(req: NextRequest) {
       };
     } else if (catalogueId === "GN-003") {
       const description = inputData?._raw ?? null;
-      const prompt = inputData?.prompt ?? inputData?.content ?? "Modern mixed-use building";
+      const prompt = sanitizedPrompt || "Modern mixed-use building";
 
       const { url, revisedPrompt } = await generateConceptImage(
         description ?? {

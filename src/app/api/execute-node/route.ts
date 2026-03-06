@@ -374,6 +374,25 @@ export async function POST(req: NextRequest) {
         warnings.push(`${estimatedItemsCount} items used estimated rates (not in cost database)`);
       }
 
+      // Build _boqData for EX-002 compatibility
+      const boqLines = rows
+        .filter(r => r[0] && !["", "HARD COSTS SUBTOTAL", "SOFT COSTS", "SOFT COSTS SUBTOTAL", "TOTAL PROJECT COST"].includes(r[0]))
+        .map(r => ({
+          division: "General",
+          csiCode: "00 00 00",
+          description: r[0],
+          unit: r[1],
+          quantity: parseFloat(r[2]) || 0,
+          materialRate: parseFloat(r[3]?.replace("$", "") || "0"),
+          laborRate: 0,
+          equipmentRate: 0,
+          unitRate: parseFloat(r[3]?.replace("$", "") || "0"),
+          materialCost: parseFloat(r[4]?.replace("$", "") || "0"),
+          laborCost: 0,
+          equipmentCost: 0,
+          totalCost: parseFloat(r[4]?.replace("$", "") || "0"),
+        }));
+
       artifact = {
         id: generateId(),
         executionId: executionId ?? "local",
@@ -388,9 +407,16 @@ export async function POST(req: NextRequest) {
           _hardCosts: costSummary.hardCosts,
           _softCosts: costSummary.softCosts,
           _region: region,
+          _boqData: {
+            lines: boqLines,
+            subtotalMaterial: costSummary.hardCosts,
+            subtotalLabor: 0,
+            subtotalEquipment: 0,
+            grandTotal: costSummary.totalCost,
+          },
         },
-        metadata: { 
-          model: "cost-database-v1", 
+        metadata: {
+          model: "cost-database-v1",
           real: true,
           warnings: warnings.length > 0 ? warnings : undefined,
         },

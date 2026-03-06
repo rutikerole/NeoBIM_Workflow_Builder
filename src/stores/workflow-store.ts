@@ -184,6 +184,7 @@ export const useWorkflowStore = create<WorkflowState>()(
 
     saveWorkflow: async (name) => {
       const state = get();
+      if (state.isSaving) return null; // Prevent double-click race condition
       set({ isSaving: true });
       try {
         const tileGraph = { nodes: state.nodes, edges: state.edges };
