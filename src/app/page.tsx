@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight, Zap, Sparkles, Users, LayoutGrid,
-  PlayCircle, FileText, Box, Download, Play, Image as ImageIcon, FileCode,
+  Box, Play, Image as ImageIcon, FileCode,
+  MousePointerClick, Workflow, Layers, Settings, Target, Calendar,
 } from "lucide-react";
 import { MiniWorkflowDiagram } from "@/components/shared/MiniWorkflowDiagram";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
@@ -22,304 +23,169 @@ const CATEGORY_COLORS: Record<string, string> = {
   input: "#3B82F6", transform: "#8B5CF6", generate: "#10B981", export: "#F59E0B",
 };
 
-// Framer Motion helpers
 const fadeUp = {
-  hidden:  { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0 },
 };
 const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 const smoothEase: [number, number, number, number] = [0.25, 0.4, 0.25, 1];
 
-// ─── Sticky Nav ───────────────────────────────────────────────────────────────
+// ─── Prompt placeholders ─────────────────────────────────────────────────────
 
-function StickyNav() {
-  const [visible, setVisible] = useState(false);
-  const [mounted, setMounted] = useState(false);
+const PROMPT_EXAMPLES = [
+  "Generate a site analysis workflow for a coastal project...",
+  "Create a concept-to-render pipeline with IFC export...",
+  "Build a massing study from project brief to 3D model...",
+  "Design a facade optimization workflow with AI...",
+];
 
+function RotatingPlaceholder() {
+  const [index, setIndex] = useState(0);
   useEffect(() => {
-    setMounted(true);
-    const handler = () => setVisible(window.scrollY > 180);
-    window.addEventListener("scroll", handler, { passive: true });
-    return () => window.removeEventListener("scroll", handler);
+    const interval = setInterval(() => setIndex(i => (i + 1) % PROMPT_EXAMPLES.length), 3500);
+    return () => clearInterval(interval);
   }, []);
-
-  // Avoid hydration mismatch — framer-motion renders styles differently on server vs client
-  if (!mounted) return null;
-
   return (
-    <motion.nav
-      initial={{ y: -64 }}
-      animate={{ y: visible ? 0 : -64 }}
-      transition={{ type: "spring", stiffness: 340, damping: 30 }}
-      style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 9000,
-        height: 52, display: "flex", alignItems: "center",
-        padding: "0 40px",
-        background: "rgba(7,7,13,0.92)",
-        backdropFilter: "blur(20px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(20px) saturate(1.3)",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-      }}
+    <motion.span
+      key={index}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 0.4, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.4 }}
+      style={{ position: "absolute", left: 48, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", fontSize: 15, color: "#5C5C78", whiteSpace: "nowrap" }}
     >
-      <Link href="/" style={{
-        display: "flex", alignItems: "center", gap: 8,
-        textDecoration: "none", marginRight: "auto",
-      }}>
-        <div style={{
-          width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-          background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <Zap size={12} color="white" fill="white" />
-        </div>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "#F0F0F5" }}>
-          Build<span style={{ color: "#4F8AFF" }}>Flow</span>
-        </span>
-      </Link>
-
-      {["Features", "Workflows", "Pricing", "Community"].map(l => (
-        <a key={l} href={`#${l.toLowerCase()}`} style={{
-          fontSize: 12.5, color: "#7C7C96", textDecoration: "none",
-          margin: "0 16px", transition: "color 0.2s", letterSpacing: "-0.005em",
-        }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#F0F0F5"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#9898B0"; }}
-        >
-          {l}
-        </a>
-      ))}
-
-      <div style={{ display: "flex", gap: 8, marginLeft: 24 }}>
-        <Link href="/demo" style={{
-          padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-          color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", background: "transparent",
-          textDecoration: "none",
-        }}>
-          Try Demo
-        </Link>
-        <Link href="/login" style={{
-          padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-          color: "#9898B0", border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
-          textDecoration: "none",
-        }}>
-          Sign In
-        </Link>
-        <Link href="/dashboard" style={{
-          padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-          color: "white", background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
-          textDecoration: "none",
-          boxShadow: "0 2px 8px rgba(79,138,255,0.3)",
-        }}>
-          Get Started Free
-        </Link>
-      </div>
-    </motion.nav>
+      {PROMPT_EXAMPLES[index]}
+    </motion.span>
   );
 }
 
-// ─── Hero Animation ───────────────────────────────────────────────────────────
+// ─── Floating Node Card ──────────────────────────────────────────────────────
 
-const HERO_NODES = [
-  { label: "PDF Upload",  category: "input",     icon: <FileText size={12} /> },
-  { label: "Doc Parser",  category: "transform", icon: <Sparkles size={12} /> },
-  { label: "Massing Gen", category: "generate",  icon: <Box size={12} /> },
-  { label: "Image Gen",   category: "generate",  icon: <Play size={12} /> },
-  { label: "IFC Export",  category: "export",    icon: <Download size={12} /> },
-];
-
-function HeroEdge({ delay = 0 }: { delay?: number }) {
-  return (
-    <div style={{
-      width: 28, height: 2, flexShrink: 0,
-      background: "rgba(79,138,255,0.2)",
-      position: "relative", overflow: "visible",
-    }}>
-      <motion.div
-        animate={{ x: ["-100%", "300%"] }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: "linear", delay, repeatDelay: 0.6 }}
-        style={{
-          position: "absolute", top: "50%",
-          transform: "translateY(-50%)",
-          width: 7, height: 7, borderRadius: "50%",
-          background: "#4F8AFF",
-          boxShadow: "0 0 10px rgba(79,138,255,0.9)",
-        }}
-      />
-    </div>
-  );
-}
-
-function HeroNodeCard({ label, category, icon, delay }: { label: string; category: string; icon: React.ReactNode; delay: number }) {
+function FloatingCard({ label, category, delay, style }: { label: string; category: string; delay: number; style: React.CSSProperties }) {
   const color = CATEGORY_COLORS[category] ?? "#4F8AFF";
-  const rgb   = hexToRgb(color);
-
+  const rgb = hexToRgb(color);
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3, ease: "easeOut" }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay, duration: 0.6, ease: "easeOut" }}
       style={{
-        width: 106, borderRadius: 10, overflow: "hidden",
-        background: "rgba(18,18,30,0.9)",
-        backdropFilter: "blur(8px)",
-        border: `1px solid rgba(${rgb}, 0.2)`,
-        boxShadow: `0 4px 16px rgba(0,0,0,0.3), 0 0 16px rgba(${rgb}, 0.06)`,
-        borderLeft: `3px solid ${color}`,
-        flexShrink: 0,
+        position: "absolute",
+        background: "rgba(18,18,30,0.85)",
+        backdropFilter: "blur(20px)",
+        border: `1px solid rgba(${rgb}, 0.25)`,
+        borderRadius: 14,
+        padding: "12px 16px",
+        boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(${rgb}, 0.08)`,
+        zIndex: 10,
+        ...style,
       }}
     >
-      <div style={{ padding: "7px 9px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
-          <span style={{ color, display: "flex" }}>{icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 600, color: "#F0F0F5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {label}
-          </span>
-        </div>
-        <div style={{
-          height: 3, borderRadius: 2,
-          background: "rgba(255,255,255,0.04)", overflow: "hidden",
-        }}>
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: "100%" }}
-            transition={{ delay: delay + 0.5, duration: 0.6, ease: "easeOut" }}
-            style={{ height: "100%", borderRadius: 2, background: color }}
-          />
-        </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: `0 0 8px ${color}` }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#F0F0F5" }}>{label}</span>
       </div>
-    </motion.div>
-  );
-}
-
-function HeroAnimation() {
-  return (
-    <motion.div
-      animate={{ y: [0, -5, 0] }}
-      transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-      style={{
-        borderRadius: 16, overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.05)",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(79,138,255,0.05)",
-        background: "rgba(11,11,19,0.85)",
-        backdropFilter: "blur(12px)",
-      }}
-    >
-      {/* Toolbar mockup */}
-      <div style={{
-        borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "8px 14px",
-        display: "flex", alignItems: "center", gap: 7,
-        background: "#07070D",
-      }}>
-        {["#EF4444", "#F59E0B", "#10B981"].map(c => (
-          <div key={c} style={{ width: 8, height: 8, borderRadius: "50%", background: c, opacity: 0.6 }} />
-        ))}
-        <span style={{ marginLeft: 8, fontSize: 10, color: "#3A3A50", fontWeight: 500 }}>BuildFlow</span>
-        <div style={{
-          marginLeft: "auto", padding: "3px 10px", borderRadius: 6,
-          background: "rgba(79,138,255,0.1)", border: "1px solid rgba(79,138,255,0.2)",
-          fontSize: 9, color: "#4F8AFF", fontWeight: 600,
-        }}>
-          ▶ Run
-        </div>
-      </div>
-
-      {/* Canvas area */}
-      <div style={{
-        padding: "28px 20px 20px",
-        backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
-        backgroundSize: "18px 18px",
-        backgroundColor: "#0B0B13",
-        minHeight: 180,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {HERO_NODES.map((n, i) => (
-            <React.Fragment key={i}>
-              <HeroNodeCard {...n} delay={i * 0.18} />
-              {i < HERO_NODES.length - 1 && <HeroEdge delay={i * 0.4} />}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* Artifact card peek */}
+      <div style={{ height: 3, borderRadius: 2, background: `rgba(${rgb}, 0.15)`, overflow: "hidden", width: 100 }}>
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.8, duration: 0.4 }}
-          style={{ marginTop: 14, marginLeft: 128, width: 200 }}
-        >
-          <div style={{
-            background: "rgba(7,7,13,0.9)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            borderLeft: "3px solid #34D399",
-            borderRadius: 8, padding: "5px 10px",
-            display: "flex", alignItems: "center", gap: 8,
-            backdropFilter: "blur(8px)",
-          }}>
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#34D399" }} />
-            <span style={{ fontSize: 10, color: "#34D399", fontWeight: 600 }}>Massing Model</span>
-            <span style={{ fontSize: 9, color: "#5C5C78", marginLeft: "auto" }}>✓ Done</span>
-          </div>
-        </motion.div>
+          initial={{ width: 0 }}
+          animate={{ width: "100%" }}
+          transition={{ delay: delay + 0.4, duration: 1.2, ease: "easeOut" }}
+          style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${color}, transparent)` }}
+        />
       </div>
     </motion.div>
   );
 }
 
-// ─── Social proof avatars ─────────────────────────────────────────────────────
+// ─── Sidebar Icons ───────────────────────────────────────────────────────────
 
-const AVATARS = [
-  { name: "SC", color: "#3B82F6" },
-  { name: "MR", color: "#8B5CF6" },
-  { name: "PP", color: "#10B981" },
-  { name: "JO", color: "#F59E0B" },
-  { name: "AT", color: "#EF4444" },
-];
-
-function AvatarRow() {
+function SideToolbar() {
+  const icons = [
+    { icon: <MousePointerClick size={18} />, tip: "Select" },
+    { icon: <Workflow size={18} />, tip: "Add Node" },
+    { icon: <Settings size={18} />, tip: "Configure" },
+    { icon: <Layers size={18} />, tip: "Layers" },
+    { icon: <Target size={18} />, tip: "AI Assist" },
+  ];
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ display: "flex" }}>
-        {AVATARS.map((a, i) => (
-          <div key={i} style={{
-            width: 28, height: 28, borderRadius: "50%",
-            background: `rgba(${hexToRgb(a.color)}, 0.2)`,
-            border: `2px solid #07070D`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 9, fontWeight: 700, color: a.color,
-            marginLeft: i > 0 ? -8 : 0,
-          }}>
-            {a.name}
-          </div>
-        ))}
-      </div>
-      <span style={{ fontSize: 12, color: "#9898B0" }}>
-        Join AEC professionals building the future
-      </span>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.8, duration: 0.5 }}
+      style={{
+        position: "absolute", left: 32, top: "50%", transform: "translateY(-50%)",
+        background: "rgba(18,18,30,0.85)", backdropFilter: "blur(20px)",
+        border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16,
+        padding: "12px 8px", display: "flex", flexDirection: "column", gap: 4,
+        zIndex: 20,
+      }}
+    >
+      {icons.map((item, i) => (
+        <div key={i} style={{
+          width: 38, height: 38, borderRadius: 10,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: i === 0 ? "#4F8AFF" : "#5C5C78",
+          background: i === 0 ? "rgba(79,138,255,0.1)" : "transparent",
+          cursor: "pointer",
+          transition: "all 0.15s",
+        }}>
+          {item.icon}
+        </div>
+      ))}
+    </motion.div>
   );
 }
 
-// ─── Features Section ─────────────────────────────────────────────────────────
+// ─── Input Prompt Card ───────────────────────────────────────────────────────
+
+function PromptCard() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, rotate: -2 }}
+      animate={{ opacity: 1, y: 0, rotate: -2 }}
+      transition={{ delay: 1.0, duration: 0.6 }}
+      style={{
+        position: "absolute", left: 80, top: 100,
+        background: "rgba(18,18,30,0.9)", backdropFilter: "blur(20px)",
+        border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14,
+        padding: "16px 20px", maxWidth: 260, zIndex: 15,
+        boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+      }}
+    >
+      <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "2px", color: "#4F8AFF", marginBottom: 10 }}>
+        AI Prompt
+      </div>
+      <p style={{ fontSize: 13, color: "#9898B0", lineHeight: 1.5, fontStyle: "italic" }}>
+        &ldquo;Create a workflow that takes a project brief, generates 3D massing, and renders a concept image.&rdquo;
+      </p>
+      <div style={{ marginTop: 12, height: 3, borderRadius: 2, background: "rgba(79,138,255,0.15)", overflow: "hidden" }}>
+        <motion.div
+          animate={{ width: ["0%", "70%", "100%"] }}
+          transition={{ duration: 2.5, delay: 1.5, ease: "easeInOut" }}
+          style={{ height: "100%", borderRadius: 2, background: "linear-gradient(90deg, #4F8AFF, #8B5CF6)" }}
+        />
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Features ────────────────────────────────────────────────────────────────
 
 const FEATURES = [
   {
-    icon: <LayoutGrid size={22} />,
-    color: "#3B82F6",
+    icon: <LayoutGrid size={22} />, color: "#3B82F6",
     title: "Visual Workflow Builder",
     description: "Drag and drop 31 purpose-built AEC nodes onto an infinite canvas. Connect them to create powerful pipelines — no code required.",
     bullets: ["Drag-and-drop canvas", "31 AEC-specific nodes", "Real-time execution"],
   },
   {
-    icon: <Sparkles size={22} />,
-    color: "#8B5CF6",
+    icon: <Sparkles size={22} />, color: "#8B5CF6",
     title: "AI-Powered Generation",
     description: "Describe your workflow in plain English. Our AI understands AEC processes and builds the complete pipeline for you.",
     bullets: ["Natural language input", "Instant workflow generation", "Iterative refinement"],
   },
   {
-    icon: <Users size={22} />,
-    color: "#10B981",
+    icon: <Users size={22} />, color: "#10B981",
     title: "Community Marketplace",
     description: "Share your workflows with the global AEC community. Clone, customize, and build on proven pipelines from peers.",
     bullets: ["Share and discover", "One-click cloning", "Ratings and reviews"],
@@ -328,829 +194,903 @@ const FEATURES = [
 
 const USE_CASES = ["Architecture Studios", "Engineering Teams", "BIM Consultants", "Design Agencies", "Construction Tech"];
 
-// ─── Showcase workflows ───────────────────────────────────────────────────────
-
 const SHOWCASE = [
   { id: "wf-01", badge: null },
   { id: "wf-10", badge: "MOST POPULAR" },
   { id: "wf-09", badge: null },
 ];
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Logo Marquee ────────────────────────────────────────────────────────────
+
+const PARTNER_LOGOS = ["METAFORM", "STRUCT-AI", "ENVIRON", "AXIS DESIGNS", "BUILDTECH"];
+
+// ─── News Ticker ─────────────────────────────────────────────────────────────
+
+const NEWS_ITEMS = [
+  "New: AI workflow generation v2.0 is live",
+  "31 AEC-specific nodes now available",
+  "Community marketplace launched",
+  "IFC export beta now available",
+  "Real-time 3D massing preview",
+];
+
+function NewsTicker() {
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9000,
+      height: 36, display: "flex", alignItems: "center",
+      background: "rgba(7,7,13,0.95)", backdropFilter: "blur(12px)",
+      borderTop: "1px solid rgba(255,255,255,0.04)",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        flexShrink: 0, padding: "0 12px", height: "100%",
+        display: "flex", alignItems: "center", gap: 6,
+        background: "linear-gradient(135deg, #4F8AFF, #6366F1)",
+        fontSize: 10, fontWeight: 700, color: "white", letterSpacing: "0.5px",
+      }}>
+        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", animation: "glow-pulse 2s infinite" }} />
+        WHAT&apos;S NEW
+      </div>
+      <div style={{ overflow: "hidden", flex: 1, position: "relative" }}>
+        <motion.div
+          animate={{ x: ["0%", "-50%"] }}
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+          style={{ display: "flex", gap: 0, whiteSpace: "nowrap" }}
+        >
+          {[...NEWS_ITEMS, ...NEWS_ITEMS].map((item, i) => (
+            <span key={i} style={{ fontSize: 12, color: "#9898B0", padding: "0 32px" }}>
+              {item}
+            </span>
+          ))}
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
+
   return (
-    <div style={{ minHeight: "100vh", background: "#07070D", color: "#F0F0F5", overflowX: "hidden" }}>
-      <StickyNav />
+    <div style={{ minHeight: "100vh", background: "#07070D", color: "#F0F0F5", overflowX: "hidden", paddingBottom: 36 }}>
 
-      {/* ── Static top nav ───────────────────────────────────────── */}
+      {/* ── Navbar ─────────────────────────────────────────────────── */}
       <header>
-      <nav style={{
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-        display: "flex", alignItems: "center",
-        padding: "0 48px", height: 56,
-        background: "rgba(7,7,13,0.7)",
-        backdropFilter: "blur(16px) saturate(1.2)",
-        WebkitBackdropFilter: "blur(16px) saturate(1.2)",
-      }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", marginRight: "auto" }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 2px 12px rgba(79,138,255,0.3)",
-          }}>
-            <Zap size={15} color="white" fill="white" />
-          </div>
-          <span style={{ fontSize: 17, fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.3px" }}>
-            Build<span style={{ color: "#4F8AFF" }}>Flow</span>
-          </span>
-        </Link>
+        <nav style={{
+          display: "flex", alignItems: "center",
+          padding: "0 48px", height: 64,
+          background: "transparent",
+          position: "absolute", top: 0, left: 0, right: 0, zIndex: 100,
+        }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", marginRight: "auto" }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10,
+              background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 2px 12px rgba(79,138,255,0.3)",
+            }}>
+              <Zap size={16} color="white" fill="white" />
+            </div>
+            <span style={{ fontSize: 18, fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.3px" }}>
+              Build<span style={{ color: "#4F8AFF" }}>Flow</span>
+            </span>
+          </Link>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/login" style={{
-            padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-            color: "#9898B0", border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
-            textDecoration: "none",
-          }}>
-            Sign In
-          </Link>
-          <Link href="/dashboard" style={{
-            padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-            color: "white", background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
-            textDecoration: "none",
-            boxShadow: "0 0 0 1px rgba(79,138,255,0.3), 0 2px 10px rgba(79,138,255,0.3)",
-          }}>
-            Get Started Free
-          </Link>
-        </div>
-      </nav>
+          <div style={{ display: "flex", alignItems: "center", gap: 32, marginRight: 32 }}>
+            {["Workflows", "Community", "Docs", "Pricing"].map(l => (
+              <a key={l} href={`#${l.toLowerCase()}`} style={{
+                fontSize: 14, color: "#9898B0", textDecoration: "none",
+                fontWeight: 500, transition: "color 0.2s",
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#F0F0F5"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#9898B0"; }}
+              >
+                {l}
+              </a>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Link href="/login" style={{
+              fontSize: 14, fontWeight: 600, color: "#F0F0F5",
+              textDecoration: "none", padding: "8px 0",
+            }}>
+              Login
+            </Link>
+            <Link href="/dashboard" style={{
+              padding: "9px 22px", borderRadius: 10, fontSize: 14, fontWeight: 600,
+              color: "white", background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
+              textDecoration: "none",
+              boxShadow: "0 2px 12px rgba(79,138,255,0.3)",
+            }}>
+              Sign Up
+            </Link>
+          </div>
+        </nav>
       </header>
 
       <main>
-      {/* ── Hero ──────────────────────────────────────────────────── */}
-      <section style={{
-        minHeight: "calc(100vh - 60px)",
-        display: "flex", alignItems: "center",
-        maxWidth: 1200, margin: "0 auto",
-        padding: "60px 48px",
-        gap: 48, position: "relative",
-      }}>
-        {/* Atmospheric gradient mesh background — enhanced */}
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden",
-        }}>
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(79,138,255,0.1) 0%, transparent 50%), radial-gradient(ellipse 60% 40% at 70% 20%, rgba(139,92,246,0.06) 0%, transparent 50%)",
-          }} />
-        </div>
-
-        {/* Left text */}
-        <motion.div
-          initial={{ opacity: 0, x: -32 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, ease: smoothEase }}
-          style={{ flex: "0 0 52%", minWidth: 0 }}
+        {/* ── HERO ─────────────────────────────────────────────────── */}
+        <motion.section
+          ref={heroRef}
+          style={{
+            minHeight: "100vh", position: "relative",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            overflow: "hidden",
+            opacity: heroOpacity,
+            scale: heroScale,
+          }}
         >
-          <p style={{
-            fontSize: 10.5, fontWeight: 700,
-            textTransform: "uppercase", letterSpacing: "3px", marginBottom: 22,
-            background: "linear-gradient(90deg, #4F8AFF, #A78BFA)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}>
-            No-code workflow builder for AEC · Beta
-          </p>
+          {/* Background atmospheric layers */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {/* Central radial glow */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "radial-gradient(ellipse 80% 60% at 50% 30%, rgba(79,138,255,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 30% 70%, rgba(139,92,246,0.05) 0%, transparent 50%), radial-gradient(ellipse 50% 50% at 80% 50%, rgba(59,130,246,0.04) 0%, transparent 50%)",
+            }} />
+            {/* Grid pattern */}
+            <div style={{
+              position: "absolute", inset: 0, opacity: 0.3,
+              backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }} />
+          </div>
 
-          <h1 style={{
-            fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 800, lineHeight: 1.08,
-            color: "#F0F0F5", marginBottom: 22,
-            letterSpacing: "-0.03em",
-            textShadow: "0 0 80px rgba(79, 138, 255, 0.15)",
-          }}>
-            <span style={{
-              background: "linear-gradient(135deg, #4F8AFF 0%, #8B5CF6 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}>
-              Concept Design
-            </span><br />
-            in 30 Seconds
-          </h1>
+          {/* Side toolbar */}
+          <SideToolbar />
 
-          <p style={{
-            fontSize: 18, color: "#9898B0", lineHeight: 1.7,
-            maxWidth: 520, marginBottom: 24,
-            letterSpacing: "-0.005em",
-          }}>
-            Turn project briefs into 3D massing models and photorealistic concept renders. (IFC export in development) 
-            No-code workflows built for architects who value their time.
-          </p>
+          {/* Floating prompt card */}
+          <PromptCard />
 
-          {/* What you get */}
-          <div style={{
-            background: "rgba(79,138,255,0.08)",
-            border: "1px solid rgba(79,138,255,0.2)",
-            borderRadius: 12,
-            padding: "16px 20px",
-            marginBottom: 32,
-            maxWidth: 540,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10,
-                background: "linear-gradient(135deg, #4F8AFF, #8B5CF6)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18,
+          {/* Floating node cards */}
+          <FloatingCard label="PDF Upload" category="input" delay={0.6} style={{ right: 80, top: 140, transform: "rotate(3deg)" }} />
+          <FloatingCard label="Massing Gen" category="generate" delay={0.9} style={{ right: 120, bottom: 200, transform: "rotate(-2deg)" }} />
+          <FloatingCard label="Image Render" category="generate" delay={1.2} style={{ left: 140, bottom: 160, transform: "rotate(1deg)" }} />
+
+          {/* Main hero content */}
+          <div style={{ position: "relative", zIndex: 30, textAlign: "center", maxWidth: 1000, padding: "0 48px" }}>
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: smoothEase }}
+            >
+              <h1 style={{
+                fontSize: "clamp(3.5rem, 8vw, 7rem)",
+                fontWeight: 900, lineHeight: 0.95,
+                letterSpacing: "-0.04em",
+                marginBottom: 0,
+                textTransform: "uppercase",
               }}>
-                ⚡
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: "#9898B0", marginBottom: 4 }}>
-                  From brief to concept in minutes
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F5" }}>
-                  31 nodes · 7 templates · <span style={{ color: "#10B981" }}>Free to start</span>
-                </div>
-              </div>
-            </div>
-          </div>
+                <span style={{ color: "#F0F0F5", display: "block" }}>
+                  WORKFLOW
+                </span>
+                <span style={{
+                  display: "block",
+                  background: "linear-gradient(135deg, #7C6FF7 0%, #A78BFA 40%, #C084FC 100%)",
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+                }}>
+                  AUTOMATION,
+                </span>
+                <span style={{ color: "#F0F0F5", display: "block" }}>
+                  WITH PRECISION.
+                </span>
+              </h1>
+            </motion.div>
 
-          <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
-            <Link href="/dashboard" style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "16px 32px", borderRadius: 14,
-              background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
-              color: "white", fontSize: 16, fontWeight: 600,
-              textDecoration: "none",
-              boxShadow: "0 0 30px rgba(79,138,255,0.3), 0 4px 24px rgba(79,138,255,0.25)",
-              transition: "all 200ms ease",
-            }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.filter = "brightness(1.1)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 0 40px rgba(79,138,255,0.5), 0 8px 30px rgba(79,138,255,0.35)";
-                (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.filter = "brightness(1)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 0 30px rgba(79,138,255,0.3), 0 4px 24px rgba(79,138,255,0.25)";
-                (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6, ease: smoothEase }}
+              style={{
+                fontSize: 18, color: "#9898B0", lineHeight: 1.7,
+                maxWidth: 600, margin: "32px auto 0", letterSpacing: "-0.005em",
               }}
             >
-              Start Free Trial
-              <ArrowRight size={16} />
-            </Link>
-            <Link href="/demo" style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "14px 24px", borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.08)", background: "transparent",
-              color: "#F0F0F5", fontSize: 14, fontWeight: 600,
-              textDecoration: "none",
-              transition: "all 150ms ease",
-            }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.15)";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background = "transparent";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.08)";
+              Professional no-code workflow builder for architects and AEC teams.
+              Turn project briefs into 3D concepts with AI-powered pipelines.
+            </motion.p>
+
+            {/* Prompt bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6, ease: smoothEase }}
+              style={{
+                marginTop: 40, maxWidth: 640, margin: "40px auto 0",
+                display: "flex", alignItems: "center", gap: 0,
+                position: "relative",
               }}
             >
-              <PlayCircle size={15} />
-              Try Demo — No Signup
-            </Link>
-          </div>
-
-          <AvatarRow />
-        </motion.div>
-
-        {/* Right: Hero animation */}
-        <motion.div
-          initial={{ opacity: 0, x: 32 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, ease: smoothEase, delay: 0.15 }}
-          style={{ flex: 1, minWidth: 0 }}
-        >
-          <HeroAnimation />
-        </motion.div>
-      </section>
-      {/* ── NEW: Core Feature Cards (Text-to-3D, Instant Renders, IFC Export) ── */}
-      <section style={{
-        padding: "48px 48px 88px",
-        background: "#0B0B13",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-      }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
-            variants={stagger}
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
-          >
-            {[
-              {
-                icon: <Box size={24} />,
-                color: "#3B82F6",
-                title: "Text-to-3D",
-                description: "Describe your building concept in plain English. Get parametric 3D massing models in seconds.",
-                badge: "AI-Powered · Beta",
-              },
-              {
-                icon: <ImageIcon size={24} />,
-                color: "#8B5CF6",
-                title: "Instant Renders",
-                description: "Generate photorealistic concept images with AI. Perfect for early-stage design presentations.",
-                badge: "Fast",
-              },
-              {
-                icon: <FileCode size={24} />,
-                color: "#10B981",
-                title: "IFC Export (Beta)",
-                description: "Basic IFC export in early development. Preview functionality available.",
-                badge: "BIM-Ready",
-              },
-            ].map(f => {
-              const rgb = hexToRgb(f.color);
-              return (
-                <motion.div key={f.title} variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
-                  background: "linear-gradient(145deg, rgba(18,18,30,0.95), rgba(14,14,22,0.98))", borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.05)", padding: 32,
-                  transition: "border-color 0.15s, transform 0.2s, box-shadow 0.2s",
-                  cursor: "default",
-                  position: "relative",
-                }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = `rgba(${rgb}, 0.3)`;
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
-                    (e.currentTarget as HTMLElement).style.boxShadow = `0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(${rgb}, 0.15)`;
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)";
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                    (e.currentTarget as HTMLElement).style.boxShadow = "none";
-                  }}
-                >
-                  {/* Badge */}
-                  {f.badge && (
-                    <div style={{
-                      position: "absolute", top: 16, right: 16,
-                      fontSize: 9, padding: "3px 10px", borderRadius: 20,
-                      background: `rgba(${rgb}, 0.15)`,
-                      border: `1px solid rgba(${rgb}, 0.3)`,
-                      color: f.color, fontWeight: 700, letterSpacing: "0.8px",
-                    }}>
-                      {f.badge}
-                    </div>
-                  )}
-
-                  {/* Icon */}
-                  <div style={{
-                    width: 64, height: 64, borderRadius: 16, marginBottom: 20,
-                    background: `rgba(${rgb}, 0.08)`,
-                    border: `1px solid rgba(${rgb}, 0.12)`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: f.color,
-                  }}>
-                    {f.icon}
-                  </div>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F5", marginBottom: 10 }}>
-                    {f.title}
-                  </h3>
-                  <p style={{ fontSize: 14, color: "#9898B0", lineHeight: 1.6 }}>
-                    {f.description}
-                  </p>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-      </section>
-
-
-      {/* ── Logo strip ────────────────────────────────────────────── */}
-      <div style={{
-        borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)",
-        padding: "20px 48px",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 0,
-      }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 32,
-        }}>
-          <div style={{
-            display: "flex", alignItems: "center", gap: 16,
-          }}>
-            <div style={{ height: 1, width: 40, background: "rgba(255,255,255,0.06)" }} />
-            <span style={{ fontSize: 11, color: "#5C5C78", whiteSpace: "nowrap", fontWeight: 500 }}>
-              Built for
-            </span>
-            <div style={{ height: 1, width: 40, background: "rgba(255,255,255,0.06)" }} />
-          </div>
-          <div style={{
-            display: "flex", gap: 36, flexWrap: "wrap", justifyContent: "center",
-            maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
-          }}>
-            {USE_CASES.map(c => (
-              <span key={c} style={{
-                fontSize: 13, fontWeight: 600, color: "#5C5C78",
-                letterSpacing: "0.5px",
-                transition: "color 0.15s",
-                cursor: "default",
-              }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#9898B0"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#5C5C78"; }}
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Features ──────────────────────────────────────────────── */}
-      <section id="features" style={{ padding: "88px 48px", maxWidth: 1200, margin: "0 auto" }}>
-        <motion.div
-          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
-          variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }}
-          style={{ textAlign: "center", marginBottom: 52 }}
-        >
-          <h2 style={{ fontSize: 30, fontWeight: 700, color: "#F0F0F5", marginBottom: 12, letterSpacing: "-0.025em" }}>
-            Everything you need to automate AEC workflows
-          </h2>
-          <p style={{ fontSize: 15, color: "#7C7C96", maxWidth: 520, margin: "0 auto", lineHeight: 1.6, letterSpacing: "-0.005em" }}>
-            Purpose-built for architects, engineers, and construction professionals.
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
-          variants={stagger}
-          style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
-        >
-          {FEATURES.map(f => {
-            const rgb = hexToRgb(f.color);
-            return (
-              <motion.div key={f.title} variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
-                background: "#12121E", borderRadius: 16,
-                border: "1px solid rgba(255,255,255,0.06)", padding: 32,
-                transition: "border-color 0.15s, transform 0.2s, box-shadow 0.2s",
-                cursor: "default",
+              <div style={{
+                flex: 1, position: "relative", height: 56,
+                background: "rgba(18,18,30,0.8)", backdropFilter: "blur(20px)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "14px 0 0 14px",
+                display: "flex", alignItems: "center",
+                paddingLeft: 16,
+              }}>
+                <Sparkles size={18} style={{ color: "#5C5C78", flexShrink: 0 }} />
+                <RotatingPlaceholder />
+              </div>
+              <Link href="/dashboard" style={{
+                height: 56, padding: "0 28px",
+                background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
+                borderRadius: "0 14px 14px 0",
+                display: "flex", alignItems: "center", gap: 8,
+                color: "white", fontSize: 15, fontWeight: 700,
+                textDecoration: "none", flexShrink: 0,
+                boxShadow: "0 0 30px rgba(79,138,255,0.3)",
+                transition: "all 0.2s",
               }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)";
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 40px rgba(0, 0, 0, 0.3)";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "0 0 40px rgba(79,138,255,0.5)";
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)";
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "0 0 30px rgba(79,138,255,0.3)";
                 }}
               >
-                {/* Icon */}
-                <div style={{
-                  width: 56, height: 56, borderRadius: 14, marginBottom: 20,
-                  background: `rgba(${rgb}, 0.08)`,
-                  border: `1px solid rgba(${rgb}, 0.12)`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: f.color,
-                }}>
-                  {f.icon}
-                </div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F0F0F5", marginBottom: 10 }}>
-                  {f.title}
-                </h3>
-                <p style={{ fontSize: 14, color: "#9898B0", lineHeight: 1.6, marginBottom: 16 }}>
-                  {f.description}
-                </p>
-                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {f.bullets.map(b => (
-                    <li key={b} style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      fontSize: 13, color: "#9898B0", marginBottom: 8,
-                    }}>
-                      <div style={{
-                        width: 6, height: 6, borderRadius: "50%",
-                        background: f.color, flexShrink: 0,
-                      }} />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      </section>
+                <Zap size={16} />
+                Get Started
+              </Link>
+            </motion.div>
 
-      {/* ── Workflow showcase ──────────────────────────────────────── */}
-      <section id="workflows" style={{
-        padding: "88px 48px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        background: "radial-gradient(ellipse at 50% 0%, rgba(79,138,255,0.06) 0%, transparent 60%)",
-      }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
-            variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }}
-            style={{ textAlign: "center", marginBottom: 52 }}
-          >
-            <h2 style={{ fontSize: 30, fontWeight: 700, color: "#F0F0F5", marginBottom: 12, letterSpacing: "-0.025em" }}>
-              From brief to building in minutes
-            </h2>
-            <p style={{ fontSize: 16, color: "#9898B0" }}>
-              See how BuildFlow transforms AEC processes
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
-            variants={{ visible: { transition: { staggerChildren: 0.15 } } }}
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
-          >
-            {SHOWCASE.map(({ id, badge }) => {
-              const wf = PREBUILT_WORKFLOWS.find(w => w.id === id);
-              if (!wf) return null;
-              const nodes = wf.tileGraph.nodes.map(n => ({
-                label: n.data.label, category: n.data.category as string,
-              }));
-              return (
-                <motion.div key={id} variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
-                  background: "#12121E", borderRadius: 16,
-                  border: badge ? "1px solid rgba(245,158,11,0.25)" : "1px solid rgba(255,255,255,0.06)",
-                  overflow: "hidden",
-                  transition: "border-color 0.15s, transform 0.2s, box-shadow 0.2s",
+            {/* Secondary CTA */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7, duration: 0.5 }}
+              style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 24 }}
+            >
+              <Link href="/demo" style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 20px", borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)",
+                color: "#F0F0F5", fontSize: 14, fontWeight: 600,
+                textDecoration: "none", transition: "all 0.15s",
+              }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.15)";
                 }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)";
-                    (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 40px rgba(0,0,0,0.3)";
-                    if (!badge) (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)";
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.02)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.08)";
+                }}
+              >
+                <Calendar size={15} />
+                Book a demo
+              </Link>
+            </motion.div>
+          </div>
+
+          {/* Partner logos at bottom of hero */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 0.6 }}
+            style={{
+              position: "absolute", bottom: 48, left: 0, right: 0,
+              display: "flex", justifyContent: "center", gap: 56,
+              zIndex: 30,
+            }}
+          >
+            {PARTNER_LOGOS.map(name => (
+              <span key={name} style={{
+                fontSize: 14, fontWeight: 700, color: "#3A3A50",
+                letterSpacing: "2px", textTransform: "uppercase",
+                transition: "color 0.2s", cursor: "default",
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#5C5C78"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#3A3A50"; }}
+              >
+                {name}
+              </span>
+            ))}
+          </motion.div>
+        </motion.section>
+
+        {/* ── Core Capabilities ─────────────────────────────────────── */}
+        <section style={{
+          padding: "80px 48px 100px", position: "relative", overflow: "hidden",
+          background: "linear-gradient(180deg, #07070D 0%, #0B0B13 100%)",
+        }}>
+          {/* Atmospheric glow */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: "-20%", left: "50%", transform: "translateX(-50%)", width: "80%", height: "60%", background: "radial-gradient(ellipse, rgba(79,138,255,0.06) 0%, transparent 70%)" }} />
+          </div>
+
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-60px" }}
+              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+              style={{ textAlign: "center", marginBottom: 64 }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "3px", color: "#4F8AFF", marginBottom: 16, display: "block" }}>
+                Core Capabilities
+              </span>
+              <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+                <span style={{ color: "#F0F0F5" }}>From idea to </span>
+                <span style={{ background: "linear-gradient(135deg, #7C6FF7, #C084FC)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>reality</span>
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
+              variants={stagger}
+              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}
+            >
+              {[
+                { icon: <Box size={28} />, color: "#3B82F6", title: "Text-to-3D", description: "Describe your building concept in plain English. Get parametric 3D massing models in seconds.", badge: "AI-Powered" },
+                { icon: <ImageIcon size={28} />, color: "#8B5CF6", title: "Instant Renders", description: "Generate photorealistic concept images with AI. Perfect for early-stage design presentations.", badge: "Fast" },
+                { icon: <FileCode size={28} />, color: "#10B981", title: "IFC Export (Beta)", description: "Basic IFC export in early development. Preview functionality available.", badge: "BIM-Ready" },
+              ].map(f => {
+                const rgb = hexToRgb(f.color);
+                return (
+                  <motion.div key={f.title} variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
+                    background: "rgba(18,18,30,0.6)", backdropFilter: "blur(20px)",
+                    borderRadius: 20, border: "1px solid rgba(255,255,255,0.06)",
+                    padding: "36px 32px", cursor: "default", position: "relative", overflow: "hidden",
+                    transition: "border-color 0.3s, transform 0.3s, box-shadow 0.3s",
                   }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                    (e.currentTarget as HTMLElement).style.boxShadow = "none";
-                    if (!badge) (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)";
-                  }}
-                >
-                  {/* Diagram */}
-                  <div style={{
-                    height: 120,
-                    background: "#0B0B13",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    position: "relative",
-                  }}>
-                    {badge && (
-                      <div style={{
-                        position: "absolute", top: 8, right: 8,
-                        fontSize: 9, padding: "2px 8px", borderRadius: 20,
-                        background: "linear-gradient(135deg, #F59E0B, #EF4444)",
-                        color: "white", fontWeight: 700, letterSpacing: "0.5px",
-                      }}>
-                        {badge}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.borderColor = `rgba(${rgb}, 0.4)`;
+                      el.style.transform = "translateY(-6px) scale(1.01)";
+                      el.style.boxShadow = `0 24px 48px rgba(0,0,0,0.4), 0 0 40px rgba(${rgb}, 0.12), inset 0 1px 0 rgba(255,255,255,0.05)`;
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.borderColor = "rgba(255,255,255,0.06)";
+                      el.style.transform = "translateY(0) scale(1)";
+                      el.style.boxShadow = "none";
+                    }}
+                  >
+                    {/* Gradient orb background */}
+                    <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: `radial-gradient(circle, rgba(${rgb}, 0.08) 0%, transparent 70%)`, pointerEvents: "none" }} />
+
+                    {f.badge && (
+                      <div style={{ position: "absolute", top: 20, right: 20, fontSize: 9, padding: "4px 12px", borderRadius: 20, background: `rgba(${rgb}, 0.12)`, border: `1px solid rgba(${rgb}, 0.25)`, color: f.color, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>
+                        {f.badge}
                       </div>
                     )}
-                    <MiniWorkflowDiagram nodes={nodes} size="md" animated />
-                  </div>
-                  {/* Content */}
-                  <div style={{ padding: "16px 20px" }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 600, color: "#F0F0F5", marginBottom: 6 }}>
-                      {wf.name}
-                    </h3>
-                    <p style={{ fontSize: 12, color: "#5C5C78", lineHeight: 1.5, marginBottom: 12 }}>
-                      {wf.tileGraph.nodes.length} nodes · {wf.estimatedRunTime}
-                    </p>
-                    <Link href="/dashboard/templates" style={{
-                      fontSize: 12, fontWeight: 600, color: "#4F8AFF",
-                      textDecoration: "none",
-                      display: "inline-flex", alignItems: "center", gap: 4,
+                    <div style={{ width: 64, height: 64, borderRadius: 18, marginBottom: 24, background: `linear-gradient(135deg, rgba(${rgb}, 0.15), rgba(${rgb}, 0.05))`, border: `1px solid rgba(${rgb}, 0.2)`, display: "flex", alignItems: "center", justifyContent: "center", color: f.color, boxShadow: `0 0 24px rgba(${rgb}, 0.1)` }}>
+                      {f.icon}
+                    </div>
+                    <h3 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F5", marginBottom: 12, letterSpacing: "-0.02em" }}>{f.title}</h3>
+                    <p style={{ fontSize: 15, color: "#9898B0", lineHeight: 1.7 }}>{f.description}</p>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── Built For Strip ─────────────────────────────────────── */}
+        <div style={{
+          borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)",
+          padding: "28px 48px", background: "rgba(11,11,19,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
+            <span style={{ fontSize: 11, color: "#3A3A50", whiteSpace: "nowrap", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px" }}>Built for</span>
+            <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.06)" }} />
+            <div style={{ display: "flex", gap: 40, flexWrap: "wrap", justifyContent: "center" }}>
+              {USE_CASES.map(c => (
+                <span key={c} style={{ fontSize: 14, fontWeight: 700, color: "#3A3A50", letterSpacing: "1.5px", textTransform: "uppercase", transition: "color 0.2s", cursor: "default" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#9898B0"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#3A3A50"; }}
+                >{c}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Features (glass cards with glow) ────────────────────── */}
+        <section id="features" style={{ padding: "100px 48px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", bottom: "0%", left: "20%", width: "60%", height: "50%", background: "radial-gradient(ellipse, rgba(139,92,246,0.05) 0%, transparent 70%)" }} />
+          </div>
+
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
+              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+              style={{ textAlign: "center", marginBottom: 64 }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "3px", color: "#8B5CF6", marginBottom: 16, display: "block" }}>
+                Platform
+              </span>
+              <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 16 }}>
+                Everything you need to<br />
+                <span style={{ background: "linear-gradient(135deg, #4F8AFF, #A78BFA)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>automate AEC workflows</span>
+              </h2>
+              <p style={{ fontSize: 16, color: "#7C7C96", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
+                Purpose-built for architects, engineers, and construction professionals.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
+              variants={stagger}
+              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}
+            >
+              {FEATURES.map((f, idx) => {
+                const rgb = hexToRgb(f.color);
+                return (
+                  <motion.div key={f.title} variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
+                    background: "rgba(18,18,30,0.6)", backdropFilter: "blur(20px)",
+                    borderRadius: 20, border: "1px solid rgba(255,255,255,0.06)",
+                    padding: "36px 28px", cursor: "default", position: "relative", overflow: "hidden",
+                    transition: "border-color 0.3s, transform 0.3s, box-shadow 0.3s",
+                  }}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.borderColor = `rgba(${rgb}, 0.3)`;
+                      el.style.transform = "translateY(-6px)";
+                      el.style.boxShadow = `0 24px 48px rgba(0,0,0,0.4), 0 0 40px rgba(${rgb}, 0.1)`;
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.borderColor = "rgba(255,255,255,0.06)";
+                      el.style.transform = "translateY(0)";
+                      el.style.boxShadow = "none";
+                    }}
+                  >
+                    {/* Decorative number */}
+                    <div style={{ position: "absolute", top: -8, right: 16, fontSize: 100, fontWeight: 900, color: f.color, opacity: 0.03, lineHeight: 1, userSelect: "none" }}>{idx + 1}</div>
+
+                    <div style={{ width: 60, height: 60, borderRadius: 16, marginBottom: 24, background: `linear-gradient(135deg, rgba(${rgb}, 0.15), rgba(${rgb}, 0.05))`, border: `1px solid rgba(${rgb}, 0.2)`, display: "flex", alignItems: "center", justifyContent: "center", color: f.color, boxShadow: `0 0 20px rgba(${rgb}, 0.1)` }}>
+                      {f.icon}
+                    </div>
+                    <h3 style={{ fontSize: 20, fontWeight: 800, color: "#F0F0F5", marginBottom: 12, letterSpacing: "-0.02em" }}>{f.title}</h3>
+                    <p style={{ fontSize: 14, color: "#9898B0", lineHeight: 1.7, marginBottom: 20 }}>{f.description}</p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                      {f.bullets.map(b => (
+                        <li key={b} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#9898B0", marginBottom: 10 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: f.color, flexShrink: 0, boxShadow: `0 0 8px ${f.color}` }} />
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── Workflow Showcase ────────────────────────────────────── */}
+        <section id="workflows" style={{
+          padding: "100px 48px", position: "relative", overflow: "hidden",
+          background: "linear-gradient(180deg, #07070D 0%, #0A0A16 50%, #07070D 100%)",
+        }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: "10%", left: "50%", transform: "translateX(-50%)", width: "70%", height: "40%", background: "radial-gradient(ellipse, rgba(79,138,255,0.07) 0%, transparent 70%)" }} />
+          </div>
+
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
+              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+              style={{ textAlign: "center", marginBottom: 64 }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "3px", color: "#10B981", marginBottom: 16, display: "block" }}>
+                Templates
+              </span>
+              <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+                From brief to building<br />
+                <span style={{ background: "linear-gradient(135deg, #10B981, #34D399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>in minutes</span>
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
+              variants={{ visible: { transition: { staggerChildren: 0.15 } } }}
+              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}
+            >
+              {SHOWCASE.map(({ id, badge }) => {
+                const wf = PREBUILT_WORKFLOWS.find(w => w.id === id);
+                if (!wf) return null;
+                const nodes = wf.tileGraph.nodes.map(n => ({ label: n.data.label, category: n.data.category as string }));
+                return (
+                  <motion.div key={id} variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
+                    background: "rgba(18,18,30,0.6)", backdropFilter: "blur(20px)",
+                    borderRadius: 20,
+                    border: badge ? "1px solid rgba(245,158,11,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                    overflow: "hidden",
+                    transition: "border-color 0.3s, transform 0.3s, box-shadow 0.3s",
+                  }}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.transform = "translateY(-6px) scale(1.01)";
+                      el.style.boxShadow = badge ? "0 24px 48px rgba(245,158,11,0.1), 0 0 40px rgba(245,158,11,0.05)" : "0 24px 48px rgba(0,0,0,0.4), 0 0 30px rgba(79,138,255,0.08)";
+                      if (!badge) el.style.borderColor = "rgba(79,138,255,0.2)";
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.transform = "translateY(0) scale(1)";
+                      el.style.boxShadow = "none";
+                      if (!badge) el.style.borderColor = "rgba(255,255,255,0.06)";
+                    }}
+                  >
+                    <div style={{
+                      height: 130, background: "rgba(11,11,19,0.8)",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)", position: "relative",
+                      backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px)",
+                      backgroundSize: "20px 20px",
+                    }}>
+                      {badge && (
+                        <div style={{ position: "absolute", top: 10, right: 10, fontSize: 9, padding: "3px 10px", borderRadius: 20, background: "linear-gradient(135deg, #F59E0B, #EF4444)", color: "white", fontWeight: 700, letterSpacing: "0.8px", zIndex: 2, boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}>
+                          {badge}
+                        </div>
+                      )}
+                      <MiniWorkflowDiagram nodes={nodes} size="md" animated />
+                    </div>
+                    <div style={{ padding: "20px 24px" }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F5", marginBottom: 8 }}>{wf.name}</h3>
+                      <p style={{ fontSize: 12, color: "#5C5C78", lineHeight: 1.5, marginBottom: 14 }}>
+                        {wf.tileGraph.nodes.length} nodes · {wf.estimatedRunTime}
+                      </p>
+                      <Link href="/dashboard/templates" style={{
+                        fontSize: 13, fontWeight: 600, color: "#4F8AFF", textDecoration: "none",
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "6px 14px", borderRadius: 8,
+                        background: "rgba(79,138,255,0.08)", border: "1px solid rgba(79,138,255,0.15)",
+                        transition: "all 0.2s",
+                      }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(79,138,255,0.15)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(79,138,255,0.08)"; }}
+                      >
+                        Try this workflow <ArrowRight size={13} />
+                      </Link>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── How It Works (futuristic timeline) ───────────────────── */}
+        <section id="community" style={{ padding: "100px 48px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: "30%", left: "50%", transform: "translateX(-50%)", width: "50%", height: "40%", background: "radial-gradient(ellipse, rgba(139,92,246,0.06) 0%, transparent 70%)" }} />
+          </div>
+
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
+              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+              style={{ textAlign: "center", marginBottom: 64 }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "3px", color: "#F59E0B", marginBottom: 16, display: "block" }}>
+                How It Works
+              </span>
+              <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+                Three steps to<br />
+                <span style={{ background: "linear-gradient(135deg, #F59E0B, #EF4444)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>launch</span>
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
+              variants={stagger}
+              style={{ display: "grid", gridTemplateColumns: "1fr 40px 1fr 40px 1fr", gap: 0, alignItems: "center" }}
+            >
+              {[
+                { num: "01", title: "Drag & Drop", desc: "Browse 31 nodes and drag them onto the infinite canvas", icon: <LayoutGrid size={24} />, color: "#3B82F6" },
+                { num: "02", title: "Connect", desc: "Link nodes together to define your data flow", icon: <Zap size={24} />, color: "#8B5CF6" },
+                { num: "03", title: "Run", desc: "Execute and see results appear in real time", icon: <Play size={24} />, color: "#10B981" },
+              ].map((step, i) => {
+                const rgb = hexToRgb(step.color);
+                return (
+                  <React.Fragment key={step.num}>
+                    <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
+                      background: "rgba(18,18,30,0.6)", backdropFilter: "blur(20px)",
+                      borderRadius: 20, border: "1px solid rgba(255,255,255,0.06)",
+                      padding: "36px 28px", textAlign: "center", position: "relative", overflow: "hidden",
+                      transition: "border-color 0.3s, transform 0.3s, box-shadow 0.3s",
                     }}
                       onMouseEnter={e => {
-                        const arrow = e.currentTarget.querySelector("span");
-                        if (arrow) arrow.style.transform = "translateX(4px)";
+                        const el = e.currentTarget as HTMLElement;
+                        el.style.borderColor = `rgba(${rgb}, 0.3)`;
+                        el.style.transform = "translateY(-6px)";
+                        el.style.boxShadow = `0 24px 48px rgba(0,0,0,0.4), 0 0 30px rgba(${rgb}, 0.1)`;
                       }}
                       onMouseLeave={e => {
-                        const arrow = e.currentTarget.querySelector("span");
-                        if (arrow) arrow.style.transform = "translateX(0)";
+                        const el = e.currentTarget as HTMLElement;
+                        el.style.borderColor = "rgba(255,255,255,0.06)";
+                        el.style.transform = "translateY(0)";
+                        el.style.boxShadow = "none";
                       }}
                     >
-                      Try this workflow <span style={{ transition: "transform 0.15s ease", display: "inline-block" }}>→</span>
-                    </Link>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-      </section>
+                      {/* Big step number */}
+                      <div style={{ position: "absolute", top: 8, right: 16, fontSize: 72, fontWeight: 900, background: `linear-gradient(135deg, ${step.color}, transparent)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", opacity: 0.08, lineHeight: 1, userSelect: "none" }}>
+                        {step.num}
+                      </div>
+                      <div style={{ width: 60, height: 60, borderRadius: 16, margin: "0 auto 20px", background: `linear-gradient(135deg, rgba(${rgb}, 0.15), rgba(${rgb}, 0.05))`, border: `1px solid rgba(${rgb}, 0.2)`, display: "flex", alignItems: "center", justifyContent: "center", color: step.color, boxShadow: `0 0 24px rgba(${rgb}, 0.12)` }}>
+                        {step.icon}
+                      </div>
+                      <h3 style={{ fontSize: 20, fontWeight: 800, color: "#F0F0F5", marginBottom: 10, letterSpacing: "-0.02em" }}>{step.title}</h3>
+                      <p style={{ fontSize: 14, color: "#9898B0", lineHeight: 1.7 }}>{step.desc}</p>
+                    </motion.div>
+                    {i < 2 && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="24" height="14" viewBox="0 0 24 14" fill="none">
+                          <defs>
+                            <linearGradient id={`arrow-grad-${i}`} x1="0" y1="7" x2="24" y2="7">
+                              <stop offset="0%" stopColor={[{ num: "01", color: "#3B82F6" }, { num: "02", color: "#8B5CF6" }][i]?.color ?? "#3B82F6"} stopOpacity="0.5" />
+                              <stop offset="100%" stopColor={[{ num: "02", color: "#8B5CF6" }, { num: "03", color: "#10B981" }][i]?.color ?? "#8B5CF6"} stopOpacity="0.5" />
+                            </linearGradient>
+                          </defs>
+                          <line x1="0" y1="7" x2="16" y2="7" stroke={`url(#arrow-grad-${i})`} strokeWidth="1.5" strokeDasharray="3 3" />
+                          <path d="M16 3 L22 7 L16 11" stroke={`url(#arrow-grad-${i})`} strokeWidth="1.5" fill="none" />
+                        </svg>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </motion.div>
+          </div>
+        </section>
 
-      {/* ── How it works ───────────────────────────────────────────── */}
-      <section id="community" style={{ padding: "88px 48px", maxWidth: 1200, margin: "0 auto" }}>
-        <motion.div
-          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
-          variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }}
-          style={{ textAlign: "center", marginBottom: 52 }}
-        >
-          <h2 style={{ fontSize: 30, fontWeight: 700, color: "#F0F0F5", marginBottom: 12, letterSpacing: "-0.025em" }}>
-            Three ways to build
-          </h2>
-        </motion.div>
+        {/* ── Pricing (glass morphism) ─────────────────────────────── */}
+        <section id="pricing" style={{
+          padding: "100px 48px", position: "relative", overflow: "hidden",
+          background: "linear-gradient(180deg, #07070D 0%, #0B0B13 100%)",
+        }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: "80%", height: "60%", background: "radial-gradient(ellipse, rgba(79,138,255,0.05) 0%, transparent 70%)" }} />
+          </div>
 
-        <motion.div
-          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
-          variants={stagger}
-          style={{
-            display: "grid", gridTemplateColumns: "1fr 40px 1fr 40px 1fr", gap: 0,
-            alignItems: "center",
-          }}
-        >
-          {[
-            { num: "1", title: "Drag & Drop", desc: "Browse 31 nodes and drag them onto the canvas", icon: <LayoutGrid size={22} />, color: "#3B82F6" },
-            { num: "2", title: "Connect",    desc: "Link nodes together to define your data flow",   icon: <Zap size={22} />,          color: "#8B5CF6" },
-            { num: "3", title: "Run",        desc: "Execute and see results appear in real time",    icon: <Play size={22} />,         color: "#10B981" },
-          ].map((step, i) => {
-            const rgb = hexToRgb(step.color);
-            return (
-              <React.Fragment key={step.num}>
-                <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
-                  background: "#12121E", borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.06)", padding: "28px 24px",
-                  textAlign: "center", position: "relative", overflow: "hidden",
-                  transition: "border-color 0.15s, transform 0.2s, box-shadow 0.2s",
-                }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)";
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)";
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                  }}
-                >
-                  {/* Big number bg */}
-                  <div style={{
-                    position: "absolute", top: 8, right: 12,
-                    fontSize: 64, fontWeight: 900, color: step.color,
-                    opacity: 0.07, lineHeight: 1, userSelect: "none",
-                  }}>
-                    {step.num}
-                  </div>
-                  <div style={{
-                    width: 52, height: 52, borderRadius: 14, margin: "0 auto 16px",
-                    background: `rgba(${rgb}, 0.08)`,
-                    border: `1px solid rgba(${rgb}, 0.12)`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: step.color,
-                  }}>
-                    {step.icon}
-                  </div>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, color: "#F0F0F5", marginBottom: 8 }}>
-                    {step.title}
-                  </h3>
-                  <p style={{ fontSize: 13, color: "#9898B0", lineHeight: 1.6 }}>
-                    {step.desc}
-                  </p>
-                </motion.div>
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
+              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+              style={{ textAlign: "center", marginBottom: 64 }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "3px", color: "#4F8AFF", marginBottom: 16, display: "block" }}>
+                Pricing
+              </span>
+              <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 16 }}>
+                Simple, <span style={{ background: "linear-gradient(135deg, #4F8AFF, #A78BFA)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>transparent</span> pricing
+              </h2>
+              <p style={{ fontSize: 16, color: "#7C7C96" }}>Choose the plan that fits your workflow</p>
+            </motion.div>
 
-                {i < 2 && (
-                  <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#3A3A50",
-                  }}>
-                    <svg width="20" height="12" viewBox="0 0 20 12" fill="none">
-                      <line x1="0" y1="6" x2="14" y2="6" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" />
-                      <path d="M14 2 L19 6 L14 10" stroke="currentColor" strokeWidth="1" fill="none" strokeDasharray="3 3" />
-                    </svg>
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </motion.div>
-      </section>
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
+              variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
+              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}
+            >
+              {/* FREE */}
+              <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
+                background: "rgba(18,18,30,0.6)", backdropFilter: "blur(20px)",
+                border: "1px solid rgba(255,255,255,0.06)", borderRadius: 20, padding: "36px 28px",
+                transition: "border-color 0.3s, transform 0.3s, box-shadow 0.3s",
+              }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "rgba(255,255,255,0.12)"; el.style.transform = "translateY(-4px)"; el.style.boxShadow = "0 20px 40px rgba(0,0,0,0.3)"; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "rgba(255,255,255,0.06)"; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}
+              >
+                <div style={{ marginBottom: 24 }}>
+                  <h3 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F5", marginBottom: 6 }}>Free</h3>
+                  <p style={{ fontSize: 13, color: "#7878A0" }}>Perfect for trying out workflows</p>
+                </div>
+                <div style={{ marginBottom: 28 }}>
+                  <span style={{ fontSize: 48, fontWeight: 900, color: "#F0F0F5", letterSpacing: "-0.03em" }}>$0</span>
+                  <span style={{ fontSize: 15, color: "#5C5C78", marginLeft: 8 }}>/month</span>
+                </div>
+                <Link href="/dashboard" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "13px 24px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "#F0F0F5", fontSize: 14, fontWeight: 700, textDecoration: "none", marginBottom: 28, transition: "all 0.2s" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)"; }}
+                >Get Started</Link>
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#5C5C78", marginBottom: 16, textTransform: "uppercase", letterSpacing: "1px" }}>Includes:</div>
+                  {["3 workflows", "10 executions/month", "Community templates", "Basic node library", "Community support"].map(f => (<div key={f} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#4F8AFF", boxShadow: "0 0 6px #4F8AFF" }} /><span style={{ fontSize: 14, color: "#9898B0" }}>{f}</span></div>))}
+                </div>
+              </motion.div>
 
+              {/* PRO */}
+              <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
+                background: "rgba(18,18,34,0.7)", backdropFilter: "blur(20px)",
+                border: "1.5px solid rgba(79,138,255,0.3)", borderRadius: 20, padding: "36px 28px",
+                position: "relative", overflow: "hidden",
+                boxShadow: "0 0 60px rgba(79,138,255,0.06), inset 0 1px 0 rgba(255,255,255,0.04)",
+                transition: "transform 0.3s, box-shadow 0.3s",
+              }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-6px) scale(1.02)"; el.style.boxShadow = "0 24px 60px rgba(79,138,255,0.12), 0 0 80px rgba(79,138,255,0.06), inset 0 1px 0 rgba(255,255,255,0.04)"; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0) scale(1)"; el.style.boxShadow = "0 0 60px rgba(79,138,255,0.06), inset 0 1px 0 rgba(255,255,255,0.04)"; }}
+              >
+                {/* Glow orb */}
+                <div style={{ position: "absolute", top: -80, right: -80, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,138,255,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", padding: "5px 16px", borderRadius: 20, background: "linear-gradient(135deg, #4F8AFF, #6366F1)", fontSize: 10, fontWeight: 800, color: "white", letterSpacing: "1px", textTransform: "uppercase", boxShadow: "0 4px 16px rgba(79,138,255,0.4)" }}>Most Popular</div>
+                <div style={{ marginBottom: 24 }}>
+                  <h3 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F5", marginBottom: 6 }}>Pro</h3>
+                  <p style={{ fontSize: 13, color: "#7878A0" }}>For professionals & small teams</p>
+                </div>
+                <div style={{ marginBottom: 28 }}>
+                  <span style={{ fontSize: 48, fontWeight: 900, color: "#F0F0F5", letterSpacing: "-0.03em" }}>$29</span>
+                  <span style={{ fontSize: 15, color: "#5C5C78", marginLeft: 8 }}>/month</span>
+                </div>
+                <div style={{ marginBottom: 24, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                  <span style={{ fontSize: 12, color: "#10B981", fontWeight: 700 }}>Unlimited workflows + 500 executions/month</span>
+                </div>
+                <Link href="/dashboard" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "13px 24px", borderRadius: 12, background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)", color: "white", fontSize: 14, fontWeight: 700, textDecoration: "none", marginBottom: 28, boxShadow: "0 0 0 1px rgba(79,138,255,0.3), 0 4px 20px rgba(79,138,255,0.3)", transition: "all 0.2s" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 0 1px rgba(79,138,255,0.5), 0 8px 30px rgba(79,138,255,0.4)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 0 1px rgba(79,138,255,0.3), 0 4px 20px rgba(79,138,255,0.3)"; }}
+                >Start Free Trial</Link>
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#5C5C78", marginBottom: 16, textTransform: "uppercase", letterSpacing: "1px" }}>Everything in Free, plus:</div>
+                  {["Unlimited workflows", "500 executions/month", "All 31 premium nodes", "AI prompt generation", "Priority execution", "Email support"].map(f => (<div key={f} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#4F8AFF", boxShadow: "0 0 6px #4F8AFF" }} /><span style={{ fontSize: 14, color: "#D0D0E0" }}>{f}</span></div>))}
+                </div>
+              </motion.div>
 
-      {/* ── PRICING SECTION ───────────────────────────────────────── */}
-      <section id="pricing" style={{
-        padding: "88px 48px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        background: "#0B0B13",
-      }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+              {/* ENTERPRISE */}
+              <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{
+                background: "rgba(18,18,30,0.6)", backdropFilter: "blur(20px)",
+                border: "1px solid rgba(255,255,255,0.06)", borderRadius: 20, padding: "36px 28px",
+                transition: "border-color 0.3s, transform 0.3s, box-shadow 0.3s",
+              }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "rgba(139,92,246,0.2)"; el.style.transform = "translateY(-4px)"; el.style.boxShadow = "0 20px 40px rgba(0,0,0,0.3), 0 0 30px rgba(139,92,246,0.06)"; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "rgba(255,255,255,0.06)"; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}
+              >
+                <div style={{ marginBottom: 24 }}>
+                  <h3 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F5", marginBottom: 6 }}>Enterprise</h3>
+                  <p style={{ fontSize: 13, color: "#7878A0" }}>For large teams & organizations</p>
+                </div>
+                <div style={{ marginBottom: 28 }}>
+                  <span style={{ fontSize: 36, fontWeight: 900, color: "#F0F0F5" }}>Custom</span>
+                </div>
+                <a href="mailto:sales@buildflow.com" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "13px 24px", borderRadius: 12, border: "1px solid rgba(139,92,246,0.2)", background: "rgba(139,92,246,0.05)", color: "#F0F0F5", fontSize: 14, fontWeight: 700, textDecoration: "none", marginBottom: 28, transition: "all 0.2s" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(139,92,246,0.1)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(139,92,246,0.05)"; }}
+                >Contact Sales</a>
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#5C5C78", marginBottom: 16, textTransform: "uppercase", letterSpacing: "1px" }}>Everything in Pro, plus:</div>
+                  {["Unlimited executions", "SSO & SAML", "Dedicated support", "Custom integrations", "SLA guarantee", "On-premise deployment"].map(f => (<div key={f} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#8B5CF6", boxShadow: "0 0 6px #8B5CF6" }} /><span style={{ fontSize: 14, color: "#9898B0" }}>{f}</span></div>))}
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── Final CTA (cinematic) ────────────────────────────────── */}
+        <section style={{
+          padding: "120px 48px", position: "relative", overflow: "hidden",
+          textAlign: "center",
+        }}>
+          {/* Background glow */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", bottom: "-20%", left: "50%", transform: "translateX(-50%)", width: "100%", height: "80%", background: "radial-gradient(ellipse 70% 60%, rgba(79,138,255,0.1) 0%, transparent 60%)" }} />
+            <div style={{ position: "absolute", bottom: "-10%", left: "30%", width: "40%", height: "60%", background: "radial-gradient(ellipse, rgba(139,92,246,0.06) 0%, transparent 70%)" }} />
+          </div>
+
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
-            variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }}
-            style={{ textAlign: "center", marginBottom: 52 }}
+            variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+            style={{ maxWidth: 700, margin: "0 auto", position: "relative", zIndex: 1 }}
           >
-            <h2 style={{ fontSize: 30, fontWeight: 700, color: "#F0F0F5", marginBottom: 12, letterSpacing: "-0.025em" }}>
-              Simple, transparent pricing
+            <h2 style={{
+              fontSize: "clamp(2.2rem, 5vw, 3.5rem)", fontWeight: 900,
+              letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20,
+            }}>
+              <span style={{ color: "#F0F0F5" }}>Ready to transform</span><br />
+              <span style={{ background: "linear-gradient(135deg, #4F8AFF 0%, #8B5CF6 50%, #C084FC 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                your AEC workflow?
+              </span>
             </h2>
-            <p style={{ fontSize: 16, color: "#9898B0" }}>
-              Choose the plan that fits your workflow
+            <p style={{ fontSize: 17, color: "#7C7C96", marginBottom: 40, lineHeight: 1.7 }}>
+              Free to start. No credit card required. Join thousands of architects already building smarter.
             </p>
-          </motion.div>
-
-          <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
-            variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
-          >
-            {/* FREE */}
-            <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{ background: "linear-gradient(145deg, rgba(18,18,30,0.95), rgba(14,14,22,0.98))", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 16, padding: "32px 28px" }}>
-              <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F5", marginBottom: 6 }}>Free</h3>
-                <p style={{ fontSize: 13, color: "#7878A0" }}>Perfect for trying out workflows</p>
-              </div>
-              <div style={{ marginBottom: 28 }}>
-                <span style={{ fontSize: 40, fontWeight: 800, color: "#F0F0F5" }}>$0</span>
-                <span style={{ fontSize: 15, color: "#7878A0", marginLeft: 8 }}>/month</span>
-              </div>
-              <Link href="/dashboard" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px 24px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "#1A1A2A", color: "#F0F0F5", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 28 }}>Get Started</Link>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#9898B0", marginBottom: 14 }}>What&apos;s included:</div>
-                {["3 workflows", "10 executions/month", "Community templates", "Basic node library", "Community support"].map(f => (<div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}><span style={{ color: "#4F8AFF" }}>✓</span><span style={{ fontSize: 14, color: "#9898B0" }}>{f}</span></div>))}
-              </div>
-            </motion.div>
-
-            {/* PRO (MOST POPULAR) */}
-            <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{ background: "linear-gradient(145deg, rgba(18,18,34,0.98), rgba(14,14,24,1))", border: "1.5px solid rgba(79,138,255,0.3)", borderRadius: 16, padding: "32px 28px", position: "relative", boxShadow: "0 0 0 1px rgba(79,138,255,0.08), 0 8px 40px rgba(79,138,255,0.08), inset 0 1px 0 rgba(255,255,255,0.02)" }}>
-              <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", padding: "3px 12px", borderRadius: 20, background: "linear-gradient(135deg, #4F8AFF, #6366F1)", fontSize: 10, fontWeight: 700, color: "white", letterSpacing: "0.8px" }}>MOST POPULAR</div>
-              <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F5", marginBottom: 6 }}>Pro</h3>
-                <p style={{ fontSize: 13, color: "#7878A0" }}>For professionals & small teams</p>
-              </div>
-              <div style={{ marginBottom: 28 }}>
-                <span style={{ fontSize: 40, fontWeight: 800, color: "#F0F0F5" }}>$29</span>
-                <span style={{ fontSize: 15, color: "#7878A0", marginLeft: 8 }}>/month</span>
-              </div>
-              <div style={{ marginBottom: 24, padding: "8px 12px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                <span style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>Unlimited workflows + 500 executions/month</span>
-              </div>
-              <Link href="/dashboard" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px 24px", borderRadius: 9, background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)", color: "white", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 28, boxShadow: "0 0 0 1px rgba(79,138,255,0.3), 0 4px 16px rgba(79,138,255,0.25)" }}>Start Free Trial</Link>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#9898B0", marginBottom: 14 }}>Everything in Free, plus:</div>
-                {["Unlimited workflows", "500 executions/month", "All 31 premium nodes", "AI prompt generation", "Priority execution", "Email support"].map(f => (<div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}><span style={{ color: "#4F8AFF" }}>✓</span><span style={{ fontSize: 14, color: "#D0D0E0" }}>{f}</span></div>))}
-              </div>
-            </motion.div>
-
-            {/* ENTERPRISE */}
-            <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }} style={{ background: "linear-gradient(145deg, rgba(18,18,30,0.95), rgba(14,14,22,0.98))", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 16, padding: "32px 28px" }}>
-              <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F5", marginBottom: 6 }}>Enterprise</h3>
-                <p style={{ fontSize: 13, color: "#7878A0" }}>For large teams & organizations</p>
-              </div>
-              <div style={{ marginBottom: 28 }}>
-                <span style={{ fontSize: 32, fontWeight: 800, color: "#F0F0F5" }}>Custom</span>
-              </div>
-              <a href="mailto:sales@buildflow.com" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px 24px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "#1A1A2A", color: "#F0F0F5", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 28 }}>Contact Sales</a>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#9898B0", marginBottom: 14 }}>Everything in Pro, plus:</div>
-                {["Unlimited executions", "SSO & SAML", "Dedicated support", "Custom integrations", "SLA guarantee", "On-premise deployment"].map(f => (<div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}><span style={{ color: "#8B5CF6" }}>✓</span><span style={{ fontSize: 14, color: "#9898B0" }}>{f}</span></div>))}
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── CTA ───────────────────────────────────────────────────── */}
-      <section style={{
-        padding: "88px 48px",
-        background: "radial-gradient(ellipse 60% 50% at 50% 100%, rgba(79, 138, 255, 0.08), transparent), #0B0B13",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        textAlign: "center",
-      }}>
-        <motion.div
-          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
-          variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }}
-          style={{ maxWidth: 600, margin: "0 auto" }}
-        >
-          <h2 style={{ fontSize: 34, fontWeight: 700, color: "#F0F0F5", marginBottom: 14, letterSpacing: "-0.03em" }}>
-            Ready to transform your<br />AEC workflow?
-          </h2>
-          <p style={{ fontSize: 15, color: "#7C7C96", marginBottom: 32, lineHeight: 1.6, letterSpacing: "-0.005em" }}>
-            Free to start. No credit card required.
-          </p>
-          <Link href="/dashboard" style={{
-            display: "inline-flex", alignItems: "center", gap: 10,
-            padding: "14px 36px", borderRadius: 12,
-            background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
-            color: "white", fontSize: 16, fontWeight: 600,
-            textDecoration: "none",
-            boxShadow: "0 0 0 1px rgba(79,138,255,0.3), 0 4px 24px rgba(79,138,255,0.25)",
-            marginBottom: 16,
-            transition: "all 150ms ease",
-          }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.filter = "brightness(1.1)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 0 1px rgba(79,138,255,0.5), 0 8px 30px rgba(79,138,255,0.35)";
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.filter = "brightness(1)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 0 1px rgba(79,138,255,0.3), 0 4px 24px rgba(79,138,255,0.25)";
-            }}
-          >
-            Create Your First Workflow
-            <ArrowRight size={17} />
-          </Link>
-          <div>
-            <Link href="/dashboard/community" style={{
-              fontSize: 13, color: "#4F8AFF", textDecoration: "none",
-              display: "inline-flex", alignItems: "center", gap: 4,
+            <Link href="/dashboard" style={{
+              display: "inline-flex", alignItems: "center", gap: 10,
+              padding: "16px 40px", borderRadius: 14,
+              background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
+              color: "white", fontSize: 17, fontWeight: 700,
+              textDecoration: "none",
+              boxShadow: "0 0 0 1px rgba(79,138,255,0.3), 0 8px 32px rgba(79,138,255,0.3), 0 0 80px rgba(79,138,255,0.1)",
+              marginBottom: 20, transition: "all 200ms ease",
             }}
               onMouseEnter={e => {
-                const arrow = e.currentTarget.querySelector("span");
-                if (arrow) arrow.style.transform = "translateX(4px)";
+                const el = e.currentTarget as HTMLElement;
+                el.style.transform = "translateY(-2px) scale(1.02)";
+                el.style.boxShadow = "0 0 0 1px rgba(79,138,255,0.5), 0 12px 40px rgba(79,138,255,0.4), 0 0 100px rgba(79,138,255,0.15)";
               }}
               onMouseLeave={e => {
-                const arrow = e.currentTarget.querySelector("span");
-                if (arrow) arrow.style.transform = "translateX(0)";
+                const el = e.currentTarget as HTMLElement;
+                el.style.transform = "translateY(0) scale(1)";
+                el.style.boxShadow = "0 0 0 1px rgba(79,138,255,0.3), 0 8px 32px rgba(79,138,255,0.3), 0 0 80px rgba(79,138,255,0.1)";
               }}
             >
-              Or explore community workflows <span style={{ transition: "transform 0.15s ease", display: "inline-block" }}>→</span>
+              Create Your First Workflow
+              <ArrowRight size={18} />
             </Link>
-          </div>
-        </motion.div>
-      </section>
-
+            <div>
+              <Link href="/dashboard/community" style={{
+                fontSize: 14, color: "#4F8AFF", textDecoration: "none",
+                display: "inline-flex", alignItems: "center", gap: 6,
+                transition: "color 0.15s",
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#6B9FFF"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#4F8AFF"; }}
+              >
+                Or explore community workflows <ArrowRight size={14} />
+              </Link>
+            </div>
+          </motion.div>
+        </section>
       </main>
 
-      {/* ── Footer ────────────────────────────────────────────────── */}
+      {/* ── Footer ─────────────────────────────────────────────────── */}
       <footer style={{
         borderTop: "1px solid rgba(255,255,255,0.04)",
-        padding: "18px 48px",
-        display: "flex", alignItems: "center",
-        maxWidth: "100%",
-        background: "rgba(7,7,13,0.8)",
+        padding: "32px 48px",
+        background: "rgba(7,7,13,0.9)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <div style={{
-            width: 20, height: 20, borderRadius: 5,
-            background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <Zap size={10} color="white" fill="white" />
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Zap size={11} color="white" fill="white" />
+            </div>
+            <span style={{ fontSize: 13, color: "#5C5C78", fontWeight: 600 }}>
+              © 2026 BuildFlow
+            </span>
           </div>
-          <span style={{ fontSize: 12, color: "#5C5C78", fontWeight: 600 }}>
-            © 2026 BuildFlow
+          <div style={{ display: "flex", gap: 24 }}>
+            {["Privacy", "Terms", "Contact"].map(l => (
+              <a key={l} href="#" style={{ fontSize: 12, color: "#5C5C78", textDecoration: "none", transition: "color 0.15s" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#9898B0"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#5C5C78"; }}
+              >{l}</a>
+            ))}
+          </div>
+          <span style={{ fontSize: 11, color: "#3A3A50" }}>
+            Beta Product · Built for the AEC community
           </span>
         </div>
-        <div style={{ margin: "0 auto", display: "flex", gap: 20 }}>
-          {["Privacy", "Terms", "Contact"].map(l => (
-            <a key={l} href="#" style={{ fontSize: 11, color: "#5C5C78", textDecoration: "none" }}>
-              {l}
-            </a>
-          ))}
-        </div>
-        <span style={{ fontSize: 11, color: "#3A3A50" }}>
-          Beta Product · Built for the AEC community
-        </span>
-      
+      </footer>
+
+      {/* News Ticker */}
+      <NewsTicker />
+
       {/* Mobile Responsive Styles */}
       <style jsx global>{`
         @media (max-width: 768px) {
-          /* Hero section - stack vertically */
-          section[style*="minHeight: calc(100vh - 60px)"] {
-            flex-direction: column !important;
-            padding: 40px 24px !important;
-            gap: 32px !important;
-          }
-          
-          section[style*="minHeight: calc(100vh - 60px)"] > div {
-            flex: 1 !important;
-            max-width: 100% !important;
+          section[style*="minHeight: 100vh"] {
+            padding: 80px 24px 120px !important;
           }
 
-          /* Hero title */
-          h1[style*="fontSize: 54"] {
-            font-size: 36px !important;
+          h1 {
+            font-size: 2.5rem !important;
           }
 
-          /* All grid layouts - 1 column on mobile */
           div[style*="gridTemplateColumns: repeat(3, 1fr)"],
           div[style*="gridTemplateColumns: repeat(4, 1fr)"] {
             grid-template-columns: 1fr !important;
             gap: 16px !important;
           }
 
-          /* How it works section - stack the steps */
           div[style*="gridTemplateColumns: 1fr 40px 1fr 40px 1fr"] {
             grid-template-columns: 1fr !important;
             gap: 16px !important;
           }
 
-          /* Hide arrows between steps on mobile */
           div[style*="gridTemplateColumns: 1fr 40px 1fr 40px 1fr"] > div[style*="display: flex"][style*="justifyContent: center"]:has(svg) {
             display: none !important;
           }
 
-          /* Navigation - adjust padding */
           nav[style*="padding: 0 48px"] {
             padding: 0 20px !important;
           }
 
-          /* Sections - reduce padding */
           section[style*="padding: 88px 48px"] {
             padding: 48px 24px !important;
           }
@@ -1159,50 +1099,25 @@ export default function LandingPage() {
             padding: 32px 24px 48px !important;
           }
 
-          /* CTAs - stack buttons vertically */
           div[style*="display: flex"][style*="gap: 12"] > a {
             width: 100%;
             justify-content: center;
           }
 
-          /* Increase touch target size for mobile */
           a[style*="padding"][style*="borderRadius"] {
             min-height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
           }
-
-          /* Logo strip - scroll on mobile */
-          div[style*="Trusted by teams"] {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-          }
-
-          /* Hero animation - smaller on mobile */
-          div[style*="borderRadius: 16"][style*="boxShadow"] {
-            transform: scale(0.9) !important;
-          }
         }
 
         @media (max-width: 480px) {
-          /* Extra small screens */
-          h1[style*="fontSize: 54"] {
-            font-size: 28px !important;
-          }
-
-          nav span[style*="fontSize: 17"] {
-            font-size: 15px !important;
-          }
-
-          /* Sticky nav - hide on very small screens */
-          nav[style*="position: fixed"] {
-            display: none !important;
+          h1 {
+            font-size: 2rem !important;
           }
         }
       `}</style>
-      
-      </footer>
     </div>
   );
 }
