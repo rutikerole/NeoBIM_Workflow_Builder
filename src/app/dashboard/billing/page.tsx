@@ -144,10 +144,10 @@ export default function BillingPage() {
     },
     {
       name: "Pro",
-      price: "$79",
+      price: "$29",
       period: "per month",
-      description: "Pays for itself in 1 project",
-      savings: "Save $2,000 per project · 25x ROI",
+      description: "Most popular for solo architects",
+      savings: "Save $2,000 per project · 69x ROI",
       features: [
         "Unlimited workflow runs",
         "Priority execution queue",
@@ -166,7 +166,7 @@ export default function BillingPage() {
     },
     {
       name: "Team",
-      price: "$149",
+      price: "$99",
       period: "per month",
       description: "Collaborate with your team",
       features: [
@@ -421,7 +421,7 @@ export default function BillingPage() {
                   }`}
                   style={plan.highlighted && !plan.ctaDisabled && upgradingTo === null ? { background: plan.gradient } : {}}
                 >
-                  {upgradingTo === plan.planType ? (
+                  {upgradingTo !== null && upgradingTo === plan.planType ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
                       Processing...
