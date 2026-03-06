@@ -106,7 +106,9 @@ function ProgressBar({ status, color }: { status: NodeStatus; color: string }) {
             position: "absolute",
             left: 0, top: 0, bottom: 0,
             borderRadius: 9999,
-            background: status === "success" ? "#10B981" : "#EF4444",
+            background: status === "success"
+              ? `linear-gradient(90deg, ${color}, ${color}aa)`
+              : "#EF4444",
           }}
         />
       )}
@@ -179,19 +181,18 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
           border: `1px solid ${
             status === "error" ? "rgba(248,113,113,0.5)" :
             status === "success" ? "rgba(52,211,153,0.5)" :
-            selected ? `rgba(${rgb}, 0.6)` :
-            isHovered ? "rgba(255,255,255,0.15)" :
-            isInput ? "rgba(255,255,255,0.12)" :
-            "rgba(255,255,255,0.08)"
+            selected ? `rgba(${rgb}, 0.7)` :
+            isHovered ? `${color}70` :
+            `${color}40`
           }`,
           borderRadius: 12,
           boxShadow: isHovered
-            ? `0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)${stateGlow ? `, ${stateGlow}` : ""}`
-            : `0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)${stateGlow ? `, ${stateGlow}` : ""}`,
-          backdropFilter: "blur(32px) saturate(1.3)",
-          WebkitBackdropFilter: "blur(32px) saturate(1.3)",
-          transform: isHovered && !selected ? "translateY(-2px)" : "translateY(0)",
-          transition: "all 200ms ease-out",
+            ? `0 12px 40px rgba(0,0,0,0.6), 0 0 25px ${color}25, inset 0 1px 0 rgba(255,255,255,0.06)${stateGlow ? `, ${stateGlow}` : ""}`
+            : `0 8px 32px rgba(0,0,0,0.5), 0 0 15px ${color}15, inset 0 1px 0 rgba(255,255,255,0.06)${stateGlow ? `, ${stateGlow}` : ""}`,
+          backdropFilter: "blur(20px) saturate(1.3)",
+          WebkitBackdropFilter: "blur(20px) saturate(1.3)",
+          transform: isHovered && !selected ? "translateY(-3px)" : "translateY(0)",
+          transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
           overflow: "hidden",
           cursor: "pointer",
           position: "relative",
@@ -205,7 +206,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
           borderTopLeftRadius: 12,
           borderBottomLeftRadius: 12,
           background: `linear-gradient(180deg, ${color}, ${color}AA)`,
-          boxShadow: `0 0 12px rgba(${rgb}, 0.4)`,
+          boxShadow: `4px 0 12px ${color}35, 0 0 16px rgba(${rgb}, 0.4)`,
         }} />
 
         {/* Running border pulse */}
@@ -269,7 +270,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
               {getIcon(data.icon, 18)}
             </div>
             <span style={{
-              fontSize: 13, fontWeight: 600, color: "#e8e8f0", letterSpacing: "-0.01em",
+              fontSize: 13, fontWeight: 600, color: "#ededf5", letterSpacing: "-0.01em",
               flex: 1, overflow: "hidden", textOverflow: "ellipsis",
               whiteSpace: "nowrap", lineHeight: 1.3,
             }}>
@@ -279,7 +280,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
               <span style={{
                 fontSize: 9, fontWeight: 700, color: color,
                 padding: "2px 8px", borderRadius: 6,
-                background: `${color}18`,
+                background: `${color}30`,
                 border: `1px solid ${color}30`,
                 flexShrink: 0, letterSpacing: "0.08em",
                 textTransform: "uppercase" as const,

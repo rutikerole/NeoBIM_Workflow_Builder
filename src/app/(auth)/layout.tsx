@@ -266,7 +266,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           justifyContent: "center",
           padding: "40px",
           position: "relative",
-          background: "#07070D",
+          background: "radial-gradient(ellipse 50% 40% at 50% 0%, rgba(79,138,255,0.06) 0%, transparent 70%), #07070D",
         }}
       >
         {/* Subtle top glow */}

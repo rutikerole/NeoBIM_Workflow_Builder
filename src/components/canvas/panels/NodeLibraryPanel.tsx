@@ -224,7 +224,7 @@ function NodeItem({
 
       {/* Icon circle */}
       <div style={{
-        width: 32, height: 32, borderRadius: 8,
+        width: 32, height: 32, borderRadius: 10,
         background: `${cfg.color}12`,
         display: "flex", alignItems: "center", justifyContent: "center",
         color: cfg.color, flexShrink: 0, position: "relative",
@@ -636,7 +636,7 @@ export function NodeLibraryPanel() {
                 style={{
                   width: "100%", height: 36,
                   background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 8, paddingLeft: 28, paddingRight: search ? 28 : 12,
+                  borderRadius: 10, paddingLeft: 28, paddingRight: search ? 28 : 12,
                   fontSize: 13, color: "#e8e8f0", outline: "none",
                   boxSizing: "border-box",
                   transition: "all 150ms ease",

@@ -74,6 +74,8 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.07) transparent;
   }
 
   html {
@@ -110,8 +112,8 @@
 
   /* ── Custom scrollbars ──────────────────────────────────────── */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
@@ -119,8 +121,8 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
     transition: background 0.2s;
   }
 
@@ -491,6 +493,19 @@
 
 .animate-breathe {
   animation: breathe 3s ease-in-out infinite;
+}
+
+/* ===== BUILDFLOW PREMIUM ANIMATIONS ===== */
+
+@keyframes buildflow-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(79,138,255,0.2); }
+  50% { box-shadow: 0 0 35px rgba(79,138,255,0.4), 0 0 60px rgba(79,138,255,0.1); }
+}
+
+@keyframes buildflow-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(79,138,255,0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(79,138,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(79,138,255,0); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════

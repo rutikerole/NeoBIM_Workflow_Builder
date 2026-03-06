@@ -481,7 +481,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
             className="absolute inset-0 pointer-events-none"
             style={{
               zIndex: 0,
-              background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(79,138,255,0.04) 0%, transparent 70%)',
+              background: 'radial-gradient(ellipse 70% 50% at 50% 50%, rgba(79,138,255,0.035) 0%, transparent 70%)',
             }}
           />
           {/* Edge vignette — darkens corners for cinematic depth */}
@@ -489,7 +489,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
             className="absolute inset-0 pointer-events-none"
             style={{
               zIndex: 0,
-              background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%)',
+              background: 'radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.4) 100%)',
             }}
           />
 
@@ -525,9 +525,9 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
             {/* Dot grid — refined spacing and brightness */}
             <Background
               variant={BackgroundVariant.Dots}
-              gap={24}
+              gap={22}
               size={1}
-              color="rgba(255,255,255,0.035)"
+              color="rgba(255,255,255,0.05)"
             />
 
             {/* Styled controls — bottom-right, above minimap */}

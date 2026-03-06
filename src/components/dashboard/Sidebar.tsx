@@ -315,7 +315,7 @@ function NavItem({ href, label, badge, icon, isActive, collapsed, showLabels }: 
         justifyContent: collapsed ? "center" : "flex-start",
         borderRadius: 8,
         background: isActive
-          ? "rgba(255,255,255,0.06)"
+          ? "rgba(79,138,255,0.08)"
           : (hovered ? "rgba(255,255,255,0.04)" : "transparent"),
         textDecoration: "none",
         transition: "all 150ms ease",

@@ -72,9 +72,9 @@ export default function RegisterPage() {
       style={{
         background: "#0f1019",
         border: "1px solid rgba(255,255,255,0.06)",
-        borderRadius: 16,
+        borderRadius: 20,
         padding: "40px",
-        boxShadow: "0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.02) inset",
+        boxShadow: "0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.02) inset",
       }}
     >
       {/* Header */}

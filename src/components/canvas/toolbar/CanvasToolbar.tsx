@@ -508,15 +508,16 @@ export function CanvasToolbar({
                   height: 36, paddingLeft: 20, paddingRight: 16,
                   borderRadius: "10px 0 0 10px",
                   background: isWorkflowReady
-                    ? "linear-gradient(to right, #4F8AFF, #6366F1)"
+                    ? "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)"
                     : "#2A2A3E",
                   border: "none",
                   color: "#fff", fontSize: 14, fontWeight: 600,
+                  letterSpacing: "-0.01em",
                   cursor: isWorkflowReady ? "pointer" : "not-allowed",
                   transition: "all 200ms ease",
-                  boxShadow: isWorkflowReady ? "0 0 20px rgba(79,138,255,0.3)" : "none",
+                  boxShadow: isWorkflowReady ? "0 0 20px rgba(79,138,255,0.3), inset 0 1px 0 rgba(255,255,255,0.15)" : "none",
                   opacity: isWorkflowReady ? 1 : 0.5,
-                  animation: isWorkflowReady ? "glow-pulse 3s ease-in-out infinite" : "none",
+                  animation: isWorkflowReady ? "buildflow-glow 3s ease-in-out infinite" : "none",
                 }}
                 onMouseEnter={e => {
                   if (isWorkflowReady) {

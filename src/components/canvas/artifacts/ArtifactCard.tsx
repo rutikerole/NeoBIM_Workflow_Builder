@@ -93,7 +93,7 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
         backdropFilter: "blur(32px) saturate(1.3)",
         WebkitBackdropFilter: "blur(32px) saturate(1.3)",
         overflow: "hidden",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03)",
         animation: prefersReduced ? "none" : "slide-up 0.4s ease-out",
       }}
     >
@@ -302,7 +302,7 @@ function KpiBody({ data, accentColor }: { data: KpiArtifactData; accentColor: st
           borderRadius: 7, padding: "8px 10px",
         }}>
           <div style={{
-            fontSize: 20, fontWeight: 700, color: "#F0F0F5", lineHeight: 1.1,
+            fontSize: 24, fontWeight: 700, color: "#F0F0F5", lineHeight: 1.1,
           }}>
             {m.value}
             {m.unit && <span style={{ fontSize: 12, fontWeight: 400, color: "#5C5C78", marginLeft: 4 }}>{m.unit}</span>}
