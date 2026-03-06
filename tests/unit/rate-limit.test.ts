@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { checkRateLimit, freeTierRateLimit, proTierRateLimit } from '@/lib/rate-limit';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // Mock Upstash
 vi.mock('@upstash/ratelimit', () => ({
   Ratelimit: class MockRatelimit {
     constructor() {}
-    async limit(identifier: string) {
+    async limit() {
       return {
         success: true,
         limit: 1000,

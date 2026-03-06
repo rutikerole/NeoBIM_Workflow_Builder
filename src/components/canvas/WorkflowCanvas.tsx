@@ -36,7 +36,6 @@ import type { ChatMessage } from "./panels/AIChatPanel";
 import type { LogEntry } from "./ExecutionLog";
 import type { ContextMenuState } from "./ContextMenu";
 import { PromptInput } from "@/components/ai/PromptInput";
-import { UpgradeModal } from "@/components/billing/UpgradeModal";
 
 // ContextMenu is right-click only — load lazily
 const ContextMenu = dynamic(
@@ -258,7 +257,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
     setShowLog(true);
   }, []);
 
-  const { runWorkflow, isExecuting, rateLimitHit, clearRateLimitError } = useExecution({ onLog: addLogEntry });
+  const { runWorkflow, isExecuting } = useExecution({ onLog: addLogEntry });
 
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes as unknown as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges as Edge[]);

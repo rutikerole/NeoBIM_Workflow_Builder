@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowRight, Play, Zap, GitFork, Clock, Plus, TrendingUp, Sparkles } from "lucide-react";
 import { Header } from "@/components/dashboard/Header";
 import { WorkflowCard } from "@/components/community/WorkflowCard";
@@ -58,15 +58,9 @@ export default function DashboardPage() {
   const featuredWorkflows = PREBUILT_WORKFLOWS.slice(0, 3);
   const [workflowCount, setWorkflowCount] = useState<number | null>(null);
   const [executionCount, setExecutionCount] = useState<number | null>(null);
-  const [hoursSaved, setHoursSaved] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (executionCount !== null) {
-      const hours = Math.round((executionCount * 0.5) * 10) / 10;
-      setHoursSaved(hours);
-    }
-  }, [executionCount]);
+  const hoursSaved = executionCount !== null ? Math.round((executionCount * 0.5) * 10) / 10 : 0;
 
   useEffect(() => {
     Promise.all([

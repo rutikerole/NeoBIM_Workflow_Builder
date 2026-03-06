@@ -51,8 +51,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
     navigator.clipboard.writeText(errorText);
     
     // Show toast (if available)
-    if (typeof window !== "undefined" && (window as any).toast) {
-      (window as any).toast.success("Error details copied to clipboard");
+    if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).toast) {
+      ((window as unknown as Record<string, { success: (msg: string) => void }>).toast).success("Error details copied to clipboard");
     }
   };
 

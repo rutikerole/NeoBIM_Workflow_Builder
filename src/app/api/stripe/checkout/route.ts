@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { stripe, STRIPE_PLANS } from '@/lib/stripe';
+import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { 
   formatErrorResponse, 
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
           where: { id: user.id },
           data: { stripeCustomerId: customerId },
         });
-      } catch (stripeError: any) {
+      } catch (stripeError: unknown) {
         console.error("[stripe/checkout] Customer creation failed:", stripeError);
         return NextResponse.json(
           formatErrorResponse({
@@ -109,11 +109,11 @@ export async function POST(req: Request) {
       });
 
       return NextResponse.json({ url: checkoutSession.url });
-    } catch (stripeError: any) {
+    } catch (stripeError: unknown) {
       console.error("[stripe/checkout] Session creation failed:", stripeError);
-      
+
       // Handle specific Stripe errors
-      if (stripeError.code === 'resource_missing') {
+      if (stripeError instanceof Error && (stripeError as { code?: string }).code === 'resource_missing') {
         return NextResponse.json(
           formatErrorResponse({
             title: "Invalid plan selected",
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[stripe/checkout] Unexpected error:', error);
     return NextResponse.json(
       formatErrorResponse(UserErrors.INTERNAL_ERROR),

@@ -56,6 +56,7 @@ function duration(start: string, end: string | null) {
 
 function ArtifactIcon({ type }: { type: string }) {
   const style = { opacity: 0.7 };
+  // eslint-disable-next-line jsx-a11y/alt-text
   if (type === "image") return <Image size={11} style={style} />;
   if (type === "table" || type === "kpi") return <Table2 size={11} style={style} />;
   return <FileText size={11} style={style} />;
@@ -225,7 +226,8 @@ function DetailModal({ execution, onClose, onRerun }: DetailModalProps) {
                           maxHeight: 200, overflowY: "auto",
                         }}>
                           {a.type === "image"
-                            ? <img src={a.data.url as string} alt="artifact" style={{ maxWidth: "100%", borderRadius: 4 }} />
+                            ? // eslint-disable-next-line @next/next/no-img-element
+                              <img src={a.data.url as string} alt="artifact" style={{ maxWidth: "100%", borderRadius: 4 }} />
                             : JSON.stringify(a.data, null, 2)
                           }
                         </div>

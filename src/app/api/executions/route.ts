@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { workflowId, inputSummary, triggerType } = await req.json();
+  const { workflowId, inputSummary } = await req.json();
 
   if (!workflowId) {
     return NextResponse.json({ error: "workflowId required" }, { status: 400 });

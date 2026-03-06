@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { X, Zap, Check, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -81,10 +81,10 @@ export function UpgradeModal({
                 {/* Title & Message */}
                 <div className="text-center mb-8">
                   <h2 className="text-2xl font-bold text-[#F0F0F5] mb-3">
-                    You've Reached Your Daily Limit
+                    You&apos;ve Reached Your Daily Limit
                   </h2>
                   <p className="text-[#C0C0D0] text-base mb-2">
-                    You've used all <strong className="text-[#F0F0F5]">{usedRuns}/{limitRuns}</strong> free workflow runs today.
+                    You&apos;ve used all <strong className="text-[#F0F0F5]">{usedRuns}/{limitRuns}</strong> free workflow runs today.
                   </p>
                   <p className="text-[#9898B0] text-sm">
                     Resets in {resetHours} hours • Upgrade to Pro for unlimited runs

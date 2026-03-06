@@ -6,7 +6,7 @@ export async function GET(req: Request) {
   const session = await auth();
   
   // Only allow admins to view analytics
-  if (!session?.user?.id || (session.user as any).role !== "PLATFORM_ADMIN") {
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "PLATFORM_ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

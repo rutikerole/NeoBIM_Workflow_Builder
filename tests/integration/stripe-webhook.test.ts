@@ -56,7 +56,7 @@ describe('Stripe Webhooks - CRITICAL PATH', () => {
       };
 
       expect(mockSubscription.status).toBe('active');
-      expect(mockSubscription.items.data[0].price.id).toBe('price_test_pro');
+      expect(mockSubscription.items!.data[0].price.id).toBe('price_test_pro');
     });
   });
 

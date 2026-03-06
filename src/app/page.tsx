@@ -958,7 +958,7 @@ export default function LandingPage() {
               </div>
               <Link href="/dashboard" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px 24px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "#1A1A2A", color: "#F0F0F5", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 28 }}>Get Started</Link>
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#9898B0", marginBottom: 14 }}>What's included:</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#9898B0", marginBottom: 14 }}>What&apos;s included:</div>
                 {["3 workflows", "10 executions/month", "Community templates", "Basic node library", "Community support"].map(f => (<div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}><span style={{ color: "#4F8AFF" }}>✓</span><span style={{ fontSize: 14, color: "#9898B0" }}>{f}</span></div>))}
               </div>
             </motion.div>

@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     console.error("[auth/register] Error:", error);
     
     // Handle database errors
-    if ((error as any).code === "P2002") {
+    if ((error as { code?: string }).code === "P2002") {
       return NextResponse.json(
         formatErrorResponse(AuthErrors.EMAIL_ALREADY_EXISTS),
         { status: 409 }

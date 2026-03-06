@@ -173,20 +173,6 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
   );
 }
 
-// ─── Safe wrapper for body renderers ──────────────────────────────────────────
-
-function SafeBody({ children, type }: { children: React.ReactNode; type: string }) {
-  try {
-    return <>{children}</>;
-  } catch {
-    return (
-      <div style={{ padding: "8px 14px", fontSize: 11, color: "#EF4444" }}>
-        Unable to render {type} artifact
-      </div>
-    );
-  }
-}
-
 // Error boundary for class-based catch
 class ArtifactErrorBoundary extends React.Component<
   { children: React.ReactNode; fallbackType: string },
@@ -264,6 +250,7 @@ function ImageBody({ data }: { data: ImageArtifactData }) {
     <div>
       <div style={{ position: "relative", height: 160, background: "#07070D" }}>
         {data?.url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={data.url}
             alt={data.label ?? "Artifact image"}

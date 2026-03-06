@@ -53,7 +53,7 @@ export type AnalyticsEvent =
 export interface AnalyticsEventData {
   userId?: string;
   eventName: AnalyticsEvent;
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
   timestamp?: Date;
   source?: "organic" | "producthunt" | "reddit" | "email" | "twitter" | "direct" | "other";
   sessionId?: string;
@@ -79,7 +79,7 @@ export async function trackEvent(data: AnalyticsEventData): Promise<void> {
     await writeEventToLog(event);
 
     if (data.userId) {
-      await updateUserMetrics(data.userId, data.eventName);
+      await updateUserMetrics(data.userId);
     }
 
     if (process.env.NODE_ENV === "development") {
@@ -149,18 +149,18 @@ async function writeEventToLog(event: EventRecord): Promise<void> {
   }
 }
 
-async function updateUserMetrics(userId: string, eventName: AnalyticsEvent): Promise<void> {
+async function updateUserMetrics(userId: string): Promise<void> {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { apiKeys: true } });
     if (!user) return;
 
-    const metadata = (user.apiKeys as any) || {};
-    const analytics = metadata._analytics || { totalEvents: 0, lastActivity: null };
+    const metadata = (user.apiKeys as Record<string, unknown>) || {};
+    const analytics = (metadata._analytics || { totalEvents: 0, lastActivity: null }) as { totalEvents: number; lastActivity: string | null };
     analytics.totalEvents += 1;
     analytics.lastActivity = new Date().toISOString();
     metadata._analytics = analytics;
 
-    await prisma.user.update({ where: { id: userId }, data: { apiKeys: metadata } });
+    await prisma.user.update({ where: { id: userId }, data: { apiKeys: metadata as object } });
   } catch (error) {
     console.error("Metrics update error:", error);
   }
@@ -194,14 +194,14 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     prisma.user.count(),
   ]);
 
-  const topSources = await getTopSources(today);
+  const topSources = await getTopSources();
   const revenue = paidUsers * 79;
   const conversionRate = totalUsers > 0 ? (paidUsers / totalUsers) * 100 : 0;
 
   return { signupsToday, activeUsers7d, totalWorkflows, totalExecutions, revenue, conversionRate, topSources };
 }
 
-async function getTopSources(since: Date): Promise<Array<{ source: string; count: number }>> {
+async function getTopSources(): Promise<Array<{ source: string; count: number }>> {
   try {
     const fs = await import("fs/promises");
     const path = await import("path");

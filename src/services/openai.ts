@@ -25,22 +25,24 @@ async function handleOpenAICall<T>(
 ): Promise<T> {
   try {
     return await fn();
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Detect specific OpenAI error types and throw user-friendly errors
     const userError = detectOpenAIError(error);
-    
+
+    const err = error as Record<string, unknown> | null | undefined;
+
     // Log the original error for debugging
     console.error("[OpenAI Error]", {
-      message: error?.message,
-      code: error?.code,
-      status: error?.status,
+      message: err?.message,
+      code: err?.code,
+      status: err?.status,
       userError: userError.code,
     });
-    
+
     // Throw APIError with user-friendly message
     throw new APIError(
       userError,
-      error?.status || 500
+      (typeof err?.status === "number" ? err.status : 500)
     );
   }
 }
@@ -281,6 +283,7 @@ export async function generateConceptImage(
   cameraAngle?: string,
   timeOfDay?: string
 ): Promise<{ url: string; revisedPrompt: string }> {
+  void style;
   return handleOpenAICall(async () => {
     const client = getClient(userApiKey);
 

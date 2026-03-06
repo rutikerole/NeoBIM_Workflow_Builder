@@ -422,8 +422,6 @@ export async function executeNode(
         lines: Array<{ division: string; csiCode: string; description: string; unit: string; quantity: number; materialRate: number; laborRate: number; equipmentRate: number; unitRate: number; materialCost: number; laborCost: number; equipmentCost: number; totalCost: number }>;
         subtotalMaterial: number; subtotalLabor: number; subtotalEquipment: number; grandTotal: number;
       } | undefined;
-      const upstreamSummary = inputData?.summary as Record<string, unknown> | undefined;
-
       let exportCsvContent: string;
       let exportLineCount: number;
       let exportGrandTotal: number;

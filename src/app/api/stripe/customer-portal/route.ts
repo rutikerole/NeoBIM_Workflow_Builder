@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     // 1. Authenticate user
     const session = await auth();

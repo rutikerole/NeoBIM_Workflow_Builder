@@ -28,14 +28,14 @@ export async function GET() {
     let subscriptionStatus = null;
     if (user.stripeSubscriptionId) {
       try {
-        const subscription: any = await stripe.subscriptions.retrieve(
+        const subscription = await stripe.subscriptions.retrieve(
           user.stripeSubscriptionId
         );
         subscriptionStatus = {
           status: subscription.status,
           cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
-          currentPeriodEnd: (subscription as any).current_period_end 
-            ? new Date((subscription as any).current_period_end * 1000)
+          currentPeriodEnd: (subscription as unknown as { current_period_end?: number }).current_period_end
+            ? new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000)
             : null,
         };
       } catch (error) {
@@ -48,10 +48,10 @@ export async function GET() {
       subscription: subscriptionStatus,
       hasActiveSubscription: !!user.stripeSubscriptionId && isSubscriptionActive(user.stripeCurrentPeriodEnd),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[STRIPE_SUBSCRIPTION]', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

@@ -109,19 +109,19 @@ async function executeNode(
       // Special handling for 429 Rate Limit errors
       if (res.status === 429) {
         const rateLimitError = new Error(error.message);
-        (rateLimitError as any).status = 429;
-        (rateLimitError as any).title = error.title;
-        (rateLimitError as any).action = error.action;
-        (rateLimitError as any).actionUrl = error.actionUrl;
+        (rateLimitError as unknown as Record<string, unknown>).status = 429;
+        (rateLimitError as unknown as Record<string, unknown>).title = error.title;
+        (rateLimitError as unknown as Record<string, unknown>).action = error.action;
+        (rateLimitError as unknown as Record<string, unknown>).actionUrl = error.actionUrl;
         throw rateLimitError;
       }
-      
+
       // Throw error with user-friendly message
       const err = new Error(error.message);
-      (err as any).title = error.title;
-      (err as any).code = error.code;
-      (err as any).action = error.action;
-      (err as any).actionUrl = error.actionUrl;
+      (err as unknown as Record<string, unknown>).title = error.title;
+      (err as unknown as Record<string, unknown>).code = error.code;
+      (err as unknown as Record<string, unknown>).action = error.action;
+      (err as unknown as Record<string, unknown>).actionUrl = error.actionUrl;
       throw err;
     }
 
@@ -356,13 +356,14 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
         setTimeout(() => setEdgeFlowing(node.id, false), FLOW_DURATION_MS);
 
       } catch (error) {
-        const errTitle = (error as any).title || "Error";
+        const errRecord = error as unknown as Record<string, unknown>;
+        const errTitle = (errRecord.title as string) || "Error";
         const errMsg = error instanceof Error ? error.message : "Unknown error";
-        const errAction = (error as any).action;
-        const errActionUrl = (error as any).actionUrl;
+        const errAction = errRecord.action as string | undefined;
+        const errActionUrl = errRecord.actionUrl as string | undefined;
 
         // Check if this is a rate limit error — must stop execution
-        if ((error as any).status === 429) {
+        if (errRecord.status === 429) {
           hasError = true;
           updateNodeStatus(node.id, "error");
           log("error", "Rate limit exceeded", errMsg);

@@ -14,8 +14,9 @@ export interface ValidationResult {
 /**
  * TR-003: Building Description Generator
  */
-export function validateTR003Input(inputData: any): ValidationResult {
-  const prompt = inputData?.prompt ?? inputData?.content ?? "";
+export function validateTR003Input(inputData: unknown): ValidationResult {
+  const input = inputData as Record<string, unknown> | null | undefined;
+  const prompt = input?.prompt ?? input?.content ?? "";
 
   if (typeof prompt !== "string") {
     return {
@@ -47,7 +48,7 @@ export function validateTR003Input(inputData: any): ValidationResult {
 /**
  * GN-003: Concept Image Generator
  */
-export function validateGN003Input(inputData: any): ValidationResult {
+export function validateGN003Input(inputData: unknown): ValidationResult {
   // GN-003 can accept either:
   // 1. A full building description object from TR-003
   // 2. A simple prompt string
@@ -60,9 +61,11 @@ export function validateGN003Input(inputData: any): ValidationResult {
     };
   }
 
+  const input = inputData as Record<string, unknown>;
+
   // If it's a building description object, validate structure
-  if (inputData._raw || inputData.projectName) {
-    const desc = inputData._raw ?? inputData;
+  if (input._raw || input.projectName) {
+    const desc = (input._raw ?? input) as Record<string, unknown>;
     if (!desc.projectName && !desc.buildingType) {
       return {
         valid: false,
@@ -73,7 +76,7 @@ export function validateGN003Input(inputData: any): ValidationResult {
   }
 
   // If it's a simple prompt, validate length
-  const prompt = inputData?.prompt ?? inputData?.content;
+  const prompt = input?.prompt ?? input?.content;
   if (typeof prompt === "string") {
     if (prompt.trim().length < 10) {
       return {
@@ -97,7 +100,7 @@ export function validateGN003Input(inputData: any): ValidationResult {
 /**
  * TR-007: Quantity Extractor
  */
-export function validateTR007Input(inputData: any): ValidationResult {
+export function validateTR007Input(inputData: unknown): ValidationResult {
   // TR-007 accepts IFC data or falls back to realistic quantities
   // No strict validation needed (fallback is acceptable)
   // But we should warn if no IFC data provided
@@ -108,9 +111,11 @@ export function validateTR007Input(inputData: any): ValidationResult {
     };
   }
 
+  const input = inputData as Record<string, unknown>;
+
   // If IFC data is provided, check it's valid
-  if (inputData.ifcData) {
-    if (typeof inputData.ifcData !== "object") {
+  if (input.ifcData) {
+    if (typeof input.ifcData !== "object") {
       return {
         valid: false,
         error: "Invalid IFC data format",
@@ -125,9 +130,10 @@ export function validateTR007Input(inputData: any): ValidationResult {
 /**
  * TR-008: BOQ Cost Mapper
  */
-export function validateTR008Input(inputData: any): ValidationResult {
+export function validateTR008Input(inputData: unknown): ValidationResult {
   // TR-008 requires elements from TR-007
-  const elements = inputData?._elements ?? inputData?.elements ?? inputData?.rows;
+  const input = inputData as Record<string, unknown> | null | undefined;
+  const elements = input?._elements ?? input?.elements ?? input?.rows;
 
   if (!elements || !Array.isArray(elements)) {
     return {
@@ -151,10 +157,11 @@ export function validateTR008Input(inputData: any): ValidationResult {
 /**
  * EX-002: BOQ Spreadsheet Exporter
  */
-export function validateEX002Input(inputData: any): ValidationResult {
+export function validateEX002Input(inputData: unknown): ValidationResult {
   // EX-002 requires rows and headers from TR-008
-  const rows = inputData?.rows;
-  const headers = inputData?.headers;
+  const input = inputData as Record<string, unknown> | null | undefined;
+  const rows = input?.rows;
+  const headers = input?.headers;
 
   if (!rows || !Array.isArray(rows)) {
     return {
@@ -188,7 +195,7 @@ export function validateEX002Input(inputData: any): ValidationResult {
  */
 export function validateNodeInput(
   catalogueId: string,
-  inputData: any
+  inputData: unknown
 ): ValidationResult {
   switch (catalogueId) {
     case "TR-003":
@@ -211,7 +218,7 @@ export function validateNodeInput(
  */
 export function assertValidInput(
   catalogueId: string,
-  inputData: any
+  inputData: unknown
 ): void {
   const result = validateNodeInput(catalogueId, inputData);
   if (!result.valid) {

@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 
-// Initialize Stripe with API version
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+// Initialize Stripe — uses placeholder during build when env var is missing
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_placeholder_for_build', {
   apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion,
   typescript: true,
 });

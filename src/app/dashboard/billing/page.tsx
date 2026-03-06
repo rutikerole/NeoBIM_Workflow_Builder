@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Header } from "@/components/dashboard/Header";
 import { useSession } from "next-auth/react";
-import { Check, Sparkles, Shield, Zap, Loader2, Lock, CreditCard, Users } from "lucide-react";
+import { Check, Sparkles, Shield, Zap, Loader2, Lock, CreditCard } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface UsageStats {
@@ -14,7 +14,7 @@ interface UsageStats {
 }
 
 // Security Badge Component
-function SecurityBadge({ icon: Icon, label }: { icon: any; label: string }) {
+function SecurityBadge({ icon: Icon, label }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1A1A2A] border border-[rgba(255,255,255,0.06)]">
       <Icon size={14} className="text-[#10B981]" />
@@ -294,7 +294,7 @@ export default function BillingPage() {
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)]">
                     <Zap size={16} className="text-[#EF4444]" />
                     <p className="text-sm text-[#EF4444] flex-1">
-                      You've reached your daily limit. <strong>Upgrade to Pro for unlimited runs!</strong>
+                      You&apos;ve reached your daily limit. <strong>Upgrade to Pro for unlimited runs!</strong>
                     </p>
                   </div>
                 )}
@@ -439,7 +439,7 @@ export default function BillingPage() {
             <div>
               <h4 className="font-semibold text-[#F0F0F5] mb-2">Can I switch plans anytime?</h4>
               <p className="text-[#C0C0D0] leading-relaxed">
-                Yes! Upgrade or downgrade anytime. Changes take effect immediately, and we'll prorate your billing.
+                Yes! Upgrade or downgrade anytime. Changes take effect immediately, and we&apos;ll prorate your billing.
               </p>
             </div>
             <div>

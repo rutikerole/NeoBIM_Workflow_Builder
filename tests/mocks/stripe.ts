@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 
 export const mockStripe = {
   webhooks: {
-    constructEvent: vi.fn((body, signature, secret) => {
+    constructEvent: vi.fn((_body, signature) => {
       if (signature === 'invalid') {
         throw new Error('Invalid signature');
       }

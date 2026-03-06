@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, ArrowRight, Play } from "lucide-react";
@@ -19,8 +19,6 @@ export default function DemoPage() {
   const setDemoMode = useUIStore((s) => s.setDemoMode);
   const clearArtifacts = useExecutionStore((s) => s.clearArtifacts);
   const initialized = useRef(false);
-  const [hasRun, setHasRun] = useState(false);
-
   // Load WF-01 template and enable demo mode on mount
   useEffect(() => {
     if (initialized.current) return;
@@ -53,14 +51,8 @@ export default function DemoPage() {
     }
   }, [nodes]);
 
-  // Track when execution completes (artifacts appear)
   const artifactCount = useExecutionStore((s) => s.artifacts.size);
-  useEffect(() => {
-    if (artifactCount > 0) {
-      // Only update once when first artifact arrives
-      setHasRun((prev) => prev || true);
-    }
-  }, [artifactCount]);
+  const hasRun = artifactCount > 0;
 
   return (
     <div

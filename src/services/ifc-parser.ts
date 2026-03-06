@@ -28,7 +28,6 @@ import {
   IFCFOOTING,
   IFCPROJECT,
   IFCRELDEFINESBYPROPERTIES,
-  IFCELEMENTQUANTITY,
 } from "web-ifc";
 
 // ============================================================================
@@ -53,7 +52,7 @@ export interface QuantityData {
   thickness?: number;
   perimeter?: number;
   openingArea?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface IFCElementData {
@@ -63,7 +62,7 @@ export interface IFCElementData {
   storey: string;
   material: string;
   quantities: QuantityData;
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
 }
 
 export interface CSICategory {
@@ -364,7 +363,7 @@ function buildPropertyLookup(
         // Skip malformed relationships
       }
     }
-  } catch (e) {
+  } catch {
     warnings.push("Failed to build property lookup from IfcRelDefinesByProperties");
   }
 
@@ -375,17 +374,18 @@ function buildPropertyLookup(
  * Extract a numeric value from a quantity line object.
  * web-ifc returns quantity values under different property names.
  */
-function getQuantityValue(quantityLine: any): number {
+function getQuantityValue(quantityLine: Record<string, unknown>): number {
   // Try all known value properties
   for (const prop of [
     "AreaValue", "VolumeValue", "LengthValue", "CountValue", "WeightValue",
     "areaValue", "volumeValue", "lengthValue", "countValue", "weightValue",
   ]) {
-    if (quantityLine[prop]?.value != null) {
-      return Number(quantityLine[prop].value);
+    const entry = quantityLine[prop] as Record<string, unknown> | number | null | undefined;
+    if (entry != null && typeof entry === "object" && entry.value != null) {
+      return Number(entry.value);
     }
-    if (typeof quantityLine[prop] === "number") {
-      return quantityLine[prop];
+    if (typeof entry === "number") {
+      return entry;
     }
   }
   return 0;
@@ -407,14 +407,6 @@ function extractQuantities(
       try {
         const propDef = ifcAPI.GetLine(modelID, propDefId, false);
         if (!propDef) continue;
-
-        // Check if it's an IfcElementQuantity (name usually starts with "Qto_")
-        const qtoName = propDef.Name?.value || "";
-        const isElementQuantity =
-          qtoName.startsWith("Qto_") ||
-          qtoName.startsWith("BaseQuantities") ||
-          propDef.type === IFCELEMENTQUANTITY ||
-          propDef.expressID != null; // We check quantities inside regardless
 
         // Get the Quantities array from the IfcElementQuantity
         const quantitiesRef = propDef.Quantities;
@@ -566,12 +558,7 @@ function getMaterialName(
   }
 }
 
-function getStoreyName(
-  ifcAPI: IfcAPI,
-  modelID: number,
-  expressID: number,
-  storeyMap: Map<number, string>
-): string {
+function getStoreyName(): string {
   try {
     return "Unassigned";
   } catch {
@@ -588,6 +575,8 @@ export async function parseIFCBuffer(
   filename: string,
   customWasteFactors?: Record<string, number>
 ): Promise<IFCParseResult> {
+  void filename;
+  void customWasteFactors;
   const startTime = Date.now();
   const warnings: string[] = [];
   const errors: string[] = [];
@@ -620,7 +609,7 @@ export async function parseIFCBuffer(
         projectGuid = project.GlobalId.value;
       }
     }
-  } catch (err) {
+  } catch {
     warnings.push("Failed to extract project metadata");
   }
 
@@ -644,7 +633,7 @@ export async function parseIFCBuffer(
         height: 3.0,
         elementCount: 0,
       });
-    } catch (err) {
+    } catch {
       warnings.push(`Failed to parse storey ${storeyID}`);
     }
   }
@@ -714,7 +703,7 @@ export async function parseIFCBuffer(
             quantities.volume.base * (1 + csiMapping.wasteFactor / 100);
         }
 
-        const storeyName = getStoreyName(ifcAPI, modelID, expressID, storeyMap);
+        const storeyName = getStoreyName();
 
         const elementData: IFCElementData = {
           id: globalId,
@@ -738,7 +727,7 @@ export async function parseIFCBuffer(
         divisionMap.get(csiMapping.code)!.push(elementData);
         processedElements++;
 
-      } catch (err) {
+      } catch {
         failedElements++;
         warnings.push(`Failed to process ${label} element ${expressID}`);
       }
@@ -825,7 +814,7 @@ export async function parseIFCBuffer(
   divisions.sort((a, b) => a.code.localeCompare(b.code));
 
   // Calculate summary
-  const grossFloorArea = buildingStoreys.reduce((sum, storey) => sum + 0, 0);
+  const grossFloorArea = buildingStoreys.reduce((sum) => sum + 0, 0);
   const totalConcrete = divisions.find((d) => d.code === "03")?.totalVolume;
   const totalMasonry = divisions.find((d) => d.code === "04")?.totalArea;
 

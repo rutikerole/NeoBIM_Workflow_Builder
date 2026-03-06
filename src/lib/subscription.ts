@@ -55,6 +55,7 @@ export async function hasFeatureAccess(
   userId: string,
   feature: "unlimited_runs" | "private_workflows" | "advanced_ai" | "export" | "team_collab"
 ): Promise<boolean> {
+  void feature;
   const status = await getSubscriptionStatus(userId);
 
   // Free tier has no premium features

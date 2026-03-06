@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const session = await auth();
     if (!session?.user?.email) {
@@ -28,10 +28,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ url: portalSession.url });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Stripe portal error:', error);
     return NextResponse.json(
-      { error: 'Failed to create portal session', details: error.message },
+      { error: 'Failed to create portal session', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

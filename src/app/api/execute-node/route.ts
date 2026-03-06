@@ -162,8 +162,8 @@ export async function POST(req: NextRequest) {
       // Quantity Extractor — Real IFC parsing with net area calculations
       const ifcData = inputData?.ifcData ?? inputData?.content ?? null;
 
-      let rows: string[][] = [];
-      let elements: Array<{
+      const rows: string[][] = [];
+      const elements: Array<{
         description: string; category: string; quantity: number; unit: string;
         grossArea?: number; netArea?: number; openingArea?: number; totalVolume?: number;
       }> = [];
@@ -306,14 +306,14 @@ export async function POST(req: NextRequest) {
       // Process each element
       for (const elem of elements) {
         const description = typeof elem === "string" ? elem : elem.description ?? elem[0];
-        let quantity = typeof elem === "object" ? (elem.quantity ?? elem[2] ?? 1) : 1;
+        const quantity = typeof elem === "object" ? (elem.quantity ?? elem[2] ?? 1) : 1;
         
         // Find matching unit rate from database
         const unitRateData = findUnitRate(description);
         
         if (unitRateData && unitRateData.category === "hard") {
           // Apply regional factor
-          const { adjustedRate, multiplier } = applyRegionalFactor(
+          const { adjustedRate } = applyRegionalFactor(
             unitRateData.baseRate,
             region
           );

@@ -1,6 +1,5 @@
 "use client";
 
-import type { Metadata } from "next";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Zap, Users, Workflow, TrendingUp } from "lucide-react";

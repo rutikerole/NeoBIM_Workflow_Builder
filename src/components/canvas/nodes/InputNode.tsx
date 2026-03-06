@@ -136,6 +136,7 @@ export function FileUploadInput({ nodeId, data, accept, label, maxMB = 20, showP
           display: "flex", flexDirection: "column", gap: 4,
         }}>
           {isImage && fileObj && (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={URL.createObjectURL(fileObj)}
               alt="preview"

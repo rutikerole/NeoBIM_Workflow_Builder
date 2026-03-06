@@ -156,9 +156,10 @@ export function formatErrorResponse(error: UserError, details?: string) {
 /**
  * Detect OpenAI error type from error message/code
  */
-export function detectOpenAIError(error: any): UserError {
-  const message = error?.message?.toLowerCase() || "";
-  const code = error?.code;
+export function detectOpenAIError(error: unknown): UserError {
+  const err = error as Record<string, unknown> | null | undefined;
+  const message = (typeof err?.message === "string" ? err.message : "").toLowerCase();
+  const code = err?.code;
 
   // Quota exceeded
   if (
@@ -184,7 +185,7 @@ export function detectOpenAIError(error: any): UserError {
   }
 
   // Server error
-  if (error?.status >= 500) {
+  if (typeof err?.status === "number" && err.status >= 500) {
     return UserErrors.OPENAI_SERVER_ERROR;
   }
 
@@ -319,48 +320,54 @@ export const BillingErrors = {
 /**
  * Enhanced error detection for network failures
  */
-export function detectNetworkError(error: any): UserError | null {
+export function detectNetworkError(error: unknown): UserError | null {
   if (!navigator.onLine) {
     return NetworkErrors.OFFLINE;
   }
-  
-  if (error?.code === "ECONNABORTED" || error?.message?.includes("timeout")) {
+
+  const err = error as Record<string, unknown> | null | undefined;
+  const message = typeof err?.message === "string" ? err.message : "";
+
+  if (err?.code === "ECONNABORTED" || message.includes("timeout")) {
     return NetworkErrors.TIMEOUT;
   }
-  
-  if (error?.code === "ENOTFOUND" || error?.code === "ECONNREFUSED" || error?.message?.includes("fetch")) {
+
+  if (err?.code === "ENOTFOUND" || err?.code === "ECONNREFUSED" || message.includes("fetch")) {
     return NetworkErrors.CONNECTION_FAILED;
   }
-  
+
   return null;
 }
 
 /**
  * Unified error handler for API calls
  */
-export async function handleAPIError(error: any): Promise<UserError> {
+export async function handleAPIError(error: unknown): Promise<UserError> {
   // Check network errors first
   const networkError = detectNetworkError(error);
   if (networkError) return networkError;
-  
+
+  const err = error as Record<string, unknown> | null | undefined;
+
   // Check if it's already a formatted API error
-  if (error?.error?.code && error?.error?.message) {
-    return error.error;
+  const nestedError = err?.error as Record<string, unknown> | undefined;
+  if (nestedError?.code && nestedError?.message) {
+    return nestedError as unknown as UserError;
   }
-  
+
   // Check for specific status codes
-  if (error?.status === 401 || error?.statusCode === 401) {
+  if (err?.status === 401 || err?.statusCode === 401) {
     return UserErrors.UNAUTHORIZED;
   }
-  
-  if (error?.status === 429 || error?.statusCode === 429) {
+
+  if (err?.status === 429 || err?.statusCode === 429) {
     return UserErrors.RATE_LIMIT_FREE(24); // Default to 24h
   }
-  
-  if (error?.status === 403 || error?.statusCode === 403) {
+
+  if (err?.status === 403 || err?.statusCode === 403) {
     return AuthErrors.NO_PERMISSION;
   }
-  
+
   // Generic fallback
   return UserErrors.INTERNAL_ERROR;
 }

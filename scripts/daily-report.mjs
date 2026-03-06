@@ -48,7 +48,7 @@ async function getDashboardMetrics() {
   };
 }
 
-async function getTopSources(since) {
+async function getTopSources() {
   try {
     const logDir = path.join(process.cwd(), "analytics-logs");
     const files = await fs.readdir(logDir);
