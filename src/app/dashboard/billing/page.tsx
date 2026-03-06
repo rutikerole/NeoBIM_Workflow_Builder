@@ -130,7 +130,7 @@ export default function BillingPage() {
       name: "Free",
       price: "$0",
       period: "forever",
-      description: "Perfect for exploring NeoBIM",
+      description: "Perfect for exploring Workflow Builder",
       features: [
         "3 workflow runs per day",
         "Access to all node types",
@@ -446,13 +446,13 @@ export default function BillingPage() {
             <h3 className="text-lg font-bold text-[#F0F0F5] mb-2">Trusted by AEC professionals worldwide</h3>
             <div className="flex items-center justify-center gap-2 text-sm text-[#9898B0]">
               <Users size={16} />
-              <span>2,400+ architects and engineers use NeoBIM</span>
+              <span>2,400+ architects and engineers use Workflow Builder</span>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <Testimonial
-              quote="NeoBIM reduced our concept design time from 2 weeks to 3 hours. The ROI is insane."
+              quote="Workflow Builder reduced our concept design time from 2 weeks to 3 hours. The ROI is insane."
               author="Sarah Chen"
               role="Design Director"
               company="Studio Arch"

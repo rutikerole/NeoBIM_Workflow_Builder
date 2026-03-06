@@ -49,7 +49,7 @@ export function generatePageMetadata({
       title,
       description,
       url: fullUrl,
-      siteName: "NeoBIM",
+      siteName: "Workflow Builder",
       images: [
         {
           url: `${siteUrl}${ogImage}`,
@@ -75,7 +75,7 @@ export function generatePageMetadata({
  */
 export const pageSEO = {
   home: generatePageMetadata({
-    title: "NeoBIM — AI-Powered Workflow Builder for AEC",
+    title: "Workflow Builder — AI-Powered Workflows for AEC",
     description:
       "Build AI-powered AEC workflows visually. Drag-and-drop nodes to create pipelines from PDF briefs to 3D massing to concept renders — without writing code.",
     keywords: [
@@ -112,21 +112,21 @@ export const pageSEO = {
   community: generatePageMetadata({
     title: "Community Workflows",
     description:
-      "Discover and use workflows shared by the NeoBIM community. Learn from other architects and engineers.",
+      "Discover and use workflows shared by the Workflow Builder community. Learn from other architects and engineers.",
     keywords: ["AEC community", "shared workflows", "architecture community"],
     path: "/dashboard/community",
   }),
   
   login: generatePageMetadata({
     title: "Sign In",
-    description: "Sign in to your NeoBIM account",
+    description: "Sign in to your Workflow Builder account",
     path: "/login",
     noIndex: true,
   }),
   
   signup: generatePageMetadata({
     title: "Sign Up",
-    description: "Create your free NeoBIM account",
+    description: "Create your free Workflow Builder account",
     path: "/signup",
     noIndex: true,
   }),
