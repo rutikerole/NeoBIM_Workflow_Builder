@@ -57,7 +57,7 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: collapsed ? 56 : 232 }}
       transition={{ type: "spring", stiffness: 360, damping: 34 }}
-      className="flex flex-col h-full bg-[#06060c] border-r border-r-white/[0.06] overflow-hidden shrink-0 relative"
+      className="flex flex-col h-full bg-[#060610] border-r border-white/[0.06] overflow-hidden shrink-0 relative"
     >
       {/* Subtle atmospheric glow at top */}
       <div className="absolute top-0 left-0 right-0 h-[120px] bg-[radial-gradient(ellipse_at_50%_-20%,rgba(79,138,255,0.04),transparent_70%)] pointer-events-none" />
@@ -98,10 +98,11 @@ export function Sidebar() {
         <Link
           href="/dashboard/workflows/new"
           className={cn(
-            "press-effect flex items-center justify-center gap-[7px] h-10 rounded-[10px]",
-            "bg-[linear-gradient(to_right,#4F8AFF,#6366F1)] text-white font-semibold text-sm",
+            "flex items-center justify-center gap-2 h-10 rounded-xl",
+            "bg-gradient-to-r from-[#4F8AFF] to-[#6366F1] text-white text-[13px] font-semibold",
             "no-underline whitespace-nowrap transition-all duration-200",
-            "shadow-[0_2px_16px_rgba(79,138,255,0.25)] hover:shadow-[0_4px_24px_rgba(79,138,255,0.4)] hover:brightness-110",
+            "shadow-[0_4px_16px_rgba(79,138,255,0.25)] hover:brightness-110 active:scale-[0.96]",
+            "border-none cursor-pointer",
             collapsed ? "p-[9px]" : "p-0",
           )}
         >

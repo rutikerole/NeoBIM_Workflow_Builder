@@ -62,7 +62,7 @@ export function ExecutionLog({ entries, isRunning, onClose }: ExecutionLogProps)
       animate={{ y: 0, opacity: 1, scale: 1 }}
       exit={{ y: 40, opacity: 0, scale: 0.96 }}
       transition={{ type: "spring", stiffness: 420, damping: 32 }}
-      className="absolute bottom-4 left-4 z-[25] max-w-[calc(100vw-360px)] rounded-xl overflow-hidden bg-[rgba(5,5,8,0.95)] border border-white/[0.06] backdrop-blur-[20px] backdrop-saturate-[1.3] shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.03)] font-mono transition-[width] duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+      className="absolute bottom-4 left-4 z-[25] max-w-[calc(100vw-360px)] rounded-xl overflow-hidden bg-[#04040a] border border-white/[0.06] backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.45)] font-mono transition-[width] duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
       style={{ width: collapsed ? 220 : 420 }}
     >
       {/* Title bar */}

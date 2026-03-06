@@ -169,7 +169,7 @@ function NodeItem({
       onDragStart={e => onDragStart(e, node.id)}
       onMouseEnter={e => { setIsHovered(true); onTooltipShow(node, e.clientY); }}
       onMouseLeave={() => { setIsHovered(false); onTooltipHide(); }}
-      className="relative flex items-center gap-3 px-3 py-2.5 cursor-grab rounded-lg overflow-hidden select-none transition-all duration-150 active:scale-[0.98]"
+      className="relative flex items-center gap-3 px-3 py-2.5 cursor-grab rounded-xl overflow-hidden select-none transition-all duration-150 hover:bg-white/[0.05] active:scale-[0.98]"
       style={{
         '--ni-color': cfg.color,
         '--ni-rgb': rgb,
@@ -440,7 +440,7 @@ export function NodeLibraryPanel() {
       animate={{ x: 0, opacity: 1, width: isCollapsed ? 48 : panelWidth }}
       exit={{ x: -300, opacity: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="h-full bg-[rgba(6,6,12,0.95)] backdrop-blur-[32px] backdrop-saturate-[1.3] border-r border-r-white/[0.06] flex flex-col overflow-hidden shrink-0"
+      className="h-full bg-[#060610]/95 backdrop-blur-xl border-r border-white/[0.06] flex flex-col overflow-hidden shrink-0"
     >
       {/* Resize handle */}
       {!isCollapsed && (
@@ -518,8 +518,10 @@ export function NodeLibraryPanel() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search nodes..."
-                className="w-full h-9 bg-white/[0.03] border border-white/[0.06] rounded-lg pl-7 text-[13px] text-[#e8e8f0] outline-none box-border transition-all duration-150 focus:border-[rgba(79,138,255,0.30)] focus:bg-white/[0.04]"
-                style={{ paddingRight: search ? 28 : 12 }}
+                className={cn(
+                  "w-full h-9 bg-white/[0.03] border border-white/[0.07] rounded-xl pl-7 text-[13px] text-[#e8e8f0] placeholder-[#3a3a50] focus:border-[#4F8AFF]/30 focus:outline-none transition-all",
+                  search ? "pr-7" : "pr-3",
+                )}
               />
               {search && (
                 <button

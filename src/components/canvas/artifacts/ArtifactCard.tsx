@@ -91,17 +91,15 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
       exit={{ opacity: 0, scale: 0.94, transition: { duration: prefersReduced ? 0 : 0.15 } }}
       transition={{ type: "spring", stiffness: 380, damping: 32, duration: prefersReduced ? 0 : undefined }}
       className={cn(
-        "border-b border-b-white/[0.06] border-l-[3px]",
-        "bg-[#0c0c18]/95 backdrop-blur-[32px] backdrop-saturate-[1.3]",
+        "bg-[#0c0c18]/95 backdrop-blur-xl border border-white/[0.08] rounded-xl",
         "overflow-hidden",
-        "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)]",
+        "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
         !prefersReduced && "animate-slide-up",
       )}
       style={{
         '--accent-color': accentColor,
         '--type-color': typeColor,
         '--accent-rgb': rgb,
-        borderLeftColor: accentColor,
       } as React.CSSProperties}
     >
       {/* Header */}

@@ -312,7 +312,7 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 380, opacity: 0 }}
             transition={{ type: "spring", stiffness: 380, damping: 36 }}
-            className="absolute right-0 top-0 bottom-0 w-[380px] z-[25] bg-[rgba(6,6,12,0.95)] backdrop-blur-[32px] backdrop-saturate-[1.3] border-l border-l-white/[0.06] flex flex-col shadow-[-8px_0_32px_rgba(0,0,0,0.5)]"
+            className="absolute right-0 top-0 bottom-0 w-[380px] z-[25] bg-[#060610]/95 backdrop-blur-xl border-l border-white/[0.06] flex flex-col shadow-[-8px_0_32px_rgba(0,0,0,0.5)]"
           >
             {/* Header */}
             <div className="h-12 px-4 border-b border-b-white/[0.06] flex items-center gap-2 shrink-0">

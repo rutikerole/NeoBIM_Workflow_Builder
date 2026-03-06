@@ -160,7 +160,7 @@ export function CanvasToolbar({
   return (
     <>
       {/* Desktop toolbar */}
-      <div className="flex absolute top-0 left-0 right-0 z-[1000] h-12 items-center justify-between px-4 border-b border-b-white/[0.06] bg-[rgba(8,8,15,0.90)] backdrop-blur-[32px] backdrop-saturate-[1.3] shadow-[0_1px_3px_rgba(0,0,0,0.2),0_4px_16px_rgba(0,0,0,0.1)]">
+      <div className="flex absolute top-0 left-0 right-0 z-[1000] h-12 items-center justify-between px-4 border-b border-white/[0.06] bg-[#08080f]/85 backdrop-blur-xl">
         {/* ── Left group ──────────────────────────────────────────────────── */}
         <div className="flex items-center gap-0.5">
 
@@ -369,7 +369,7 @@ export function CanvasToolbar({
                 className={cn(
                   "flex items-center gap-2 h-9 pl-5 pr-4 rounded-l-[10px] border-none text-white text-sm font-semibold transition-all duration-200",
                   isWorkflowReady
-                    ? "bg-[linear-gradient(to_right,#4F8AFF,#6366F1)] cursor-pointer shadow-[0_0_20px_rgba(79,138,255,0.3)] hover:brightness-110 hover:shadow-[0_0_35px_rgba(79,138,255,0.5)] animate-[glow-pulse_3s_ease-in-out_infinite]"
+                    ? "bg-gradient-to-r from-[#4F8AFF] to-[#6366F1] cursor-pointer shadow-[0_0_20px_rgba(79,138,255,0.3)] hover:brightness-110 active:scale-[0.96] animate-[glow-pulse_3s_ease-in-out_infinite]"
                     : "bg-[#2A2A3E] cursor-not-allowed opacity-50 shadow-none",
                 )}
               >

@@ -138,8 +138,8 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: prefersReduced ? 0 : 0.22, ease: [0.4, 0, 0.2, 1] }}
         className={cn(
-          "relative overflow-hidden cursor-pointer rounded-node group",
-          "bg-[#0c0c18]/90 backdrop-blur-[32px] backdrop-saturate-[1.3]",
+          "relative overflow-hidden cursor-pointer rounded-xl group",
+          "bg-[#0c0c18]/90 backdrop-blur-xl",
           "transition-all duration-200 ease-out",
           isInput ? "w-[320px]" : "w-[220px]",
           // Border
@@ -149,16 +149,16 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
             ? "border border-emerald-400/50"
             : selected
             ? "border border-[rgba(var(--cat-rgb),0.6)]"
-            : "border border-white/[0.08] hover:border-white/[0.15]",
+            : "border border-white/[0.08] hover:border-white/[0.16]",
           // Shadow
           status === "success"
-            ? "shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04),0_0_30px_rgba(52,211,153,0.4)]"
+            ? "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04),0_0_30px_rgba(52,211,153,0.4)]"
             : status === "error"
-            ? "shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04),0_0_30px_rgba(248,113,113,0.4)]"
-            : "shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]",
-          "hover:shadow-[0_8px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)]",
+            ? "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04),0_0_30px_rgba(248,113,113,0.4)]"
+            : "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]",
+          "hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)]",
           // Hover transform (only when not selected)
-          !selected && "hover:-translate-y-0.5",
+          !selected && "hover:-translate-y-1",
         )}
         style={{
           '--cat-color': color,
@@ -175,7 +175,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
         {/* Running border pulse */}
         {status === "running" && (
           <motion.div
-            className="absolute inset-0 rounded-node pointer-events-none"
+            className="absolute inset-0 rounded-xl pointer-events-none"
             animate={{
               boxShadow: [
                 `inset 0 0 0 1px rgba(${rgb}, 0.25)`,
@@ -193,7 +193,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 0.6, 0] }}
             transition={{ duration: 1.2, ease: "easeOut" }}
-            className="absolute -inset-0.5 rounded-node pointer-events-none bg-[radial-gradient(circle,rgba(52,211,153,0.3)_0%,transparent_70%)]"
+            className="absolute -inset-0.5 rounded-xl pointer-events-none bg-[radial-gradient(circle,rgba(52,211,153,0.3)_0%,transparent_70%)]"
           />
         )}
 
@@ -202,7 +202,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
           <motion.div
             animate={{ opacity: [0.4, 0.7, 0.4] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -inset-0.5 rounded-node pointer-events-none bg-[radial-gradient(circle,rgba(248,113,113,0.25)_0%,transparent_70%)]"
+            className="absolute -inset-0.5 rounded-xl pointer-events-none bg-[radial-gradient(circle,rgba(248,113,113,0.25)_0%,transparent_70%)]"
           />
         )}
 

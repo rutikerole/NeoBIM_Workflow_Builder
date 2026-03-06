@@ -415,7 +415,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
         {/* React Flow */}
         <div className="absolute inset-0 pt-13">
           {/* Atmospheric blue center glow — rendered before ReactFlow for depth */}
-          <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,rgba(79,138,255,0.04)_0%,transparent_70%)]" />
+          <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,rgba(79,138,255,0.04)_0%,transparent_70%)]" />
           {/* Edge vignette — darkens corners for cinematic depth */}
           <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.5)_100%)]" />
 
@@ -446,7 +446,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
               strokeDasharray: "6 4",
               opacity: 0.7,
             }}
-            style={{ background: "#07070D" }}
+            style={{ background: "#07070e" }}
           >
             {/* Dot grid — refined spacing and brightness */}
             <Background
