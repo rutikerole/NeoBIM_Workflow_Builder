@@ -132,7 +132,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               { icon: <Users size={20} />, value: "2,400+", label: "Professionals" },
               { icon: <Workflow size={20} />, value: "28,000+", label: "Workflows Created" },
               { icon: <TrendingUp size={20} />, value: "99.9%", label: "Uptime" },
-              { icon: <Zap size={20} />, value: "<30s", label: "Avg Generation" },
+              { icon: <Zap size={20} />, value: "2-3 min", label: "Avg Generation" },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}

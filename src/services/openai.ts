@@ -126,7 +126,7 @@ Respond with a JSON object with these exact fields:
 - buildingType (string: e.g. "Mixed-Use Tower", "Educational Campus", "Healthcare Facility")
 - floors (number)
 - totalArea (number, in square meters)
-- structure (string: structural system description)
+- structure (string: conceptual structural approach - for design narrative only)
 - facade (string: facade material/system description)
 - sustainabilityFeatures (array of strings)
 - programSummary (string: brief description of building program)
@@ -249,7 +249,7 @@ ${cameraComposition}
 ${timeSettings}
 
 **Building Description:**
-${floors}-story ${typology} with ${facade} facade and ${structure} structural system. The building features ${description.programSummary}. Lower floors have recessed floor-to-ceiling glazing with warm LED lighting visible inside. Upper floors showcase the primary facade system with high-performance tinted glazing. Visible green terrace on upper setback levels. Rooftop with clean architectural profile.
+${floors}-story ${typology} with ${facade} facade and ${structure} conceptual structure. The building features ${description.programSummary}. Lower floors have recessed floor-to-ceiling glazing with warm LED lighting visible inside. Upper floors showcase the primary facade system with high-performance tinted glazing. Visible green terrace on upper setback levels. Rooftop with clean architectural profile.
 
 **Materials — Specific Details:**
 - **Facade:** ${facade} with subtle reflections of sky and adjacent buildings
