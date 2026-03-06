@@ -1,10 +1,11 @@
 /**
  * TR-007: IFC Quantity Extractor
  * Real IFC parsing with CSI MasterFormat mapping and waste factors
- * 
+ *
  * Extracts:
  * - Element counts by type
- * - Physical quantities (area, volume, length)
+ * - Physical quantities (area, volume, length) from IfcElementQuantity (Qto_*)
+ * - Net area calculations (gross minus openings)
  * - CSI division categorization
  * - Waste factor application
  * - Professional QS-ready output
@@ -22,13 +23,12 @@ import {
   IFCBEAM,
   IFCSTAIR,
   IFCRAILING,
-  IFCFURNISHINGELEMENT,
   IFCCOVERING,
   IFCROOF,
   IFCFOOTING,
   IFCPROJECT,
-  IFCBUILDING,
-  IFCSITE,
+  IFCRELDEFINESBYPROPERTIES,
+  IFCELEMENTQUANTITY,
 } from "web-ifc";
 
 // ============================================================================
@@ -52,6 +52,7 @@ export interface QuantityData {
   height?: number;
   thickness?: number;
   perimeter?: number;
+  openingArea?: number;
   [key: string]: any;
 }
 
@@ -77,6 +78,8 @@ export interface CSIDivision {
   totalVolume?: number;
   volumeWithWaste?: number;
   totalArea?: number;
+  totalNetArea?: number;
+  totalOpeningArea?: number;
   areaWithWaste?: number;
   wasteFactor: number;
   elementCount: number;
@@ -298,71 +301,247 @@ const IFC_TYPES = [
 ];
 
 // ============================================================================
-// QUANTITY EXTRACTION HELPERS
+// QUANTITY PROPERTY NAMES (ISO 16739)
 // ============================================================================
+
+const AREA_QUANTITY_NAMES = {
+  gross: ["GrossSideArea", "GrossArea", "GrossFootprintArea", "GrossSurfaceArea", "TotalSurfaceArea"],
+  net: ["NetSideArea", "NetArea", "NetFootprintArea", "NetSurfaceArea"],
+  opening: ["TotalOpeningArea", "OpeningArea"],
+  general: ["Area"],
+};
+
+const VOLUME_QUANTITY_NAMES = ["NetVolume", "GrossVolume", "Volume"];
+const LENGTH_QUANTITY_NAMES = ["Length", "NominalLength"];
+const WIDTH_QUANTITY_NAMES = ["Width", "NominalWidth", "Thickness"];
+const HEIGHT_QUANTITY_NAMES = ["Height", "NominalHeight", "Depth"];
+const PERIMETER_QUANTITY_NAMES = ["Perimeter", "GrossPerimeter"];
+
+// ============================================================================
+// QUANTITY EXTRACTION — Real IfcElementQuantity parsing
+// ============================================================================
+
+/**
+ * Build a lookup map: elementExpressID → [propertyDefinitionExpressID]
+ * This avoids O(n²) by iterating IfcRelDefinesByProperties once.
+ */
+function buildPropertyLookup(
+  ifcAPI: IfcAPI,
+  modelID: number,
+  warnings: string[]
+): Map<number, number[]> {
+  const lookup = new Map<number, number[]>();
+
+  try {
+    const relIds = ifcAPI.GetLineIDsWithType(modelID, IFCRELDEFINESBYPROPERTIES);
+    const relCount = relIds.size();
+
+    for (let i = 0; i < relCount; i++) {
+      try {
+        const relId = relIds.get(i);
+        const rel = ifcAPI.GetLine(modelID, relId, false);
+        if (!rel) continue;
+
+        // Get the property definition reference
+        const propDefRef = rel.RelatingPropertyDefinition;
+        if (!propDefRef?.value) continue;
+
+        // Get the related objects (elements this applies to)
+        const relatedObjects = rel.RelatedObjects;
+        if (!relatedObjects) continue;
+
+        const objRefs = Array.isArray(relatedObjects) ? relatedObjects : [relatedObjects];
+
+        for (const objRef of objRefs) {
+          const elementId = objRef?.value;
+          if (typeof elementId !== "number") continue;
+
+          const existing = lookup.get(elementId) || [];
+          existing.push(propDefRef.value);
+          lookup.set(elementId, existing);
+        }
+      } catch {
+        // Skip malformed relationships
+      }
+    }
+  } catch (e) {
+    warnings.push("Failed to build property lookup from IfcRelDefinesByProperties");
+  }
+
+  return lookup;
+}
+
+/**
+ * Extract a numeric value from a quantity line object.
+ * web-ifc returns quantity values under different property names.
+ */
+function getQuantityValue(quantityLine: any): number {
+  // Try all known value properties
+  for (const prop of [
+    "AreaValue", "VolumeValue", "LengthValue", "CountValue", "WeightValue",
+    "areaValue", "volumeValue", "lengthValue", "countValue", "weightValue",
+  ]) {
+    if (quantityLine[prop]?.value != null) {
+      return Number(quantityLine[prop].value);
+    }
+    if (typeof quantityLine[prop] === "number") {
+      return quantityLine[prop];
+    }
+  }
+  return 0;
+}
 
 function extractQuantities(
   ifcAPI: IfcAPI,
   modelID: number,
   expressID: number,
-  ifcType: string
+  ifcType: string,
+  propertyLookup: Map<number, number[]>
 ): QuantityData {
-  const quantities: QuantityData = {
-    count: 1,
-  };
+  const quantities: QuantityData = { count: 1 };
 
   try {
-    // Try to get quantity sets (Qto_*)
-    const propertySets = ifcAPI.GetLine(modelID, expressID, true);
+    const propDefIds = propertyLookup.get(expressID) || [];
 
-    // For walls, slabs, columns, beams - extract area/volume/length
+    for (const propDefId of propDefIds) {
+      try {
+        const propDef = ifcAPI.GetLine(modelID, propDefId, false);
+        if (!propDef) continue;
+
+        // Check if it's an IfcElementQuantity (name usually starts with "Qto_")
+        const qtoName = propDef.Name?.value || "";
+        const isElementQuantity =
+          qtoName.startsWith("Qto_") ||
+          qtoName.startsWith("BaseQuantities") ||
+          propDef.type === IFCELEMENTQUANTITY ||
+          propDef.expressID != null; // We check quantities inside regardless
+
+        // Get the Quantities array from the IfcElementQuantity
+        const quantitiesRef = propDef.Quantities;
+        if (!quantitiesRef) continue;
+
+        const qRefs = Array.isArray(quantitiesRef) ? quantitiesRef : [quantitiesRef];
+
+        for (const qRef of qRefs) {
+          try {
+            const qId = qRef?.value;
+            if (typeof qId !== "number") continue;
+
+            const qLine = ifcAPI.GetLine(modelID, qId, false);
+            if (!qLine) continue;
+
+            const name = qLine.Name?.value || "";
+            const value = getQuantityValue(qLine);
+
+            if (value === 0) continue;
+
+            // Match to known quantity names
+            // Area — gross
+            if (AREA_QUANTITY_NAMES.gross.some((n) => name === n)) {
+              if (!quantities.area) quantities.area = { unit: "m²" };
+              quantities.area.gross = value;
+            }
+            // Area — net
+            else if (AREA_QUANTITY_NAMES.net.some((n) => name === n)) {
+              if (!quantities.area) quantities.area = { unit: "m²" };
+              quantities.area.net = value;
+            }
+            // Area — opening
+            else if (AREA_QUANTITY_NAMES.opening.some((n) => name === n)) {
+              quantities.openingArea = value;
+            }
+            // Area — general fallback
+            else if (AREA_QUANTITY_NAMES.general.some((n) => name === n)) {
+              if (!quantities.area) quantities.area = { unit: "m²" };
+              if (!quantities.area.gross) quantities.area.gross = value;
+            }
+            // Volume
+            else if (VOLUME_QUANTITY_NAMES.some((n) => name === n)) {
+              if (!quantities.volume) quantities.volume = { base: 0, withWaste: 0, unit: "m³" };
+              quantities.volume.base = Math.max(quantities.volume.base, value);
+            }
+            // Length
+            else if (LENGTH_QUANTITY_NAMES.some((n) => name === n)) {
+              quantities.length = value;
+            }
+            // Width / Thickness
+            else if (WIDTH_QUANTITY_NAMES.some((n) => name === n)) {
+              quantities.width = value;
+              if (name === "Thickness") quantities.thickness = value;
+            }
+            // Height
+            else if (HEIGHT_QUANTITY_NAMES.some((n) => name === n)) {
+              quantities.height = value;
+            }
+            // Perimeter
+            else if (PERIMETER_QUANTITY_NAMES.some((n) => name === n)) {
+              quantities.perimeter = value;
+            }
+          } catch {
+            // Skip individual quantity parsing errors
+          }
+        }
+      } catch {
+        // Skip malformed property definitions
+      }
+    }
+
+    // --- Calculate derived quantities when IFC didn't provide them ---
+
+    // Net area for walls: gross - openings
+    if (quantities.area?.gross && quantities.openingArea) {
+      if (!quantities.area.net) {
+        quantities.area.net = quantities.area.gross - quantities.openingArea;
+      }
+    }
+
+    // If we have length + height but no gross area (common for walls)
+    if (!quantities.area?.gross && quantities.length && quantities.height) {
+      if (!quantities.area) quantities.area = { unit: "m²" };
+      quantities.area.gross = quantities.length * quantities.height;
+      if (quantities.openingArea) {
+        quantities.area.net = quantities.area.gross - quantities.openingArea;
+      }
+    }
+
+    // If we have area but no volume, estimate from thickness
+    if (quantities.area?.gross && !quantities.volume?.base && quantities.thickness) {
+      quantities.volume = {
+        base: quantities.area.gross * quantities.thickness,
+        withWaste: 0,
+        unit: "m³",
+      };
+    }
+
+    // For doors/windows: try to get area from width × height
     if (
-      ifcType === "IfcWall" ||
-      ifcType === "IfcWallStandardCase" ||
-      ifcType === "IfcSlab"
+      (ifcType === "IfcDoor" || ifcType === "IfcWindow") &&
+      !quantities.area?.gross &&
+      quantities.width &&
+      quantities.height
     ) {
-      // Try to extract from object placement and representation
-      // This is a simplified extraction - in production, would use proper geometry analysis
-      quantities.area = {
-        gross: 0,
-        net: 0,
-        unit: "m²",
-      };
-      quantities.volume = {
-        base: 0,
-        withWaste: 0,
-        unit: "m³",
-      };
+      if (!quantities.area) quantities.area = { unit: "m²" };
+      quantities.area.gross = quantities.width * quantities.height;
     }
 
-    if (ifcType === "IfcColumn" || ifcType === "IfcBeam") {
-      quantities.volume = {
-        base: 0,
-        withWaste: 0,
-        unit: "m³",
-      };
-      quantities.length = 0;
+    // Ensure area struct exists for area-based element types
+    if (
+      (ifcType === "IfcWall" || ifcType === "IfcWallStandardCase" || ifcType === "IfcSlab" ||
+        ifcType === "IfcRoof" || ifcType === "IfcCovering") &&
+      !quantities.area
+    ) {
+      quantities.area = { gross: 0, net: 0, unit: "m²" };
     }
 
-    if (ifcType === "IfcDoor" || ifcType === "IfcWindow") {
-      quantities.area = {
-        gross: 0,
-        unit: "m²",
-      };
-      quantities.width = 0;
-      quantities.height = 0;
+    // Ensure volume struct exists for volume-based element types
+    if (
+      (ifcType === "IfcColumn" || ifcType === "IfcBeam" || ifcType === "IfcFooting" ||
+        ifcType === "IfcStair" || ifcType === "IfcWall" || ifcType === "IfcWallStandardCase" ||
+        ifcType === "IfcSlab") &&
+      !quantities.volume
+    ) {
+      quantities.volume = { base: 0, withWaste: 0, unit: "m³" };
     }
-
-    if (ifcType === "IfcCovering") {
-      quantities.area = {
-        gross: 0,
-        unit: "m²",
-      };
-    }
-
-    // Note: For MVP, we're setting up the structure
-    // Full geometric quantity extraction would use web-ifc's geometry API
-    // and proper Qto_* property set parsing
 
   } catch (error) {
     console.warn(`Failed to extract quantities for element ${expressID}:`, error);
@@ -377,15 +556,10 @@ function getMaterialName(
   expressID: number
 ): string {
   try {
-    // Try to get material associations
-    // This is simplified - full implementation would traverse IfcRelAssociatesMaterial
     const element = ifcAPI.GetLine(modelID, expressID, false);
-    
-    // Fallback: try to infer from element name or type
-    if (element && element.Name && element.Name.value) {
+    if (element?.Name?.value) {
       return element.Name.value;
     }
-
     return "Unknown";
   } catch {
     return "Unknown";
@@ -399,8 +573,6 @@ function getStoreyName(
   storeyMap: Map<number, string>
 ): string {
   try {
-    // This would properly traverse IfcRelContainedInSpatialStructure
-    // For now, return default
     return "Unassigned";
   } catch {
     return "Unassigned";
@@ -427,7 +599,6 @@ export async function parseIFCBuffer(
   // Open model
   const modelID = ifcAPI.OpenModel(buffer, {
     COORDINATE_TO_ORIGIN: true,
-    // USE_FAST_BOOLEANS: true,
   });
 
   // Extract metadata
@@ -436,16 +607,16 @@ export async function parseIFCBuffer(
   // Get project info
   let projectName = "Unknown Project";
   let projectGuid = "";
-  
+
   try {
     const projectIDs = ifcAPI.GetLineIDsWithType(modelID, IFCPROJECT);
     if (projectIDs.size() > 0) {
       const projectID = projectIDs.get(0);
       const project = ifcAPI.GetLine(modelID, projectID, false);
-      if (project && project.Name && project.Name.value) {
+      if (project?.Name?.value) {
         projectName = project.Name.value;
       }
-      if (project && project.GlobalId && project.GlobalId.value) {
+      if (project?.GlobalId?.value) {
         projectGuid = project.GlobalId.value;
       }
     }
@@ -465,18 +636,52 @@ export async function parseIFCBuffer(
       const storey = ifcAPI.GetLine(modelID, storeyID, false);
       const name = storey?.Name?.value || `Level ${i + 1}`;
       const elevation = storey?.Elevation?.value || 0;
-      
+
       storeyMap.set(storeyID, name);
       buildingStoreys.push({
         name,
         elevation,
-        height: 3.0, // Default, would extract from geometry in production
+        height: 3.0,
         elementCount: 0,
       });
     } catch (err) {
       warnings.push(`Failed to parse storey ${storeyID}`);
     }
   }
+
+  // Build property lookup once (O(n) instead of O(n²))
+  const propertyLookup = buildPropertyLookup(ifcAPI, modelID, warnings);
+
+  // Track opening areas per wall for net area deduction
+  // First pass: collect total opening area from doors + windows
+  let totalDoorArea = 0;
+  let totalWindowArea = 0;
+  let doorCount = 0;
+  let windowCount = 0;
+
+  try {
+    const doorIds = ifcAPI.GetLineIDsWithType(modelID, IFCDOOR);
+    doorCount = doorIds.size();
+    for (let i = 0; i < doorCount; i++) {
+      try {
+        const doorQ = extractQuantities(ifcAPI, modelID, doorIds.get(i), "IfcDoor", propertyLookup);
+        totalDoorArea += doorQ.area?.gross || (doorQ.width && doorQ.height ? doorQ.width * doorQ.height : 1.89); // default 0.9m × 2.1m
+      } catch { /* skip */ }
+    }
+  } catch { /* skip */ }
+
+  try {
+    const windowIds = ifcAPI.GetLineIDsWithType(modelID, IFCWINDOW);
+    windowCount = windowIds.size();
+    for (let i = 0; i < windowCount; i++) {
+      try {
+        const winQ = extractQuantities(ifcAPI, modelID, windowIds.get(i), "IfcWindow", propertyLookup);
+        totalWindowArea += winQ.area?.gross || (winQ.width && winQ.height ? winQ.width * winQ.height : 2.4); // default 1.2m × 2.0m
+      } catch { /* skip */ }
+    }
+  } catch { /* skip */ }
+
+  const totalOpeningArea = totalDoorArea + totalWindowArea;
 
   // Extract elements by type
   const elementsByDivision = new Map<string, Map<string, IFCElementData[]>>();
@@ -495,30 +700,22 @@ export async function parseIFCBuffer(
       totalElements++;
 
       try {
-        // Get element properties
         const element = ifcAPI.GetLine(modelID, expressID, false);
         const globalId = element?.GlobalId?.value || `TEMP_${expressID}`;
         const name = element?.Name?.value || `${label}-${i + 1}`;
-        
-        // Get material
+
         const materialName = getMaterialName(ifcAPI, modelID, expressID);
-        
-        // Get CSI mapping
         const csiMapping = getCSIMapping(label, materialName);
-        
-        // Extract quantities
-        const quantities = extractQuantities(ifcAPI, modelID, expressID, label);
-        
-        // Apply waste factor
+        const quantities = extractQuantities(ifcAPI, modelID, expressID, label, propertyLookup);
+
+        // Apply waste factor to volume
         if (quantities.volume) {
           quantities.volume.withWaste =
             quantities.volume.base * (1 + csiMapping.wasteFactor / 100);
         }
-        
-        // Get storey
+
         const storeyName = getStoreyName(ifcAPI, modelID, expressID, storeyMap);
-        
-        // Create element data
+
         const elementData: IFCElementData = {
           id: globalId,
           type: label,
@@ -532,12 +729,12 @@ export async function parseIFCBuffer(
         if (!elementsByDivision.has(csiMapping.division)) {
           elementsByDivision.set(csiMapping.division, new Map());
         }
-        
+
         const divisionMap = elementsByDivision.get(csiMapping.division)!;
         if (!divisionMap.has(csiMapping.code)) {
           divisionMap.set(csiMapping.code, []);
         }
-        
+
         divisionMap.get(csiMapping.code)!.push(elementData);
         processedElements++;
 
@@ -558,12 +755,13 @@ export async function parseIFCBuffer(
     let totalVolume = 0;
     let volumeWithWaste = 0;
     let totalArea = 0;
+    let totalNetArea = 0;
+    let divisionOpeningArea = 0;
     let areaWithWaste = 0;
 
     for (const [categoryCode, elements] of categoriesMap) {
       divisionElementCount += elements.length;
 
-      // Sum quantities
       for (const element of elements) {
         if (element.quantities.volume) {
           totalVolume += element.quantities.volume.base;
@@ -571,6 +769,12 @@ export async function parseIFCBuffer(
         }
         if (element.quantities.area?.gross) {
           totalArea += element.quantities.area.gross;
+        }
+        if (element.quantities.area?.net) {
+          totalNetArea += element.quantities.area.net;
+        }
+        if (element.quantities.openingArea) {
+          divisionOpeningArea += element.quantities.openingArea;
         }
       }
 
@@ -591,12 +795,23 @@ export async function parseIFCBuffer(
 
     areaWithWaste = totalArea * (1 + csiMapping.wasteFactor / 100);
 
+    // For wall divisions: distribute opening area if not already per-element
+    const isWallDivision = categories.some((c) =>
+      c.elements.some((e) => e.type === "IfcWall" || e.type === "IfcWallStandardCase")
+    );
+    if (isWallDivision && totalArea > 0 && divisionOpeningArea === 0 && totalOpeningArea > 0) {
+      divisionOpeningArea = totalOpeningArea;
+      totalNetArea = totalArea - totalOpeningArea;
+    }
+
     divisions.push({
       code: divisionCode,
       name: csiMapping.divisionName,
       totalVolume: totalVolume > 0 ? totalVolume : undefined,
       volumeWithWaste: volumeWithWaste > 0 ? volumeWithWaste : undefined,
       totalArea: totalArea > 0 ? totalArea : undefined,
+      totalNetArea: totalNetArea > 0 ? totalNetArea : undefined,
+      totalOpeningArea: divisionOpeningArea > 0 ? divisionOpeningArea : undefined,
       areaWithWaste: areaWithWaste > 0 ? areaWithWaste : undefined,
       wasteFactor: csiMapping.wasteFactor,
       elementCount: divisionElementCount,
@@ -610,7 +825,7 @@ export async function parseIFCBuffer(
   divisions.sort((a, b) => a.code.localeCompare(b.code));
 
   // Calculate summary
-  const grossFloorArea = buildingStoreys.reduce((sum, storey) => sum + 0, 0); // Would extract from slabs
+  const grossFloorArea = buildingStoreys.reduce((sum, storey) => sum + 0, 0);
   const totalConcrete = divisions.find((d) => d.code === "03")?.totalVolume;
   const totalMasonry = divisions.find((d) => d.code === "04")?.totalArea;
 

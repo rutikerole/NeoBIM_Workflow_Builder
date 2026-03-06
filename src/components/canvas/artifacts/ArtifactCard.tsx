@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Download, ChevronDown, X, FileText, Image as ImageIcon, Database, BarChart2, Table2, File } from "lucide-react";
+import { Download, ChevronDown, X, FileText, Image as ImageIcon, Database, BarChart2, Table2, File, LayoutGrid } from "lucide-react";
 
 import { formatBytes } from "@/lib/utils";
 import type {
@@ -34,6 +34,7 @@ const TYPE_COLOR: Record<ArtifactType, string> = {
   table: "#06B6D4",
   file:  "#F59E0B",
   "3d":  "#F59E0B",
+  svg:   "#10B981",
 };
 
 const TYPE_ICON: Record<ArtifactType, React.ReactNode> = {
@@ -44,6 +45,7 @@ const TYPE_ICON: Record<ArtifactType, React.ReactNode> = {
   table: <Table2 size={9} />,
   file:  <File size={9} />,
   "3d":  <File size={9} />,
+  svg:   <LayoutGrid size={9} />,
 };
 
 function hexToRgb(hex: string): string {
@@ -162,6 +164,7 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
               {artifact.type === "kpi"   && <KpiBody   data={artifact.data as KpiArtifactData}   accentColor={accentColor} />}
               {artifact.type === "table" && <TableBody data={artifact.data as TableArtifactData} />}
               {artifact.type === "file"  && <FileBody  data={artifact.data as FileArtifactData}  />}
+              {artifact.type === "svg"   && <SvgBody   data={artifact.data as SvgArtifactData}   />}
             </ArtifactErrorBoundary>
           </motion.div>
         )}
@@ -380,6 +383,40 @@ function TableBody({ data }: { data: TableArtifactData }) {
               Grand Total: ${summary.grandTotal.toLocaleString()}
             </span>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// SVG data shape from GN-004 floor plan generator
+interface SvgArtifactData {
+  svg: string;
+  label?: string;
+  roomList?: Array<{ name: string; area: number; unit: string }>;
+  totalArea?: number;
+  floors?: number;
+}
+
+function SvgBody({ data }: { data: SvgArtifactData }) {
+  const svgHtml = data?.svg ?? "";
+
+  return (
+    <div>
+      <div
+        style={{
+          background: "#FAFAFA",
+          borderRadius: 0,
+          overflow: "auto",
+          maxHeight: 240,
+          padding: 4,
+        }}
+        dangerouslySetInnerHTML={{ __html: svgHtml }}
+      />
+      {data?.roomList && data.roomList.length > 0 && (
+        <div style={{ padding: "6px 14px 10px", fontSize: 10, color: "#5C5C78" }}>
+          {data.roomList.length} rooms · {data.totalArea ?? "?"} m² total
+          {data.floors ? ` · ${data.floors} floors` : ""}
         </div>
       )}
     </div>

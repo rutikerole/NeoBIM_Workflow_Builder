@@ -1,6 +1,6 @@
 export type ExecutionStatus = "pending" | "running" | "success" | "partial" | "failed";
 
-export type ArtifactType = "text" | "json" | "image" | "3d" | "file" | "table" | "kpi";
+export type ArtifactType = "text" | "json" | "image" | "3d" | "file" | "table" | "kpi" | "svg";
 
 export interface ExecutionArtifact {
   id: string;

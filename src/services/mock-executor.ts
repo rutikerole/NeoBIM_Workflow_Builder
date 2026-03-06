@@ -173,21 +173,35 @@ export async function executeNode(
       });
 
     case "TR-007": { // Quantity Extractor
+      // Opening areas: 96 windows × 1.2m × 2.0m = 230.4 m², 58 doors × 0.9m × 2.1m = 109.62 m²
+      const totalOpeningArea = 230.4 + 109.62; // = 340.02 m²
+      // External walls: 70% of openings, Internal walls: 30% of openings
+      const extWallOpenings = Math.round(totalOpeningArea * 0.7 * 100) / 100; // 238.01 m²
+      const intWallOpenings = Math.round(totalOpeningArea * 0.3 * 100) / 100; // 102.01 m²
       const qtoElements = [
-        { description: "External Walls", category: "Walls", quantity: 1240, unit: "m²" },
-        { description: "Internal Walls", category: "Walls", quantity: 2890, unit: "m²" },
-        { description: "Floor Slabs", category: "Slabs", quantity: 2400, unit: "m²" },
-        { description: "Roof Slab", category: "Slabs", quantity: 605, unit: "m²" },
-        { description: "Windows", category: "Openings", quantity: 96, unit: "EA" },
-        { description: "Doors", category: "Openings", quantity: 58, unit: "EA" },
-        { description: "Columns", category: "Structure", quantity: 20, unit: "EA" },
-        { description: "Beams", category: "Structure", quantity: 85, unit: "EA" },
+        { description: "External Walls", category: "Walls", quantity: 1240, unit: "m²", grossArea: 1240, openingArea: extWallOpenings, netArea: Math.round((1240 - extWallOpenings) * 100) / 100, totalVolume: 248 },
+        { description: "Internal Walls", category: "Walls", quantity: 2890, unit: "m²", grossArea: 2890, openingArea: intWallOpenings, netArea: Math.round((2890 - intWallOpenings) * 100) / 100, totalVolume: 433.5 },
+        { description: "Floor Slabs", category: "Slabs", quantity: 2400, unit: "m²", grossArea: 2400, openingArea: 0, netArea: 2400, totalVolume: 480 },
+        { description: "Roof Slab", category: "Slabs", quantity: 605, unit: "m²", grossArea: 605, openingArea: 0, netArea: 605, totalVolume: 60.5 },
+        { description: "Windows", category: "Openings", quantity: 96, unit: "EA", grossArea: 230.4, openingArea: 0, netArea: 230.4, totalVolume: 0 },
+        { description: "Doors", category: "Openings", quantity: 58, unit: "EA", grossArea: 109.62, openingArea: 0, netArea: 109.62, totalVolume: 0 },
+        { description: "Columns", category: "Structure", quantity: 20, unit: "EA", grossArea: 0, openingArea: 0, netArea: 0, totalVolume: 18 },
+        { description: "Beams", category: "Structure", quantity: 85, unit: "EA", grossArea: 0, openingArea: 0, netArea: 0, totalVolume: 42.5 },
+        { description: "Stairs", category: "Stairs", quantity: 2, unit: "EA", grossArea: 30, openingArea: 0, netArea: 30, totalVolume: 18 },
+        { description: "Footings", category: "Footings", quantity: 8, unit: "EA", grossArea: 0, openingArea: 0, netArea: 0, totalVolume: 19.2 },
+        { description: "Roof", category: "Roof", quantity: 1, unit: "EA", grossArea: 605, openingArea: 0, netArea: 605, totalVolume: 0 },
       ];
       return mockArtifact(executionId, tileInstanceId, "table", {
         label: "Extracted Quantities (IFC)",
-        headers: ["Category", "Element", "Quantity", "Unit"],
-        rows: qtoElements.map(e => [e.category, e.description, e.quantity.toString(), e.unit]),
+        headers: ["Category", "Element", "Gross Area (m²)", "Opening Area (m²)", "Net Area (m²)", "Volume (m³)", "Qty", "Unit"],
+        rows: qtoElements.map(e => [
+          e.category, e.description,
+          e.grossArea.toString(), e.openingArea.toString(),
+          e.netArea.toString(), e.totalVolume.toString(),
+          e.quantity.toString(), e.unit,
+        ]),
         _elements: qtoElements, // Required for TR-008 compatibility
+        content: `Parsed 1,319 elements across 11 categories from 5 storeys — net area accounts for ${totalOpeningArea.toFixed(0)} m² of openings`,
       });
     }
 
@@ -205,12 +219,14 @@ export async function executeNode(
       // Parse upstream quantities from TR-007
       const boqQuantities = inputData?._elements || inputData?.rows || [];
 
-      let boqElements: Array<{ type: string; count: number; area?: number }> = [];
+      let boqElements: Array<{
+        type: string; count: number; area?: number;
+        grossArea?: number; netArea?: number; openingArea?: number; volume?: number;
+      }> = [];
 
       if (Array.isArray(boqQuantities) && boqQuantities.length > 0) {
         boqElements = (boqQuantities as Record<string, unknown>[]).map((q) => {
           const raw = (q.type as string) || (q.description as string) || (q.category as string) || "IfcWall";
-          // Resolve to IFC type — check map first, then use raw value (already IFC)
           const ifcType = CATEGORY_TO_IFC[raw] || raw;
           return {
             type: ifcType,
@@ -218,20 +234,28 @@ export async function executeNode(
             area: q.totalArea != null || q.area != null
               ? Number(q.totalArea ?? q.area)
               : undefined,
+            grossArea: q.grossArea != null ? Number(q.grossArea) : undefined,
+            netArea: q.netArea != null ? Number(q.netArea) : undefined,
+            openingArea: q.openingArea != null ? Number(q.openingArea) : undefined,
+            volume: q.totalVolume != null || q.volume != null
+              ? Number(q.totalVolume ?? q.volume)
+              : undefined,
           };
         });
       } else {
         // Fallback: generate realistic elements from a typical 5-storey building
         const boqFloors = Number(inputData?.floors) || 5;
+        const wallGross = 200 * boqFloors;
+        const wallOpenings = boqFloors * 6 * 2.4 + boqFloors * 4 * 1.89; // windows + doors
         boqElements = [
-          { type: "IfcSlab", count: boqFloors + 1, area: 500 * (boqFloors + 1) },
-          { type: "IfcWall", count: boqFloors * 12, area: 200 * boqFloors },
-          { type: "IfcColumn", count: boqFloors * 8 },
-          { type: "IfcWindow", count: boqFloors * 6 },
-          { type: "IfcDoor", count: boqFloors * 4 },
-          { type: "IfcStair", count: 2, area: 30 },
-          { type: "IfcRoof", count: 1, area: 500 },
-          { type: "IfcFooting", count: 8 },
+          { type: "IfcSlab", count: boqFloors + 1, area: 500 * (boqFloors + 1), grossArea: 500 * (boqFloors + 1), netArea: 500 * (boqFloors + 1), volume: 500 * (boqFloors + 1) * 0.2 },
+          { type: "IfcWall", count: boqFloors * 12, area: wallGross, grossArea: wallGross, openingArea: wallOpenings, netArea: wallGross - wallOpenings, volume: wallGross * 0.2 },
+          { type: "IfcColumn", count: boqFloors * 8, volume: boqFloors * 8 * 0.9 },
+          { type: "IfcWindow", count: boqFloors * 6, grossArea: boqFloors * 6 * 2.4 },
+          { type: "IfcDoor", count: boqFloors * 4, grossArea: boqFloors * 4 * 1.89 },
+          { type: "IfcStair", count: 2, area: 30, volume: 18 },
+          { type: "IfcRoof", count: 1, area: 500, grossArea: 500, netArea: 500 },
+          { type: "IfcFooting", count: 8, volume: 19.2 },
         ];
       }
 
@@ -365,10 +389,20 @@ export async function executeNode(
     }
 
     case "GN-004": // Floor Plan Generator
-      return mockArtifact(executionId, tileInstanceId, "image", {
-        url: "https://picsum.photos/seed/floorplan/600/400",
-        label: "Generated Floor Plan — Level 2",
-        style: "Residential layout, 12 units per floor",
+      return mockArtifact(executionId, tileInstanceId, "svg", {
+        svg: `<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="800" height="600" fill="#FAFAFA" stroke="#333" stroke-width="2"/><text x="400" y="30" text-anchor="middle" font-size="16" fill="#333" font-weight="bold">Mixed-Use — Typical Floor Plan</text><rect x="40" y="60" width="300" height="200" fill="#E8F5E9" stroke="#333" stroke-width="2"/><text x="190" y="165" text-anchor="middle" font-size="12" fill="#333">Living Room (35 m²)</text><rect x="340" y="60" width="200" height="120" fill="#E3F2FD" stroke="#333" stroke-width="2"/><text x="440" y="125" text-anchor="middle" font-size="12" fill="#333">Bedroom 1 (20 m²)</text><rect x="340" y="180" width="200" height="80" fill="#E3F2FD" stroke="#333" stroke-width="2"/><text x="440" y="225" text-anchor="middle" font-size="12" fill="#333">Bedroom 2 (15 m²)</text><rect x="540" y="60" width="220" height="100" fill="#FFF3E0" stroke="#333" stroke-width="2"/><text x="650" y="115" text-anchor="middle" font-size="12" fill="#333">Kitchen (18 m²)</text><rect x="540" y="160" width="110" height="100" fill="#F3E5F5" stroke="#333" stroke-width="2"/><text x="595" y="215" text-anchor="middle" font-size="12" fill="#333">Bath (8 m²)</text><rect x="650" y="160" width="110" height="100" fill="#ECEFF1" stroke="#333" stroke-width="1"/><text x="705" y="215" text-anchor="middle" font-size="12" fill="#333">Hall (7 m²)</text><rect x="40" y="260" width="720" height="40" fill="#ECEFF1" stroke="#333" stroke-width="1"/><text x="400" y="285" text-anchor="middle" font-size="12" fill="#333">Corridor (24 m²)</text><text x="750" y="580" text-anchor="end" font-size="10" fill="#999">0 — 5m — 10m</text><polygon points="750,50 745,70 755,70" fill="#333"/><text x="750" y="80" text-anchor="middle" font-size="10" fill="#333">N</text></svg>`,
+        label: "Generated Floor Plan — Typical Floor",
+        roomList: [
+          { name: "Living Room", area: 35, unit: "m²" },
+          { name: "Bedroom 1", area: 20, unit: "m²" },
+          { name: "Bedroom 2", area: 15, unit: "m²" },
+          { name: "Kitchen", area: 18, unit: "m²" },
+          { name: "Bathroom", area: 8, unit: "m²" },
+          { name: "Hall", area: 7, unit: "m²" },
+          { name: "Corridor", area: 24, unit: "m²" },
+        ],
+        totalArea: 127,
+        floors: 5,
       });
 
     case "EX-001": { // IFC Exporter

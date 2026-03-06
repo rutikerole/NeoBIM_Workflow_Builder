@@ -309,3 +309,79 @@ export async function generateConceptImage(
     };
   });
 }
+
+// ─── generateFloorPlan (GN-004) ─────────────────────────────────────────────
+
+export interface FloorPlanResult {
+  svg: string;
+  roomList: Array<{ name: string; area: number; unit: string }>;
+  totalArea: number;
+  floors: number;
+}
+
+export async function generateFloorPlan(
+  description: BuildingDescription | Record<string, unknown>,
+  userApiKey?: string
+): Promise<FloorPlanResult> {
+  return handleOpenAICall(async () => {
+    const client = getClient(userApiKey);
+
+    const d = description as Partial<BuildingDescription>;
+    const floors = d.floors ?? 5;
+    const totalArea = d.totalArea ?? 2500;
+    const typology = d.buildingType ?? "Mixed-Use";
+    const program = d.programSummary ?? "offices and residential units";
+
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are an architectural floor plan generator. Given building specifications, produce a JSON response with:
+1. "svg" — a complete SVG string (viewBox="0 0 800 600") of a schematic floor plan showing rooms with labels.
+2. "roomList" — array of { name, area (m²), unit: "m²" } for each room.
+3. "totalArea" — total floor area in m².
+4. "floors" — number of floors.
+
+SVG RULES:
+- viewBox="0 0 800 600"
+- Use rect for rooms, line/polyline for walls
+- Fill rooms with light pastel colors: #E8F5E9 (living), #E3F2FD (bedrooms), #FFF3E0 (kitchen), #F3E5F5 (bathroom), #ECEFF1 (corridor), #FFF9C4 (office), #FFEBEE (retail)
+- Stroke: #333 for walls (stroke-width 2), #999 for internal partitions (stroke-width 1)
+- Add text labels (font-size 12, fill #333) centered in each room with room name and area
+- Show door arcs as small quarter-circle paths (stroke #666, fill none)
+- Include a north arrow indicator (top-right)
+- Include a scale bar at the bottom (e.g., "0 — 5m — 10m")
+- Title text at top: "[Building Type] — Typical Floor Plan"
+- Use professional architectural drawing conventions
+- NO embedded images, NO external references
+- Keep it clean, readable, and architecturally plausible
+
+Generate a TYPICAL FLOOR plan — the most representative floor. Show realistic room proportions.`,
+        },
+        {
+          role: "user",
+          content: `Generate a floor plan for: ${floors}-story ${typology}, total area ${totalArea} m². Program: ${program}. Floor plate: ~${Math.round(totalArea / floors)} m² per floor.`,
+        },
+      ],
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) throw new Error("OpenAI returned empty response for floor plan");
+
+    const result = JSON.parse(content) as FloorPlanResult;
+
+    // Ensure SVG has valid structure
+    if (!result.svg || !result.svg.includes("<svg")) {
+      throw new Error("Generated response does not contain valid SVG");
+    }
+
+    return {
+      svg: result.svg,
+      roomList: result.roomList ?? [],
+      totalArea: result.totalArea ?? totalArea,
+      floors: result.floors ?? floors,
+    };
+  });
+}

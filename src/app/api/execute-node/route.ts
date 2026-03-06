@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { generateBuildingDescription, generateConceptImage } from "@/services/openai";
+import { generateBuildingDescription, generateConceptImage, generateFloorPlan } from "@/services/openai";
 import { generateId } from "@/lib/utils";
 import type { ExecutionArtifact } from "@/types/execution";
 import { checkRateLimit, logRateLimitHit } from "@/lib/rate-limit";
@@ -13,7 +13,7 @@ import { assertValidInput } from "@/lib/validation";
 import { APIError, UserErrors, formatErrorResponse } from "@/lib/user-errors";
 
 // Node IDs that have real implementations
-const REAL_NODE_IDS = new Set(["TR-003", "GN-003", "TR-007", "TR-008", "EX-002"]);
+const REAL_NODE_IDS = new Set(["TR-003", "GN-003", "GN-004", "TR-007", "TR-008", "EX-002"]);
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -137,58 +137,93 @@ export async function POST(req: NextRequest) {
         metadata: { model: "dall-e-3", real: true },
         createdAt: new Date(),
       };
+    } else if (catalogueId === "GN-004") {
+      // Floor Plan Generator — GPT-4o-mini SVG generation
+      const description = inputData?._raw ?? inputData ?? {};
+      const floorPlan = await generateFloorPlan(description, apiKey);
+
+      artifact = {
+        id: generateId(),
+        executionId: executionId ?? "local",
+        tileInstanceId,
+        type: "svg",
+        data: {
+          svg: floorPlan.svg,
+          label: "Floor Plan (AI Generated)",
+          roomList: floorPlan.roomList,
+          totalArea: floorPlan.totalArea,
+          floors: floorPlan.floors,
+        },
+        metadata: { model: "gpt-4o-mini", real: true },
+        createdAt: new Date(),
+      };
+
     } else if (catalogueId === "TR-007") {
-      // Quantity Extractor — Real IFC parsing
+      // Quantity Extractor — Real IFC parsing with net area calculations
       const ifcData = inputData?.ifcData ?? inputData?.content ?? null;
-      
+
       let rows: string[][] = [];
-      let elements: Array<{ description: string; category: string; quantity: number; unit: string }> = [];
+      let elements: Array<{
+        description: string; category: string; quantity: number; unit: string;
+        grossArea?: number; netArea?: number; openingArea?: number; totalVolume?: number;
+      }> = [];
       let usedFallback = false;
-      
+      let parseSummary = "";
+
       if (ifcData && typeof ifcData === "object" && ifcData.buffer) {
         // Real IFC file uploaded - parse it
         try {
           const { parseIFCBuffer } = await import("@/services/ifc-parser");
           const buffer = new Uint8Array(ifcData.buffer);
           const parseResult = await parseIFCBuffer(buffer, "uploaded.ifc");
-          
-          // Convert divisions to table format
+
+          // Aggregate elements by type across divisions
+          const typeAggregates = new Map<string, {
+            count: number; grossArea: number; netArea: number; openingArea: number; volume: number; divisionName: string;
+          }>();
+
           for (const division of parseResult.divisions) {
             for (const category of division.categories) {
               for (const element of category.elements) {
-                const qty = element.quantities.count ?? 1;
-                const area = element.quantities.area?.gross ?? 0;
-                const volume = element.quantities.volume?.base ?? 0;
-                
-                let unit = "EA";
-                let quantity = qty;
-                
-                if (volume > 0) {
-                  unit = "m³";
-                  quantity = volume;
-                } else if (area > 0) {
-                  unit = "m²";
-                  quantity = area;
-                }
-                
-                const description = `${element.type} (${division.name})`;
-                
-                rows.push([
-                  description,
-                  element.name,
-                  quantity.toFixed(2),
-                  unit,
-                ]);
-                
-                elements.push({
-                  description,
-                  category: division.name,
-                  quantity,
-                  unit,
-                });
+                const key = element.type;
+                const existing = typeAggregates.get(key) || {
+                  count: 0, grossArea: 0, netArea: 0, openingArea: 0, volume: 0, divisionName: division.name,
+                };
+                existing.count += element.quantities.count ?? 1;
+                existing.grossArea += element.quantities.area?.gross ?? 0;
+                existing.netArea += element.quantities.area?.net ?? 0;
+                existing.openingArea += element.quantities.openingArea ?? 0;
+                existing.volume += element.quantities.volume?.base ?? 0;
+                typeAggregates.set(key, existing);
               }
             }
           }
+
+          for (const [ifcType, agg] of typeAggregates) {
+            const description = ifcType.replace("Ifc", "");
+            const primaryQty = agg.grossArea > 0 ? agg.grossArea : agg.volume > 0 ? agg.volume : agg.count;
+            const unit = agg.grossArea > 0 ? "m²" : agg.volume > 0 ? "m³" : "EA";
+
+            rows.push([
+              agg.divisionName, description,
+              agg.grossArea.toFixed(2), agg.openingArea.toFixed(2),
+              agg.netArea.toFixed(2), agg.volume.toFixed(2),
+              primaryQty.toFixed(2), unit,
+            ]);
+
+            elements.push({
+              description,
+              category: agg.divisionName,
+              quantity: primaryQty,
+              unit,
+              grossArea: agg.grossArea || undefined,
+              netArea: agg.netArea || undefined,
+              openingArea: agg.openingArea || undefined,
+              totalVolume: agg.volume || undefined,
+            });
+          }
+
+          parseSummary = `Parsed ${parseResult.summary.processedElements} of ${parseResult.summary.totalElements} elements from ${parseResult.summary.buildingStoreys} storeys (${parseResult.meta.ifcSchema})`;
         } catch (parseError) {
           console.error("[TR-007] IFC parsing failed:", parseError);
           usedFallback = true;
@@ -196,30 +231,46 @@ export async function POST(req: NextRequest) {
       } else {
         usedFallback = true;
       }
-      
-      // Fallback: provide realistic quantities if no IFC or parsing failed
+
+      // Fallback: provide realistic quantities with net area if no IFC or parsing failed
       if (rows.length === 0) {
         usedFallback = true;
+        // Opening areas: 96 windows × 2.4 m² + 58 doors × 1.89 m² = ~340 m²
+        const totalOpenings = 96 * 2.4 + 58 * 1.89;
+        const extWallOpenings = Math.round(totalOpenings * 0.7 * 100) / 100;
+        const intWallOpenings = Math.round(totalOpenings * 0.3 * 100) / 100;
         const fallbackData = [
-          { desc: "External Walls", cat: "Walls", qty: 1240, unit: "m²" },
-          { desc: "Internal Walls", cat: "Walls", qty: 2890, unit: "m²" },
-          { desc: "Floor Slabs", cat: "Slabs", qty: 2400, unit: "m²" },
-          { desc: "Roof Slab", cat: "Slabs", qty: 605, unit: "m²" },
-          { desc: "Windows", cat: "Openings", qty: 96, unit: "EA" },
-          { desc: "Doors", cat: "Openings", qty: 58, unit: "EA" },
-          { desc: "Columns", cat: "Structure", qty: 20, unit: "EA" },
-          { desc: "Beams", cat: "Structure", qty: 85, unit: "EA" },
+          { desc: "External Walls", cat: "Walls", qty: 1240, unit: "m²", grossArea: 1240, openingArea: extWallOpenings, netArea: 1240 - extWallOpenings, volume: 248 },
+          { desc: "Internal Walls", cat: "Walls", qty: 2890, unit: "m²", grossArea: 2890, openingArea: intWallOpenings, netArea: 2890 - intWallOpenings, volume: 433.5 },
+          { desc: "Floor Slabs", cat: "Slabs", qty: 2400, unit: "m²", grossArea: 2400, openingArea: 0, netArea: 2400, volume: 480 },
+          { desc: "Roof Slab", cat: "Slabs", qty: 605, unit: "m²", grossArea: 605, openingArea: 0, netArea: 605, volume: 60.5 },
+          { desc: "Windows", cat: "Openings", qty: 96, unit: "EA", grossArea: 230.4, openingArea: 0, netArea: 230.4, volume: 0 },
+          { desc: "Doors", cat: "Openings", qty: 58, unit: "EA", grossArea: 109.62, openingArea: 0, netArea: 109.62, volume: 0 },
+          { desc: "Columns", cat: "Structure", qty: 20, unit: "EA", grossArea: 0, openingArea: 0, netArea: 0, volume: 18 },
+          { desc: "Beams", cat: "Structure", qty: 85, unit: "EA", grossArea: 0, openingArea: 0, netArea: 0, volume: 42.5 },
+          { desc: "Stairs", cat: "Stairs", qty: 2, unit: "EA", grossArea: 30, openingArea: 0, netArea: 30, volume: 18 },
+          { desc: "Footings", cat: "Footings", qty: 8, unit: "EA", grossArea: 0, openingArea: 0, netArea: 0, volume: 19.2 },
         ];
-        
+
         for (const item of fallbackData) {
-          rows.push([item.cat, item.desc, item.qty.toString(), item.unit]);
+          rows.push([
+            item.cat, item.desc,
+            item.grossArea.toString(), item.openingArea.toString(),
+            item.netArea.toFixed(2), item.volume.toString(),
+            item.qty.toString(), item.unit,
+          ]);
           elements.push({
             description: item.desc,
             category: item.cat,
             quantity: item.qty,
             unit: item.unit,
+            grossArea: item.grossArea || undefined,
+            netArea: item.netArea || undefined,
+            openingArea: item.openingArea || undefined,
+            totalVolume: item.volume || undefined,
           });
         }
+        parseSummary = `Sample data: 10 element types — net area accounts for ${totalOpenings.toFixed(0)} m² of openings`;
       }
 
       artifact = {
@@ -229,12 +280,13 @@ export async function POST(req: NextRequest) {
         type: "table",
         data: {
           label: "Extracted Quantities (IFC)",
-          headers: ["Category", "Element", "Quantity", "Unit"],
+          headers: ["Category", "Element", "Gross Area (m²)", "Opening Area (m²)", "Net Area (m²)", "Volume (m³)", "Qty", "Unit"],
           rows,
           _elements: elements, // Required for TR-008 compatibility
+          content: parseSummary,
         },
-        metadata: { 
-          model: "ifc-parser-v1", 
+        metadata: {
+          model: "ifc-parser-v2",
           real: true,
           warnings: usedFallback ? ["Using sample quantities (no IFC file provided or parsing failed)"] : undefined,
         },

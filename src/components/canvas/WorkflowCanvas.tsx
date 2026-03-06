@@ -21,7 +21,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Layers3, Sparkles, BookOpen, X } from "lucide-react";
+import { Layers3, Sparkles, BookOpen, X, FileDown } from "lucide-react";
 
 import dynamic from "next/dynamic";
 import { BaseNode } from "./nodes/BaseNode";
@@ -245,7 +245,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
   } = useWorkflowStore();
 
   const { artifacts, executionProgress, removeArtifact, clearArtifacts } = useExecutionStore();
-  const { isNodeLibraryOpen, setPromptModeActive, isPromptModeActive, toggleNodeLibrary } = useUIStore();
+  const { isNodeLibraryOpen, setPromptModeActive, isPromptModeActive, toggleNodeLibrary, isDemoMode } = useUIStore();
 
   // Chat / execution log state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -389,13 +389,17 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
 
   const handleRun  = useCallback(async () => { await runWorkflow(); }, [runWorkflow]);
   const handleSave = useCallback(async () => {
+    if (isDemoMode) {
+      toast.info("Create a free account to save workflows", { duration: 3000 });
+      return;
+    }
     const id = await saveWorkflow();
     if (id) {
       toast.success("Workflow saved", { duration: 2000 });
     } else {
       toast.error("Save failed — check your connection");
     }
-  }, [saveWorkflow]);
+  }, [saveWorkflow, isDemoMode]);
   const handleShare = useCallback(() => { toast.info("Share feature coming soon", { duration: 2000 }); }, []);
 
   const workflowName = currentWorkflow?.name ?? "Untitled Workflow";
@@ -627,6 +631,31 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
                 }}>
                   {artifacts.size}
                 </span>
+                <button
+                  onClick={async () => {
+                    const { generatePDFReport } = await import("@/services/pdf-report");
+                    const labels = new Map<string, string>();
+                    storeNodes.forEach(n => labels.set(n.id, n.data.label));
+                    await generatePDFReport({
+                      workflowName: workflowName,
+                      artifacts,
+                      nodeLabels: labels,
+                    });
+                    toast.success("PDF report downloaded", { duration: 2000 });
+                  }}
+                  title="Download PDF report"
+                  style={{
+                    width: 22, height: 22, borderRadius: 5, flexShrink: 0,
+                    background: "transparent", border: "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#3A3A50", cursor: "pointer",
+                    transition: "color 0.1s ease",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "#4F8AFF"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = "#3A3A50"; }}
+                >
+                  <FileDown size={12} />
+                </button>
                 <button
                   onClick={clearArtifacts}
                   title="Clear all results"

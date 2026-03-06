@@ -84,6 +84,13 @@ function StickyNav() {
       ))}
 
       <div style={{ display: "flex", gap: 8, marginLeft: 24 }}>
+        <Link href="/demo" style={{
+          padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+          color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", background: "transparent",
+          textDecoration: "none",
+        }}>
+          Try Demo
+        </Link>
         <Link href="/login" style={{
           padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
           color: "#9898B0", border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
@@ -485,24 +492,25 @@ export default function LandingPage() {
               Start Free Trial
               <ArrowRight size={16} />
             </Link>
-            <Link href="/dashboard/templates" style={{
+            <Link href="/demo" style={{
               display: "flex", alignItems: "center", gap: 8,
               padding: "14px 24px", borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.12)", background: "transparent",
-              color: "#F0F0F5", fontSize: 14, fontWeight: 600,
+              border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.06)",
+              color: "#10B981", fontSize: 14, fontWeight: 600,
               textDecoration: "none",
+              transition: "all 150ms ease",
             }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.20)";
+                (e.currentTarget as HTMLElement).style.background = "rgba(16,185,129,0.12)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(16,185,129,0.5)";
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background = "transparent";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)";
+                (e.currentTarget as HTMLElement).style.background = "rgba(16,185,129,0.06)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(16,185,129,0.3)";
               }}
             >
-              <PlayCircle size={15} style={{ color: "#4F8AFF" }} />
-              See How It Works
+              <PlayCircle size={15} />
+              Try Demo — No Signup
             </Link>
           </div>
 

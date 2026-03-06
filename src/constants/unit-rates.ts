@@ -91,7 +91,15 @@ export interface BOQLine {
   totalCost: number;
 }
 
-export function calculateBOQ(elements: Array<{ type: string; count: number; area?: number }>): {
+export function calculateBOQ(elements: Array<{
+  type: string;
+  count: number;
+  area?: number;
+  grossArea?: number;
+  netArea?: number;
+  openingArea?: number;
+  volume?: number;
+}>): {
   lines: BOQLine[];
   subtotalMaterial: number;
   subtotalLabor: number;
@@ -107,8 +115,32 @@ export function calculateBOQ(elements: Array<{ type: string; count: number; area
     const rates = getRatesForElement(element.type);
 
     for (const rate of rates) {
-      // Use area if available, otherwise use count
-      const qty = rate.unit === "EA" ? element.count : (element.area || element.count * 50);
+      let qty: number;
+
+      if (rate.unit === "EA") {
+        qty = element.count;
+      } else if (rate.unit === "SF" || rate.unit === "SFCA") {
+        // For area-based rates: prefer netArea (gross minus openings), then grossArea, then area, then estimate
+        const areaM2 = element.netArea || element.grossArea || element.area || (element.count * 50);
+        // Convert m² to SF (1 m² = 10.764 SF)
+        qty = areaM2 * 10.764;
+      } else if (rate.unit === "CY" || rate.unit === "CF") {
+        // Volume-based: convert m³ to CY (1 m³ = 1.308 CY)
+        qty = (element.volume || element.count * 2) * 1.308;
+      } else if (rate.unit === "LB") {
+        // Weight: estimate from count (rough average per element)
+        qty = element.count * 150;
+      } else if (rate.unit === "LF") {
+        // Linear foot: estimate from count
+        qty = element.count * 20;
+      } else if (rate.unit === "MSF") {
+        // Thousand SF — convert from m² area
+        const areaM2 = element.netArea || element.grossArea || element.area || (element.count * 50);
+        qty = (areaM2 * 10.764) / 1000;
+      } else {
+        qty = element.count;
+      }
+
       const wasteFactor = 1.05; // 5% waste
       const adjustedQty = Math.round(qty * wasteFactor * 100) / 100;
 
