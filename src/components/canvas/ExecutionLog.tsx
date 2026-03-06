@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { ChevronDown, Terminal, X } from "lucide-react";
 
 export interface LogEntry {
@@ -61,81 +62,36 @@ export function ExecutionLog({ entries, isRunning, onClose }: ExecutionLogProps)
       animate={{ y: 0, opacity: 1, scale: 1 }}
       exit={{ y: 40, opacity: 0, scale: 0.96 }}
       transition={{ type: "spring", stiffness: 420, damping: 32 }}
-      style={{
-        position: "absolute",
-        bottom: 16,
-        left: 16,
-        zIndex: 25,
-        width: collapsed ? 220 : 420,
-        maxWidth: "calc(100vw - 360px)",
-        borderRadius: 12,
-        overflow: "hidden",
-        background: "rgba(5, 5, 8, 0.95)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        backdropFilter: "blur(20px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(20px) saturate(1.3)",
-        boxShadow:
-          "0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.03) inset",
-        fontFamily:
-          "'JetBrains Mono', 'Fira Mono', 'Menlo', monospace",
-        transition: "width 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-      }}
+      className="absolute bottom-4 left-4 z-[25] max-w-[calc(100vw-360px)] rounded-xl overflow-hidden bg-[rgba(5,5,8,0.95)] border border-white/[0.06] backdrop-blur-[20px] backdrop-saturate-[1.3] shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.03)] font-mono transition-[width] duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+      style={{ width: collapsed ? 220 : 420 }}
     >
       {/* Title bar */}
       <div
         onClick={() => setCollapsed((c) => !c)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "9px 12px",
-          borderBottom: collapsed
-            ? "none"
-            : "1px solid rgba(255,255,255,0.06)",
-          cursor: "pointer",
-          userSelect: "none",
-        }}
+        className={cn(
+          "flex items-center gap-2 px-3 py-[9px] cursor-pointer select-none",
+          collapsed ? "" : "border-b border-b-white/[0.06]",
+        )}
       >
         <div
+          className="w-1.5 h-1.5 rounded-full shrink-0"
           style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
             background: statusColor,
             boxShadow: `0 0 8px ${statusColor}60`,
-            flexShrink: 0,
-            animation: isRunning
-              ? "logDotPulse 1.4s ease-in-out infinite"
-              : "none",
+            animation: isRunning ? "logDotPulse 1.4s ease-in-out infinite" : "none",
           }}
         />
-        <Terminal size={11} style={{ color: "#5C5C78", flexShrink: 0 }} />
-        <span
-          style={{
-            fontSize: 12,
-            color: "#5C5C78",
-            fontWeight: 500,
-            flex: 1,
-          }}
-        >
+        <Terminal size={11} className="text-[#5C5C78] shrink-0" />
+        <span className="text-xs text-[#5C5C78] font-medium flex-1">
           {isRunning ? "Executing\u2026" : "Execution Log"}
         </span>
-        <span
-          style={{
-            fontSize: 9,
-            color: "#3A3A50",
-            fontWeight: 500,
-            padding: "1px 6px",
-            borderRadius: 8,
-            background: "rgba(255,255,255,0.04)",
-          }}
-        >
+        <span className="text-[9px] text-[#3A3A50] font-medium px-1.5 py-px rounded-lg bg-white/[0.04]">
           {entries.length}
         </span>
         <motion.div
           animate={{ rotate: collapsed ? -90 : 0 }}
           transition={{ duration: 0.15 }}
-          style={{ color: "#3A3A50", display: "flex", flexShrink: 0 }}
+          className="text-[#3A3A50] flex shrink-0"
         >
           <ChevronDown size={12} />
         </motion.div>
@@ -146,24 +102,7 @@ export function ExecutionLog({ entries, isRunning, onClose }: ExecutionLogProps)
               onClose();
             }}
             title="Close log"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "#3A3A50",
-              padding: 2,
-              borderRadius: 4,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#EF4444";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#3A3A50";
-            }}
+            className="bg-none border-none cursor-pointer text-[#3A3A50] p-0.5 rounded flex items-center justify-center shrink-0 hover:text-red-500 transition-colors duration-150"
           >
             <X size={12} />
           </button>
@@ -178,18 +117,9 @@ export function ExecutionLog({ entries, isRunning, onClose }: ExecutionLogProps)
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            style={{ overflow: "hidden" }}
+            className="overflow-hidden"
           >
-            <div
-              style={{
-                maxHeight: 180,
-                overflowY: "auto",
-                padding: "8px 12px",
-                display: "flex",
-                flexDirection: "column",
-                gap: 1,
-              }}
-            >
+            <div className="max-h-[180px] overflow-y-auto px-3 py-2 flex flex-col gap-px">
               {entries.map((entry, i) => (
                 <motion.div
                   key={i}
@@ -199,49 +129,26 @@ export function ExecutionLog({ entries, isRunning, onClose }: ExecutionLogProps)
                     duration: 0.15,
                     delay: Math.min(i * 0.015, 0.3),
                   }}
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    fontSize: 11,
-                    lineHeight: 1.6,
-                    padding: "2px 0",
-                  }}
+                  className="flex gap-2 text-[11px] leading-relaxed py-0.5"
                 >
-                  <span
-                    style={{
-                      color: "#2a2a3a",
-                      flexShrink: 0,
-                      fontWeight: 500,
-                    }}
-                  >
+                  <span className="text-[#2a2a3a] shrink-0 font-medium">
                     {fmt(entry.timestamp)}
                   </span>
                   <span
-                    style={{
-                      color: TYPE_COLOR[entry.type],
-                      flexShrink: 0,
-                      fontWeight: 600,
-                      width: 10,
-                      textAlign: "center",
-                    }}
+                    className="shrink-0 font-semibold w-2.5 text-center"
+                    style={{ color: TYPE_COLOR[entry.type] }}
                   >
                     {TYPE_SYMBOL[entry.type]}
                   </span>
-                  <span
-                    style={{
-                      color:
-                        entry.type === "error" ? "#F87171" :
-                        entry.type === "success" ? "#34D399" :
-                        "#5C5C78",
-                      flex: 1,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                  <span className={cn(
+                    "flex-1 overflow-hidden text-ellipsis whitespace-nowrap",
+                    entry.type === "error" ? "text-red-400" :
+                    entry.type === "success" ? "text-emerald-400" :
+                    "text-[#5C5C78]",
+                  )}>
                     {entry.message}
                     {entry.detail && (
-                      <span style={{ color: "#5C5C78", marginLeft: 6 }}>
+                      <span className="text-[#5C5C78] ml-1.5">
                         {entry.detail}
                       </span>
                     )}

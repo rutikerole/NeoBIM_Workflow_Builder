@@ -71,31 +71,26 @@ function MiniWorkflowDiagram() {
       {DEMO_NODES.map((node, i) => (
         <React.Fragment key={node.label}>
           <div
+            className="px-2.5 py-1 rounded-md border text-[10px] font-medium whitespace-nowrap"
             style={{
-              padding: "4px 10px",
-              borderRadius: 6,
               background: `${node.color}18`,
-              border: `1px solid ${node.color}40`,
-              fontSize: 10,
+              borderColor: `${node.color}40`,
               color: node.color,
-              fontWeight: 500,
-              whiteSpace: "nowrap",
             }}
           >
             {node.label}
           </div>
           {i < DEMO_NODES.length - 1 && (
-            <div style={{
-              display: "flex", alignItems: "center", gap: 0,
-              margin: "0 3px",
-            }}>
-              <div style={{ width: 14, height: 1, background: "rgba(79,138,255,0.3)" }} />
-              <div style={{
-                width: 0, height: 0,
-                borderLeft: "4px solid rgba(79,138,255,0.3)",
-                borderTop: "3px solid transparent",
-                borderBottom: "3px solid transparent",
-              }} />
+            <div className="flex items-center mx-[3px]">
+              <div className="w-3.5 h-px bg-[rgba(79,138,255,0.3)]" />
+              <div
+                className="w-0 h-0"
+                style={{
+                  borderLeft: "4px solid rgba(79,138,255,0.3)",
+                  borderTop: "3px solid transparent",
+                  borderBottom: "3px solid transparent",
+                }}
+              />
             </div>
           )}
         </React.Fragment>
@@ -117,94 +112,44 @@ function CanvasEmptyState({ onPromptMode }: EmptyStateProps) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.25 } }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="absolute inset-0 flex items-center justify-center pointer-events-none"
-      style={{ zIndex: 5 }}
+      className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]"
     >
-      <div
-        className="pointer-events-auto flex flex-col items-center text-center"
-        style={{ maxWidth: 440 }}
-      >
+      <div className="pointer-events-auto flex flex-col items-center text-center max-w-[440px]">
         {/* Mini diagram preview */}
-        <div style={{
-          padding: "16px 20px",
-          borderRadius: 12,
-          background: "rgba(18, 18, 26, 0.7)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          marginBottom: 24,
-        }}>
+        <div className="px-5 py-4 rounded-xl bg-[rgba(18,18,26,0.7)] border border-white/[0.06] backdrop-blur-[12px] mb-6">
           <MiniWorkflowDiagram />
-          <div style={{ fontSize: 9, color: "#3A3A50", textAlign: "center", marginTop: 4 }}>
+          <div className="text-[9px] text-[#3A3A50] text-center mt-1">
             Example AEC Pipeline
           </div>
         </div>
 
         {/* Icon */}
-        <div style={{
-          width: 52, height: 52, borderRadius: 14,
-          background: "rgba(79,138,255,0.08)",
-          border: "1px solid rgba(79,138,255,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          marginBottom: 16,
-        }}>
-          <Layers3 size={22} style={{ color: "#4F8AFF" }} strokeWidth={1.5} />
+        <div className="w-[52px] h-[52px] rounded-[14px] bg-[rgba(79,138,255,0.08)] border border-[rgba(79,138,255,0.2)] flex items-center justify-center mb-4">
+          <Layers3 size={22} className="text-[#4F8AFF]" strokeWidth={1.5} />
         </div>
 
         {/* Headline */}
-        <h2 style={{
-          fontSize: 20, fontWeight: 600,
-          color: "#F0F0F5", marginBottom: 8, lineHeight: 1.3,
-        }}>
+        <h2 className="text-xl font-semibold text-[#F0F0F5] mb-2 leading-snug">
           Build your first workflow
         </h2>
 
         {/* Subtitle */}
-        <p style={{
-          fontSize: 14, color: "#5C5C78",
-          lineHeight: 1.6, marginBottom: 24, maxWidth: 320,
-        }}>
+        <p className="text-sm text-[#5C5C78] leading-relaxed mb-6 max-w-[320px]">
           Drag nodes from the library, or describe what you want with AI
         </p>
 
         {/* CTAs */}
-        <div style={{ display: "flex", gap: 10 }}>
+        <div className="flex gap-2.5">
           <Link
             href="/dashboard/templates"
-            style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "9px 18px", borderRadius: 8,
-              border: "1px solid rgba(79,138,255,0.35)",
-              background: "rgba(79,138,255,0.06)",
-              fontSize: 13, fontWeight: 500, color: "#4F8AFF",
-              textDecoration: "none",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.background = "rgba(79,138,255,0.12)";
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(79,138,255,0.6)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = "rgba(79,138,255,0.06)";
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(79,138,255,0.35)";
-            }}
+            className="flex items-center gap-[7px] px-[18px] py-[9px] rounded-lg border border-[rgba(79,138,255,0.35)] bg-[rgba(79,138,255,0.06)] text-[13px] font-medium text-[#4F8AFF] no-underline transition-all duration-150 hover:bg-[rgba(79,138,255,0.12)] hover:border-[rgba(79,138,255,0.6)]"
           >
             <BookOpen size={14} />
             Browse Templates
           </Link>
           <button
             onClick={onPromptMode}
-            style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "9px 18px", borderRadius: 8,
-              background: "#4F8AFF",
-              border: "none",
-              fontSize: 13, fontWeight: 600, color: "#fff",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#3D7AFF"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#4F8AFF"; }}
+            className="flex items-center gap-[7px] px-[18px] py-[9px] rounded-lg bg-[#4F8AFF] border-none text-[13px] font-semibold text-white cursor-pointer transition-all duration-150 hover:bg-[#3D7AFF]"
           >
             <Sparkles size={14} />
             Try AI Prompt
@@ -456,19 +401,12 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { delay: 0.5 } }}
-              style={{
-                position: "absolute", top: 52, left: 0, right: 0, height: 2, zIndex: 11,
-                background: "rgba(255,255,255,0.04)",
-              }}
+              className="absolute top-[52px] left-0 right-0 h-0.5 z-[11] bg-white/[0.04]"
             >
               <motion.div
                 animate={{ width: `${executionProgress}%` }}
                 transition={{ ease: "linear", duration: 0.4 }}
-                style={{
-                  height: "100%",
-                  background: "linear-gradient(90deg, #4F8AFF 0%, #8B5CF6 100%)",
-                  boxShadow: "0 0 8px rgba(79,138,255,0.6)",
-                }}
+                className="h-full bg-gradient-to-r from-[#4F8AFF] to-[#8B5CF6] shadow-[0_0_8px_rgba(79,138,255,0.6)]"
               />
             </motion.div>
           )}
@@ -477,21 +415,9 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
         {/* React Flow */}
         <div className="absolute inset-0 pt-13">
           {/* Atmospheric blue center glow — rendered before ReactFlow for depth */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              zIndex: 0,
-              background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(79,138,255,0.04) 0%, transparent 70%)',
-            }}
-          />
+          <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,rgba(79,138,255,0.04)_0%,transparent_70%)]" />
           {/* Edge vignette — darkens corners for cinematic depth */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              zIndex: 0,
-              background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%)',
-            }}
-          />
+          <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.5)_100%)]" />
 
           <ReactFlow
             nodes={nodes}
@@ -559,22 +485,10 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
           </ReactFlow>
 
           {/* Atmospheric blue glow — enhanced */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              zIndex: 1,
-              background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(79,138,255,0.05) 0%, transparent 70%)',
-            }}
-          />
+          <div className="absolute inset-0 pointer-events-none z-[1] bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,rgba(79,138,255,0.05)_0%,transparent_70%)]" />
 
           {/* Vignette overlay — deeper */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              zIndex: 1,
-              background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 100%)',
-            }}
-          />
+          <div className="absolute inset-0 pointer-events-none z-[1] bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.55)_100%)]" />
 
           {/* Context menu */}
           <AnimatePresence>
@@ -628,35 +542,15 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.97 }}
               transition={{ type: "spring", stiffness: 380, damping: 32 }}
-              style={{
-                position: "absolute", bottom: 16, right: 16, zIndex: 20,
-                width: 320,
-                maxHeight: "calc(100vh - 100px)",
-                display: "flex", flexDirection: "column",
-                background: "rgba(8, 8, 16, 0.92)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 14,
-                overflow: "hidden",
-                backdropFilter: "blur(32px) saturate(1.3)",
-                WebkitBackdropFilter: "blur(32px) saturate(1.3)",
-                boxShadow: "0 16px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)",
-              }}
+              className="absolute bottom-4 right-4 z-20 w-80 max-h-[calc(100vh-100px)] flex flex-col bg-[rgba(8,8,16,0.92)] border border-white/[0.08] rounded-[14px] overflow-hidden backdrop-blur-[32px] backdrop-saturate-[1.3] shadow-[0_16px_48px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.04)]"
             >
               {/* Panel header */}
-              <div style={{
-                display: "flex", alignItems: "center", gap: 7,
-                padding: "10px 12px",
-                borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0,
-              }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#F0F0F5", flex: 1 }}>
+              <div className="flex items-center gap-[7px] px-3 py-2.5 border-b border-b-white/[0.06] shrink-0">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-xs font-semibold text-[#F0F0F5] flex-1">
                   Execution Results
                 </span>
-                <span style={{
-                  padding: "1px 6px", borderRadius: 10,
-                  background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)",
-                  fontSize: 10, fontWeight: 600, color: "#10B981",
-                }}>
+                <span className="px-1.5 py-px rounded-[10px] bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-500">
                   {artifacts.size}
                 </span>
                 <button
@@ -672,37 +566,21 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
                     toast.success("PDF report downloaded", { duration: 2000 });
                   }}
                   title="Download PDF report"
-                  style={{
-                    width: 22, height: 22, borderRadius: 5, flexShrink: 0,
-                    background: "transparent", border: "none",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#3A3A50", cursor: "pointer",
-                    transition: "color 0.1s ease",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "#4F8AFF"; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = "#3A3A50"; }}
+                  className="w-[22px] h-[22px] rounded-[5px] shrink-0 bg-transparent border-none flex items-center justify-center text-[#3A3A50] cursor-pointer transition-colors duration-100 hover:text-[#4F8AFF]"
                 >
                   <FileDown size={12} />
                 </button>
                 <button
                   onClick={clearArtifacts}
                   title="Clear all results"
-                  style={{
-                    width: 22, height: 22, borderRadius: 5, flexShrink: 0,
-                    background: "transparent", border: "none",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#3A3A50", cursor: "pointer",
-                    transition: "color 0.1s ease",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = "#3A3A50"; }}
+                  className="w-[22px] h-[22px] rounded-[5px] shrink-0 bg-transparent border-none flex items-center justify-center text-[#3A3A50] cursor-pointer transition-colors duration-100 hover:text-red-500"
                 >
                   <X size={12} />
                 </button>
               </div>
 
               {/* Scrollable card list */}
-              <div style={{ overflowY: "auto", flex: 1 }}>
+              <div className="overflow-y-auto flex-1">
                 <AnimatePresence initial={false}>
                   {Array.from(artifacts.entries()).map(([tileId, artifact]) => {
                     const node = storeNodes.find(n => n.id === tileId);

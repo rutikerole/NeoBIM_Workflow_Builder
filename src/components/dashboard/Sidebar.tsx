@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Workflow,
@@ -56,49 +57,25 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: collapsed ? 56 : 232 }}
       transition={{ type: "spring", stiffness: 360, damping: 34 }}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        background: "#06060c",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
-        overflow: "hidden",
-        flexShrink: 0,
-        position: "relative",
-      }}
+      className="flex flex-col h-full bg-[#06060c] border-r border-r-white/[0.06] overflow-hidden shrink-0 relative"
     >
       {/* Subtle atmospheric glow at top */}
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 120,
-        background: "radial-gradient(ellipse at 50% -20%, rgba(79, 138, 255, 0.04), transparent 70%)",
-        pointerEvents: "none",
-      }} />
+      <div className="absolute top-0 left-0 right-0 h-[120px] bg-[radial-gradient(ellipse_at_50%_-20%,rgba(79,138,255,0.04),transparent_70%)] pointer-events-none" />
 
       {/* ── Logo row ─────────────────────────────────────────────────────── */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        justifyContent: collapsed ? "center" : "space-between",
-        padding: collapsed ? "14px 0" : "14px 18px 14px 20px",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-        minHeight: 56, flexShrink: 0, position: "relative",
-      }}>
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", overflow: "hidden" }}>
+      <div className={cn(
+        "flex items-center border-b border-b-white/[0.04] min-h-[56px] shrink-0 relative",
+        collapsed ? "justify-center py-3.5 px-0" : "justify-between pt-3.5 pr-[18px] pb-3.5 pl-5",
+      )}>
+        <Link href="/dashboard" className="flex items-center gap-2.5 no-underline overflow-hidden">
           {/* Logo icon */}
-          <div style={{
-            width: 30, height: 30, borderRadius: 9, flexShrink: 0,
-            background: "linear-gradient(135deg, #4F8AFF 0%, #7C6FF7 50%, #A78BFA 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 2px 12px rgba(79,138,255,0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
-          }}>
+          <div className="w-[30px] h-[30px] rounded-[9px] shrink-0 bg-[linear-gradient(135deg,#4F8AFF_0%,#7C6FF7_50%,#A78BFA_100%)] flex items-center justify-center shadow-[0_2px_12px_rgba(79,138,255,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]">
             <Zap size={14} color="white" fill="white" />
           </div>
 
           {showLabels && (
-            <span style={{
-              fontSize: 16, fontWeight: 700, color: "#F0F0F5",
-              letterSpacing: "-0.4px", whiteSpace: "nowrap",
-            }}>
-              Build<span style={{ color: "#4F8AFF" }}>Flow</span>
+            <span className="text-base font-bold text-[#F0F0F5] tracking-[-0.4px] whitespace-nowrap">
+              Build<span className="text-[#4F8AFF]">Flow</span>
             </span>
           )}
         </Link>
@@ -109,14 +86,7 @@ export function Sidebar() {
             onClick={() => { setCollapsed(true); setShowLabels(false); }}
             title="Collapse sidebar"
             aria-label="Collapse sidebar"
-            style={{
-              width: 22, height: 22, borderRadius: 6, border: "none",
-              background: "transparent", cursor: "pointer", flexShrink: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#2E2E40", transition: "all 0.15s",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#9898B0"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#2E2E40"; e.currentTarget.style.background = "transparent"; }}
+            className="w-[22px] h-[22px] rounded-md border-none bg-transparent cursor-pointer shrink-0 flex items-center justify-center text-[#2E2E40] transition-all duration-150 hover:text-[#9898B0] hover:bg-white/[0.04]"
           >
             <ChevronLeft size={13} />
           </button>
@@ -124,39 +94,24 @@ export function Sidebar() {
       </div>
 
       {/* ── New Workflow button ───────────────────────────────────────────── */}
-      <div style={{ padding: collapsed ? "12px 10px" : "12px 12px", flexShrink: 0 }}>
+      <div className={cn("shrink-0", collapsed ? "p-[12px_10px]" : "p-3")}>
         <Link
           href="/dashboard/workflows/new"
-          className="press-effect"
-          style={{
-            display: "flex", alignItems: "center",
-            justifyContent: "center", gap: 7,
-            padding: collapsed ? "9px" : "0",
-            height: 40,
-            borderRadius: 10,
-            background: "linear-gradient(to right, #4F8AFF, #6366F1)",
-            color: "white", fontWeight: 600, fontSize: 14,
-            textDecoration: "none",
-            boxShadow: "0 2px 16px rgba(79,138,255,0.25)",
-            whiteSpace: "nowrap",
-            transition: "all 200ms ease",
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(79,138,255,0.4)";
-            (e.currentTarget as HTMLElement).style.filter = "brightness(1.1)";
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 16px rgba(79,138,255,0.25)";
-            (e.currentTarget as HTMLElement).style.filter = "brightness(1)";
-          }}
+          className={cn(
+            "press-effect flex items-center justify-center gap-[7px] h-10 rounded-[10px]",
+            "bg-[linear-gradient(to_right,#4F8AFF,#6366F1)] text-white font-semibold text-sm",
+            "no-underline whitespace-nowrap transition-all duration-200",
+            "shadow-[0_2px_16px_rgba(79,138,255,0.25)] hover:shadow-[0_4px_24px_rgba(79,138,255,0.4)] hover:brightness-110",
+            collapsed ? "p-[9px]" : "p-0",
+          )}
         >
-          <Plus size={14} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+          <Plus size={14} strokeWidth={2.5} className="shrink-0" />
           {showLabels && <span>New Workflow</span>}
         </Link>
       </div>
 
       {/* ── Nav ──────────────────────────────────────────────────────────── */}
-      <nav aria-label="Main navigation" style={{ flex: 1, padding: "6px 8px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
+      <nav aria-label="Main navigation" className="flex-1 px-2 py-1.5 flex flex-col gap-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const isActive = item.exact
             ? pathname === item.href
@@ -169,7 +124,7 @@ export function Sidebar() {
               href={item.href}
               label={item.label}
               badge={item.badge}
-              icon={<Icon size={18} strokeWidth={isActive ? 2 : 1.5} style={{ color: isActive ? "#4F8AFF" : "#5C5C78", flexShrink: 0, transition: "color 0.12s" }} />}
+              icon={<Icon size={18} strokeWidth={isActive ? 2 : 1.5} className={cn("shrink-0 transition-colors duration-[120ms]", isActive ? "text-[#4F8AFF]" : "text-[#5C5C78]")} />}
               isActive={isActive}
               collapsed={collapsed}
               showLabels={showLabels}
@@ -180,48 +135,34 @@ export function Sidebar() {
 
       {/* ── User info + sign out ─────────────────────────────────────────── */}
       {showLabels && (
-        <div style={{ padding: "12px 16px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", flexShrink: 0 }}>
+        <div className="px-4 pt-3 pb-3.5 border-t border-t-white/[0.04] shrink-0">
           {session?.user ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="flex flex-col gap-2.5">
               {/* User row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 9, flexShrink: 0,
-                  background: "linear-gradient(135deg, #4F8AFF 0%, #8B5CF6 100%)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 12, fontWeight: 700, color: "#fff",
-                  overflow: "hidden",
-                  boxShadow: "0 2px 8px rgba(79,138,255,0.2)",
-                }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-[9px] shrink-0 bg-[linear-gradient(135deg,#4F8AFF_0%,#8B5CF6_100%)] flex items-center justify-center text-xs font-bold text-white overflow-hidden shadow-[0_2px_8px_rgba(79,138,255,0.2)]">
                   {session.user.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={session.user.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={session.user.image} alt="" className="w-full h-full object-cover" />
                   ) : (
                     (session.user.name ?? session.user.email ?? "U")[0].toUpperCase()
                   )}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#F0F0F5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium text-[#F0F0F5] overflow-hidden text-ellipsis whitespace-nowrap">
                     {session.user.name ?? "User"}
                   </div>
-                  <div style={{ fontSize: 10, color: "#5C5C78", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div className="text-[10px] text-[#5C5C78] overflow-hidden text-ellipsis whitespace-nowrap">
                     {session.user.email}
                   </div>
                 </div>
               </div>
 
               {/* Upgrade + Sign out row */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div className="flex items-center justify-between">
                 <Link
                   href="/dashboard/billing"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    fontSize: 10.5, fontWeight: 600, color: "#4F8AFF", textDecoration: "none",
-                    padding: "3px 8px", borderRadius: 6,
-                    background: "rgba(79,138,255,0.06)", border: "1px solid rgba(79,138,255,0.12)",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(79,138,255,0.12)"; e.currentTarget.style.borderColor = "rgba(79,138,255,0.25)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(79,138,255,0.06)"; e.currentTarget.style.borderColor = "rgba(79,138,255,0.12)"; }}
+                  className="inline-flex items-center gap-[5px] text-[10.5px] font-semibold text-[#4F8AFF] no-underline px-2 py-[3px] rounded-md bg-[rgba(79,138,255,0.06)] border border-[rgba(79,138,255,0.12)] hover:bg-[rgba(79,138,255,0.12)] hover:border-[rgba(79,138,255,0.25)] transition-all duration-150"
                 >
                   <TrendingUp size={10} />
                   Upgrade
@@ -229,13 +170,7 @@ export function Sidebar() {
 
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 4,
-                    fontSize: 10.5, color: "#55556A", background: "none", border: "none",
-                    cursor: "pointer", padding: "3px 6px", borderRadius: 6,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "rgba(239,68,68,0.06)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = "#55556A"; e.currentTarget.style.background = "transparent"; }}
+                  className="flex items-center gap-1 text-[10.5px] text-[#55556A] bg-none border-none cursor-pointer px-1.5 py-[3px] rounded-md hover:text-red-500 hover:bg-red-500/[0.06] transition-all duration-150"
                 >
                   <LogOut size={10} />
                   Sign out
@@ -245,7 +180,7 @@ export function Sidebar() {
           ) : (
             <Link
               href="/login"
-              style={{ display: "block", textAlign: "center", fontSize: 12, color: "#4F8AFF", textDecoration: "none", padding: "6px", borderRadius: 8 }}
+              className="block text-center text-xs text-[#4F8AFF] no-underline p-1.5 rounded-lg"
             >
               Sign in
             </Link>
@@ -255,25 +190,12 @@ export function Sidebar() {
 
       {/* ── Expand button (collapsed state footer) ───────────────────────── */}
       {collapsed && (
-        <div style={{ padding: "10px", borderTop: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+        <div className="p-2.5 border-t border-t-white/[0.06] shrink-0">
           <button
             onClick={() => setCollapsed(false)}
             title="Expand sidebar"
             aria-label="Expand sidebar"
-            style={{
-              width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
-              padding: "8px 0", borderRadius: 8, border: "none",
-              background: "transparent", cursor: "pointer",
-              color: "#2E2E40",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.color = "#9898B0";
-              e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.color = "#2E2E40";
-              e.currentTarget.style.background = "transparent";
-            }}
+            className="w-full flex items-center justify-center py-2 rounded-lg border-none bg-transparent cursor-pointer text-[#2E2E40] hover:text-[#9898B0] hover:bg-white/[0.04] transition-all duration-150"
           >
             <ChevronRight size={14} />
           </button>
@@ -296,69 +218,40 @@ interface NavItemProps {
 }
 
 function NavItem({ href, label, badge, icon, isActive, collapsed, showLabels }: NavItemProps) {
-  const [hovered, setHovered] = useState(false);
-
   return (
     <Link
       href={href}
       title={collapsed ? label : undefined}
       aria-label={collapsed ? label : undefined}
       aria-current={isActive ? "page" : undefined}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        height: 38,
-        padding: collapsed ? "10px 0" : "0 12px",
-        justifyContent: collapsed ? "center" : "flex-start",
-        borderRadius: 8,
-        background: isActive
-          ? "rgba(255,255,255,0.06)"
-          : (hovered ? "rgba(255,255,255,0.04)" : "transparent"),
-        textDecoration: "none",
-        transition: "all 150ms ease",
-        overflow: "hidden",
-        position: "relative",
-      }}
+      className={cn(
+        "flex items-center gap-3 h-[38px] rounded-lg no-underline transition-all duration-150 overflow-hidden relative",
+        collapsed ? "py-2.5 px-0 justify-center" : "px-3 justify-start",
+        isActive
+          ? "bg-white/[0.06]"
+          : "bg-transparent hover:bg-white/[0.04]",
+      )}
     >
       {/* Active left bar indicator */}
       {isActive && !collapsed && (
-        <div style={{
-          position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)",
-          width: 3, height: 20,
-          background: "#4F8AFF",
-          borderTopRightRadius: 9999,
-          borderBottomRightRadius: 9999,
-          pointerEvents: "none",
-        }} />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#4F8AFF] rounded-r-full pointer-events-none" />
       )}
 
-      <span style={{ position: "relative", display: "flex" }}>{icon}</span>
+      <span className="relative flex">{icon}</span>
 
       {showLabels && (
         <>
-          <span style={{
-            flex: 1,
-            fontSize: 13,
-            fontWeight: isActive ? 600 : 400,
-            color: isActive ? "#F0F0F5" : (hovered ? "#9898B0" : "#5C5C78"),
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            transition: "color 0.15s ease",
-            letterSpacing: "-0.01em",
-          }}>
+          <span className={cn(
+            "flex-1 text-[13px] whitespace-nowrap overflow-hidden text-ellipsis transition-colors duration-150 tracking-[-0.01em]",
+            isActive
+              ? "font-semibold text-[#F0F0F5]"
+              : "font-normal text-[#5C5C78] hover:text-[#9898B0]",
+          )}>
             {label}
           </span>
 
           {badge && (
-            <span style={{
-              fontSize: 10, padding: "2px 6px", borderRadius: 6, flexShrink: 0,
-              background: "rgba(139,92,246,0.15)",
-              color: "#A78BFA", fontWeight: 600,
-            }}>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md shrink-0 bg-violet-500/15 text-violet-400 font-semibold">
               {badge}
             </span>
           )}

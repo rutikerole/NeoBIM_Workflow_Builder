@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
   Search, X, GripVertical, ChevronDown, ChevronLeft, ChevronRight, Plus, Clock, Tag,
 } from "lucide-react";
@@ -56,40 +57,35 @@ function NodeTooltip({ node, anchorY, panelWidth }: { node: NodeCatalogueItem; a
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -6 }}
       transition={{ duration: 0.15 }}
+      className="fixed w-[240px] bg-[rgba(14,14,22,0.97)] rounded-[10px] px-3.5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.65)] backdrop-blur-[16px] z-[9999] pointer-events-none border border-[var(--tt-border)]"
       style={{
-        position: "fixed",
         left: panelWidth + 16,
         top: Math.max(8, Math.min(anchorY - 64, window.innerHeight - 260)),
-        width: 240,
-        background: "rgba(14, 14, 22, 0.97)",
-        border: `1px solid rgba(${rgb}, 0.25)`,
-        borderRadius: 10,
-        padding: "12px 14px",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.65)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        zIndex: 9999,
-        pointerEvents: "none",
-      }}
+        '--tt-border': `rgba(${rgb}, 0.25)`,
+        '--tt-color': cfg.color,
+        '--tt-rgb': rgb,
+        '--tt-tag-bg': `rgba(${rgb}, 0.08)`,
+        '--tt-tag-border': `rgba(${rgb}, 0.18)`,
+      } as React.CSSProperties}
     >
       {/* Name + dot */}
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
-        <div style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.color, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#F0F0F5" }}>{node.name}</span>
+      <div className="flex items-center gap-[7px] mb-1.5">
+        <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--tt-color)]" />
+        <span className="text-xs font-semibold text-[#F0F0F5]">{node.name}</span>
       </div>
 
       {/* Description */}
-      <p style={{ fontSize: 11, color: "#8888A0", lineHeight: 1.5, marginBottom: 8 }}>
+      <p className="text-[11px] text-[#8888A0] leading-relaxed mb-2">
         {node.description}
       </p>
 
       {/* Meta */}
-      <div style={{ display: "flex", gap: 14, marginBottom: 8 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "#5C5C78" }}>
+      <div className="flex gap-3.5 mb-2">
+        <span className="flex items-center gap-1 text-[10px] text-[#5C5C78]">
           <Clock size={9} />
           {node.executionTime ?? "—"}
         </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "#5C5C78" }}>
+        <span className="flex items-center gap-1 text-[10px] text-[#5C5C78]">
           <Tag size={9} />
           {node.id}
         </span>
@@ -97,28 +93,24 @@ function NodeTooltip({ node, anchorY, panelWidth }: { node: NodeCatalogueItem; a
 
       {/* I/O */}
       {(node.inputs.length > 0 || node.outputs.length > 0) && (
-        <div style={{
-          paddingTop: 8,
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          display: "flex", gap: 16, marginBottom: 8,
-        }}>
+        <div className="pt-2 border-t border-t-white/[0.06] flex gap-4 mb-2">
           {node.inputs.length > 0 && (
             <div>
-              <div style={{ fontSize: 9, color: "#3A3A50", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 3 }}>
+              <div className="text-[9px] text-[#3A3A50] uppercase tracking-[0.5px] mb-[3px]">
                 In
               </div>
               {node.inputs.map(p => (
-                <div key={p.id} style={{ fontSize: 10, color: "#5C5C78" }}>{p.label}</div>
+                <div key={p.id} className="text-[10px] text-[#5C5C78]">{p.label}</div>
               ))}
             </div>
           )}
           {node.outputs.length > 0 && (
             <div>
-              <div style={{ fontSize: 9, color: "#3A3A50", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 3 }}>
+              <div className="text-[9px] text-[#3A3A50] uppercase tracking-[0.5px] mb-[3px]">
                 Out
               </div>
               {node.outputs.map(p => (
-                <div key={p.id} style={{ fontSize: 10, color: "#5C5C78" }}>{p.label}</div>
+                <div key={p.id} className="text-[10px] text-[#5C5C78]">{p.label}</div>
               ))}
             </div>
           )}
@@ -126,14 +118,9 @@ function NodeTooltip({ node, anchorY, panelWidth }: { node: NodeCatalogueItem; a
       )}
 
       {/* Tags */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+      <div className="flex flex-wrap gap-[3px]">
         {node.tags.slice(0, 4).map(tag => (
-          <span key={tag} style={{
-            padding: "1px 6px", borderRadius: 4,
-            background: `rgba(${rgb}, 0.08)`,
-            border: `1px solid rgba(${rgb}, 0.18)`,
-            fontSize: 9, color: cfg.color,
-          }}>
+          <span key={tag} className="px-1.5 py-px rounded text-[9px] bg-[var(--tt-tag-bg)] border border-[var(--tt-tag-border)] text-[var(--tt-color)]">
             {tag}
           </span>
         ))}
@@ -168,10 +155,7 @@ function NodeItem({
     return (
       <>
         {text.slice(0, idx)}
-        <mark style={{
-          background: `rgba(${rgb}, 0.2)`, color: cfg.color,
-          borderRadius: 2, padding: "0 1px",
-        }}>
+        <mark className="rounded-sm px-px bg-[var(--ni-highlight)] text-[var(--ni-color)]">
           {text.slice(idx, idx + q.length)}
         </mark>
         {text.slice(idx + q.length)}
@@ -185,83 +169,49 @@ function NodeItem({
       onDragStart={e => onDragStart(e, node.id)}
       onMouseEnter={e => { setIsHovered(true); onTooltipShow(node, e.clientY); }}
       onMouseLeave={() => { setIsHovered(false); onTooltipHide(); }}
+      className="relative flex items-center gap-3 px-3 py-2.5 cursor-grab rounded-lg overflow-hidden select-none transition-all duration-150 active:scale-[0.98]"
       style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 12px",
-        cursor: "grab",
-        borderRadius: 8,
-        overflow: "hidden",
-        userSelect: "none",
-        transition: "all 150ms ease",
-        transform: "scale(1)",
-      }}
-      onMouseDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.98)"; }}
-      onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+        '--ni-color': cfg.color,
+        '--ni-rgb': rgb,
+        '--ni-hover-bg': `rgba(${rgb}, 0.05)`,
+        '--ni-highlight': `rgba(${rgb}, 0.2)`,
+        '--ni-icon-bg': `${cfg.color}12`,
+        '--ni-btn-bg': `rgba(${rgb}, 0.15)`,
+        '--ni-btn-border': `rgba(${rgb}, 0.3)`,
+      } as React.CSSProperties}
     >
       {/* Hover bg slides in from left */}
       <motion.div
         animate={{ scaleX: isHovered ? 1 : 0 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: `rgba(${rgb}, 0.05)`,
-          transformOrigin: "left center",
-          borderRadius: 6,
-          pointerEvents: "none",
-        }}
+        className="absolute inset-0 bg-[var(--ni-hover-bg)] origin-left rounded-md pointer-events-none"
       />
 
       {/* Grip */}
       <GripVertical
         size={10}
         strokeWidth={1.5}
-        style={{ color: isHovered ? "#3A3A50" : "rgba(255,255,255,0.06)", flexShrink: 0, position: "relative" }}
+        className={cn("shrink-0 relative transition-colors", isHovered ? "text-[#3A3A50]" : "text-white/[0.06]")}
       />
 
       {/* Icon circle */}
-      <div style={{
-        width: 32, height: 32, borderRadius: 8,
-        background: `${cfg.color}12`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: cfg.color, flexShrink: 0, position: "relative",
-      }}>
+      <div className="w-8 h-8 rounded-lg bg-[var(--ni-icon-bg)] flex items-center justify-center text-[var(--ni-color)] shrink-0 relative">
         {getIcon(node.icon, 14)}
       </div>
 
       {/* Text */}
-      <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 5,
-        }}>
-          <span style={{
-            fontSize: 13, fontWeight: 500, color: "#e0e0ea",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            lineHeight: 1.2, flex: 1,
-            transition: "color 150ms ease",
-          }}>
+      <div className="flex-1 min-w-0 relative">
+        <div className="flex items-center gap-[5px]">
+          <span className="text-[13px] font-medium text-[#e0e0ea] overflow-hidden text-ellipsis whitespace-nowrap leading-[1.2] flex-1 transition-colors duration-150">
             {highlightText(node.name)}
           </span>
           {LIVE_NODE_IDS.has(node.id) ? (
-            <span style={{
-              fontSize: 8, fontWeight: 700, color: "#10B981",
-              padding: "1px 4px", borderRadius: 3,
-              background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)",
-              flexShrink: 0,
-            }}>LIVE</span>
+            <span className="text-[8px] font-bold text-emerald-500 px-1 py-px rounded-[3px] bg-emerald-500/10 border border-emerald-500/25 shrink-0">LIVE</span>
           ) : (
-            <span style={{
-              fontSize: 8, fontWeight: 600, color: "#4a4a68",
-              padding: "2px 6px", borderRadius: 4,
-              background: "rgba(255,255,255,0.06)",
-              flexShrink: 0, letterSpacing: "0.08em",
-            }}>PREVIEW</span>
+            <span className="text-[8px] font-semibold text-[#4a4a68] px-1.5 py-0.5 rounded bg-white/[0.06] shrink-0 tracking-[0.08em]">PREVIEW</span>
           )}
         </div>
-        <div style={{ fontSize: 10, color: "#3a3a50", fontFamily: "monospace", marginTop: 2 }}>
+        <div className="text-[10px] text-[#3a3a50] font-mono mt-0.5">
           {node.id} · {node.executionTime ?? "—"}
         </div>
       </div>
@@ -277,13 +227,7 @@ function NodeItem({
             transition={{ duration: 0.1 }}
             onClick={e => { e.stopPropagation(); onAddToCenter(node); }}
             title="Add to canvas center"
-            style={{
-              width: 20, height: 20, borderRadius: 5, padding: 0,
-              background: `rgba(${rgb}, 0.15)`,
-              border: `1px solid rgba(${rgb}, 0.3)`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: cfg.color, cursor: "pointer", flexShrink: 0, position: "relative",
-            }}
+            className="w-5 h-5 rounded-[5px] p-0 bg-[var(--ni-btn-bg)] border border-[var(--ni-btn-border)] flex items-center justify-center text-[var(--ni-color)] cursor-pointer shrink-0 relative"
           >
             <Plus size={10} strokeWidth={2.5} />
           </motion.button>
@@ -314,48 +258,39 @@ function CategorySection({
   const rgb = hexToRgb(cfg.color);
 
   return (
-    <div style={{ marginBottom: 4 }}>
+    <div
+      className="mb-1"
+      style={{
+        '--cs-color': cfg.color,
+        '--cs-rgb': rgb,
+        '--cs-count-bg': `rgba(${rgb}, 0.1)`,
+        '--cs-sep': `${cfg.color}15`,
+        '--cs-chevron': `rgba(${rgb}, 0.5)`,
+      } as React.CSSProperties}
+    >
       {/* Header */}
       <button
         onClick={onToggle}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", gap: 8,
-          padding: "6px 12px",
-          background: "transparent", border: "none", cursor: "pointer",
-        }}
+        className="w-full flex items-center gap-2 px-3 py-1.5 bg-transparent border-none cursor-pointer"
       >
-        <div style={{
-          width: 6, height: 6, borderRadius: "50%",
-          background: cfg.color, flexShrink: 0,
-        }} />
-        <span style={{
-          fontSize: 10, fontWeight: 700, color: cfg.color,
-          textTransform: "uppercase" as const, letterSpacing: "0.15em", flex: 1,
-          textAlign: "left",
-        }}>
+        <div className="w-1.5 h-1.5 rounded-full bg-[var(--cs-color)] shrink-0" />
+        <span className="text-[10px] font-bold text-[var(--cs-color)] uppercase tracking-[0.15em] flex-1 text-left">
           {cfg.label}
         </span>
-        <span style={{
-          padding: "1px 7px", borderRadius: 20,
-          background: `rgba(${rgb}, 0.1)`,
-          fontSize: 10, fontWeight: 600, color: cfg.color,
-        }}>
+        <span className="px-[7px] py-px rounded-full bg-[var(--cs-count-bg)] text-[10px] font-semibold text-[var(--cs-color)]">
           {nodes.length}
         </span>
         <motion.div
           animate={{ rotate: isOpen ? 0 : -90 }}
           transition={{ duration: 0.2 }}
-          style={{ display: "flex", color: `rgba(${rgb}, 0.5)` }}
+          className="flex text-[var(--cs-chevron)]"
         >
           <ChevronDown size={12} strokeWidth={2} />
         </motion.div>
       </button>
 
       {/* Separator */}
-      <div style={{
-        height: 1, background: `${cfg.color}15`,
-        marginLeft: 12, marginRight: 12,
-      }} />
+      <div className="h-px bg-[var(--cs-sep)] mx-3" />
 
       {/* Nodes */}
       <AnimatePresence initial={false}>
@@ -365,9 +300,9 @@ function CategorySection({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            style={{ overflow: "hidden" }}
+            className="overflow-hidden"
           >
-            <div style={{ padding: "4px 8px 4px" }}>
+            <div className="px-2 pt-1 pb-1">
               {nodes.map(node => (
                 <NodeItem
                   key={node.id}
@@ -505,51 +440,29 @@ export function NodeLibraryPanel() {
       animate={{ x: 0, opacity: 1, width: isCollapsed ? 48 : panelWidth }}
       exit={{ x: -300, opacity: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      style={{
-        height: "100%",
-        background: "rgba(6,6,12,0.95)",
-        backdropFilter: "blur(32px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(32px) saturate(1.3)",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        flexShrink: 0,
-      }}
+      className="h-full bg-[rgba(6,6,12,0.95)] backdrop-blur-[32px] backdrop-saturate-[1.3] border-r border-r-white/[0.06] flex flex-col overflow-hidden shrink-0"
     >
       {/* Resize handle */}
       {!isCollapsed && (
         <div
           onMouseDown={handleResizeStart}
-          style={{
-            position: "absolute", top: 0, right: 0, bottom: 0,
-            width: 6,
-            cursor: "ew-resize",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            opacity: isResizing ? 1 : 0,
-            background: "rgba(79, 138, 255, 0.1)",
-            borderRight: isResizing ? "2px solid rgba(79, 138, 255, 0.4)" : "none",
-            transition: "opacity 0.15s ease, background 0.15s ease",
-            zIndex: 100,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
-          onMouseLeave={e => { if (!isResizing) e.currentTarget.style.opacity = "0"; }}
+          className={cn(
+            "absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize flex items-center justify-center z-[100] transition-opacity duration-150",
+            isResizing
+              ? "opacity-100 bg-[rgba(79,138,255,0.1)] border-r-2 border-r-[rgba(79,138,255,0.4)]"
+              : "opacity-0 hover:opacity-100 bg-[rgba(79,138,255,0.1)]",
+          )}
         >
-          <div style={{
-            width: 3, height: 40, borderRadius: 2,
-            background: "rgba(79, 138, 255, 0.3)",
-            display: isResizing ? "block" : "none",
-          }} />
+          <div className={cn(
+            "w-[3px] h-10 rounded-sm bg-[rgba(79,138,255,0.3)]",
+            isResizing ? "block" : "hidden",
+          )} />
         </div>
       )}
 
       {isCollapsed ? (
         // ── Icon-only strip ───────────────────────────────────────────────────
-        <div style={{
-          width: 48, height: "100%",
-          display: "flex", flexDirection: "column",
-          alignItems: "center", paddingTop: 12, gap: 8,
-        }}>
+        <div className="w-12 h-full flex flex-col items-center pt-3 gap-2">
           {(["input", "transform", "generate", "export"] as NodeCategory[]).map(cat => {
             const cfg = CATEGORY_CONFIG[cat];
             const firstNode = NODES_BY_CATEGORY[cat][0];
@@ -557,11 +470,10 @@ export function NodeLibraryPanel() {
               <div
                 key={cat}
                 title={cfg.label}
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
                 style={{
-                  width: 32, height: 32, borderRadius: 8,
                   background: `rgba(${hexToRgb(cfg.color)}, 0.1)`,
                   border: `1px solid rgba(${hexToRgb(cfg.color)}, 0.2)`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
                   color: cfg.color,
                 }}
               >
@@ -572,13 +484,7 @@ export function NodeLibraryPanel() {
           <button
             onClick={() => setIsCollapsed(false)}
             title="Expand library"
-            style={{
-              marginTop: "auto", marginBottom: 12,
-              width: 28, height: 28, borderRadius: 6,
-              background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#5C5C78", cursor: "pointer",
-            }}
+            className="mt-auto mb-3 w-7 h-7 rounded-md bg-transparent border border-white/[0.08] flex items-center justify-center text-[#5C5C78] cursor-pointer hover:bg-white/[0.04] hover:text-[#F0F0F5] transition-all duration-150"
           >
             <ChevronRight size={12} />
           </button>
@@ -587,72 +493,38 @@ export function NodeLibraryPanel() {
         // ── Full panel ────────────────────────────────────────────────────────
         <>
           {/* Header */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "12px 10px 12px 14px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0,
-          }}>
+          <div className="flex items-center justify-between pt-3 pr-2.5 pb-3 pl-3.5 border-b border-b-white/[0.06] shrink-0">
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F5" }}>Node Library</div>
-              <div style={{ fontSize: 10, color: "#3A3A50", marginTop: 2 }}>
+              <div className="text-[13px] font-semibold text-[#F0F0F5]">Node Library</div>
+              <div className="text-[10px] text-[#3A3A50] mt-0.5">
                 {NODE_CATALOGUE.length} nodes · drag to canvas
               </div>
             </div>
             <button
               onClick={() => setIsCollapsed(true)}
               title="Collapse panel"
-              style={{
-                width: 26, height: 26, borderRadius: 6, flexShrink: 0,
-                background: "transparent", border: "1px solid rgba(255,255,255,0.06)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#5C5C78", cursor: "pointer",
-                transition: "background 0.15s ease, color 0.15s ease",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = "#1A1A2A";
-                e.currentTarget.style.color = "#F0F0F5";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "#5C5C78";
-              }}
+              className="w-[26px] h-[26px] rounded-md shrink-0 bg-transparent border border-white/[0.06] flex items-center justify-center text-[#5C5C78] cursor-pointer transition-all duration-150 hover:bg-[#1A1A2A] hover:text-[#F0F0F5]"
             >
               <ChevronLeft size={12} />
             </button>
           </div>
 
           {/* Search */}
-          <div style={{ padding: "10px 10px 0", flexShrink: 0 }}>
-            <div style={{ position: "relative" }}>
-              <Search size={12} style={{
-                position: "absolute", left: 9, top: "50%",
-                transform: "translateY(-50%)", color: "#5C5C78", pointerEvents: "none",
-              }} />
+          <div className="px-2.5 pt-2.5 shrink-0">
+            <div className="relative">
+              <Search size={12} className="absolute left-[9px] top-1/2 -translate-y-1/2 text-[#5C5C78] pointer-events-none" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search nodes..."
-                style={{
-                  width: "100%", height: 36,
-                  background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 8, paddingLeft: 28, paddingRight: search ? 28 : 12,
-                  fontSize: 13, color: "#e8e8f0", outline: "none",
-                  boxSizing: "border-box",
-                  transition: "all 150ms ease",
-                }}
-                onFocus={e => { e.currentTarget.style.borderColor = "rgba(79,138,255,0.30)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+                className="w-full h-9 bg-white/[0.03] border border-white/[0.06] rounded-lg pl-7 text-[13px] text-[#e8e8f0] outline-none box-border transition-all duration-150 focus:border-[rgba(79,138,255,0.30)] focus:bg-white/[0.04]"
+                style={{ paddingRight: search ? 28 : 12 }}
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  style={{
-                    position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-                    background: "transparent", border: "none",
-                    color: "#5C5C78", cursor: "pointer",
-                    display: "flex", alignItems: "center", padding: 0,
-                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none text-[#5C5C78] cursor-pointer flex items-center p-0"
                 >
                   <X size={10} />
                 </button>
@@ -661,28 +533,28 @@ export function NodeLibraryPanel() {
           </div>
 
           {/* Filter chips */}
-          <div style={{
-            display: "flex", gap: 4, padding: "8px 10px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0,
-          }}>
+          <div className="flex gap-1 px-2.5 py-2 border-b border-b-white/[0.06] shrink-0">
             {FILTERS.map(f => {
               const active = activeFilter === f.value;
               const c = f.value === "all"
                 ? "#4F8AFF"
                 : CATEGORY_CONFIG[f.value as NodeCategory].color;
-              const rgb = hexToRgb(c);
+              const filterRgb = hexToRgb(c);
               return (
                 <button
                   key={f.value}
                   onClick={() => setActiveFilter(f.value)}
-                  style={{
-                    padding: "4px 12px", borderRadius: 9999, whiteSpace: "nowrap", cursor: "pointer",
-                    background: active ? `rgba(${rgb}, 0.15)` : "transparent",
-                    border: active ? `1px solid rgba(${rgb}, 0.2)` : "1px solid transparent",
-                    fontSize: 12, fontWeight: 500,
-                    color: active ? c : "#5C5C78",
-                    transition: "all 150ms ease",
-                  }}
+                  className={cn(
+                    "px-3 py-1 rounded-full whitespace-nowrap cursor-pointer text-xs font-medium transition-all duration-150",
+                    active
+                      ? "border"
+                      : "bg-transparent border border-transparent text-[#5C5C78] hover:text-[#9898B0]",
+                  )}
+                  style={active ? {
+                    background: `rgba(${filterRgb}, 0.15)`,
+                    borderColor: `rgba(${filterRgb}, 0.2)`,
+                    color: c,
+                  } : undefined}
                 >
                   {f.label}
                 </button>
@@ -691,15 +563,15 @@ export function NodeLibraryPanel() {
           </div>
 
           {/* Node list */}
-          <div style={{ flex: 1, overflowY: "auto", paddingTop: 4 }}>
+          <div className="flex-1 overflow-y-auto pt-1">
             {isFiltering ? (
               displayNodes.length === 0 ? (
-                <div style={{ padding: "32px 16px", textAlign: "center" }}>
-                  <p style={{ fontSize: 12, color: "#5C5C78" }}>No nodes found</p>
-                  <p style={{ fontSize: 11, color: "#3A3A50", marginTop: 4 }}>Try a different search</p>
+                <div className="px-4 py-8 text-center">
+                  <p className="text-xs text-[#5C5C78]">No nodes found</p>
+                  <p className="text-[11px] text-[#3A3A50] mt-1">Try a different search</p>
                 </div>
               ) : (
-                <div style={{ padding: "0 8px 8px" }}>
+                <div className="px-2 pb-2">
                   {displayNodes.map(node => (
                     <NodeItem
                       key={node.id}

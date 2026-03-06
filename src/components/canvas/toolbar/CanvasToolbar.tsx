@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
   Play, Square, Save, Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   Share2, Sparkles, MousePointer2, Layers, Layers3, ChevronDown,
@@ -46,7 +47,7 @@ const MODE_CONFIG: Record<CreationMode, { label: string; icon: React.ReactNode; 
 
 function Sep() {
   return (
-    <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.04)", margin: "0 6px", flexShrink: 0 }} />
+    <div className="w-px h-[18px] bg-white/[0.04] mx-1.5 shrink-0" />
   );
 }
 
@@ -64,41 +65,17 @@ function TBBtn({ onClick, icon, title, disabled }: TBBtnProps) {
       disabled={disabled}
       title={title}
       aria-label={title}
-      style={{
-        width: 32, height: 32, borderRadius: 8,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "transparent", border: "none",
-        color: "#5C5C78", cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
-        transition: "all 150ms ease",
-      }}
-      onMouseEnter={e => {
-        if (!disabled) {
-          e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-          e.currentTarget.style.color = "#F0F0F5";
-        }
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.color = "#5C5C78";
-      }}
+      className={cn(
+        "w-8 h-8 rounded-lg flex items-center justify-center bg-transparent border-none transition-all duration-150",
+        disabled
+          ? "text-[#5C5C78] opacity-40 cursor-not-allowed"
+          : "text-[#5C5C78] cursor-pointer hover:bg-white/[0.06] hover:text-[#F0F0F5]",
+      )}
     >
       {icon}
     </button>
   );
 }
-
-// ─── Pulse animation keyframes ────────────────────────────────────────────────
-const pulseKeyframes = `
-@keyframes runButtonPulse {
-  0%, 100% {
-    box-shadow: 0 2px 12px rgba(79, 138, 255, 0.25);
-  }
-  50% {
-    box-shadow: 0 2px 20px rgba(79, 138, 255, 0.45);
-  }
-}
-`;
 
 // ─── Main toolbar ─────────────────────────────────────────────────────────────
 
@@ -168,17 +145,6 @@ export function CanvasToolbar({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Inject pulse animation styles
-  useEffect(() => {
-    const styleId = "run-button-pulse-animation";
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement("style");
-      style.id = styleId;
-      style.textContent = pulseKeyframes;
-      document.head.appendChild(style);
-    }
-  }, []);
-
   const commitName = useCallback(() => {
     setIsEditingName(false);
     const trimmed = nameValue.trim() || workflowName;
@@ -188,29 +154,15 @@ export function CanvasToolbar({
   const currentMode = MODE_CONFIG[creationMode];
 
   // Check if workflow is ready to run (has nodes)
-  // In real implementation, you'd check from Zustand store
   const { nodes } = useWorkflowStore();
   const isWorkflowReady = nodes.length > 0 && !isExecuting;
 
   return (
     <>
-      {/* Desktop toolbar - ALWAYS VISIBLE - fixed at top (no longer hidden on narrow screens) */}
-      <div
-        className="flex"
-        style={{
-          position: "absolute", top: 0, left: 0, right: 0, zIndex: 1000,
-          height: 48,
-          alignItems: "center", justifyContent: "space-between",
-          padding: "0 16px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(8,8,15,0.90)",
-          backdropFilter: "blur(32px) saturate(1.3)",
-          WebkitBackdropFilter: "blur(32px) saturate(1.3)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.1)",
-        }}
-      >
+      {/* Desktop toolbar */}
+      <div className="flex absolute top-0 left-0 right-0 z-[1000] h-12 items-center justify-between px-4 border-b border-b-white/[0.06] bg-[rgba(8,8,15,0.90)] backdrop-blur-[32px] backdrop-saturate-[1.3] shadow-[0_1px_3px_rgba(0,0,0,0.2),0_4px_16px_rgba(0,0,0,0.1)]">
         {/* ── Left group ──────────────────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <div className="flex items-center gap-0.5">
 
           {/* Library toggle */}
           <button
@@ -218,26 +170,12 @@ export function CanvasToolbar({
             title="Toggle node library"
             aria-label="Toggle node library"
             aria-pressed={isNodeLibraryOpen}
-            style={{
-              width: 30, height: 30, borderRadius: 7,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: isNodeLibraryOpen ? "rgba(79,138,255,0.12)" : "transparent",
-              border: `1px solid ${isNodeLibraryOpen ? "rgba(79,138,255,0.3)" : "transparent"}`,
-              color: isNodeLibraryOpen ? "#4F8AFF" : "#55556A",
-              cursor: "pointer", transition: "all 0.15s ease",
-            }}
-            onMouseEnter={e => {
-              if (!isNodeLibraryOpen) {
-                e.currentTarget.style.background = "#1A1A26";
-                e.currentTarget.style.color = "#F0F0F5";
-              }
-            }}
-            onMouseLeave={e => {
-              if (!isNodeLibraryOpen) {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "#55556A";
-              }
-            }}
+            className={cn(
+              "w-[30px] h-[30px] rounded-[7px] flex items-center justify-center cursor-pointer transition-all duration-150",
+              isNodeLibraryOpen
+                ? "bg-[rgba(79,138,255,0.12)] border border-[rgba(79,138,255,0.3)] text-[#4F8AFF]"
+                : "bg-transparent border border-transparent text-[#55556A] hover:bg-[#1A1A26] hover:text-[#F0F0F5]",
+            )}
           >
             <Layers3 size={14} />
           </button>
@@ -245,26 +183,22 @@ export function CanvasToolbar({
           <Sep />
 
           {/* Mode selector */}
-          <div style={{ position: "relative" }} ref={modeMenuRef}>
+          <div className="relative" ref={modeMenuRef}>
             <button
               onClick={() => setShowModeMenu(v => !v)}
               aria-label={`Creation mode: ${currentMode.label}`}
               aria-expanded={showModeMenu}
               aria-haspopup="menu"
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                height: 30, padding: "0 9px", borderRadius: 7,
-                background: showModeMenu ? "#1A1A26" : "transparent",
-                border: `1px solid ${showModeMenu ? "#3A3A4E" : "transparent"}`,
-                color: "#F0F0F5", cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1A1A26"; }}
-              onMouseLeave={e => { if (!showModeMenu) e.currentTarget.style.background = "transparent"; }}
+              className={cn(
+                "flex items-center gap-[5px] h-[30px] px-[9px] rounded-[7px] text-[#F0F0F5] cursor-pointer transition-all duration-150",
+                showModeMenu
+                  ? "bg-[#1A1A26] border border-[#3A3A4E]"
+                  : "bg-transparent border border-transparent hover:bg-[#1A1A26]",
+              )}
             >
-              <span style={{ color: "#4F8AFF", display: "flex" }}>{currentMode.icon}</span>
-              <span style={{ fontSize: 12, fontWeight: 500 }}>{currentMode.label}</span>
-              <ChevronDown size={9} style={{ color: "#55556A" }} />
+              <span className="text-[#4F8AFF] flex">{currentMode.icon}</span>
+              <span className="text-xs font-medium">{currentMode.label}</span>
+              <ChevronDown size={9} className="text-[#55556A]" />
             </button>
 
             <AnimatePresence>
@@ -274,12 +208,7 @@ export function CanvasToolbar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4, scale: 0.97 }}
                   transition={{ duration: 0.12 }}
-                  style={{
-                    position: "absolute", top: "calc(100% + 4px)", left: 0,
-                    width: 188, borderRadius: 10, overflow: "hidden",
-                    background: "#12121A", border: "1px solid #2A2A3E",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.5)", zIndex: 50,
-                  }}
+                  className="absolute top-[calc(100%+4px)] left-0 w-[188px] rounded-[10px] overflow-hidden bg-[#12121A] border border-[#2A2A3E] shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-50"
                 >
                   {(Object.entries(MODE_CONFIG) as [CreationMode, typeof MODE_CONFIG[CreationMode]][]).map(([value, cfg]) => {
                     const active = creationMode === value;
@@ -291,24 +220,19 @@ export function CanvasToolbar({
                           setShowModeMenu(false);
                           if (value === "prompt") onPromptMode();
                         }}
-                        style={{
-                          width: "100%", display: "flex", alignItems: "flex-start", gap: 10,
-                          padding: "9px 12px",
-                          background: active ? "#1A1A26" : "transparent",
-                          border: "none", cursor: "pointer", textAlign: "left",
-                          transition: "background 0.1s",
-                        }}
-                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = "#161620"; }}
-                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                        className={cn(
+                          "w-full flex items-start gap-2.5 px-3 py-[9px] border-none cursor-pointer text-left transition-colors duration-100",
+                          active ? "bg-[#1A1A26]" : "bg-transparent hover:bg-[#161620]",
+                        )}
                       >
-                        <span style={{ color: active ? "#4F8AFF" : "#55556A", marginTop: 1, display: "flex" }}>
+                        <span className={cn("mt-px flex", active ? "text-[#4F8AFF]" : "text-[#55556A]")}>
                           {cfg.icon}
                         </span>
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 500, color: active ? "#4F8AFF" : "#F0F0F5" }}>
+                          <div className={cn("text-xs font-medium", active ? "text-[#4F8AFF]" : "text-[#F0F0F5]")}>
                             {cfg.label}
                           </div>
-                          <div style={{ fontSize: 10, color: "#55556A", marginTop: 1 }}>
+                          <div className="text-[10px] text-[#55556A] mt-px">
                             {cfg.description}
                           </div>
                         </div>
@@ -328,13 +252,7 @@ export function CanvasToolbar({
         </div>
 
         {/* ── Center — inline-editable name ───────────────────────────────── */}
-        <div
-          style={{
-            position: "absolute", left: "50%", transform: "translateX(-50%)",
-            display: "flex", alignItems: "center", gap: 5,
-            maxWidth: 300, minWidth: 80,
-          }}
-        >
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-[5px] max-w-[300px] min-w-[80px]">
           {isEditingName ? (
             <input
               ref={nameInputRef}
@@ -347,13 +265,7 @@ export function CanvasToolbar({
               }}
               maxLength={80}
               autoFocus
-              style={{
-                background: "transparent", border: "none",
-                borderBottom: "1px solid #4F8AFF",
-                color: "#F0F0F5", fontSize: 13, fontWeight: 500,
-                outline: "none", textAlign: "center",
-                minWidth: 100, maxWidth: 260, padding: "1px 2px",
-              }}
+              className="bg-transparent border-none border-b border-b-[#4F8AFF] text-[#F0F0F5] text-[13px] font-medium outline-none text-center min-w-[100px] max-w-[260px] px-0.5 py-px"
             />
           ) : (
             <button
@@ -363,26 +275,16 @@ export function CanvasToolbar({
                 setTimeout(() => nameInputRef.current?.select(), 0);
               }}
               title="Click to rename"
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                background: "transparent", border: "none", cursor: "text",
-                padding: "3px 6px", borderRadius: 5,
-                maxWidth: 280, transition: "background 0.1s ease",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1A1A26"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              className="flex items-center gap-[5px] bg-transparent border-none cursor-text px-1.5 py-[3px] rounded-[5px] max-w-[280px] transition-colors duration-100 hover:bg-[#1A1A26]"
             >
-              <span style={{
-                fontSize: 13, fontWeight: 500, color: "#F0F0F5",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
+              <span className="text-[13px] font-medium text-[#F0F0F5] overflow-hidden text-ellipsis whitespace-nowrap">
                 {workflowName}
               </span>
-              <Pencil size={10} style={{ color: "#3A3A4E", flexShrink: 0 }} />
+              <Pencil size={10} className="text-[#3A3A4E] shrink-0" />
               {isDirty && (
                 <div
                   title="Unsaved changes"
-                  style={{ width: 5, height: 5, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }}
+                  className="w-[5px] h-[5px] rounded-full bg-amber-500 shrink-0"
                 />
               )}
             </button>
@@ -390,7 +292,7 @@ export function CanvasToolbar({
         </div>
 
         {/* ── Right group ─────────────────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <div className="flex items-center gap-0.5">
 
           {/* Zoom */}
           <TBBtn onClick={onZoomOut} icon={<ZoomOut size={13} />} title="Zoom out" />
@@ -402,20 +304,7 @@ export function CanvasToolbar({
           {/* AI Prompt */}
           <button
             onClick={onPromptMode}
-            style={{
-              display: "flex", alignItems: "center", gap: 5,
-              height: 36, padding: "0 16px", borderRadius: 8,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "#F0F0F5", fontSize: 14, fontWeight: 500,
-              cursor: "pointer", transition: "all 150ms ease",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-            }}
+            className="flex items-center gap-[5px] h-9 px-4 rounded-lg bg-white/[0.06] border border-white/[0.08] text-[#F0F0F5] text-sm font-medium cursor-pointer transition-all duration-150 hover:bg-white/10"
           >
             <Sparkles size={11} />
             AI
@@ -429,46 +318,29 @@ export function CanvasToolbar({
             onClick={handleSave}
             disabled={(!isDirty && !savedFlash) || isSaving}
             title="Save (⌘S)"
-            style={{
-              display: "flex", alignItems: "center", gap: 5,
-              height: 36, padding: "0 16px", borderRadius: 8,
-              background: "transparent",
-              border: savedFlash
-                ? "1px solid rgba(16,185,129,0.4)"
-                : isDirty ? "1px solid rgba(255,255,255,0.08)" : "1px solid transparent",
-              color: savedFlash ? "#10B981" : isDirty ? "#9898B0" : "#3A3A4E",
-              fontSize: 13, fontWeight: 500,
-              cursor: isDirty || savedFlash ? "pointer" : "default",
-              transition: "all 150ms ease",
-              opacity: !isDirty && !savedFlash && !isSaving ? 0.5 : 1,
-            }}
-            onMouseEnter={e => {
-              if (isDirty && !savedFlash) {
-                e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                e.currentTarget.style.color = "#F0F0F5";
-              }
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "transparent";
-              if (!savedFlash) {
-                e.currentTarget.style.color = isDirty ? "#9898B0" : "#3A3A4E";
-              }
-            }}
+            className={cn(
+              "flex items-center gap-[5px] h-9 px-4 rounded-lg bg-transparent text-[13px] font-medium transition-all duration-150",
+              savedFlash
+                ? "border border-emerald-500/40 text-emerald-500 cursor-pointer"
+                : isDirty
+                ? "border border-white/[0.08] text-[#9898B0] cursor-pointer hover:bg-white/[0.06] hover:text-[#F0F0F5]"
+                : "border border-transparent text-[#3A3A4E] cursor-default opacity-50",
+            )}
           >
             <AnimatePresence mode="wait" initial={false}>
               {isSaving ? (
                 <motion.span key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  style={{ display: "flex" }}>
+                  className="flex">
                   <Loader2 size={12} className="animate-spin" />
                 </motion.span>
               ) : savedFlash ? (
                 <motion.span key="saved" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }} style={{ display: "flex" }}>
+                  exit={{ opacity: 0 }} className="flex">
                   <CheckCircle2 size={12} />
                 </motion.span>
               ) : (
                 <motion.span key="save" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  style={{ display: "flex" }}>
+                  className="flex">
                   <Save size={12} />
                 </motion.span>
               )}
@@ -483,51 +355,23 @@ export function CanvasToolbar({
             <button
               onClick={onStop}
               title="Stop execution (Esc)"
-              style={{
-                display: "flex", alignItems: "center", gap: 7,
-                height: 36, padding: "0 20px", borderRadius: 10,
-                background: "#EF4444", border: "none",
-                color: "#fff", fontSize: 13, fontWeight: 600,
-                cursor: "pointer", transition: "background 0.15s ease",
-                boxShadow: "0 2px 16px rgba(239, 68, 68, 0.3)",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#DC2626"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#EF4444"; }}
+              className="flex items-center gap-[7px] h-9 px-5 rounded-[10px] bg-red-500 border-none text-white text-[13px] font-semibold cursor-pointer transition-colors duration-150 shadow-[0_2px_16px_rgba(239,68,68,0.3)] hover:bg-red-600"
             >
               <Square size={14} fill="white" />
               Stop
             </button>
           ) : (
-            <div style={{ display: "flex", position: "relative" }} ref={runMenuRef}>
+            <div className="flex relative" ref={runMenuRef}>
               <button
                 onClick={onRun}
                 title="Run workflow (⌘↵)"
                 disabled={!isWorkflowReady}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  height: 36, paddingLeft: 20, paddingRight: 16,
-                  borderRadius: "10px 0 0 10px",
-                  background: isWorkflowReady
-                    ? "linear-gradient(to right, #4F8AFF, #6366F1)"
-                    : "#2A2A3E",
-                  border: "none",
-                  color: "#fff", fontSize: 14, fontWeight: 600,
-                  cursor: isWorkflowReady ? "pointer" : "not-allowed",
-                  transition: "all 200ms ease",
-                  boxShadow: isWorkflowReady ? "0 0 20px rgba(79,138,255,0.3)" : "none",
-                  opacity: isWorkflowReady ? 1 : 0.5,
-                  animation: isWorkflowReady ? "glow-pulse 3s ease-in-out infinite" : "none",
-                }}
-                onMouseEnter={e => {
-                  if (isWorkflowReady) {
-                    e.currentTarget.style.filter = "brightness(1.1)";
-                    e.currentTarget.style.boxShadow = "0 0 35px rgba(79,138,255,0.5)";
-                  }
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.filter = "brightness(1)";
-                  e.currentTarget.style.boxShadow = isWorkflowReady ? "0 0 20px rgba(79,138,255,0.3)" : "none";
-                }}
+                className={cn(
+                  "flex items-center gap-2 h-9 pl-5 pr-4 rounded-l-[10px] border-none text-white text-sm font-semibold transition-all duration-200",
+                  isWorkflowReady
+                    ? "bg-[linear-gradient(to_right,#4F8AFF,#6366F1)] cursor-pointer shadow-[0_0_20px_rgba(79,138,255,0.3)] hover:brightness-110 hover:shadow-[0_0_35px_rgba(79,138,255,0.5)] animate-[glow-pulse_3s_ease-in-out_infinite]"
+                    : "bg-[#2A2A3E] cursor-not-allowed opacity-50 shadow-none",
+                )}
               >
                 <Play size={16} fill="white" />
                 Run Workflow
@@ -539,20 +383,12 @@ export function CanvasToolbar({
                 aria-expanded={showRunMenu}
                 aria-haspopup="menu"
                 disabled={!isWorkflowReady}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 30, height: 36, padding: 0,
-                  borderRadius: "0 10px 10px 0",
-                  background: isWorkflowReady ? "rgba(79,138,255,0.85)" : "#25253A",
-                  border: "none",
-                  borderLeft: "1px solid rgba(255,255,255,0.12)",
-                  color: "rgba(255,255,255,0.75)",
-                  cursor: isWorkflowReady ? "pointer" : "not-allowed",
-                  transition: "background 0.15s ease",
-                  opacity: isWorkflowReady ? 1 : 0.6,
-                }}
-                onMouseEnter={e => { if (isWorkflowReady) e.currentTarget.style.background = "#3472EB"; }}
-                onMouseLeave={e => { if (isWorkflowReady) e.currentTarget.style.background = "#3D7AFF"; }}
+                className={cn(
+                  "flex items-center justify-center w-[30px] h-9 p-0 rounded-r-[10px] border-none border-l border-l-white/[0.12] text-white/75 transition-colors duration-150",
+                  isWorkflowReady
+                    ? "bg-[rgba(79,138,255,0.85)] cursor-pointer hover:bg-[#3472EB]"
+                    : "bg-[#25253A] cursor-not-allowed opacity-60",
+                )}
               >
                 <ChevronDown size={12} />
               </button>
@@ -565,12 +401,7 @@ export function CanvasToolbar({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -4, scale: 0.97 }}
                     transition={{ duration: 0.12 }}
-                    style={{
-                      position: "absolute", top: "calc(100% + 4px)", right: 0,
-                      width: 190, borderRadius: 10, overflow: "hidden",
-                      background: "#12121A", border: "1px solid #2A2A3E",
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)", zIndex: 50,
-                    }}
+                    className="absolute top-[calc(100%+4px)] right-0 w-[190px] rounded-[10px] overflow-hidden bg-[#12121A] border border-[#2A2A3E] shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-50"
                   >
                     {[
                       { label: "Run All Nodes",       sub: "Execute the full workflow"  },
@@ -580,17 +411,10 @@ export function CanvasToolbar({
                       <button
                         key={item.label}
                         onClick={() => { onRun(); setShowRunMenu(false); }}
-                        style={{
-                          width: "100%", display: "flex", flexDirection: "column", gap: 1,
-                          padding: "8px 12px", background: "transparent",
-                          border: "none", cursor: "pointer", textAlign: "left",
-                          transition: "background 0.1s",
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "#1A1A26"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                        className="w-full flex flex-col gap-px px-3 py-2 bg-transparent border-none cursor-pointer text-left transition-colors duration-100 hover:bg-[#1A1A26]"
                       >
-                        <span style={{ fontSize: 12, fontWeight: 500, color: "#F0F0F5" }}>{item.label}</span>
-                        <span style={{ fontSize: 10, color: "#55556A" }}>{item.sub}</span>
+                        <span className="text-xs font-medium text-[#F0F0F5]">{item.label}</span>
+                        <span className="text-[10px] text-[#55556A]">{item.sub}</span>
                       </button>
                     ))}
                   </motion.div>
@@ -601,47 +425,18 @@ export function CanvasToolbar({
         </div>
       </div>
 
-      {/* Mobile sticky bottom bar - ALWAYS VISIBLE */}
+      {/* Mobile sticky bottom bar */}
       <motion.div
-        className="md:hidden"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 py-3 bg-[rgba(7,7,13,0.95)] backdrop-blur-[16px] border-t border-t-white/[0.08] shadow-[0_-4px_24px_rgba(0,0,0,0.3)]"
         initial={{ y: 100 }}
         animate={{ y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          padding: "12px 16px",
-          background: "rgba(7, 7, 13, 0.95)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 -4px 24px rgba(0,0,0,0.3)",
-        }}
       >
         {/* Full-width Run button for mobile */}
         {isExecuting ? (
           <button
             onClick={onStop}
-            style={{
-              width: "100%",
-              height: 60,
-              borderRadius: 12,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              background: "#EF4444",
-              border: "none",
-              color: "#fff",
-              fontSize: 16,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "background 0.15s ease",
-              boxShadow: "0 0 24px rgba(239, 68, 68, 0.4)",
-            }}
+            className="w-full h-[60px] rounded-xl flex items-center justify-center gap-2 bg-red-500 border-none text-white text-base font-semibold cursor-pointer transition-colors duration-150 shadow-[0_0_24px_rgba(239,68,68,0.4)]"
           >
             <Square size={16} fill="white" />
             Stop Execution
@@ -650,26 +445,12 @@ export function CanvasToolbar({
           <button
             onClick={onRun}
             disabled={!isWorkflowReady}
-            style={{
-              width: "100%",
-              height: 60,
-              borderRadius: 12,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              background: isWorkflowReady
-                ? "#4F8AFF"
-                : "#3A3A50",
-              border: "none",
-              color: "#fff",
-              fontSize: 16,
-              fontWeight: 600,
-              cursor: isWorkflowReady ? "pointer" : "not-allowed",
-              
-              opacity: isWorkflowReady ? 1 : 0.6,
-              transition: "all 0.15s ease",
-            }}
+            className={cn(
+              "w-full h-[60px] rounded-xl flex items-center justify-center gap-2 border-none text-white text-base font-semibold transition-all duration-150",
+              isWorkflowReady
+                ? "bg-[#4F8AFF] cursor-pointer"
+                : "bg-[#3A3A50] cursor-not-allowed opacity-60",
+            )}
           >
             {isExecuting ? (
               <>
@@ -686,29 +467,15 @@ export function CanvasToolbar({
         )}
 
         {/* Mobile utility bar */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-          paddingTop: 12,
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-        }}>
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-t-white/[0.06]">
           <button
             onClick={onToggleLibrary}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "6px 12px",
-              borderRadius: 8,
-              background: isNodeLibraryOpen ? "rgba(79,138,255,0.12)" : "transparent",
-              border: `1px solid ${isNodeLibraryOpen ? "rgba(79,138,255,0.3)" : "rgba(255,255,255,0.08)"}`,
-              color: isNodeLibraryOpen ? "#4F8AFF" : "#F0F0F5",
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
+            className={cn(
+              "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer",
+              isNodeLibraryOpen
+                ? "bg-[rgba(79,138,255,0.12)] border border-[rgba(79,138,255,0.3)] text-[#4F8AFF]"
+                : "bg-transparent border border-white/[0.08] text-[#F0F0F5]",
+            )}
           >
             <Layers3 size={14} />
             Nodes
@@ -717,22 +484,14 @@ export function CanvasToolbar({
           <button
             onClick={handleSave}
             disabled={(!isDirty && !savedFlash) || isSaving}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "6px 12px",
-              borderRadius: 8,
-              background: "transparent",
-              border: savedFlash
-                ? "1px solid rgba(16,185,129,0.4)"
-                : isDirty ? "1px solid rgba(255,255,255,0.08)" : "1px solid transparent",
-              color: savedFlash ? "#10B981" : isDirty ? "#F0F0F5" : "#3A3A4E",
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: isDirty || savedFlash ? "pointer" : "default",
-              opacity: !isDirty && !savedFlash && !isSaving ? 0.5 : 1,
-            }}
+            className={cn(
+              "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium",
+              savedFlash
+                ? "bg-transparent border border-emerald-500/40 text-emerald-500 cursor-pointer"
+                : isDirty
+                ? "bg-transparent border border-white/[0.08] text-[#F0F0F5] cursor-pointer"
+                : "bg-transparent border border-transparent text-[#3A3A4E] cursor-default opacity-50",
+            )}
           >
             {isSaving ? <Loader2 size={14} className="animate-spin" /> : savedFlash ? <CheckCircle2 size={14} /> : <Save size={14} />}
             {isSaving ? "Saving" : savedFlash ? "Saved" : "Save"}
@@ -740,25 +499,20 @@ export function CanvasToolbar({
 
           <button
             onClick={onPromptMode}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "6px 12px",
-              borderRadius: 8,
-              background: "rgba(139,92,246,0.08)",
-              border: "1px solid rgba(139,92,246,0.2)",
-              color: "#8B5CF6",
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-violet-500/[0.08] border border-violet-500/20 text-violet-500 text-xs font-medium cursor-pointer"
           >
             <Sparkles size={14} />
             AI
           </button>
         </div>
       </motion.div>
+
+      <style>{`
+        @keyframes glow-pulse {
+          0%, 100% { box-shadow: 0 2px 12px rgba(79, 138, 255, 0.25); }
+          50% { box-shadow: 0 2px 20px rgba(79, 138, 255, 0.45); }
+        }
+      `}</style>
     </>
   );
 }

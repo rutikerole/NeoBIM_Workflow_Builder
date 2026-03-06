@@ -118,7 +118,7 @@ export const AnimatedEdge = memo(function AnimatedEdge({
         fill="none"
         stroke="transparent"
         strokeWidth={24}
-        style={{ cursor: "pointer" }}
+        className="cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       />
@@ -132,9 +132,7 @@ export const AnimatedEdge = memo(function AnimatedEdge({
           strokeWidth={strokeW + 6}
           strokeOpacity={0.12}
           strokeLinecap="round"
-          style={{
-            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-          }}
+          className="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
         />
       )}
 
@@ -148,9 +146,7 @@ export const AnimatedEdge = memo(function AnimatedEdge({
         strokeLinecap="round"
         markerEnd={`url(#${arrowId})`}
         filter={active ? `url(#${glowId})` : undefined}
-        style={{
-          transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
+        className="transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       />
@@ -165,11 +161,7 @@ export const AnimatedEdge = memo(function AnimatedEdge({
           strokeOpacity={active ? 0.45 : 0.18}
           strokeDasharray="6 4"
           strokeLinecap="round"
-          className="edge-dash-idle"
-          style={{
-            pointerEvents: "none",
-            transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-          }}
+          className="edge-dash-idle pointer-events-none transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
         />
       )}
 
@@ -184,7 +176,7 @@ export const AnimatedEdge = memo(function AnimatedEdge({
             strokeWidth={3}
             strokeOpacity={0.95}
             strokeLinecap="round"
-            style={{ pointerEvents: "none" }}
+            className="pointer-events-none"
           />
           {/* Travelling dot with tail */}
           <g>

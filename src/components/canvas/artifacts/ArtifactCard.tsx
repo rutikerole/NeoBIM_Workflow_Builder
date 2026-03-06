@@ -8,10 +8,14 @@ import dynamic from "next/dynamic";
 
 const MassingViewer = dynamic(() => import("./MassingViewer"), {
   ssr: false,
-  loading: () => <div style={{ height: 220, background: "#0D0D1A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#3A3A50" }}>Loading 3D viewer…</span></div>,
+  loading: () => (
+    <div className="h-[220px] bg-[#0D0D1A] rounded-lg flex items-center justify-center">
+      <span className="text-[11px] text-[#3A3A50]">Loading 3D viewer…</span>
+    </div>
+  ),
 });
 
-import { formatBytes } from "@/lib/utils";
+import { cn, formatBytes } from "@/lib/utils";
 import type {
   ExecutionArtifact,
   ArtifactType,
@@ -86,44 +90,35 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.94, transition: { duration: prefersReduced ? 0 : 0.15 } }}
       transition={{ type: "spring", stiffness: 380, damping: 32, duration: prefersReduced ? 0 : undefined }}
+      className={cn(
+        "border-b border-b-white/[0.06] border-l-[3px]",
+        "bg-[#0c0c18]/95 backdrop-blur-[32px] backdrop-saturate-[1.3]",
+        "overflow-hidden",
+        "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)]",
+        !prefersReduced && "animate-slide-up",
+      )}
       style={{
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        borderLeft: `3px solid ${accentColor}`,
-        background: "rgba(12,12,24,0.95)",
-        backdropFilter: "blur(32px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(32px) saturate(1.3)",
-        overflow: "hidden",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)",
-        animation: prefersReduced ? "none" : "slide-up 0.4s ease-out",
-      }}
+        '--accent-color': accentColor,
+        '--type-color': typeColor,
+        '--accent-rgb': rgb,
+        borderLeftColor: accentColor,
+      } as React.CSSProperties}
     >
       {/* Header */}
       <div
         onClick={() => setCollapsed(v => !v)}
-        style={{
-          display: "flex", alignItems: "center", gap: 7,
-          padding: "10px 16px",
-          cursor: "pointer",
-          userSelect: "none",
-        }}
+        className="flex items-center gap-[7px] px-4 py-2.5 cursor-pointer select-none"
       >
         {/* Node name */}
-        <span style={{
-          fontSize: 11, fontWeight: 600, color: "#E0E0EA",
-          flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
+        <span className="text-[11px] font-semibold text-[#E0E0EA] flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
           {nodeLabel ?? "Node Output"}
         </span>
 
         {/* Type badge */}
-        <span style={{
-          display: "flex", alignItems: "center", gap: 3,
-          padding: "2px 8px", borderRadius: 6,
-          background: `${typeColor}15`,
-          fontSize: 9, fontWeight: 700, color: typeColor,
-          textTransform: "uppercase" as const, letterSpacing: "0.05em",
-          flexShrink: 0,
-        }}>
+        <span
+          className="flex items-center gap-[3px] px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-[0.05em] shrink-0"
+          style={{ background: `${typeColor}15`, color: typeColor }}
+        >
           {TYPE_ICON[artifact.type]}
           {artifact.type}
         </span>
@@ -132,7 +127,7 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
         <motion.div
           animate={{ rotate: collapsed ? -90 : 0 }}
           transition={{ duration: 0.15 }}
-          style={{ color: "#3A3A50", display: "flex", flexShrink: 0 }}
+          className="text-[#3A3A50] flex shrink-0"
         >
           <ChevronDown size={12} />
         </motion.div>
@@ -142,15 +137,7 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
           <button
             onClick={e => { e.stopPropagation(); onDismiss(); }}
             aria-label="Dismiss"
-            style={{
-              width: 16, height: 16, borderRadius: 3, flexShrink: 0,
-              background: "transparent", border: "none",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#3A3A50", cursor: "pointer",
-              transition: "color 0.1s ease",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#3A3A50"; }}
+            className="w-4 h-4 rounded-[3px] shrink-0 bg-transparent border-none flex items-center justify-center text-[#3A3A50] cursor-pointer transition-colors duration-100 hover:text-red-500"
           >
             <X size={10} />
           </button>
@@ -165,7 +152,7 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.18, ease: "easeInOut" }}
-            style={{ overflow: "hidden" }}
+            className="overflow-hidden"
           >
             <ArtifactErrorBoundary fallbackType={artifact.type}>
               {artifact.type === "text"  && <TextBody  data={artifact.data as TextArtifactData}  />}
@@ -201,7 +188,7 @@ class ArtifactErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: "8px 14px", fontSize: 11, color: "#EF4444" }}>
+        <div className="px-3.5 py-2 text-[11px] text-red-500">
           Unable to render {this.props.fallbackType} artifact
         </div>
       );
@@ -219,20 +206,14 @@ function TextBody({ data }: { data: TextArtifactData }) {
   const display = isLong && !expanded ? text.slice(0, 220) + "…" : text;
 
   return (
-    <div style={{ padding: "0 12px 10px 14px" }}>
-      <p style={{
-        fontSize: 11, color: "#8888A0", lineHeight: 1.6,
-        whiteSpace: "pre-wrap", margin: 0,
-      }}>
+    <div className="pr-3 pb-2.5 pl-3.5">
+      <p className="text-[11px] text-[#8888A0] leading-relaxed whitespace-pre-wrap m-0">
         {display}
       </p>
       {isLong && (
         <button
           onClick={() => setExpanded(v => !v)}
-          style={{
-            marginTop: 6, background: "none", border: "none",
-            fontSize: 10, color: "#4F8AFF", cursor: "pointer", padding: 0,
-          }}
+          className="mt-1.5 bg-none border-none text-[10px] text-[#4F8AFF] cursor-pointer p-0"
         >
           {expanded ? "Show less" : "Show more"}
         </button>
@@ -244,12 +225,8 @@ function TextBody({ data }: { data: TextArtifactData }) {
 function JsonBody({ data }: { data: JsonArtifactData }) {
   const json = JSON.stringify(data?.json, null, 2);
   return (
-    <div style={{
-      margin: "0 12px 10px 14px",
-      background: "rgba(0,0,0,0.3)", borderRadius: 6, overflow: "auto",
-      maxHeight: 180, padding: "8px 10px",
-    }}>
-      <pre style={{ fontSize: 10, color: "#10B981", margin: 0, fontFamily: "monospace", lineHeight: 1.5 }}>
+    <div className="mr-3 mb-2.5 ml-3.5 bg-black/30 rounded-md overflow-auto max-h-[180px] px-2.5 py-2">
+      <pre className="text-[10px] text-emerald-500 m-0 font-mono leading-relaxed">
         {json}
       </pre>
     </div>
@@ -259,26 +236,22 @@ function JsonBody({ data }: { data: JsonArtifactData }) {
 function ImageBody({ data }: { data: ImageArtifactData }) {
   return (
     <div>
-      <div style={{ position: "relative", height: 160, background: "#07070D" }}>
+      <div className="relative h-40 bg-[#07070D]">
         {data?.url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={data.url}
             alt={data.label ?? "Artifact image"}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
+            className="w-full h-full object-cover"
           />
         ) : (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-            <span style={{ fontSize: 11, color: "#5C5C78" }}>No preview</span>
+          <div className="flex items-center justify-center h-full">
+            <span className="text-[11px] text-[#5C5C78]">No preview</span>
           </div>
         )}
       </div>
       {data?.style && (
-        <div style={{ padding: "6px 14px 10px", fontSize: 10, color: "#5C5C78" }}>
+        <div className="px-3.5 pt-1.5 pb-2.5 text-[10px] text-[#5C5C78]">
           {data.style}
         </div>
       )}
@@ -290,24 +263,26 @@ function KpiBody({ data, accentColor }: { data: KpiArtifactData; accentColor: st
   const rgb = hexToRgb(accentColor);
   const metrics = data?.metrics ?? [];
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: metrics.length > 2 ? "1fr 1fr" : "1fr",
-      gap: 6, padding: "0 12px 10px 14px",
-    }}>
+    <div
+      className={cn(
+        "grid gap-1.5 pr-3 pb-2.5 pl-3.5",
+        metrics.length > 2 ? "grid-cols-2" : "grid-cols-1",
+      )}
+    >
       {metrics.map((m, i) => (
-        <div key={i} style={{
-          background: `rgba(${rgb}, 0.06)`,
-          border: `1px solid rgba(${rgb}, 0.12)`,
-          borderRadius: 7, padding: "8px 10px",
-        }}>
-          <div style={{
-            fontSize: 20, fontWeight: 700, color: "#F0F0F5", lineHeight: 1.1,
-          }}>
+        <div
+          key={i}
+          className="rounded-[7px] px-2.5 py-2"
+          style={{
+            background: `rgba(${rgb}, 0.06)`,
+            border: `1px solid rgba(${rgb}, 0.12)`,
+          }}
+        >
+          <div className="text-xl font-bold text-[#F0F0F5] leading-tight">
             {m.value}
-            {m.unit && <span style={{ fontSize: 12, fontWeight: 400, color: "#5C5C78", marginLeft: 4 }}>{m.unit}</span>}
+            {m.unit && <span className="text-xs font-normal text-[#5C5C78] ml-1">{m.unit}</span>}
           </div>
-          <div style={{ fontSize: 10, color: "#3a3a50", marginTop: 4, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
+          <div className="text-[10px] text-[#3a3a50] mt-1 uppercase tracking-[0.05em]">
             {m.label}
           </div>
         </div>
@@ -332,18 +307,20 @@ function TableBody({ data }: { data: TableArtifactData }) {
     : rows;
 
   return (
-    <div style={{ margin: "0 0 10px" }}>
-      <div style={{ overflow: "auto", maxHeight: 200 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+    <div className="mb-2.5">
+      <div className="overflow-auto max-h-[200px]">
+        <table className="w-full border-collapse text-[10px]">
           <thead>
-            <tr style={{ background: "rgba(0,0,0,0.3)", position: "sticky", top: 0, zIndex: 1 }}>
+            <tr>
               {displayHeaders.map((h, i) => (
-                <th key={i} style={{
-                  padding: "5px 10px", textAlign: i >= 3 ? "right" : "left",
-                  color: "#5C5C78", fontWeight: 600, whiteSpace: "nowrap",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                  background: "rgba(0,0,0,0.3)",
-                }}>
+                <th
+                  key={i}
+                  className={cn(
+                    "px-2.5 py-[5px] whitespace-nowrap font-semibold text-[#5C5C78]",
+                    "border-b border-b-white/[0.06] bg-black/30 sticky top-0 z-[1]",
+                    i >= 3 ? "text-right" : "text-left",
+                  )}
+                >
                   {h}
                 </th>
               ))}
@@ -351,13 +328,15 @@ function TableBody({ data }: { data: TableArtifactData }) {
           </thead>
           <tbody>
             {displayRows.map((row, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid rgba(30,30,46,0.5)" }}>
+              <tr key={i} className="border-b border-b-[rgba(30,30,46,0.5)]">
                 {row.map((cell, j) => (
-                  <td key={j} style={{
-                    padding: "5px 10px", color: "#8888A0", whiteSpace: "nowrap",
-                    textAlign: j >= 3 ? "right" : "left",
-                    fontVariantNumeric: "tabular-nums",
-                  }}>
+                  <td
+                    key={j}
+                    className={cn(
+                      "px-2.5 py-[5px] text-[#8888A0] whitespace-nowrap tabular-nums",
+                      j >= 3 ? "text-right" : "text-left",
+                    )}
+                  >
                     {cell}
                   </td>
                 ))}
@@ -367,17 +346,12 @@ function TableBody({ data }: { data: TableArtifactData }) {
         </table>
       </div>
       {(summary?.grandTotal != null || content) && (
-        <div style={{
-          padding: "6px 14px",
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          fontSize: 10,
-        }}>
-          <span style={{ color: "#5C5C78" }}>
+        <div className="px-3.5 py-1.5 border-t border-t-white/[0.08] flex justify-between items-center text-[10px]">
+          <span className="text-[#5C5C78]">
             {rows.length} line items{summary?.note ? ` · ${summary.note}` : ""}
           </span>
           {summary?.grandTotal != null && (
-            <span style={{ color: "#10B981", fontWeight: 700 }}>
+            <span className="text-emerald-500 font-bold">
               Grand Total: ${summary.grandTotal.toLocaleString()}
             </span>
           )}
@@ -406,17 +380,11 @@ function SvgBody({ data }: { data: SvgArtifactData }) {
   return (
     <div>
       <div
-        style={{
-          background: "#FAFAFA",
-          borderRadius: 0,
-          overflow: "auto",
-          maxHeight: 240,
-          padding: 4,
-        }}
+        className="bg-[#FAFAFA] overflow-auto max-h-[240px] p-1"
         dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
       />
       {data?.roomList && data.roomList.length > 0 && (
-        <div style={{ padding: "6px 14px 10px", fontSize: 10, color: "#5C5C78" }}>
+        <div className="px-3.5 pt-1.5 pb-2.5 text-[10px] text-[#5C5C78]">
           {data.roomList.length} rooms · {data.totalArea ?? "?"} m² total
           {data.floors ? ` · ${data.floors} floors` : ""}
         </div>
@@ -437,10 +405,10 @@ interface Massing3dData {
 
 function Massing3dBody({ data }: { data: Massing3dData }) {
   if (!data?.floors || !data?.height) {
-    return <div style={{ padding: "8px 14px", fontSize: 11, color: "#5C5C78" }}>No massing data</div>;
+    return <div className="px-3.5 py-2 text-[11px] text-[#5C5C78]">No massing data</div>;
   }
   return (
-    <div style={{ padding: "0 8px 10px 10px" }}>
+    <div className="px-2 pb-2.5 pl-2.5">
       <MassingViewer
         floors={data.floors}
         height={data.height}
@@ -449,21 +417,17 @@ function Massing3dBody({ data }: { data: Massing3dData }) {
         buildingType={data.buildingType}
       />
       {data.metrics && data.metrics.length > 0 && (
-        <div style={{
-          display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 4, marginTop: 6,
-        }}>
+        <div className="grid grid-cols-3 gap-1 mt-1.5">
           {data.metrics.slice(0, 6).map((m, i) => (
-            <div key={i} style={{
-              background: "rgba(79,138,255,0.06)",
-              border: "1px solid rgba(79,138,255,0.1)",
-              borderRadius: 5, padding: "5px 7px", textAlign: "center",
-            }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#F0F0F5", lineHeight: 1.1 }}>
+            <div
+              key={i}
+              className="bg-[rgba(79,138,255,0.06)] border border-[rgba(79,138,255,0.1)] rounded-[5px] px-[7px] py-[5px] text-center"
+            >
+              <div className="text-[13px] font-bold text-[#F0F0F5] leading-tight">
                 {m.value}
-                {m.unit && <span style={{ fontSize: 8, fontWeight: 400, color: "#5C5C78", marginLeft: 2 }}>{m.unit}</span>}
+                {m.unit && <span className="text-[8px] font-normal text-[#5C5C78] ml-0.5">{m.unit}</span>}
               </div>
-              <div style={{ fontSize: 8, color: "#5C5C78", marginTop: 2, textTransform: "uppercase" as const, letterSpacing: "0.3px" }}>
+              <div className="text-[8px] text-[#5C5C78] mt-0.5 uppercase tracking-[0.3px]">
                 {m.label}
               </div>
             </div>
@@ -476,41 +440,19 @@ function Massing3dBody({ data }: { data: Massing3dData }) {
 
 function FileBody({ data }: { data: FileArtifactData }) {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      gap: 10, padding: "0 12px 10px 14px",
-    }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{
-          fontSize: 11, fontWeight: 500, color: "#F0F0F5",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
+    <div className="flex items-center justify-between gap-2.5 pr-3 pb-2.5 pl-3.5">
+      <div className="min-w-0">
+        <div className="text-[11px] font-medium text-[#F0F0F5] overflow-hidden text-ellipsis whitespace-nowrap">
           {data?.name}
         </div>
-        <div style={{ fontSize: 10, color: "#5C5C78", marginTop: 2 }}>
+        <div className="text-[10px] text-[#5C5C78] mt-0.5">
           {data?.type} · {formatBytes(data?.size ?? 0)}
         </div>
       </div>
       <a
         href={data?.downloadUrl}
         download={data?.name}
-        style={{
-          display: "flex", alignItems: "center", gap: 5,
-          padding: "5px 10px", borderRadius: 6,
-          background: "rgba(79,138,255,0.08)",
-          border: "1px solid rgba(79,138,255,0.2)",
-          fontSize: 10, fontWeight: 500, color: "#4F8AFF",
-          textDecoration: "none", flexShrink: 0,
-          transition: "all 0.15s ease",
-        }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLAnchorElement).style.background = "rgba(79,138,255,0.15)";
-          (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(79,138,255,0.4)";
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLAnchorElement).style.background = "rgba(79,138,255,0.08)";
-          (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(79,138,255,0.2)";
-        }}
+        className="flex items-center gap-[5px] px-2.5 py-[5px] rounded-md bg-[rgba(79,138,255,0.08)] border border-[rgba(79,138,255,0.2)] text-[10px] font-medium text-[#4F8AFF] no-underline shrink-0 transition-all duration-150 hover:bg-[rgba(79,138,255,0.15)] hover:border-[rgba(79,138,255,0.4)]"
       >
         <Download size={10} />
         Download
