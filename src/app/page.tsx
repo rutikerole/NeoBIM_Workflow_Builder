@@ -291,7 +291,7 @@ export default function LandingPage() {
         }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", marginRight: "auto" }}>
             <div style={{
-              width: 34, height: 34, borderRadius: 10, overflow: "hidden",
+              width: 40, height: 40, borderRadius: 12, overflow: "hidden",
               boxShadow: "0 2px 12px rgba(79,138,255,0.2)",
               flexShrink: 0,
             }}>
@@ -1395,7 +1395,7 @@ export default function LandingPage() {
       }}>
         <div className="landing-footer" style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 24, height: 24, borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/buildflow_logo.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>

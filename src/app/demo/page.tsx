@@ -111,9 +111,9 @@ function DemoBanner({ hasRun }: { hasRun: boolean }) {
       >
         <div
           style={{
-            width: 24,
-            height: 24,
-            borderRadius: 6,
+            width: 30,
+            height: 30,
+            borderRadius: 8,
             overflow: "hidden",
             flexShrink: 0,
           }}

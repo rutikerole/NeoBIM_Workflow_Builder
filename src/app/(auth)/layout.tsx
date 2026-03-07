@@ -101,7 +101,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         >
           <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 10, textDecoration: "none", marginBottom: 48 }}>
             <div style={{
-              width: 36, height: 36, borderRadius: 10, overflow: "hidden",
+              width: 42, height: 42, borderRadius: 12, overflow: "hidden",
               boxShadow: "0 4px 16px rgba(79,138,255,0.2)",
               flexShrink: 0,
             }}>

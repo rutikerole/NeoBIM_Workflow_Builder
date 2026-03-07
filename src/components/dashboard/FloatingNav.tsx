@@ -72,7 +72,7 @@ export function FloatingNav() {
       <Link
         href="/dashboard"
         style={{
-          width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+          width: 38, height: 38, borderRadius: 11, flexShrink: 0,
           overflow: "hidden",
           marginRight: 4,
           textDecoration: "none",
