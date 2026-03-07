@@ -7,6 +7,20 @@ import type { Workflow, WorkflowTemplate, CreationMode } from "@/types/workflow"
 import { generateId } from "@/lib/utils";
 import { api } from "@/lib/api";
 
+/** Returns true if the workflow name is empty, whitespace, or the default "Untitled Workflow" */
+export function isUntitledWorkflow(name: string | null | undefined): boolean {
+  if (!name) return true;
+  const trimmed = name.trim();
+  return trimmed === "" || trimmed === "Untitled Workflow";
+}
+
+/** Prisma cuid() IDs are 25 chars starting with 'c'. Client generateId() produces 7-char random strings. */
+function isPersistedId(id: string | undefined | null): boolean {
+  if (!id) return false;
+  // Prisma cuid: 25 chars, starts with 'c'. Client IDs are 7 chars.
+  return id.length >= 20 && id.startsWith("c");
+}
+
 interface HistoryEntry {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
@@ -21,6 +35,10 @@ interface WorkflowState {
   edges: WorkflowEdge[];
   isDirty: boolean;
   isSaving: boolean;
+
+  // Save modal
+  isSaveModalOpen: boolean;
+  pendingSaveName: string;
 
   // Undo/Redo history
   _history: HistoryEntry[];
@@ -52,6 +70,11 @@ interface WorkflowState {
   setEdges: (edges: WorkflowEdge[]) => void;
   setEdgeFlowing: (sourceNodeId: string, flowing: boolean) => void;
 
+  // Save modal actions
+  openSaveModal: () => void;
+  closeSaveModal: () => void;
+  setPendingSaveName: (name: string) => void;
+
   // Persistence
   markDirty: () => void;
   markClean: () => void;
@@ -73,6 +96,8 @@ export const useWorkflowStore = create<WorkflowState>()(
     edges: [],
     isDirty: false,
     isSaving: false,
+    isSaveModalOpen: false,
+    pendingSaveName: "",
     creationMode: "manual",
 
     // Undo/Redo
@@ -253,6 +278,10 @@ export const useWorkflowStore = create<WorkflowState>()(
         ),
       })),
 
+    openSaveModal: () => set({ isSaveModalOpen: true }),
+    closeSaveModal: () => set({ isSaveModalOpen: false, pendingSaveName: "" }),
+    setPendingSaveName: (name) => set({ pendingSaveName: name }),
+
     markDirty: () => set({ isDirty: true }),
     markClean: () => set({ isDirty: false }),
     setSaving: (isSaving) => set({ isSaving }),
@@ -263,16 +292,28 @@ export const useWorkflowStore = create<WorkflowState>()(
       set({ isSaving: true });
       try {
         const tileGraph = { nodes: state.nodes, edges: state.edges };
-        if (state.currentWorkflow?.id && !state.currentWorkflow.id.includes("-")) {
-          // Has a real DB id — update
-          await api.workflows.update(state.currentWorkflow.id, {
-            name: name ?? state.currentWorkflow.name,
+        const workflowId = state.currentWorkflow?.id;
+
+        if (isPersistedId(workflowId)) {
+          // Has a real DB id (Prisma cuid) — update existing workflow
+          await api.workflows.update(workflowId!, {
+            name: name ?? state.currentWorkflow!.name,
             tileGraph,
           });
-          set({ isDirty: false });
-          return state.currentWorkflow.id;
+          // Update name in store if changed
+          if (name && name !== state.currentWorkflow!.name) {
+            set((s) => ({
+              isDirty: false,
+              currentWorkflow: s.currentWorkflow
+                ? { ...s.currentWorkflow, name }
+                : null,
+            }));
+          } else {
+            set({ isDirty: false });
+          }
+          return workflowId!;
         } else {
-          // Create new
+          // No persisted ID — create new workflow in DB
           const { workflow } = await api.workflows.create({
             name: name ?? state.currentWorkflow?.name ?? "Untitled Workflow",
             description: state.currentWorkflow?.description ?? undefined,
@@ -282,7 +323,7 @@ export const useWorkflowStore = create<WorkflowState>()(
           set((s) => ({
             isDirty: false,
             currentWorkflow: s.currentWorkflow
-              ? { ...s.currentWorkflow, id: workflow.id }
+              ? { ...s.currentWorkflow, id: workflow.id, name: name ?? s.currentWorkflow.name }
               : null,
           }));
           return workflow.id;

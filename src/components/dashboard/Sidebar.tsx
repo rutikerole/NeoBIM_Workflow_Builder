@@ -20,6 +20,7 @@ import {
   History,
   CreditCard,
   BarChart3,
+  FlaskConical,
 } from "lucide-react";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 
@@ -34,6 +35,9 @@ const NAV_ITEMS = [
   { href: "/dashboard/community",  label: "Community",   icon: Globe },
   { href: "/dashboard/billing",    label: "Billing",     icon: CreditCard },
   { href: "/dashboard/settings",   label: "Settings",    icon: Settings },
+  ...(process.env.NODE_ENV === "development"
+    ? [{ href: "/dashboard/test-results", label: "Test Suite", icon: FlaskConical }]
+    : []),
 ];
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
