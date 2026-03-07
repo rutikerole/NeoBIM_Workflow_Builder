@@ -11,6 +11,7 @@ import {
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { useLocale } from "@/hooks/useLocale";
+import type { TranslationKey } from "@/lib/i18n";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -38,14 +39,14 @@ interface Execution {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function relativeTime(date: string) {
+function relativeTime(date: string, t: (key: TranslationKey) => string) {
   const diff = Date.now() - new Date(date).getTime();
   const s = Math.floor(diff / 1000);
-  if (s < 60) return `${s}s ago`;
+  if (s < 60) return `${s}${t('history.secondsAgo')}`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return `${m}${t('history.minutesAgo')}`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return `${h}${t('history.hoursAgo')}`;
   return new Date(date).toLocaleDateString();
 }
 
@@ -88,6 +89,7 @@ function StatusBadge({ status }: { status: string }) {
 // ─── Artifact Preview ────────────────────────────────────────────────────────
 
 function ArtifactPreview({ artifact }: { artifact: Artifact }) {
+  const { t } = useLocale();
   const d = artifact.data;
   let preview = "";
 
@@ -98,11 +100,11 @@ function ArtifactPreview({ artifact }: { artifact: Artifact }) {
     const kpis = d.kpis as Array<{ label: string; value: string | number }> | undefined;
     if (kpis?.[0]) preview = `${kpis[0].label}: ${kpis[0].value}`;
   } else if (artifact.type === "image") {
-    preview = "Concept render";
+    preview = t('history.conceptRender');
   } else if (artifact.type === "table") {
-    preview = `Table: ${artifact.title ?? "data"}`;
+    preview = `${t('history.tablePrefix')}: ${artifact.title ?? t('history.data')}`;
   } else if (artifact.type === "file") {
-    preview = d.fileName as string ?? "File";
+    preview = d.fileName as string ?? t('history.file');
   }
 
   return (
@@ -311,7 +313,7 @@ function ExecutionRow({ execution, onRerun, onViewDetails, compareSelected, onTo
         {onToggleCompare && (
           <button
             onClick={() => onToggleCompare(execution.id)}
-            title="Select for comparison"
+            title={t('history.selectForComparison')}
             style={{
               width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 2,
               border: compareSelected ? "2px solid #4F8AFF" : "2px solid #2A2A3E",
@@ -353,7 +355,7 @@ function ExecutionRow({ execution, onRerun, onViewDetails, compareSelected, onTo
           {/* Meta row */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 10, color: "#55556A" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <Clock size={9} /> {relativeTime(execution.startedAt)}
+              <Clock size={9} /> {relativeTime(execution.startedAt, t)}
             </span>
             {dur && <span>{t('history.duration')} {dur}</span>}
           </div>
@@ -373,7 +375,7 @@ function ExecutionRow({ execution, onRerun, onViewDetails, compareSelected, onTo
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
           <button
             onClick={() => router.push(`/dashboard/canvas?id=${execution.workflowId}`)}
-            title="Open workflow"
+            title={t('history.openWorkflow')}
             style={{
               padding: "5px 8px", borderRadius: 6, border: "1px solid #1E1E2E",
               background: "transparent", color: "#55556A", fontSize: 10, cursor: "pointer",
@@ -422,7 +424,7 @@ function ExecutionRow({ execution, onRerun, onViewDetails, compareSelected, onTo
           ))}
           {execution.artifacts.length > 5 && (
             <span style={{ fontSize: 10, color: "#3A3A4E", alignSelf: "center" }}>
-              +{execution.artifacts.length - 5} more
+              +{execution.artifacts.length - 5} {t('history.more')}
             </span>
           )}
         </div>
@@ -448,10 +450,10 @@ export default function HistoryPage() {
       const next = new Set(prev);
       if (next.has(id)) { next.delete(id); }
       else if (next.size < 2) { next.add(id); }
-      else { toast.info("Select at most 2 executions to compare"); }
+      else { toast.info(t('toast.maxCompare')); }
       return next;
     });
-  }, []);
+  }, [t]);
 
   const loadExecutions = useCallback(async () => {
     setLoading(true);
@@ -493,8 +495,8 @@ export default function HistoryPage() {
 
   const handleRerun = useCallback((execution: Execution) => {
     router.push(`/dashboard/canvas?id=${execution.workflowId}&rerun=${execution.id}`);
-    toast.success("Opening workflow with previous inputs…");
-  }, [router]);
+    toast.success(t('toast.openingWithInputs'));
+  }, [router, t]);
 
   const todayCount = executions.filter(e => {
     const d = new Date(e.startedAt);

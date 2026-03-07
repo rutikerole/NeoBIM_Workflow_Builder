@@ -128,7 +128,7 @@ export default function DashboardPage() {
       color: "#8B5CF6",
       gradient: "linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)",
       href: "/dashboard/templates",
-      trend: `${PREBUILT_WORKFLOWS.length} available`
+      trend: `${PREBUILT_WORKFLOWS.length} ${t('dashboard.available')}`
     },
   ];
 
@@ -415,9 +415,9 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5 text-[11.5px] text-[#5C5C78]">
                     <Clock size={11} />
-                    <span>~3 minutes</span>
+                    <span>~3 {t('dashboard.minutes')}</span>
                   </div>
-                  <div className="text-[11.5px] text-[#5C5C78]">6 nodes</div>
+                  <div className="text-[11.5px] text-[#5C5C78]">6 {t('dashboard.dashboardNodes')}</div>
                   <div
                     className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
                     style={{
@@ -426,7 +426,7 @@ export default function DashboardPage() {
                       border: "1px solid rgba(245,158,11,0.15)",
                     }}
                   >
-                    Advanced
+                    {t('dashboard.advanced')}
                   </div>
                 </div>
               </div>

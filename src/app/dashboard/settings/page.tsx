@@ -34,9 +34,9 @@ export default function SettingsPage() {
         setLoadError(null);
       })
       .catch((err) => {
-        const errorMsg = err instanceof Error && err.name === 'AbortError' 
-          ? "Request timed out" 
-          : "Failed to load API keys";
+        const errorMsg = err instanceof Error && err.name === 'AbortError'
+          ? t('toast.requestTimeout')
+          : t('toast.loadKeysFailed');
         setLoadError(errorMsg);
         toast.error(errorMsg);
       })
@@ -77,8 +77,8 @@ export default function SettingsPage() {
         throw new Error(`API returned ${res.status}`);
       }
     } catch (err) {
-      const errorMsg = err instanceof Error && err.name === 'AbortError' 
-        ? "Request timed out" 
+      const errorMsg = err instanceof Error && err.name === 'AbortError'
+        ? t('toast.requestTimeout')
         : t('settings.saveFailed');
       toast.error(errorMsg);
     } finally {

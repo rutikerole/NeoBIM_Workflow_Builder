@@ -43,6 +43,15 @@ const SORT_OPTION_KEYS: Record<string, string> = {
 
 const COMPLEXITY_ORDER: Record<string, number> = { simple: 0, intermediate: 1, advanced: 2 };
 
+const CATEGORY_LABEL_KEYS: Record<string, TranslationKey> = {
+  "Concept Design": 'templates.categoryConceptDesign',
+  "Visualization": 'templates.categoryVisualization',
+  "BIM Export": 'templates.categoryBimExport',
+  "Cost Estimation": 'templates.categoryCostEstimation',
+  "Full Pipeline": 'templates.categoryFullPipeline',
+  "Site Analysis": 'templates.categorySiteAnalysis',
+};
+
 function hexToRgb(hex: string): string {
   const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!r) return "79, 138, 255";
@@ -116,7 +125,7 @@ export default function TemplatesPage() {
     const template = PREBUILT_WORKFLOWS.find(w => w.id === id);
     if (!template) return;
     loadFromTemplate(template as WorkflowTemplate);
-    toast.success(`"${template.name}" cloned`, { description: "Opening in canvas…" });
+    toast.success(`"${template.name}" ${t('toast.cloned')}`, { description: t('toast.openingCanvas') });
     router.push("/dashboard/canvas");
   };
 
@@ -213,7 +222,7 @@ export default function TemplatesPage() {
                     }
                   }}
                 >
-                  {cat === "All" ? t('templates.allWorkflows') : cat}
+                  {cat === "All" ? t('templates.allWorkflows') : (CATEGORY_LABEL_KEYS[cat] ? t(CATEGORY_LABEL_KEYS[cat]) : cat)}
                 </button>
               );
             })}
@@ -287,7 +296,7 @@ export default function TemplatesPage() {
           {/* ── Results count ────────────────────────────────────────────── */}
           <div style={{ marginBottom: 16, fontSize: 11, color: "#3A3A50" }}>
             {filtered.length} {filtered.length !== 1 ? t('templates.templates') : t('templates.template')}
-            {activeCategory !== "All" && ` in ${activeCategory}`}
+            {activeCategory !== "All" && ` ${t('templates.inCategory')} ${CATEGORY_LABEL_KEYS[activeCategory] ? t(CATEGORY_LABEL_KEYS[activeCategory]) : activeCategory}`}
           </div>
 
           {/* ── Grid ────────────────────────────────────────────────────── */}

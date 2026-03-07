@@ -18,6 +18,7 @@ const en = {
   'nav.newWorkflow': 'New Workflow',
   'nav.collapseSidebar': 'Collapse sidebar',
   'nav.expandSidebar': 'Expand sidebar',
+  'nav.userFallback': 'User',
 
   // ===== AUTH =====
   'auth.welcomeBack': 'Welcome back',
@@ -461,6 +462,78 @@ const en = {
   'landing.prompt3': 'Build a massing study from project brief to 3D model...',
   'landing.prompt4': 'Design a facade optimization workflow with AI...',
 
+  // ===== TOAST MESSAGES =====
+  'toast.duplicated': 'Duplicated',
+  'toast.deleted': 'Deleted',
+  'toast.node': 'Node',
+  'toast.emptyInputError': 'Please provide input for all input nodes before running the workflow.',
+  'toast.noNodesError': 'Add nodes to your workflow first.',
+  'toast.demoSaveHint': 'Create a free account to save workflows',
+  'toast.workflowSaved': 'Workflow saved',
+  'toast.saveFailed': 'Save failed — check your connection',
+  'toast.shareComingSoon': 'Share feature coming soon',
+  'toast.renamedTo': 'Workflow renamed to',
+  'toast.pdfDownloaded': 'PDF report downloaded',
+  'toast.maxCompare': 'Select at most 2 executions to compare',
+  'toast.openingWithInputs': 'Opening workflow with previous inputs…',
+  'toast.titleRequired': 'Title is required',
+  'toast.descRequired': 'Description is required',
+  'toast.published': 'Workflow published to community!',
+  'toast.cloned': 'cloned',
+  'toast.openingCanvas': 'Opening in canvas…',
+  'toast.workflowUpdated': 'Workflow updated',
+  'toast.change': 'change',
+  'toast.changes': 'changes',
+  'toast.requestTimeout': 'Request timed out',
+  'toast.loadKeysFailed': 'Failed to load API keys',
+
+  // ===== CANVAS EXTRA =====
+  'canvas.executionResults': 'Execution Results',
+  'canvas.downloadPdfReport': 'Download PDF report',
+  'canvas.clearAllResults': 'Clear all results',
+  'canvas.examplePipeline': 'Example AEC Pipeline',
+
+  // ===== HISTORY EXTRA =====
+  'history.secondsAgo': 's ago',
+  'history.minutesAgo': 'm ago',
+  'history.hoursAgo': 'h ago',
+  'history.conceptRender': 'Concept render',
+  'history.tablePrefix': 'Table',
+  'history.data': 'data',
+  'history.file': 'File',
+  'history.selectForComparison': 'Select for comparison',
+  'history.openWorkflow': 'Open workflow',
+  'history.more': 'more',
+
+  // ===== ARTIFACT EXTRA =====
+  'artifact.lineItems': 'line items',
+  'artifact.grandTotal': 'Grand Total',
+  'artifact.rooms': 'rooms',
+  'artifact.total': 'total',
+  'artifact.floors': 'floors',
+  'artifact.download': 'Download',
+  'artifact.renderError': 'Unable to render artifact',
+
+  // ===== COMMUNITY EXTRA =====
+  'community.all': 'All',
+  'community.sortLabel': 'Sort:',
+
+  // ===== TEMPLATES EXTRA =====
+  'templates.inCategory': 'in',
+  'templates.available': 'available',
+  'templates.categoryConceptDesign': 'Concept Design',
+  'templates.categoryVisualization': 'Visualization',
+  'templates.categoryBimExport': 'BIM Export',
+  'templates.categoryCostEstimation': 'Cost Estimation',
+  'templates.categoryFullPipeline': 'Full Pipeline',
+  'templates.categorySiteAnalysis': 'Site Analysis',
+
+  // ===== DASHBOARD EXTRA =====
+  'dashboard.available': 'available',
+  'dashboard.advanced': 'Advanced',
+  'dashboard.minutes': 'minutes',
+  'dashboard.dashboardNodes': 'nodes',
+
   // ===== COMMON =====
   'common.loading': 'Loading...',
   'common.error': 'Something went wrong',
@@ -493,7 +566,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'nav.dashboard': 'Übersicht',
   'nav.myWorkflows': 'Meine Workflows',
   'nav.history': 'Verlauf',
-  'nav.analytics': 'Analytik',
+  'nav.analytics': 'Auswertungen',
   'nav.templates': 'Vorlagen',
   'nav.community': 'Community',
   'nav.billing': 'Abrechnung',
@@ -504,6 +577,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'nav.newWorkflow': 'Neuer Workflow',
   'nav.collapseSidebar': 'Seitenleiste einklappen',
   'nav.expandSidebar': 'Seitenleiste ausklappen',
+  'nav.userFallback': 'Benutzer',
 
   // ===== AUTH =====
   'auth.welcomeBack': 'Willkommen zurück',
@@ -572,8 +646,8 @@ const de: Record<keyof typeof en, string | string[]> = {
   'canvas.export': 'Export',
   'canvas.noNodes': 'Keine Nodes gefunden',
   'canvas.tryDifferent': 'Versuchen Sie eine andere Suche',
-  'canvas.in': 'Ein',
-  'canvas.out': 'Aus',
+  'canvas.in': 'Eing.',
+  'canvas.out': 'Ausg.',
   'canvas.live': 'LIVE',
   'canvas.preview': 'VORSCHAU',
   'canvas.manual': 'Manuell',
@@ -636,11 +710,11 @@ const de: Record<keyof typeof en, string | string[]> = {
   'aiChat.suggestAddIfc': 'IFC Exporter hinzufügen',
   'aiChat.suggestRemoveImg': 'Image Generator entfernen',
   'aiChat.suggestExplainWf': 'Meinen Workflow erklären',
-  'aiChat.nodeNotFound': 'Diesen Node konnte ich nicht finden. Versuchen Sie etwas wie: "Add IFC Exporter at the end".',
+  'aiChat.nodeNotFound': 'Diesen Node konnte ich nicht finden. Versuchen Sie etwas wie: „IFC Exporter hinzufügen".',
   'aiChat.nodeNotFoundRemove': 'Diesen Node zum Entfernen konnte ich nicht finden.',
   'aiChat.canvasEmpty': 'Ihre Arbeitsfläche ist leer. Fügen Sie zuerst Nodes hinzu!',
-  'aiChat.helpText': 'Ich kann Nodes **hinzufügen**, **entfernen** oder **erklären**. Versuchen Sie:\n• "Add IFC Exporter at the end"\n• "Remove the Image Generator"\n• "Explain my workflow"',
-  'aiChat.connectionError': 'Verbindung zur KI fehlgeschlagen. Versuchen Sie es erneut oder nutzen Sie einfache Befehle wie "Add BOQ Exporter".',
+  'aiChat.helpText': 'Ich kann Nodes **hinzufügen**, **entfernen** oder **erklären**. Versuchen Sie:\n• „IFC Exporter hinzufügen"\n• „Image Generator entfernen"\n• „Meinen Workflow erklären"',
+  'aiChat.connectionError': 'Verbindung zur KI fehlgeschlagen. Versuchen Sie es erneut oder nutzen Sie einfache Befehle wie „BOQ Exporter hinzufügen".',
 
   // ===== EXECUTION =====
   'execution.executing': 'Ausführung…',
@@ -687,7 +761,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'templates.title': 'Workflow-Vorlagen',
   'templates.subtitle': 'vorgefertigte AEC-Workflows zum Ausführen',
   'templates.startWithProven': 'Starten Sie mit einem bewährten Workflow',
-  'templates.fromBrief': 'Vom Brief zum Gebäude in Minuten',
+  'templates.fromBrief': 'Vom Briefing zum Gebäude in Minuten',
   'templates.fromBriefDesc': 'Von AEC-Experten erstellt. Klonen, anpassen und in Sekunden ausführen — keine Konfiguration nötig.',
   'templates.inputLabel': 'Eingabe',
   'templates.aiLabel': 'KI',
@@ -775,7 +849,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'billing.teamFeature1': 'Alles in Pro',
   'billing.teamFeature2': '5 Team-Plätze inklusive',
   'billing.teamFeature3': 'Gemeinsame Workflows & Vorlagen',
-  'billing.teamFeature4': 'Team-Analytik',
+  'billing.teamFeature4': 'Team-Auswertungen',
   'billing.teamFeature5': 'SSO & SAML',
   'billing.teamFeature6': 'Dedizierter Support',
   'billing.upgradeToTeam': 'Auf Team upgraden',
@@ -815,11 +889,11 @@ const de: Record<keyof typeof en, string | string[]> = {
   'settings.upgradeToPro': 'Auf Pro upgraden',
 
   // ===== ANALYTICS =====
-  'analytics.loading': 'Analytik wird geladen...',
-  'analytics.loadError': 'Analytik konnte nicht geladen werden',
+  'analytics.loading': 'Auswertungen werden geladen...',
+  'analytics.loadError': 'Auswertungen konnten nicht geladen werden',
   'analytics.noData': 'Noch keine Analysedaten',
   'analytics.noDataDesc': 'Führen Sie Ihren ersten Workflow aus, um hier Analysen zu sehen.',
-  'analytics.title': 'Analytik',
+  'analytics.title': 'Auswertungen',
   'analytics.subtitle': 'Workflow-Ausführungseinblicke der letzten 7 Tage',
   'analytics.totalRuns': 'Gesamt',
   'analytics.successRate': 'Erfolgsrate',
@@ -842,14 +916,14 @@ const de: Record<keyof typeof en, string | string[]> = {
   'landing.heroLine1': 'WORKFLOW',
   'landing.heroLine2': 'AUTOMATISIERUNG,',
   'landing.heroLine3': 'MIT PRÄZISION.',
-  'landing.heroSubtitle': 'Professioneller No-Code Workflow-Builder für Architekten und AEC-Teams. Verwandeln Sie Projektbriefe in 3D-Konzepte mit KI-gestützten Pipelines.',
+  'landing.heroSubtitle': 'Professioneller No-Code Workflow-Builder für Architekten und AEC-Teams. Verwandeln Sie Projektbriefings in 3D-Konzepte mit KI-gestützten Pipelines.',
   'landing.getStarted': 'Loslegen',
   'landing.bookDemo': 'Demo buchen',
   'landing.coreCapabilities': 'Kernfunktionen',
   'landing.fromIdeaTo': 'Von der Idee zur ',
   'landing.reality': 'Realität',
   'landing.textTo3d': 'Text-zu-3D',
-  'landing.textTo3dDesc': 'Beschreiben Sie Ihr Gebäudekonzept in einfacher Sprache. Erhalten Sie parametrische 3D-Massenmodelle in Sekunden.',
+  'landing.textTo3dDesc': 'Beschreiben Sie Ihr Gebäudekonzept in einfacher Sprache. Erhalten Sie parametrische 3D-Baukörpermodelle in Sekunden.',
   'landing.aiPoweredBadge': 'KI-gestützt',
   'landing.instantRenders': 'Sofort-Renderings',
   'landing.instantRendersDesc': 'Erzeugen Sie fotorealistische Konzeptbilder mit KI. Perfekt für Entwurfspräsentationen.',
@@ -883,7 +957,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'landing.communityBullet2': 'Ein-Klick-Klonen',
   'landing.communityBullet3': 'Bewertungen und Reviews',
   'landing.templatesSection': 'Vorlagen',
-  'landing.fromBrief': 'Vom Brief zum Gebäude',
+  'landing.fromBrief': 'Vom Briefing zum Gebäude',
   'landing.inMinutes': 'in Minuten',
   'landing.tryWorkflow': 'Diesen Workflow testen',
   'landing.howItWorks': 'So funktioniert es',
@@ -920,7 +994,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'landing.contactSales': 'Vertrieb kontaktieren',
   'landing.enterpriseIncludes': 'Alles in Pro, plus:',
   'landing.enterpriseFeatures': ['Unbegrenzte Ausführungen', 'SSO & SAML', 'Dedizierter Support', 'Eigene Integrationen', 'SLA-Garantie', 'On-Premise-Bereitstellung'],
-  'landing.readyToTransform': 'Bereit',
+  'landing.readyToTransform': 'Bereit,',
   'landing.yourAecWorkflow': 'Ihren AEC-Workflow zu transformieren?',
   'landing.ctaSubtitle': 'Kostenlos starten. Keine Kreditkarte erforderlich. Schließen Sie sich tausenden Architekten an, die bereits smarter bauen.',
   'landing.createFirstWorkflow': 'Ersten Workflow erstellen',
@@ -932,20 +1006,92 @@ const de: Record<keyof typeof en, string | string[]> = {
   'landing.betaProduct': 'Beta-Produkt · Entwickelt für die AEC-Branche',
   'landing.whatsNew': 'NEU',
   'landing.aiPrompt': 'KI-Eingabe',
-  'landing.promptQuote': '„Erstellen Sie einen Workflow, der ein Projektbriefing nimmt, 3D-Massen generiert und ein Konzeptbild rendert."',
+  'landing.promptQuote': '„Erstellen Sie einen Workflow, der ein Projektbriefing nimmt, 3D-Baukörper generiert und ein Konzeptbild rendert."',
 
   // ===== LANDING NEWS TICKER =====
   'landing.news1': 'Neu: KI-Workflow-Generierung v2.0 ist live',
   'landing.news2': '31 AEC-spezifische Nodes jetzt verfügbar',
   'landing.news3': 'Community-Marktplatz gestartet',
   'landing.news4': 'IFC-Export Beta jetzt verfügbar',
-  'landing.news5': 'Echtzeit 3D-Massenvorschau',
+  'landing.news5': 'Echtzeit 3D-Baukörpervorschau',
 
   // ===== LANDING PROMPT EXAMPLES =====
   'landing.prompt1': 'Einen Standortanalyse-Workflow für ein Küstenprojekt erstellen...',
   'landing.prompt2': 'Eine Konzept-zu-Rendering-Pipeline mit IFC-Export erstellen...',
-  'landing.prompt3': 'Eine Massenstudie vom Projektbriefing zum 3D-Modell erstellen...',
+  'landing.prompt3': 'Eine Baukörperstudie vom Projektbriefing zum 3D-Modell erstellen...',
   'landing.prompt4': 'Einen Fassadenoptimierungs-Workflow mit KI entwerfen...',
+
+  // ===== TOAST MESSAGES =====
+  'toast.duplicated': 'Dupliziert',
+  'toast.deleted': 'Gelöscht',
+  'toast.node': 'Node',
+  'toast.emptyInputError': 'Bitte geben Sie für alle Eingabe-Nodes einen Wert ein, bevor Sie den Workflow ausführen.',
+  'toast.noNodesError': 'Fügen Sie zuerst Nodes zu Ihrem Workflow hinzu.',
+  'toast.demoSaveHint': 'Erstellen Sie ein kostenloses Konto, um Workflows zu speichern',
+  'toast.workflowSaved': 'Workflow gespeichert',
+  'toast.saveFailed': 'Speichern fehlgeschlagen — prüfen Sie Ihre Verbindung',
+  'toast.shareComingSoon': 'Teilen-Funktion kommt bald',
+  'toast.renamedTo': 'Workflow umbenannt zu',
+  'toast.pdfDownloaded': 'PDF-Bericht heruntergeladen',
+  'toast.maxCompare': 'Wählen Sie höchstens 2 Ausführungen zum Vergleichen',
+  'toast.openingWithInputs': 'Workflow wird mit vorherigen Eingaben geöffnet…',
+  'toast.titleRequired': 'Titel ist erforderlich',
+  'toast.descRequired': 'Beschreibung ist erforderlich',
+  'toast.published': 'Workflow in Community veröffentlicht!',
+  'toast.cloned': 'geklont',
+  'toast.openingCanvas': 'Wird auf der Arbeitsfläche geöffnet…',
+  'toast.workflowUpdated': 'Workflow aktualisiert',
+  'toast.change': 'Änderung',
+  'toast.changes': 'Änderungen',
+  'toast.requestTimeout': 'Zeitüberschreitung',
+  'toast.loadKeysFailed': 'API-Schlüssel konnten nicht geladen werden',
+
+  // ===== CANVAS EXTRA =====
+  'canvas.executionResults': 'Ausführungsergebnisse',
+  'canvas.downloadPdfReport': 'PDF-Bericht herunterladen',
+  'canvas.clearAllResults': 'Alle Ergebnisse löschen',
+  'canvas.examplePipeline': 'Beispiel AEC-Pipeline',
+
+  // ===== HISTORY EXTRA =====
+  'history.secondsAgo': 's her',
+  'history.minutesAgo': 'min her',
+  'history.hoursAgo': 'h her',
+  'history.conceptRender': 'Konzept-Rendering',
+  'history.tablePrefix': 'Tabelle',
+  'history.data': 'Daten',
+  'history.file': 'Datei',
+  'history.selectForComparison': 'Zum Vergleichen auswählen',
+  'history.openWorkflow': 'Workflow öffnen',
+  'history.more': 'weitere',
+
+  // ===== ARTIFACT EXTRA =====
+  'artifact.lineItems': 'Positionen',
+  'artifact.grandTotal': 'Gesamtsumme',
+  'artifact.rooms': 'Räume',
+  'artifact.total': 'gesamt',
+  'artifact.floors': 'Geschosse',
+  'artifact.download': 'Herunterladen',
+  'artifact.renderError': 'Artefakt kann nicht dargestellt werden',
+
+  // ===== COMMUNITY EXTRA =====
+  'community.all': 'Alle',
+  'community.sortLabel': 'Sortierung:',
+
+  // ===== TEMPLATES EXTRA =====
+  'templates.inCategory': 'in',
+  'templates.available': 'verfügbar',
+  'templates.categoryConceptDesign': 'Konzeptentwurf',
+  'templates.categoryVisualization': 'Visualisierung',
+  'templates.categoryBimExport': 'BIM-Export',
+  'templates.categoryCostEstimation': 'Kostenschätzung',
+  'templates.categoryFullPipeline': 'Komplette Pipeline',
+  'templates.categorySiteAnalysis': 'Standortanalyse',
+
+  // ===== DASHBOARD EXTRA =====
+  'dashboard.available': 'verfügbar',
+  'dashboard.advanced': 'Fortgeschritten',
+  'dashboard.minutes': 'Minuten',
+  'dashboard.dashboardNodes': 'Nodes',
 
   // ===== COMMON =====
   'common.loading': 'Wird geladen...',
@@ -963,7 +1109,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'artifact.showLess': 'Weniger anzeigen',
   'artifact.showMore': 'Mehr anzeigen',
   'artifact.noPreview': 'Keine Vorschau',
-  'artifact.noMassing': 'Keine Massendaten',
+  'artifact.noMassing': 'Keine Baukörperdaten',
   'artifact.dismiss': 'Schließen',
 
   // ===== DEMO =====

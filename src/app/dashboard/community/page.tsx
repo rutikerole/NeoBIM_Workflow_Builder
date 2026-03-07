@@ -142,9 +142,9 @@ function PublishDialog({ onClose }: { onClose: () => void }) {
     setTags(prev => prev.includes(tag) ? prev.filter(tg => tg !== tag) : [...prev, tag]);
 
   const handlePublish = () => {
-    if (!title.trim()) { toast.error("Title is required"); return; }
-    if (!desc.trim())  { toast.error("Description is required"); return; }
-    toast.success("Workflow published to community!");
+    if (!title.trim()) { toast.error(t('toast.titleRequired')); return; }
+    if (!desc.trim())  { toast.error(t('toast.descRequired')); return; }
+    toast.success(t('toast.published'));
     onClose();
     router.push("/dashboard/community");
   };
@@ -343,7 +343,7 @@ export default function CommunityPage() {
     const wf = ALL_COMMUNITY.find(w => w.id === id);
     if (!wf) return;
     loadFromTemplate(wf as WorkflowTemplate);
-    toast.success(`"${wf.name}" cloned`, { description: "Opening in canvas…" });
+    toast.success(`"${wf.name}" ${t('toast.cloned')}`, { description: t('toast.openingCanvas') });
     router.push("/dashboard/canvas");
   };
 
@@ -436,7 +436,7 @@ export default function CommunityPage() {
             {FILTER_CHIPS.map(chip => {
               const isActive = chip === activeFilter;
               const chipLabelMap: Record<string, string> = {
-                "All": "All",
+                "All": t('community.all'),
                 "Concept": t('community.concept'),
                 "BIM": t('community.bim'),
                 "Analysis": t('community.analysis'),
@@ -474,7 +474,7 @@ export default function CommunityPage() {
                   background: "linear-gradient(145deg, rgba(18,18,30,0.95), rgba(14,14,22,0.98))", border: "1px solid #1E1E2E",
                 }}
               >
-                <span style={{ color: "#55556A" }}>Sort:</span>
+                <span style={{ color: "#55556A" }}>{t('community.sortLabel')}</span>
                 <span style={{ color: "#C0C0D0" }}>{t(currentSortKey)}</span>
                 <ChevronDown size={11} style={{ color: "#55556A" }} />
               </button>

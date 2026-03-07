@@ -67,6 +67,7 @@ const DEMO_NODES = [
 ];
 
 function MiniWorkflowDiagram() {
+  const { t } = useLocale();
   return (
     <div className="flex items-center gap-0 mb-2">
       {DEMO_NODES.map((node, i) => (
@@ -138,7 +139,7 @@ function CanvasEmptyState({ onPromptMode }: EmptyStateProps) {
         }}>
           <MiniWorkflowDiagram />
           <div style={{ fontSize: 9, color: "#3A3A50", textAlign: "center", marginTop: 4 }}>
-            Example AEC Pipeline
+            {t('canvas.examplePipeline')}
           </div>
         </div>
 
@@ -262,6 +263,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
   }, []);
 
   const { runWorkflow, isExecuting } = useExecution({ onLog: addLogEntry });
+  const { t: tLocale } = useLocale();
 
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes as unknown as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges as Edge[]);
@@ -292,14 +294,14 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
       position: { x: node.position.x + 40, y: node.position.y + 40 },
     };
     addNode(newNode);
-    toast.success(`Duplicated: ${node.data.label}`, { duration: 2000 });
-  }, [storeNodes, addNode]);
+    toast.success(`${tLocale('toast.duplicated')}: ${node.data.label}`, { duration: 2000 });
+  }, [storeNodes, addNode, tLocale]);
 
   const handleDeleteNode = useCallback((nodeId: string) => {
     const node = storeNodes.find(n => n.id === nodeId);
     removeNode(nodeId);
-    toast.success(`Deleted: ${node?.data.label ?? "Node"}`, { duration: 2000 });
-  }, [storeNodes, removeNode]);
+    toast.success(`${tLocale('toast.deleted')}: ${node?.data.label ?? tLocale('toast.node')}`, { duration: 2000 });
+  }, [storeNodes, removeNode, tLocale]);
 
   const handleFitToNode = useCallback((nodeId: string) => {
     fitView({ nodes: [{ id: nodeId }], padding: 0.5, duration: 400 });
@@ -403,30 +405,29 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
       return val.trim() === "";
     });
     if (inputNodes.length > 0 && hasEmptyInput) {
-      toast.error("Please provide input for all input nodes before running the workflow.", { duration: 4000 });
+      toast.error(tLocale('toast.emptyInputError'), { duration: 4000 });
       return;
     }
     if (nodes.length === 0) {
-      toast.error("Add nodes to your workflow first.", { duration: 3000 });
+      toast.error(tLocale('toast.noNodesError'), { duration: 3000 });
       return;
     }
     await runWorkflow();
-  }, [runWorkflow, nodes]);
+  }, [runWorkflow, nodes, tLocale]);
   const handleSave = useCallback(async () => {
     if (isDemoMode) {
-      toast.info("Create a free account to save workflows", { duration: 3000 });
+      toast.info(tLocale('toast.demoSaveHint'), { duration: 3000 });
       return;
     }
     const id = await saveWorkflow();
     if (id) {
-      toast.success("Workflow saved", { duration: 2000 });
+      toast.success(tLocale('toast.workflowSaved'), { duration: 2000 });
     } else {
-      toast.error("Save failed — check your connection");
+      toast.error(tLocale('toast.saveFailed'));
     }
-  }, [saveWorkflow, isDemoMode]);
-  const handleShare = useCallback(() => { toast.info("Share feature coming soon", { duration: 2000 }); }, []);
+  }, [saveWorkflow, isDemoMode, tLocale]);
+  const handleShare = useCallback(() => { toast.info(tLocale('toast.shareComingSoon'), { duration: 2000 }); }, [tLocale]);
 
-  const { t: tLocale } = useLocale();
   const workflowName = currentWorkflow?.name ?? tLocale('canvas.untitledWorkflow');
 
   return (
@@ -477,7 +478,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
               currentWorkflow.name = newName;
               markDirty();
               await saveWorkflow(newName);
-              toast.success(`Workflow renamed to "${newName}"`, { duration: 2000 });
+              toast.success(`${tLocale('toast.renamedTo')} "${newName}"`, { duration: 2000 });
             }
           }}
         />
@@ -684,7 +685,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
               }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", flexShrink: 0 }} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#F0F0F5", flex: 1 }}>
-                  Execution Results
+                  {tLocale('canvas.executionResults')}
                 </span>
                 <span style={{
                   padding: "1px 6px", borderRadius: 10,
@@ -703,9 +704,9 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
                       artifacts,
                       nodeLabels: labels,
                     });
-                    toast.success("PDF report downloaded", { duration: 2000 });
+                    toast.success(tLocale('toast.pdfDownloaded'), { duration: 2000 });
                   }}
-                  title="Download PDF report"
+                  title={tLocale('canvas.downloadPdfReport')}
                   style={{
                     width: 22, height: 22, borderRadius: 5, flexShrink: 0,
                     background: "transparent", border: "none",
@@ -720,7 +721,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
                 </button>
                 <button
                   onClick={clearArtifacts}
-                  title="Clear all results"
+                  title={tLocale('canvas.clearAllResults')}
                   style={{
                     width: 22, height: 22, borderRadius: 5, flexShrink: 0,
                     background: "transparent", border: "none",

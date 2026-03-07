@@ -143,7 +143,7 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss }: A
         {onDismiss && (
           <button
             onClick={e => { e.stopPropagation(); onDismiss(); }}
-            aria-label="Dismiss"
+            aria-label={t('artifact.dismiss')}
             style={{
               width: 16, height: 16, borderRadius: 3, flexShrink: 0,
               background: "transparent", border: "none",
@@ -321,6 +321,7 @@ function KpiBody({ data, accentColor }: { data: KpiArtifactData; accentColor: st
 }
 
 function TableBody({ data }: { data: TableArtifactData }) {
+  const { t } = useLocale();
   const headers = data?.headers ?? [];
   const rows = data?.rows ?? [];
   const isWide = headers.length > 6;
@@ -378,11 +379,11 @@ function TableBody({ data }: { data: TableArtifactData }) {
           fontSize: 10,
         }}>
           <span style={{ color: "#5C5C78" }}>
-            {rows.length} line items{summary?.note ? ` · ${summary.note}` : ""}
+            {rows.length} {t('artifact.lineItems')}{summary?.note ? ` · ${summary.note}` : ""}
           </span>
           {summary?.grandTotal != null && (
             <span style={{ color: "#10B981", fontWeight: 700 }}>
-              Grand Total: ${summary.grandTotal.toLocaleString()}
+              {t('artifact.grandTotal')}: ${summary.grandTotal.toLocaleString()}
             </span>
           )}
         </div>
@@ -401,6 +402,7 @@ interface SvgArtifactData {
 }
 
 function SvgBody({ data }: { data: SvgArtifactData }) {
+  const { t } = useLocale();
   const svgHtml = data?.svg ?? "";
   const sanitizedSvg = useMemo(
     () => (typeof window !== "undefined" ? DOMPurify.sanitize(svgHtml, { USE_PROFILES: { svg: true, svgFilters: true } }) : ""),
@@ -421,8 +423,8 @@ function SvgBody({ data }: { data: SvgArtifactData }) {
       />
       {data?.roomList && data.roomList.length > 0 && (
         <div style={{ padding: "6px 14px 10px", fontSize: 10, color: "#5C5C78" }}>
-          {data.roomList.length} rooms · {data.totalArea ?? "?"} m² total
-          {data.floors ? ` · ${data.floors} floors` : ""}
+          {data.roomList.length} {t('artifact.rooms')} · {data.totalArea ?? "?"} m² {t('artifact.total')}
+          {data.floors ? ` · ${data.floors} ${t('artifact.floors')}` : ""}
         </div>
       )}
     </div>
@@ -480,6 +482,7 @@ function Massing3dBody({ data }: { data: Massing3dData }) {
 }
 
 function FileBody({ data }: { data: FileArtifactData }) {
+  const { t } = useLocale();
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -518,7 +521,7 @@ function FileBody({ data }: { data: FileArtifactData }) {
         }}
       >
         <Download size={10} />
-        Download
+        {t('artifact.download')}
       </a>
     </div>
   );
