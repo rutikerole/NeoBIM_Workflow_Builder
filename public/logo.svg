@@ -1,24 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Three vertical bars (ascending) -->
-  <path d="M10 54 L10 38 Q10 36 12 36 L16 36 Q18 36 18 38 L18 54" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <path d="M26 54 L26 28 Q26 26 28 26 L32 26 Q34 26 34 28 L34 54" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <path d="M42 54 L42 18 Q42 16 44 16 L48 16 Q50 16 50 18 L50 54" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <defs>
+    <linearGradient id="sg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="ng" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#818CF8"/>
+    </linearGradient>
+  </defs>
 
-  <!-- Nodes (circles) on each bar -->
-  <circle cx="14" cy="36" r="3" fill="currentColor"/>
-  <circle cx="30" cy="26" r="3" fill="currentColor"/>
-  <circle cx="46" cy="16" r="3" fill="currentColor"/>
+  <!-- House outline: bottom-left -> top-left -> peak -> top-right -> bottom-right -->
+  <path d="M10 48 L10 26 L32 8 L54 26 L54 48" stroke="url(#sg)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 
-  <!-- Connection lines between nodes -->
-  <line x1="17" y1="36" x2="27" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  <line x1="33" y1="26" x2="43" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <!-- Bottom horizontal connector bar -->
+  <path d="M10 48 L22 48" stroke="url(#sg)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M22 48 L42 48" stroke="url(#sg)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M42 48 L54 48" stroke="url(#sg)" stroke-width="3.5" stroke-linecap="round"/>
 
-  <!-- Upward arrow from top bar -->
-  <line x1="46" y1="16" x2="54" y2="6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-  <polyline points="49,5 55,5 55,11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Nodes at vertices -->
+  <circle cx="10" cy="48" r="5" fill="url(#ng)" stroke="#1E3A5F" stroke-width="1.5"/>
+  <circle cx="10" cy="48" r="2" fill="white" opacity="0.7"/>
 
-  <!-- Bottom connector nubs -->
-  <line x1="14" y1="54" x2="14" y2="58" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  <line x1="30" y1="54" x2="30" y2="58" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  <line x1="46" y1="54" x2="46" y2="58" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="10" cy="26" r="5" fill="url(#ng)" stroke="#1E3A5F" stroke-width="1.5"/>
+  <circle cx="10" cy="26" r="2" fill="white" opacity="0.7"/>
+
+  <circle cx="32" cy="8" r="5.5" fill="url(#ng)" stroke="#1E3A5F" stroke-width="1.5"/>
+  <circle cx="32" cy="8" r="2.2" fill="white" opacity="0.8"/>
+
+  <circle cx="54" cy="26" r="5" fill="url(#ng)" stroke="#1E3A5F" stroke-width="1.5"/>
+  <circle cx="54" cy="26" r="2" fill="white" opacity="0.7"/>
+
+  <circle cx="54" cy="48" r="5" fill="url(#ng)" stroke="#1E3A5F" stroke-width="1.5"/>
+  <circle cx="54" cy="48" r="2" fill="white" opacity="0.7"/>
+
+  <!-- Bottom connector nodes -->
+  <circle cx="22" cy="48" r="4" fill="url(#ng)" stroke="#1E3A5F" stroke-width="1.5"/>
+  <circle cx="22" cy="48" r="1.5" fill="white" opacity="0.6"/>
+
+  <circle cx="42" cy="48" r="4" fill="url(#ng)" stroke="#1E3A5F" stroke-width="1.5"/>
+  <circle cx="42" cy="48" r="1.5" fill="white" opacity="0.6"/>
 </svg>

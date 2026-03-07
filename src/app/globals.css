@@ -1282,6 +1282,335 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   SIDEBAR — Premium Blueprint Aesthetic
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Ambient background ────────────────────────────────────────── */
+.sb-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 160% 50% at 0% 0%, rgba(79,138,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 120% 40% at 0% 100%, rgba(139,92,246,0.04) 0%, transparent 50%),
+    linear-gradient(180deg, #060810 0%, #070A12 40%, #060810 100%);
+}
+
+/* ── Scanning beam ─────────────────────────────────────────────── */
+@keyframes sb-scan {
+  0%   { top: -2%; opacity: 0; }
+  3%   { opacity: 1; }
+  97%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.sb-scanline {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  z-index: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(79,138,255,0.2) 20%,
+    rgba(129,140,248,0.35) 50%,
+    rgba(79,138,255,0.2) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px 2px rgba(79,138,255,0.08);
+  pointer-events: none;
+  animation: sb-scan 12s ease-in-out infinite;
+}
+
+/* ── Logo mark ─────────────────────────────────────────────────── */
+.sb-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3B6FE8 0%, #6366F1 60%, #8B5CF6 100%);
+  box-shadow:
+    0 2px 12px rgba(79,138,255,0.3),
+    0 0 0 1px rgba(79,138,255,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+  position: relative;
+  transition: all 300ms ease;
+}
+
+.sb-logo-link:hover .sb-logo-mark {
+  box-shadow:
+    0 4px 20px rgba(79,138,255,0.4),
+    0 0 0 1px rgba(79,138,255,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  transform: scale(1.04);
+}
+
+/* ── Icon button (collapse/close) ──────────────────────────────── */
+.sb-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.15);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 180ms ease;
+}
+
+.sb-icon-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.55);
+}
+
+/* ── Blueprint divider ─────────────────────────────────────────── */
+.sb-divider-blueprint {
+  position: relative;
+  height: 1px;
+  margin: 0 14px;
+  background: linear-gradient(90deg,
+    rgba(79,138,255,0.2) 0%,
+    rgba(79,138,255,0.08) 30%,
+    rgba(255,255,255,0.04) 60%,
+    transparent 100%
+  );
+}
+
+.sb-divider-blueprint::before,
+.sb-divider-blueprint::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: rgba(79,138,255,0.25);
+}
+
+.sb-divider-blueprint::before { left: 0; }
+.sb-divider-blueprint::after { left: 20px; width: 3px; height: 3px; top: -1px; }
+
+.sb-divider-subtle {
+  height: 1px;
+  margin: 10px 20px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+}
+
+/* ── Section label ─────────────────────────────────────────────── */
+.sb-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px 6px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.15);
+  font-family: var(--font-jetbrains), monospace;
+}
+
+.sb-section-tick {
+  width: 12px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(79,138,255,0.35), transparent);
+  flex-shrink: 0;
+}
+
+/* ── New Workflow button ───────────────────────────────────────── */
+.sb-new-btn {
+  position: relative;
+  background: linear-gradient(135deg, #2558E8 0%, #4F8AFF 50%, #38BDF8 100%);
+  background-size: 200% 200%;
+  animation: sb-btn-gradient 4s ease infinite;
+  box-shadow:
+    0 0 0 1px rgba(79,138,255,0.2),
+    0 4px 16px rgba(59,111,232,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.sb-new-btn:hover {
+  box-shadow:
+    0 0 0 1px rgba(79,138,255,0.4),
+    0 8px 28px rgba(59,111,232,0.45),
+    0 0 40px rgba(79,138,255,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+@keyframes sb-btn-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ── Nav item ──────────────────────────────────────────────────── */
+.sb-nav-item {
+  transition: all 200ms cubic-bezier(0.4,0,0.2,1) !important;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.sb-nav-item:hover:not(.sb-nav-active) {
+  background: rgba(255,255,255,0.025);
+}
+
+.sb-nav-active {
+  background: rgba(79,138,255,0.06) !important;
+  border-color: rgba(79,138,255,0.1) !important;
+}
+
+/* ── Icon container ────────────────────────────────────────────── */
+.sb-icon-wrap {
+  background: transparent;
+}
+
+.sb-icon-active {
+  background: rgba(79,138,255,0.18) !important;
+  box-shadow:
+    0 0 8px rgba(79,138,255,0.15),
+    inset 0 0 4px rgba(79,138,255,0.08);
+}
+
+/* ── Badge ─────────────────────────────────────────────────────── */
+.sb-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  margin-left: auto;
+  font-weight: 700;
+  font-family: var(--font-jetbrains), monospace;
+  background: rgba(139,92,246,0.12);
+  border: 1px solid rgba(139,92,246,0.2);
+  color: #A78BFA;
+  letter-spacing: 0.5px;
+  transition: all 200ms ease;
+}
+
+.sb-nav-active .sb-badge {
+  background: rgba(139,92,246,0.2);
+  border-color: rgba(139,92,246,0.35);
+}
+
+/* ── User card ─────────────────────────────────────────────────── */
+.sb-user-card {
+  position: relative;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  transition: all 250ms ease;
+}
+
+.sb-user-card:hover {
+  background: rgba(255,255,255,0.035);
+  border-color: rgba(255,255,255,0.08);
+}
+
+/* ── Avatar ────────────────────────────────────────────────────── */
+.sb-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3B6FE8 0%, #7C6FF7 50%, #A855F7 100%);
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 2px 8px rgba(79,138,255,0.2);
+}
+
+/* ── Upgrade button ────────────────────────────────────────────── */
+@keyframes sb-upgrade-shimmer {
+  0%   { left: -100%; }
+  100% { left: 200%; }
+}
+
+.sb-upgrade-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #F59E0B;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(251,191,36,0.05) 100%);
+  border: 1px solid rgba(245,158,11,0.15);
+  transition: all 280ms ease;
+  font-family: var(--font-jetbrains), monospace;
+}
+
+.sb-upgrade-btn:hover {
+  background: linear-gradient(135deg, rgba(245,158,11,0.14) 0%, rgba(251,191,36,0.1) 100%);
+  border-color: rgba(245,158,11,0.35);
+  box-shadow:
+    0 0 20px rgba(245,158,11,0.08),
+    inset 0 0 12px rgba(245,158,11,0.04);
+  color: #FBBF24;
+}
+
+.sb-upgrade-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(245,158,11,0.08), transparent);
+  pointer-events: none;
+}
+
+.sb-upgrade-btn:hover .sb-upgrade-shimmer {
+  animation: sb-upgrade-shimmer 0.7s ease-out;
+}
+
+/* ── Sign out ──────────────────────────────────────────────────── */
+.sb-signout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: rgba(255,255,255,0.18);
+  transition: all 180ms ease;
+  font-family: inherit;
+}
+
+.sb-signout-btn:hover {
+  color: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.03);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    MOBILE RESPONSIVE STYLES
    ═══════════════════════════════════════════════════════════════════ */
 @import "../styles/mobile-responsive.css";

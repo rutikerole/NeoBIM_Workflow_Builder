@@ -121,7 +121,7 @@ function DemoBanner({ hasRun }: { hasRun: boolean }) {
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="" style={{ width: 14, height: 14, filter: "brightness(0) invert(1)" }} />
+          <img src="/logo.svg" alt="" style={{ width: 18, height: 18 }} />
         </div>
         <span
           style={{ fontSize: 13, fontWeight: 700, color: "#F0F0F5" }}

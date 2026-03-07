@@ -107,7 +107,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               boxShadow: "0 4px 16px rgba(79,138,255,0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
             }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" alt="BuildFlow" style={{ width: 18, height: 18, filter: "brightness(0) invert(1)" }} />
+              <img src="/logo.svg" alt="BuildFlow" style={{ width: 22, height: 22 }} />
             </div>
             <span style={{ fontSize: 19, fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.4px" }}>
               Build<span style={{ color: "#4F8AFF" }}>Flow</span>
