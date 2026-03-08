@@ -355,6 +355,20 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
       if (artifact.type === "3d" || artifact.type === "svg") {
         const d = artifact.data as Record<string, unknown>;
         rooms = (d?.roomList as typeof rooms) ?? [];
+        // 3d artifact carries floors/gfa/height/footprint as top-level props
+        if (d?.floors) kpis.floors = Number(d.floors);
+        if (d?.gfa) kpis.gfa = Number(d.gfa);
+        if (d?.height) kpis.height = Number(d.height);
+        if (d?.footprint) kpis.footprint = Number(d.footprint);
+        // Also check metrics array inside 3d artifact
+        const metrics3d = (d?.metrics as Array<{ label: string; value: string | number }>) ?? [];
+        for (const m of metrics3d) {
+          const lab = m.label.toLowerCase();
+          if (lab.includes("floor") && !kpis.floors) kpis.floors = Number(m.value);
+          if ((lab.includes("gfa") || lab.includes("gross")) && !kpis.gfa) kpis.gfa = Number(m.value);
+          if (lab.includes("height") && !kpis.height) kpis.height = Number(m.value);
+          if (lab.includes("footprint") && !kpis.footprint) kpis.footprint = Number(m.value);
+        }
       }
       if (artifact.type === "kpi") {
         const d = artifact.data as Record<string, unknown>;
@@ -370,6 +384,18 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
       if (artifact.type === "text") {
         const d = artifact.data as Record<string, unknown>;
         description = (d?.content as string) ?? "";
+        // TR-003 stores floors in _raw.floors
+        const raw = d?._raw as Record<string, unknown> | undefined;
+        if (raw?.floors && !kpis.floors) kpis.floors = Number(raw.floors);
+        if (raw?.totalGFA && !kpis.gfa) kpis.gfa = Number(raw.totalGFA);
+        if (raw?.totalArea && !kpis.gfa) kpis.gfa = Number(raw.totalArea);
+        if (raw?.height && !kpis.height) kpis.height = Number(raw.height);
+        if (raw?.footprint && !kpis.footprint) kpis.footprint = Number(raw.footprint);
+        // Also try parsing floor count from prose text
+        if (!kpis.floors && typeof d?.content === "string") {
+          const floorMatch = (d.content as string).match(/(\d+)[\s-]*(?:stor(?:e?y|ies)|floor)/i);
+          if (floorMatch) kpis.floors = parseInt(floorMatch[1], 10);
+        }
       }
     }
 
@@ -380,6 +406,13 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
       buildingName: currentWorkflow?.name ?? "Building Design",
     };
   }, [showPostExecution, artifacts, currentWorkflow?.name]);
+
+  // Fit nodes to left 35% when 3D viewer opens
+  React.useEffect(() => {
+    if (showPostExecution) {
+      setTimeout(() => fitView({ padding: 0.4, duration: 800 }), 200);
+    }
+  }, [showPostExecution, fitView]);
 
   const handleClosePostExecution = useCallback(() => {
     setShowPostExecution(false);
@@ -940,11 +973,14 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
               transition={{ duration: 0.8, delay: 1.0 }}
               style={{
                 position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width: "65%",
-                height: "100%",
+                right: 16,
+                top: 16,
+                width: "60%",
+                height: "calc(100% - 32px)",
+                borderRadius: 16,
+                overflow: "hidden",
+                border: "1px solid rgba(184,115,51,0.2)",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
                 zIndex: 40,
               }}
             >

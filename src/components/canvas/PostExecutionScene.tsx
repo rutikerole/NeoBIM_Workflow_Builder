@@ -387,6 +387,7 @@ export default function PostExecutionScene({
       ? kpis.height / numFloors
       : 3.5;
     const totalHeight = numFloors * floorHeight;
+    console.log('Building floors:', numFloors, '| height:', totalHeight, '| kpis:', JSON.stringify(kpis));
     const wallThickness = 0.15;
 
     // Building bounds (footprint)
@@ -427,16 +428,19 @@ export default function PostExecutionScene({
     camera.position.copy(topDownPos);
     camera.lookAt(new THREE.Vector3(centerX, 0, centerZ));
 
-    // ── Controls (disabled until settled) ─────────────────
+    // ── Controls (enabled from start — full orbit/zoom/pan) ─
     const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableRotate = true;
+    controls.enableZoom = true;
+    controls.enablePan = true;
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.target.set(centerX, 0, centerZ);
-    controls.maxPolarAngle = Math.PI / 2.2;
-    controls.minPolarAngle = 0.1;
+    controls.target.set(centerX, totalHeight / 2, centerZ);
     controls.minDistance = 5;
-    controls.maxDistance = 80;
-    controls.enabled = false;
+    controls.maxDistance = 100;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+    controls.enabled = true;
 
     // ── Lighting (starts dim) ─────────────────────────────
     const ambient = new THREE.AmbientLight("#f0f0ff", 0.2);
@@ -762,12 +766,10 @@ export default function PostExecutionScene({
         tree.scale.setScalar(tp > 0 ? easeOutBack(tp) : 0);
       });
 
-      // ─ Settled: enable OrbitControls + auto-rotate ─
+      // ─ Settled: update orbit target to final building center ─
       if (elapsed >= settledMs && !controlsEnabled) {
         controlsEnabled = true;
-        controls.enabled = true;
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.3;
+        controls.target.set(centerX, totalHeight * 0.35, centerZ);
       }
 
       controls.update();
@@ -819,9 +821,9 @@ export default function PostExecutionScene({
   if (kpis?.footprint) kpiPills.push({ label: `${kpis.footprint} m\u00B2 footprint`, color: "#F59E0B" });
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div style={{ position: "relative", width: "100%", height: "100%", pointerEvents: "auto" }}>
       {/* Three.js scene */}
-      <div ref={containerRef} style={{ width: "100%", height: "100%", cursor: "grab" }} />
+      <div ref={containerRef} style={{ width: "100%", height: "100%", cursor: "grab", pointerEvents: "auto" }} />
 
       {/* Floating overlay at bottom */}
       <div
