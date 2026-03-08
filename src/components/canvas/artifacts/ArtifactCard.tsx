@@ -11,6 +11,11 @@ const MassingViewer = dynamic(() => import("./MassingViewer"), {
   loading: () => <div style={{ height: 220, background: "#0D0D1A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#3A3A50" }}>Loading 3D viewer…</span></div>,
 });
 
+const FloorPlan3DViewer = dynamic(() => import("./FloorPlan3DViewer"), {
+  ssr: false,
+  loading: () => <div style={{ height: 400, background: "#07070e", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#3A3A50" }}>Loading 3D viewer…</span></div>,
+});
+
 import { formatBytes } from "@/lib/utils";
 import { useLocale } from "@/hooks/useLocale";
 import type {
@@ -403,28 +408,88 @@ interface SvgArtifactData {
 
 function SvgBody({ data }: { data: SvgArtifactData }) {
   const { t } = useLocale();
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const svgHtml = data?.svg ?? "";
   const sanitizedSvg = useMemo(
     () => (typeof window !== "undefined" ? DOMPurify.sanitize(svgHtml, { USE_PROFILES: { svg: true, svgFilters: true } }) : ""),
     [svgHtml]
   );
 
+  const hasRooms = data?.roomList && data.roomList.length > 0;
+
   return (
     <div>
-      <div
-        style={{
-          background: "#FAFAFA",
-          borderRadius: 0,
-          overflow: "auto",
-          maxHeight: 240,
-          padding: 4,
-        }}
-        dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
-      />
-      {data?.roomList && data.roomList.length > 0 && (
-        <div style={{ padding: "6px 14px 10px", fontSize: 10, color: "#5C5C78" }}>
-          {data.roomList.length} {t('artifact.rooms')} · {data.totalArea ?? "?"} m² {t('artifact.total')}
-          {data.floors ? ` · ${data.floors} ${t('artifact.floors')}` : ""}
+      {/* View mode toggle */}
+      {hasRooms && (
+        <div style={{
+          display: "flex",
+          gap: 4,
+          padding: "6px 12px 6px 14px",
+        }}>
+          <button
+            onClick={() => setViewMode("2d")}
+            style={{
+              padding: "4px 12px",
+              borderRadius: 6,
+              background: viewMode === "2d" ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${viewMode === "2d" ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.08)"}`,
+              color: viewMode === "2d" ? "#10B981" : "#5C5C78",
+              fontSize: 10,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            2D Plan
+          </button>
+          <button
+            onClick={() => setViewMode("3d")}
+            style={{
+              padding: "4px 12px",
+              borderRadius: 6,
+              background: viewMode === "3d" ? "rgba(79,138,255,0.15)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${viewMode === "3d" ? "rgba(79,138,255,0.3)" : "rgba(255,255,255,0.08)"}`,
+              color: viewMode === "3d" ? "#4F8AFF" : "#5C5C78",
+              fontSize: 10,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            View in 3D
+          </button>
+        </div>
+      )}
+
+      {viewMode === "2d" ? (
+        <>
+          <div
+            style={{
+              background: "#FAFAFA",
+              borderRadius: 0,
+              overflow: "auto",
+              maxHeight: 240,
+              padding: 4,
+            }}
+            dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
+          />
+          {hasRooms && (
+            <div style={{ padding: "6px 14px 10px", fontSize: 10, color: "#5C5C78" }}>
+              {data.roomList!.length} {t('artifact.rooms')} · {data.totalArea ?? "?"} m² {t('artifact.total')}
+              {data.floors ? ` · ${data.floors} ${t('artifact.floors')}` : ""}
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ padding: "0 8px 10px 10px" }}>
+          <FloorPlan3DViewer
+            rooms={data.roomList!.map(r => ({
+              name: r.name,
+              area: r.area,
+            }))}
+            floors={data.floors}
+            buildingHeight={data.floors ? data.floors * 3.2 : undefined}
+          />
         </div>
       )}
     </div>
@@ -443,18 +508,96 @@ interface Massing3dData {
 
 function Massing3dBody({ data }: { data: Massing3dData }) {
   const { t } = useLocale();
+  const [viewMode, setViewMode] = useState<"massing" | "floorplan">("massing");
+
   if (!data?.floors || !data?.height) {
     return <div style={{ padding: "8px 14px", fontSize: 11, color: "#5C5C78" }}>{t('artifact.noMassing')}</div>;
   }
+
+  // Generate rooms from massing data for floor plan view
+  const massingRooms = useMemo(() => {
+    const fp = data.footprint ?? 500;
+    const perFloor = fp * 0.85; // usable area
+    const isMixed = data.buildingType?.toLowerCase().includes("mixed");
+    if (isMixed) {
+      return [
+        { name: "Retail Space", area: Math.round(fp * 0.6), type: "retail" },
+        { name: "Living Room", area: Math.round(perFloor * 0.3), type: "living" },
+        { name: "Bedroom 1", area: Math.round(perFloor * 0.18), type: "bedroom" },
+        { name: "Bedroom 2", area: Math.round(perFloor * 0.14), type: "bedroom" },
+        { name: "Kitchen", area: Math.round(perFloor * 0.15), type: "kitchen" },
+        { name: "Bathroom", area: Math.round(perFloor * 0.08), type: "bathroom" },
+        { name: "Hallway", area: Math.round(perFloor * 0.15), type: "hallway" },
+      ];
+    }
+    return [
+      { name: "Living Room", area: Math.round(perFloor * 0.3), type: "living" },
+      { name: "Bedroom 1", area: Math.round(perFloor * 0.2), type: "bedroom" },
+      { name: "Bedroom 2", area: Math.round(perFloor * 0.15), type: "bedroom" },
+      { name: "Kitchen", area: Math.round(perFloor * 0.15), type: "kitchen" },
+      { name: "Bathroom", area: Math.round(perFloor * 0.08), type: "bathroom" },
+      { name: "Hallway", area: Math.round(perFloor * 0.12), type: "hallway" },
+    ];
+  }, [data.footprint, data.buildingType]);
+
   return (
     <div style={{ padding: "0 8px 10px 10px" }}>
-      <MassingViewer
-        floors={data.floors}
-        height={data.height}
-        footprint={data.footprint ?? 500}
-        gfa={data.gfa ?? data.floors * (data.footprint ?? 500)}
-        buildingType={data.buildingType}
-      />
+      {/* Toggle buttons */}
+      <div style={{
+        display: "flex",
+        gap: 4,
+        marginBottom: 6,
+      }}>
+        <button
+          onClick={() => setViewMode("massing")}
+          style={{
+            padding: "4px 12px",
+            borderRadius: 6,
+            background: viewMode === "massing" ? "rgba(79,138,255,0.15)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${viewMode === "massing" ? "rgba(79,138,255,0.3)" : "rgba(255,255,255,0.08)"}`,
+            color: viewMode === "massing" ? "#4F8AFF" : "#5C5C78",
+            fontSize: 10,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+        >
+          Massing
+        </button>
+        <button
+          onClick={() => setViewMode("floorplan")}
+          style={{
+            padding: "4px 12px",
+            borderRadius: 6,
+            background: viewMode === "floorplan" ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${viewMode === "floorplan" ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.08)"}`,
+            color: viewMode === "floorplan" ? "#10B981" : "#5C5C78",
+            fontSize: 10,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+        >
+          Floor Plan 3D
+        </button>
+      </div>
+
+      {viewMode === "massing" ? (
+        <MassingViewer
+          floors={data.floors}
+          height={data.height}
+          footprint={data.footprint ?? 500}
+          gfa={data.gfa ?? data.floors * (data.footprint ?? 500)}
+          buildingType={data.buildingType}
+        />
+      ) : (
+        <FloorPlan3DViewer
+          rooms={massingRooms}
+          floors={data.floors}
+          buildingHeight={data.height}
+        />
+      )}
+
       {data.metrics && data.metrics.length > 0 && (
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
