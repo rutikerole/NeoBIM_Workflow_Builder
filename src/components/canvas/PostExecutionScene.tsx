@@ -696,7 +696,10 @@ export default function PostExecutionScene({
       const camProgress = clamp01((elapsed - 1500) / (camTransEnd - 1500));
       const camEased = smoothstep(camProgress);
 
-      if (camProgress > 0) {
+      // Only override camera while the intro animation is still playing.
+      // Once camProgress reaches 1 the transition is done — stop overriding
+      // so OrbitControls, zoom buttons, and rotation all work.
+      if (camProgress > 0 && camProgress < 1) {
         camera.position.lerpVectors(topDownPos, perspectivePos, camEased);
         const lookAtY = THREE.MathUtils.lerp(0, totalHeight * 0.35, camEased);
         camera.lookAt(new THREE.Vector3(centerX, lookAtY, centerZ));
@@ -819,11 +822,14 @@ export default function PostExecutionScene({
   }, [rooms, kpis, buildingDescription]);
 
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
     const timer = setTimeout(() => {
-      const cleanup = buildScene();
-      return () => { cleanup?.(); };
+      cleanup = buildScene() ?? undefined;
     }, 100);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      cleanup?.();
+    };
   }, [buildScene]);
 
   // KPI pills for overlay
