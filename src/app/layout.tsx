@@ -32,7 +32,7 @@ const syne = Syne({
 // 🔍 SEO OPTIMIZATION - Maximum Discoverability
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://buildflow.vercel.app";
 const siteName = "BuildFlow";
-const siteDescription = "Build AI-powered AEC workflows visually. Drag-and-drop nodes to create pipelines from PDF briefs to 3D massing to concept renders — without writing code. Beta platform.";
+const siteDescription = "BuildFlow — AI-powered concept design tool for architects. Turn project briefs into 3D massing, renders, and cost estimates in minutes. A complement to Revit and Rhino for schematic design phase.";
 const siteKeywords = [
   // Primary keywords
   "AEC workflow builder",
