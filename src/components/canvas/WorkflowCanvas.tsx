@@ -27,7 +27,7 @@ import { ExecutionCompleteModal } from "./modals/ExecutionCompleteModal";
 import dynamic from "next/dynamic";
 import { BaseNode } from "./nodes/BaseNode";
 import { AnimatedEdge } from "./edges/AnimatedEdge";
-import { NodeLibraryPanel } from "./panels/NodeLibraryPanel";
+// NodeLibraryPanel moved to left sidebar — see NodeLibrarySidebar component
 import { CanvasToolbar } from "./toolbar/CanvasToolbar";
 
 import { ExecutionLog } from "./ExecutionLog";
@@ -273,24 +273,38 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
   } = useWorkflowStore();
 
   const { artifacts, executionProgress, clearArtifacts } = useExecutionStore();
-  const { isNodeLibraryOpen, setPromptModeActive, isPromptModeActive, toggleNodeLibrary, isDemoMode, setShowExecutionCompleteModal } = useUIStore();
+  const { isNodeLibraryOpen, setPromptModeActive, isPromptModeActive, toggleNodeLibrary, isDemoMode, setShowExecutionCompleteModal, pendingNodeAdd, clearPendingNodeAdd } = useUIStore();
 
   // Execution timing for celebration modal
   const executionStartRef = useRef<number | null>(null);
 
-  // Spacebar opens command palette (only when not typing in an input)
+  // Consume pendingNodeAdd from sidebar click-to-add — place at canvas center
   React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-      if (e.code === "Space" && !isInput && !isNodeLibraryOpen && !isPromptModeActive) {
-        e.preventDefault();
-        toggleNodeLibrary();
-      }
+    if (!pendingNodeAdd) return;
+    const catalogueItem = NODE_CATALOGUE_MAP.get(pendingNodeAdd);
+    clearPendingNodeAdd();
+    if (!catalogueItem) return;
+
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const position = screenToFlowPosition({ x: cx, y: cy });
+    const newNode = {
+      id: `${catalogueItem.id}-${Math.random().toString(36).slice(2, 9)}`,
+      type: "workflowNode" as const,
+      position,
+      data: {
+        catalogueId: catalogueItem.id,
+        label: catalogueItem.name,
+        category: catalogueItem.category,
+        status: "idle" as const,
+        inputs: catalogueItem.inputs,
+        outputs: catalogueItem.outputs,
+        icon: catalogueItem.icon,
+        executionTime: catalogueItem.executionTime,
+      },
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isNodeLibraryOpen, isPromptModeActive, toggleNodeLibrary]);
+    addNode(newNode);
+  }, [pendingNodeAdd, clearPendingNodeAdd, screenToFlowPosition, addNode]);
 
   // Existing workflow names for duplicate detection in save modal
   const [existingNames, setExistingNames] = useState<string[]>([]);
@@ -635,10 +649,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
         )}
       </AnimatePresence>
 
-      {/* Node Command Palette (floating overlay) */}
-      <AnimatePresence>
-        {isNodeLibraryOpen && <NodeLibraryPanel />}
-      </AnimatePresence>
+      {/* Node Library moved to left sidebar — see NodeLibrarySidebar in Sidebar.tsx */}
 
       {/* Canvas area */}
       <div

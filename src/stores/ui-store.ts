@@ -33,6 +33,11 @@ interface UIState {
   showExecutionCompleteModal: boolean;
   setShowExecutionCompleteModal: (show: boolean) => void;
 
+  // Pending node add — sidebar click-to-add, consumed by WorkflowCanvas
+  pendingNodeAdd: string | null;
+  requestAddNode: (catalogueId: string) => void;
+  clearPendingNodeAdd: () => void;
+
   // Actions
   setActivePanel: (panel: PanelId) => void;
   toggleNodeLibrary: () => void;
@@ -72,6 +77,10 @@ export const useUIStore = create<UIState>()((set) => ({
 
   showExecutionCompleteModal: false,
   setShowExecutionCompleteModal: (show) => set({ showExecutionCompleteModal: show }),
+
+  pendingNodeAdd: null,
+  requestAddNode: (catalogueId) => set({ pendingNodeAdd: catalogueId }),
+  clearPendingNodeAdd: () => set({ pendingNodeAdd: null }),
 
   setActivePanel: (panel) =>
     set({

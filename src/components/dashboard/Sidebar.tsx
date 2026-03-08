@@ -28,6 +28,7 @@ import {
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 import { useLocale } from "@/hooks/useLocale";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { NodeLibrarySidebar } from "@/components/canvas/panels/NodeLibrarySidebar";
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
@@ -329,6 +330,21 @@ export function Sidebar() {
 
           {/* Blueprint divider */}
           <div className="sb-divider-subtle" />
+
+          {/* Node Library — collapsible section, visible when sidebar is expanded */}
+          {effectiveShowLabels && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              style={{ marginBottom: 4 }}
+            >
+              <NodeLibrarySidebar />
+            </motion.div>
+          )}
+
+          {/* Blueprint divider */}
+          {effectiveShowLabels && <div className="sb-divider-subtle" />}
 
           {/* Section label */}
           {effectiveShowLabels && (
