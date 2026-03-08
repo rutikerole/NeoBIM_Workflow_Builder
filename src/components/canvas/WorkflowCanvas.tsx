@@ -708,6 +708,19 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
             pointerEvents: showPostExecution ? "none" : "auto",
           }}
         >
+          {/* Architectural grid — major lines every 100px, minor every 20px */}
+          <div
+            style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+              backgroundImage: `
+                linear-gradient(rgba(184,115,51,0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(184,115,51,0.06) 1px, transparent 1px),
+                linear-gradient(rgba(184,115,51,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(184,115,51,0.03) 1px, transparent 1px)
+              `,
+              backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
+            }}
+          />
           {/* Copper dot grid */}
           <div
             className="absolute inset-0 pointer-events-none"
