@@ -66,6 +66,7 @@ export function Sidebar() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- close mobile nav on route change
     if (isMobile) setMobileOpen(false);
   }, [pathname, isMobile]);
 

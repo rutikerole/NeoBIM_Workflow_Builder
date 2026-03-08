@@ -12,7 +12,7 @@ export interface ValidationResult {
 }
 
 /**
- * TR-003: Building Description Generator
+ * TR-003: Design Brief Analyzer
  */
 export function validateTR003Input(inputData: unknown): ValidationResult {
   const input = inputData as Record<string, unknown> | null | undefined;
@@ -46,7 +46,7 @@ export function validateTR003Input(inputData: unknown): ValidationResult {
 }
 
 /**
- * GN-003: Concept Image Generator
+ * GN-003: Concept Render Generator
  */
 export function validateGN003Input(inputData: unknown): ValidationResult {
   // GN-003 can accept either:
@@ -193,7 +193,7 @@ export function validateEX002Input(inputData: unknown): ValidationResult {
 }
 
 /**
- * TR-001: Document Parser
+ * TR-001: Brief Parser
  */
 export function validateTR001Input(inputData: unknown): ValidationResult {
   // TR-001 accepts PDF data or text content — at least one must be present

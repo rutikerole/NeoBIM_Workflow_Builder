@@ -32,6 +32,7 @@ export function SaveWorkflowModal({
   // Reset & auto-focus when modal opens
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on open
       setName("");
       setTimeout(() => inputRef.current?.focus(), 50);
     }

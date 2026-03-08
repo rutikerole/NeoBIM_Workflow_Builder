@@ -18,10 +18,10 @@ const REAL_NODE_IDS = new Set(["TR-001", "TR-003", "TR-004", "TR-005", "TR-012",
 // Live nodes — ALWAYS use real API execution regardless of NEXT_PUBLIC_ENABLE_MOCK_EXECUTION.
 // These are production-ready and should never fall through to mock when authenticated.
 const LIVE_NODE_IDS = new Set([
-  "TR-003",  // Building Description Generator (GPT-4o-mini)
+  "TR-003",  // Design Brief Analyzer (GPT-4o-mini)
   "TR-007",  // Quantity Extractor (web-ifc, no API key)
   "TR-008",  // BOQ / Cost Mapper (cost database, no API key)
-  "GN-003",  // Image Generator (DALL-E 3)
+  "GN-003",  // Concept Render Generator (DALL-E 3)
   "EX-002",  // BOQ Spreadsheet Exporter (xlsx, no API key)
 ]);
 

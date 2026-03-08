@@ -180,7 +180,7 @@ async function testPDFUploadNode(): Promise<NodeTestResult> {
   const warnings: string[] = [];
   const checks: ValidationCheck[] = [];
 
-  // IN-002 feeds into TR-001 (Document Parser)
+  // IN-002 feeds into TR-001 (Brief Parser)
   const res = await callExecuteNode("TR-001", {
     content: testPDFContent.mockExtractedText,
     prompt: testPDFContent.mockExtractedText,

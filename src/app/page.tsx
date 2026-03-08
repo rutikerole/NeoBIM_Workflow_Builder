@@ -179,21 +179,21 @@ function PromptCard({ labelText, quoteText }: { labelText?: string; quoteText?: 
 const FEATURES = [
   {
     icon: <LayoutGrid size={22} />, color: "#3B82F6",
-    title: "Visual Workflow Builder",
-    description: "Drag and drop 31 purpose-built AEC nodes onto an infinite canvas. Connect them to create powerful pipelines — no code required.",
-    bullets: ["Drag-and-drop canvas", "31 AEC-specific nodes", "Real-time execution"],
+    title: "Design Automation Canvas",
+    description: "Drag and drop 30+ design automation building blocks onto an infinite canvas. 7 live AI-powered steps, more added weekly — no coding required.",
+    bullets: ["Drag-and-drop canvas", "7 live AI nodes + 24 coming soon", "Real-time execution"],
   },
   {
     icon: <Sparkles size={22} />, color: "#8B5CF6",
-    title: "AI-Powered Generation",
-    description: "Describe your workflow in plain English. Our AI understands AEC processes and builds the complete pipeline for you.",
-    bullets: ["Natural language input", "Instant workflow generation", "Iterative refinement"],
+    title: "AI-Powered Design Workflows",
+    description: "Describe your project in plain English. Our AI understands architectural programs, building types, and spatial requirements — then builds the design pipeline for you.",
+    bullets: ["Natural language input", "Instant workflow generation", "Perfect for schematic design phase"],
   },
   {
     icon: <Users size={22} />, color: "#10B981",
-    title: "Community Marketplace",
-    description: "Share your workflows with the global AEC community. Clone, customize, and build on proven pipelines from peers.",
-    bullets: ["Share and discover", "One-click cloning", "Ratings and reviews"],
+    title: "Shared Workflows",
+    description: "Browse and clone proven design workflows. A complement to Revit and Rhino, not a replacement.",
+    bullets: ["Browse verified workflows", "One-click cloning", "No coding or CAD experience required"],
   },
 ];
 
@@ -207,16 +207,16 @@ const SHOWCASE = [
 
 // ─── Logo Marquee ────────────────────────────────────────────────────────────
 
-const PARTNER_LOGOS = ["METAFORM", "STRUCT-AI", "ENVIRON", "AXIS DESIGNS", "BUILDTECH"];
+const PARTNER_LOGOS = ["BUILT FOR AEC", "COMPLEMENT TO REVIT & RHINO", "NO CAD NEEDED", "SCHEMATIC DESIGN PHASE"];
 
 // ─── News Ticker ─────────────────────────────────────────────────────────────
 
 const NEWS_ITEMS = [
-  "New: AI workflow generation v2.0 is live",
-  "31 AEC-specific nodes now available",
-  "Community marketplace launched",
-  "IFC export beta now available",
-  "Real-time 3D massing preview",
+  "New: AI design workflow generation v2.0 is live",
+  "7 live AI nodes + 24 preview nodes available",
+  "Perfect for schematic design phase",
+  "A complement to Revit and Rhino, not a replacement",
+  "No coding or CAD experience required",
 ];
 
 function NewsTicker({ items = NEWS_ITEMS, whatsNewLabel }: { items?: string[]; whatsNewLabel?: string }) {

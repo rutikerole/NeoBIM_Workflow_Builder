@@ -360,6 +360,20 @@ export default function CommunityPage() {
 
       <main style={{ flex: 1, overflowY: "auto" }}>
 
+        {/* ── Disclaimer banner ──────────────────────────────────────────── */}
+        <div style={{
+          padding: "10px 16px",
+          background: "rgba(79,138,255,0.06)",
+          border: "1px solid rgba(79,138,255,0.15)",
+          borderRadius: 8,
+          fontSize: 12,
+          color: "#9898B0",
+          marginBottom: 16,
+          margin: "16px 24px 0",
+        }}>
+          All shared workflows are community-contributed. Workflows marked <span style={{ color: "#10B981", fontWeight: 600 }}>Verified</span> have been tested by our team.
+        </div>
+
         {/* ── Compact Hero ────────────────────────────────────────────────── */}
         <div style={{
           padding: "20px 28px",

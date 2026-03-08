@@ -8,7 +8,7 @@ import {
 import * as LucideIcons from "lucide-react";
 import { toast } from "sonner";
 import { useReactFlow } from "@xyflow/react";
-import { NODE_CATALOGUE, NODES_BY_CATEGORY, CATEGORY_CONFIG } from "@/constants/node-catalogue";
+import { NODE_CATALOGUE, NODES_BY_CATEGORY, CATEGORY_CONFIG, LIVE_NODES } from "@/constants/node-catalogue";
 import type { NodeCatalogueItem, NodeCategory, WorkflowNode, WorkflowNodeData } from "@/types/nodes";
 import { useWorkflowStore } from "@/stores/workflow-store";
 import { generateId } from "@/lib/utils";
@@ -33,7 +33,7 @@ function getIcon(name: string, size = 13): React.ReactNode {
 }
 
 // ─── Live vs Preview badge ───────────────────────────────────────────────────
-const LIVE_NODE_IDS = new Set(["TR-003", "GN-003", "TR-008", "EX-002"]);
+// Now using LIVE_NODES from node-catalogue.ts
 
 // ─── Filter chips ─────────────────────────────────────────────────────────────
 
@@ -242,7 +242,7 @@ function NodeItem({
           }}>
             {highlightText(node.name)}
           </span>
-          {LIVE_NODE_IDS.has(node.id) ? (
+          {LIVE_NODES.has(node.id) ? (
             <span style={{
               fontSize: 8, fontWeight: 700, color: "#10B981",
               padding: "1px 4px", borderRadius: 3,
@@ -251,9 +251,9 @@ function NodeItem({
             }}>{t('canvas.live')}</span>
           ) : (
             <span style={{
-              fontSize: 8, fontWeight: 600, color: "#4a4a68",
-              padding: "2px 6px", borderRadius: 4,
-              background: "rgba(255,255,255,0.06)",
+              fontSize: 8, fontWeight: 700, color: "#F59E0B",
+              padding: "1px 4px", borderRadius: 3,
+              background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)",
               flexShrink: 0, letterSpacing: "0.08em",
             }}>{t('canvas.preview')}</span>
           )}
@@ -603,6 +603,9 @@ export function NodeLibraryPanel() {
               <div style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F5" }}>{t('canvas.nodeLibrary')}</div>
               <div style={{ fontSize: 10, color: "#3A3A50", marginTop: 2 }}>
                 {NODE_CATALOGUE.length} nodes · {t('canvas.dragToCanvas')}
+              </div>
+              <div style={{ fontSize: 9, color: "#5C5C78", marginTop: 2 }}>
+                <span style={{ color: "#10B981" }}>LIVE</span> = real AI · <span style={{ color: "#F59E0B" }}>PREVIEW</span> = sample data
               </div>
             </div>
             <button

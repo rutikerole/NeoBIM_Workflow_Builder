@@ -90,7 +90,7 @@ export async function executeNode(
         label: "Site Location",
       });
 
-    case "TR-001": // Document Parser
+    case "TR-001": // Brief Parser
       return mockArtifact(executionId, tileInstanceId, "text", {
         content: `PROJECT BRIEF — OSLO MIXED-USE DEVELOPMENT\n\nClient: Urban Properties AS\nSite: Former industrial lot, Bjørvika waterfront, Oslo\n\nPROGRAMME REQUIREMENTS:\n• Gross Floor Area: 4,800–5,200 m²\n• Floors: 5 above grade, 1 basement parking level\n• Ground floor: 600 m² retail/F&B\n• Floors 2–5: 48 residential units (mix of 1BR, 2BR, 3BR)\n\nCONSTRAINTS:\n• Max height: 22m above grade\n• Site setbacks: 3m all sides\n• Ground floor must be active frontage\n• BREEAM Excellent certification required`,
         label: "Extracted Document Text",
@@ -121,7 +121,7 @@ export async function executeNode(
         label: "Building Requirements",
       });
 
-    case "TR-003": { // Building Description Generator
+    case "TR-003": { // Design Brief Analyzer
       // Incorporate upstream prompt data so downstream nodes (GN-001) get accurate info
       const briefText = String(inputData?.content ?? inputData?.prompt ?? "");
       const fm = briefText.match(/(\d+)[\s-]*(?:stor(?:e?y|ies)|floor)/i);
@@ -143,7 +143,7 @@ export async function executeNode(
         label: "Image Analysis",
       });
 
-    case "TR-005": // Style Prompt Composer
+    case "TR-005": // Visualization Style Composer
       return mockArtifact(executionId, tileInstanceId, "image", {
         url: ARCHITECTURAL_IMAGES[1],
         label: "Style Reference (Control Image)",
@@ -383,7 +383,7 @@ export async function executeNode(
         ],
       });
 
-    case "GN-003": { // Image Generator
+    case "GN-003": { // Concept Render Generator
       // Use a deterministic seed based on upstream content for consistent results
       const imgPrompt = String(inputData?.content ?? inputData?.prompt ?? "architectural concept");
       const seed = imgPrompt.slice(0, 20).replace(/\s+/g, "-").toLowerCase() || "building";
