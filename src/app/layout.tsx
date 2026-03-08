@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { MobileGate } from "@/components/MobileGate";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import "./globals.css";
+import "@/lib/env-check";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
