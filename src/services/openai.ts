@@ -137,7 +137,19 @@ export async function generateBuildingDescription(
       messages: [
         {
           role: "system",
-          content: `You are an expert architectural writer for competition boards and award submissions. Generate professional building descriptions suitable for client presentations.
+          content: `You are a senior architectural consultant with 20 years of international experience, writing for competition boards and award submissions. When generating building descriptions, you MUST consider:
+- Local building codes and zoning regulations for the specified location
+- Climate-responsive design appropriate for the region
+- Local construction methods and structural systems
+- Culturally appropriate architectural language and materials
+- Realistic floor-to-floor heights (ground floor commercial: 4.0-4.5m, residential: 3.0-3.3m, office: 3.5-3.8m)
+- Proper setback requirements if location is specified
+- Local parking requirements and ratios
+
+Always specify: building type, total GFA in m², floor count, floor-to-floor heights, structural system, facade materials, sustainability features, and parking provision.
+If a location is mentioned, tailor ALL recommendations to that specific city/region's codes and climate.
+
+Generate professional building descriptions suitable for client presentations.
 
 ⚠️ CRITICAL REQUIREMENT: FOLLOW USER INPUT EXACTLY
 - If user says "7-story" → output MUST have floors: 7
@@ -290,7 +302,7 @@ Structure: ${description.structure}`,
     return parsed.prompt;
   } catch (error) {
     console.error("[enhanceArchitecturalPrompt] Falling back to basic prompt:", error);
-    return `Professional ${viewType.replace("_", " ")} architectural rendering of a ${description.floors}-story ${description.buildingType} with ${description.facade} facade. ${style ?? "Contemporary"} style. ${description.programSummary}. Photorealistic, high detail.`;
+    return `Professional architectural concept rendering of a ${description.floors}-story ${description.buildingType}. Exterior perspective view from street level, 3/4 angle. ${description.facade} facade. Show building in realistic urban context with surrounding buildings, street, landscaping, and people for scale. Golden hour lighting. High-quality architectural visualization style similar to Foster+Partners or BIG presentations. Photorealistic materials, accurate proportions, contemporary architectural photography style.`;
   }
 }
 

@@ -15,6 +15,43 @@ import { assertValidInput } from "@/lib/validation";
 import { APIError, UserErrors, formatErrorResponse } from "@/lib/user-errors";
 import { generatePDFBase64 } from "@/services/pdf-report-server";
 
+// Detect region/city from text for cost estimation
+function detectRegionFromText(text: string): string | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  const regionMap: Array<[string[], string]> = [
+    [["mumbai", "pune", "maharashtra"], "Mumbai, India"],
+    [["delhi", "ncr", "noida", "gurgaon"], "Delhi, India"],
+    [["bangalore", "bengaluru", "karnataka"], "Bangalore, India"],
+    [["chennai", "tamil nadu"], "Mumbai, India"],
+    [["hyderabad", "telangana"], "Bangalore, India"],
+    [["kolkata", "west bengal"], "Mumbai, India"],
+    [["london", "manchester", "birmingham", "edinburgh", "uk", "united kingdom"], "London, UK"],
+    [["new york", "manhattan", "brooklyn"], "New York City, NY (USA)"],
+    [["san francisco", "bay area"], "San Francisco, CA (USA)"],
+    [["los angeles", "la"], "Los Angeles, CA (USA)"],
+    [["chicago"], "Chicago, IL (USA)"],
+    [["houston", "texas", "dallas"], "Houston, TX (USA)"],
+    [["berlin", "hamburg"], "Berlin, Germany"],
+    [["munich", "münchen"], "Munich, Germany"],
+    [["paris", "lyon", "marseille", "france"], "Paris, France"],
+    [["amsterdam", "rotterdam", "netherlands"], "Amsterdam, Netherlands"],
+    [["tokyo", "osaka", "japan"], "Tokyo, Japan"],
+    [["dubai", "abu dhabi", "uae"], "Dubai, UAE"],
+    [["singapore"], "Singapore"],
+    [["sydney", "melbourne", "brisbane", "australia"], "Sydney, Australia"],
+    [["toronto", "vancouver", "montreal", "canada"], "Toronto, Canada"],
+    [["são paulo", "sao paulo", "rio", "brazil"], "São Paulo, Brazil"],
+    [["mexico city", "mexico"], "Mexico City, Mexico"],
+  ];
+  for (const [keywords, regionName] of regionMap) {
+    for (const kw of keywords) {
+      if (lower.includes(kw)) return regionName;
+    }
+  }
+  return null;
+}
+
 // Node IDs that have real implementations
 const REAL_NODE_IDS = new Set(["TR-001", "TR-003", "TR-004", "TR-005", "TR-012", "GN-003", "GN-004", "TR-007", "TR-008", "EX-002", "EX-003"]);
 
@@ -600,7 +637,12 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // BOQ Cost Mapper — Real unit rates with regional factors
       const elements = inputData?._elements ?? inputData?.elements ?? inputData?.rows ?? [];
       const region = inputData?.region ?? "USA (baseline)";
-      
+
+      // Detect region from upstream building description if not explicitly provided
+      const upstreamNarrative = inputData?.content ?? inputData?.narrative ?? "";
+      const detectedRegion = detectRegionFromText(region !== "USA (baseline)" ? region : upstreamNarrative);
+      const activeRegion = detectedRegion || region;
+
       const rows: string[][] = [];
       let hardCostSubtotal = 0;
       let estimatedItemsCount = 0;
@@ -617,7 +659,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           // Apply regional factor
           const { adjustedRate } = applyRegionalFactor(
             unitRateData.baseRate,
-            region
+            activeRegion
           );
           
           const lineTotal = quantity * adjustedRate;
@@ -670,6 +712,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       rows.push(["SOFT COSTS SUBTOTAL", "", "", "", `$${costSummary.softCosts.toFixed(2)}`]);
       rows.push(["", "", "", "", ""]);
       rows.push(["TOTAL PROJECT COST", "", "", "", `$${costSummary.totalCost.toFixed(2)}`]);
+      rows.push(["", "", "", "", ""]);
+      rows.push(["NOTE: Estimates are approximate and based on regional averages. Verify with local quantity surveyor.", "", "", "", ""]);
 
       const warnings = [];
       if (estimatedItemsCount > 0) {
@@ -678,7 +722,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
       // Build _boqData for EX-002 compatibility
       const boqLines = rows
-        .filter(r => r[0] && !["", "HARD COSTS SUBTOTAL", "SOFT COSTS", "SOFT COSTS SUBTOTAL", "TOTAL PROJECT COST"].includes(r[0]))
+        .filter(r => r[0] && !["", "HARD COSTS SUBTOTAL", "SOFT COSTS", "SOFT COSTS SUBTOTAL", "TOTAL PROJECT COST"].includes(r[0]) && !r[0].startsWith("NOTE:"))
         .map(r => ({
           division: "General",
           csiCode: "00 00 00",
@@ -701,14 +745,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         tileInstanceId,
         type: "table",
         data: {
-          label: `Bill of Quantities (${region})`,
+          label: `Bill of Quantities (${activeRegion})`,
           headers: ["Description", "Unit", "Qty", "Rate", "Total"],
           rows,
           _currency: "USD",
           _totalCost: costSummary.totalCost,
           _hardCosts: costSummary.hardCosts,
           _softCosts: costSummary.softCosts,
-          _region: region,
+          _region: activeRegion,
+          content: `Total: $${costSummary.totalCost.toFixed(2)} (Hard: $${costSummary.hardCosts.toFixed(2)}, Soft: $${costSummary.softCosts.toFixed(2)}) | Region: ${activeRegion}`,
           _boqData: {
             lines: boqLines,
             subtotalMaterial: costSummary.hardCosts,
