@@ -346,10 +346,14 @@ function TableBody({ data }: { data: TableArtifactData }) {
   const headers = data?.headers ?? [];
   const rows = data?.rows ?? [];
   const isWide = headers.length > 6;
-  const summary = (data as unknown as Record<string, unknown>)?.summary as { grandTotal?: number; currency?: string; note?: string } | undefined;
-  const content = (data as unknown as Record<string, unknown>)?.content as string | undefined;
+  const ext = data as unknown as Record<string, unknown>;
+  const summary = ext?.summary as { grandTotal?: number; currency?: string; note?: string } | undefined;
+  const content = ext?.content as string | undefined;
+  const totalCost = ext?._totalCost as number | undefined;
+  const disclaimer = ext?._disclaimer as string | undefined;
+  const projectType = ext?._projectType as string | undefined;
 
-  // For wide tables (BOQ), show simplified 5-column view
+  // For wide tables (BOQ with waste/M-L-E), show key columns
   const displayHeaders = isWide
     ? [headers[0], headers[2], headers[3], headers[4], headers[headers.length - 1]]
     : headers;
@@ -357,8 +361,17 @@ function TableBody({ data }: { data: TableArtifactData }) {
     ? rows.map(row => [row[0], row[2], row[3], row[4], row[row.length - 1]])
     : rows;
 
+  const isCostTable = !!(totalCost || disclaimer || (summary?.grandTotal != null));
+  const grandTotal = totalCost ?? summary?.grandTotal;
+
   return (
     <div style={{ margin: "0 0 10px" }}>
+      {/* Project type badge for cost tables */}
+      {isCostTable && projectType && (
+        <div style={{ padding: "4px 14px 2px", fontSize: 9, color: "#F59E0B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {projectType} estimate · AACE Class 4
+        </div>
+      )}
       <div style={{ overflow: "auto", maxHeight: 200 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
           <thead>
@@ -392,7 +405,8 @@ function TableBody({ data }: { data: TableArtifactData }) {
           </tbody>
         </table>
       </div>
-      {(summary?.grandTotal != null || content) && (
+      {/* Footer: totals + line count */}
+      {(grandTotal != null || content) && (
         <div style={{
           padding: "6px 14px",
           borderTop: "1px solid rgba(255,255,255,0.08)",
@@ -402,11 +416,24 @@ function TableBody({ data }: { data: TableArtifactData }) {
           <span style={{ color: "#5C5C78" }}>
             {rows.length} {t('artifact.lineItems')}{summary?.note ? ` · ${summary.note}` : ""}
           </span>
-          {summary?.grandTotal != null && (
+          {grandTotal != null && (
             <span style={{ color: "#10B981", fontWeight: 700 }}>
-              {t('artifact.grandTotal')}: ${summary.grandTotal.toLocaleString()}
+              {t('artifact.grandTotal')}: ${grandTotal.toLocaleString()}
             </span>
           )}
+        </div>
+      )}
+      {/* Professional disclaimer for cost estimates */}
+      {isCostTable && (
+        <div style={{
+          padding: "5px 14px 8px",
+          borderTop: "1px solid rgba(255,255,255,0.04)",
+          fontSize: 8.5,
+          color: "#4A4A62",
+          lineHeight: 1.5,
+          fontStyle: "italic",
+        }}>
+          {disclaimer || "Preliminary estimate (±15-20% accuracy). Based on RSMeans 2024/2025. Valid 90 days. Not for contract pricing."}
         </div>
       )}
     </div>
