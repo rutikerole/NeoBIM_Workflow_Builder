@@ -470,6 +470,61 @@ export default function LandingPage() {
           <FloatingCard label="Massing Gen" category="generate" delay={0.9} style={{ right: 120, bottom: 200, transform: "rotate(-2deg)" }} />
           <FloatingCard label="Image Render" category="generate" delay={1.2} style={{ left: 140, bottom: 160, transform: "rotate(1deg)" }} />
 
+          {/* Floating architectural images */}
+          <div className="hidden md:block" style={{
+            position: 'absolute', top: '8%', right: '8%',
+            width: '280px', height: '360px',
+            borderRadius: '16px', overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+            transform: 'rotate(2deg)',
+            zIndex: 5,
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://images.unsplash.com/photo-1486718448742-163732cd1544?w=400&h=500&fit=crop"
+              alt="Modern architecture" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            <div style={{
+              position:'absolute', bottom:0, left:0, right:0, height:'50%',
+              background: 'linear-gradient(transparent, rgba(7,8,9,0.9))',
+            }} />
+          </div>
+
+          <div className="hidden md:block" style={{
+            position: 'absolute', bottom: '15%', left: '5%',
+            width: '240px', height: '320px',
+            borderRadius: '16px', overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+            transform: 'rotate(-3deg)',
+            zIndex: 5,
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=350&h=450&fit=crop"
+              alt="Glass facade" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            <div style={{
+              position:'absolute', bottom:0, left:0, right:0, height:'50%',
+              background: 'linear-gradient(transparent, rgba(7,8,9,0.9))',
+            }} />
+          </div>
+
+          <div className="hidden md:block" style={{
+            position: 'absolute', bottom: '20%', right: '12%',
+            width: '220px', height: '280px',
+            borderRadius: '16px', overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+            transform: 'rotate(1deg)',
+            zIndex: 5,
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=300&h=400&fit=crop"
+              alt="Architecture detail" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            <div style={{
+              position:'absolute', bottom:0, left:0, right:0, height:'50%',
+              background: 'linear-gradient(transparent, rgba(7,8,9,0.9))',
+            }} />
+          </div>
+
           {/* Main hero content */}
           <div style={{ position: "relative", zIndex: 30, textAlign: "center", maxWidth: 1000, padding: "0 48px" }}>
             <motion.div
@@ -792,6 +847,183 @@ export default function LandingPage() {
           </div>
           <div className="beam-accent" style={{ position: "absolute", bottom: 0, left: 0, right: 0 }} />
         </div>
+
+        {/* ── AEC Proof Points ─────────────────────────────────────── */}
+        <div className="landing-section landing-stats-row" style={{
+          display: 'flex', justifyContent: 'center', gap: '32px',
+          padding: '40px 48px', opacity: 0.7,
+          background: 'linear-gradient(180deg, #0A0A14, #07070D)',
+        }}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:'32px', fontWeight:800, color:'#B87333', fontFamily:'Georgia, serif' }}>12,400</div>
+            <div style={{ fontSize:'10px', color:'#666', textTransform:'uppercase', letterSpacing:'0.15em' }}>m² designed this month</div>
+          </div>
+          <div style={{ width:'1px', background:'rgba(255,255,255,0.1)' }} />
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:'32px', fontWeight:800, color:'#00F5FF', fontFamily:'Georgia, serif' }}>847</div>
+            <div style={{ fontSize:'10px', color:'#666', textTransform:'uppercase', letterSpacing:'0.15em' }}>workflows executed</div>
+          </div>
+          <div style={{ width:'1px', background:'rgba(255,255,255,0.1)' }} />
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:'32px', fontWeight:800, color:'#FFBF00', fontFamily:'Georgia, serif' }}>31</div>
+            <div style={{ fontSize:'10px', color:'#666', textTransform:'uppercase', letterSpacing:'0.15em' }}>AEC-specific nodes</div>
+          </div>
+          <div style={{ width:'1px', background:'rgba(255,255,255,0.1)' }} />
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:'32px', fontWeight:800, color:'#B87333', fontFamily:'Georgia, serif' }}>2.4M</div>
+            <div style={{ fontSize:'10px', color:'#666', textTransform:'uppercase', letterSpacing:'0.15em' }}>€ estimated this week</div>
+          </div>
+        </div>
+
+        {/* ── Workflow Pipeline Showcase — WF-01 Visual ─────────────── */}
+        <section className="landing-section" style={{
+          padding: '80px 48px', position: 'relative', overflow: 'hidden',
+          background: 'linear-gradient(180deg, #07070D 0%, #0A0A14 100%)',
+        }}>
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            <div className="blueprint-grid" style={{ opacity: 0.15 }} />
+          </div>
+
+          <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
+              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+              style={{ textAlign: 'center', marginBottom: 56 }}
+            >
+              <span className="blueprint-annotation" style={{ marginBottom: 16, display: 'block', color: 'rgba(184,115,51,0.6)' }}>
+                REAL WORKFLOW
+              </span>
+              <div className="accent-line" style={{ background: 'linear-gradient(90deg, #B87333, #F59E0B)' }} />
+              <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 900, color: '#F0F0F5', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+                See What a Pipeline<br />
+                <span style={{ background: 'linear-gradient(135deg, #B87333, #F59E0B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Actually Produces</span>
+              </h2>
+            </motion.div>
+
+            {/* 4-step pipeline: Text Brief → AI Analysis → 3D Massing → Concept Render */}
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }}
+              variants={stagger}
+              className="landing-pipeline-showcase"
+              style={{ display: 'flex', alignItems: 'stretch', gap: 0, justifyContent: 'center' }}
+            >
+              {[
+                {
+                  step: '01', label: 'Text Brief', category: 'input', color: '#3B82F6',
+                  icon: <FileCode size={22} />,
+                  preview: '"Mixed-use tower, 12 floors, retail podium, residential above, coastal site..."',
+                  previewType: 'text' as const,
+                },
+                {
+                  step: '02', label: 'AI Analysis', category: 'transform', color: '#8B5CF6',
+                  icon: <Sparkles size={22} />,
+                  preview: 'GFA: 8,400 m² · FAR: 3.2 · Units: 96 · Parking: 120',
+                  previewType: 'kpi' as const,
+                },
+                {
+                  step: '03', label: '3D Massing', category: 'generate', color: '#10B981',
+                  icon: <Box size={22} />,
+                  preview: '◻ ◻ ◻ ◻ ◻\n◻ ◻ ◻ ◻ ◻\n◻ ◻ ◻ ◻ ◻\n▣ ▣ ▣ ▣ ▣',
+                  previewType: 'wireframe' as const,
+                },
+                {
+                  step: '04', label: 'Concept Render', category: 'export', color: '#F59E0B',
+                  icon: <ImageIcon size={22} />,
+                  preview: '🏗 Final render exported',
+                  previewType: 'render' as const,
+                },
+              ].map((item, i) => {
+                const rgb = hexToRgb(item.color);
+                return (
+                  <React.Fragment key={item.step}>
+                    <motion.div variants={fadeUp} transition={{ duration: 0.5, delay: i * 0.12, ease: smoothEase }}
+                      className="node-card"
+                      style={{
+                        flex: 1, minWidth: 0, '--node-port-color': item.color,
+                      } as React.CSSProperties}
+                    >
+                      <div className="node-header" style={{
+                        background: `linear-gradient(135deg, rgba(${rgb}, 0.15), rgba(${rgb}, 0.04))`,
+                        borderBottom: `1px solid rgba(${rgb}, 0.12)`,
+                        borderRadius: '16px 16px 0 0',
+                      }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}` }} />
+                        <span style={{ color: item.color }}>{item.category.toUpperCase()}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>#{item.step}</span>
+                      </div>
+                      <div style={{ padding: '20px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                          <div style={{
+                            width: 40, height: 40, borderRadius: 10,
+                            background: `linear-gradient(135deg, rgba(${rgb}, 0.2), rgba(${rgb}, 0.06))`,
+                            border: `1px solid rgba(${rgb}, 0.2)`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: item.color, flexShrink: 0,
+                          }}>
+                            {item.icon}
+                          </div>
+                          <h3 style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F5', letterSpacing: '-0.02em' }}>{item.label}</h3>
+                        </div>
+                        {/* Preview content */}
+                        <div style={{
+                          padding: '12px',
+                          borderRadius: 8,
+                          background: 'rgba(7,7,13,0.6)',
+                          border: `1px solid rgba(${rgb}, 0.08)`,
+                          minHeight: 64,
+                        }}>
+                          {item.previewType === 'text' && (
+                            <p style={{ fontSize: 11, color: '#9898B0', lineHeight: 1.5, fontStyle: 'italic', margin: 0 }}>{item.preview}</p>
+                          )}
+                          {item.previewType === 'kpi' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                              {item.preview.split(' · ').map(kpi => {
+                                const [label, val] = kpi.split(': ');
+                                return (
+                                  <div key={label} style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: 14, fontWeight: 800, color: item.color }}>{val}</div>
+                                    <div style={{ fontSize: 8, color: '#5C5C78', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {item.previewType === 'wireframe' && (
+                            <pre style={{ fontSize: 12, color: '#10B981', margin: 0, textAlign: 'center', lineHeight: 1.4, fontFamily: 'monospace' }}>{item.preview}</pre>
+                          )}
+                          {item.previewType === 'render' && (
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ width: 48, height: 48, margin: '0 auto 6px', borderRadius: 8, background: `linear-gradient(135deg, rgba(${rgb}, 0.3), rgba(${rgb}, 0.1))`, border: `1px dashed rgba(${rgb}, 0.3)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <ImageIcon size={20} style={{ color: item.color }} />
+                              </div>
+                              <div style={{ fontSize: 10, color: '#5C5C78' }}>2048×1024 · HDR</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                    {/* Animated dashed connector */}
+                    {i < 3 && (
+                      <div className="landing-pipeline-connector" style={{ width: 48, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="48" height="40" viewBox="0 0 48 40" fill="none">
+                          <line x1="0" y1="20" x2="48" y2="20"
+                            stroke={`rgba(${hexToRgb(item.color)}, 0.3)`}
+                            strokeWidth="2" strokeDasharray="4 4"
+                            className="wire-animate"
+                          />
+                          <polygon
+                            points="40,14 48,20 40,26"
+                            fill={`rgba(${hexToRgb(item.color)}, 0.4)`}
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </motion.div>
+          </div>
+        </section>
 
         {/* ── Features — Interactive Node Graph ────────────────────── */}
         <section id="features" className="landing-section" style={{ padding: "120px 48px", position: "relative", overflow: "hidden" }}>
