@@ -106,41 +106,30 @@ function generateRoomsFromKPIs(floors: number, gfa: number, buildingType: string
   ];
 }
 
-// ─── Layout generator (bin-packing into footprint) ───────────────────────────
+// ─── Layout generator (rectangular grid — rooms tile a clean footprint) ──────
 
 function generateLayout(rooms: Room[]): LayoutRoom[] {
   if (rooms.length === 0) return [];
-  const sorted = [...rooms].sort((a, b) => b.area - a.area);
-  const totalArea = sorted.reduce((s, r) => s + r.area, 0);
-  const aspect = 1.4;
+  const totalArea = rooms.reduce((s, r) => s + r.area, 0);
+  const aspect = 1.5; // width:depth ratio
   const buildingWidth = Math.sqrt(totalArea * aspect);
-  const padding = 0.15;
+  const buildingDepth = totalArea / buildingWidth;
 
-  const laid: LayoutRoom[] = [];
-  let curX = 0, curY = 0, rowHeight = 0;
+  const cols = Math.ceil(Math.sqrt(rooms.length * 1.5));
+  const rows = Math.ceil(rooms.length / cols);
+  const cellWidth = buildingWidth / cols;
+  const cellDepth = buildingDepth / rows;
 
-  for (const room of sorted) {
-    const roomAspect = room.name.toLowerCase().includes("corridor") || room.name.toLowerCase().includes("hall")
-      ? 4.0 : 1.3 + Math.random() * 0.4;
-    let w = Math.sqrt(room.area * roomAspect);
-    const d = room.area / w;
-    if (room.name.toLowerCase().includes("corridor")) {
-      w = buildingWidth;
-    }
-    if (curX + w > buildingWidth + 0.5 && curX > 0) {
-      curX = 0;
-      curY += rowHeight + padding;
-      rowHeight = 0;
-    }
-    laid.push({ ...room, x: curX, y: curY, width: w, depth: room.area / w });
-    curX += w + padding;
-    rowHeight = Math.max(rowHeight, room.area / w);
-  }
+  const offsetX = buildingWidth / 2;
+  const offsetY = buildingDepth / 2;
 
-  const maxX = Math.max(...laid.map(r => r.x + r.width));
-  const maxY = Math.max(...laid.map(r => r.y + r.depth));
-  const offsetX = maxX / 2, offsetY = maxY / 2;
-  return laid.map(r => ({ ...r, x: r.x - offsetX, y: r.y - offsetY }));
+  return rooms.map((room, i) => ({
+    ...room,
+    x: (i % cols) * cellWidth - offsetX,
+    y: Math.floor(i / cols) * cellDepth - offsetY,
+    width: cellWidth,
+    depth: cellDepth,
+  }));
 }
 
 // ─── Wall segment builder (with yOffset for multi-floor) ─────────────────────
@@ -154,11 +143,15 @@ function buildWallSegments(
   glassMat: THREE.MeshPhysicalMaterial, frameMat: THREE.MeshStandardMaterial,
 ) {
   const mat = isExterior ? extMat : intMat;
+  const slabTop = yOffset + 0.15;
   const isGroundFloor = yOffset < 0.1;
   const hasDoor = isGroundFloor && (isExterior || Math.random() > 0.5);
   const doorWidth = 0.9, doorHeight = 2.1, doorPos = length * 0.3;
+  const windowWidth = 1.2, windowHeight = 1.4, windowSillH = 0.8;
+
+  // Evenly space windows along exterior walls
+  const windowSpacing = 2.8;
   const hasWindow = isExterior && length > 2.5;
-  const windowWidth = 1.2, windowHeight = 1.4, windowSillH = 0.8, windowPos = length * 0.7;
 
   if (!hasDoor && !hasWindow) {
     const geo = axis === "x"
@@ -167,7 +160,7 @@ function buildWallSegments(
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x + (axis === "x" ? length / 2 : 0), 0, z + (axis === "z" ? length / 2 : 0));
     mesh.castShadow = true; mesh.receiveShadow = true; mesh.scale.y = 0;
-    mesh.userData = { yOffset };
+    mesh.userData = { baseY: slabTop, wallH: wallHeight };
     group.add(mesh); wallArr.push(mesh);
     return;
   }
@@ -176,8 +169,22 @@ function buildWallSegments(
   const openings: Opening[] = [];
   if (hasDoor && doorPos + doorWidth / 2 < length && doorPos - doorWidth / 2 > 0)
     openings.push({ pos: doorPos, width: doorWidth, height: doorHeight, sill: 0, type: "door" });
-  if (hasWindow && windowPos + windowWidth / 2 < length && windowPos - windowWidth / 2 > 0)
-    openings.push({ pos: windowPos, width: windowWidth, height: windowHeight, sill: windowSillH, type: "window" });
+
+  // Distribute windows evenly along wall
+  if (hasWindow) {
+    const numWindows = Math.max(1, Math.floor(length / windowSpacing));
+    const step = length / (numWindows + 1);
+    for (let wi = 0; wi < numWindows; wi++) {
+      const wp = step * (wi + 1);
+      if (wp - windowWidth / 2 > 0.3 && wp + windowWidth / 2 < length - 0.3) {
+        // Avoid overlapping with door
+        const overlapsDoor = openings.some(o => Math.abs(o.pos - wp) < (o.width / 2 + windowWidth / 2 + 0.2));
+        if (!overlapsDoor) {
+          openings.push({ pos: wp, width: windowWidth, height: windowHeight, sill: windowSillH, type: "window" });
+        }
+      }
+    }
+  }
   openings.sort((a, b) => a.pos - b.pos);
 
   const segments: Array<{ start: number; end: number }> = [];
@@ -194,9 +201,9 @@ function buildWallSegments(
         ? new THREE.BoxGeometry(o.width, lintelH, thickness)
         : new THREE.BoxGeometry(thickness, lintelH, o.width);
       const lintel = new THREE.Mesh(lintelGeo, mat);
-      lintel.position.set(axis === "x" ? x + o.pos : x, yOffset + o.sill + o.height + lintelH / 2, axis === "z" ? z + o.pos : z);
+      lintel.position.set(axis === "x" ? x + o.pos : x, 0, axis === "z" ? z + o.pos : z);
       lintel.castShadow = true; lintel.scale.y = 0;
-      lintel.userData = { yOffset };
+      lintel.userData = { baseY: yOffset + o.sill + o.height, wallH: lintelH };
       group.add(lintel); wallArr.push(lintel);
     }
 
@@ -206,9 +213,9 @@ function buildWallSegments(
         ? new THREE.BoxGeometry(o.width, o.sill, thickness)
         : new THREE.BoxGeometry(thickness, o.sill, o.width);
       const sillWall = new THREE.Mesh(sillGeo, mat);
-      sillWall.position.set(axis === "x" ? x + o.pos : x, yOffset + o.sill / 2, axis === "z" ? z + o.pos : z);
+      sillWall.position.set(axis === "x" ? x + o.pos : x, 0, axis === "z" ? z + o.pos : z);
       sillWall.castShadow = true; sillWall.scale.y = 0;
-      sillWall.userData = { yOffset };
+      sillWall.userData = { baseY: slabTop, wallH: o.sill };
       group.add(sillWall); wallArr.push(sillWall);
     }
 
@@ -258,7 +265,7 @@ function buildWallSegments(
     const segMid = seg.start + segLen / 2;
     mesh.position.set(axis === "x" ? x + segMid : x, 0, axis === "z" ? z + segMid : z);
     mesh.castShadow = true; mesh.receiveShadow = true; mesh.scale.y = 0;
-    mesh.userData = { yOffset };
+    mesh.userData = { baseY: slabTop, wallH: wallHeight };
     group.add(mesh); wallArr.push(mesh);
   }
 }
@@ -399,23 +406,14 @@ export default function PostExecutionScene({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
+    renderer.setClearColor(0x070809, 1);
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
     // ── Scene ─────────────────────────────────────────────
     const scene = new THREE.Scene();
-    const bgCanvas = document.createElement("canvas");
-    bgCanvas.width = 2; bgCanvas.height = 256;
-    const bgCtx = bgCanvas.getContext("2d")!;
-    const grad = bgCtx.createLinearGradient(0, 0, 0, 256);
-    grad.addColorStop(0, "#0e0e1a");
-    grad.addColorStop(0.5, "#0a0a14");
-    grad.addColorStop(1, "#07070e");
-    bgCtx.fillStyle = grad;
-    bgCtx.fillRect(0, 0, 2, 256);
-    const bgTex = new THREE.CanvasTexture(bgCanvas);
-    scene.background = bgTex;
-    scene.fog = new THREE.Fog("#0a0a14", 40, 100);
+    scene.background = new THREE.Color("#070809");
+    scene.fog = new THREE.Fog("#070809", 40, 100);
 
     // ── Camera ────────────────────────────────────────────
     const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 300);
@@ -707,14 +705,15 @@ export default function PostExecutionScene({
           });
         }
 
-        // Walls per room, staggered
+        // Walls per room, staggered — each piece uses its own baseY/wallH
         floorRoomWalls[f].forEach((roomWalls, ri) => {
           const stagger = ri * 80;
           const roomProg = clamp01((elapsed - start - stagger) / (duration * 0.8));
           const roomEased = easeOutCubic(roomProg);
           roomWalls.forEach(wall => {
             wall.scale.y = roomEased;
-            wall.position.y = yOffset + (floorHeight * roomEased) / 2 + 0.15;
+            const { baseY, wallH } = wall.userData;
+            wall.position.y = baseY + (wallH * roomEased) / 2;
           });
         });
 
@@ -792,7 +791,6 @@ export default function PostExecutionScene({
       cancelAnimationFrame(animFrameRef.current);
       controls.dispose();
       renderer.dispose();
-      bgTex.dispose();
       envTex.dispose();
       scene.traverse(obj => {
         if (obj instanceof THREE.Mesh) {
