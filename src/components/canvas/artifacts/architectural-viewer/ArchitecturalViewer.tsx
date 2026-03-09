@@ -216,17 +216,6 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
 
     const sunLight = new THREE.DirectionalLight(0xFFEECC, 1.5);
     sunLight.position.set(25, Math.max(40, bldgHeight * 0.8), 20);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.setScalar(2048);
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = Math.max(150, bldgHeight * 4);
-    const shadowSize = Math.max(30, maxDimension * 1.5);
-    sunLight.shadow.camera.left = -shadowSize;
-    sunLight.shadow.camera.right = shadowSize;
-    sunLight.shadow.camera.top = shadowSize;
-    sunLight.shadow.camera.bottom = -shadowSize;
-    sunLight.shadow.bias = -0.0005;
-    sunLight.shadow.normalBias = 0.02;
     scene.add(sunLight);
 
     const fillLight = new THREE.DirectionalLight(0xAABBDD, 0.3);
@@ -391,18 +380,6 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
       }
     };
     renderer.domElement.addEventListener("mousemove", onMouseMove);
-
-    // ─── Diagnostic: count meshes so we can verify the scene is populated ──
-    let meshCount = 0;
-    scene.traverse(o => { if (o instanceof THREE.Mesh) meshCount++; });
-    console.log("[ArchViewer] Scene ready:", {
-      meshCount,
-      buildingChildren: buildingGroup.children.length,
-      labels: roomLabels.children.length,
-      canvas: `${w}x${h}`,
-      floors: effectiveFloors,
-      shadows: renderer.shadowMap.enabled,
-    });
 
     // ─── Store refs ────────────────────────────────────────────
     clock = new THREE.Clock();

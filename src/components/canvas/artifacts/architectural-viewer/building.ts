@@ -508,7 +508,7 @@ export function buildBuilding(
       const floorGeo = new THREE.BoxGeometry(room.width, 0.12, room.depth);
       const floorMesh = new THREE.Mesh(floorGeo, getFloorMaterial(room.type, mats));
       floorMesh.position.set(rx + room.width / 2, baseY + 0.06, rz + room.depth / 2);
-      floorMesh.receiveShadow = true;
+
       tagFloor(floorMesh, floorIdx);
       buildingGroup.add(floorMesh);
 
@@ -517,7 +517,7 @@ export function buildBuilding(
         const ceilGeo = new THREE.BoxGeometry(room.width - 0.02, 0.08, room.depth - 0.02);
         const ceilMesh = new THREE.Mesh(ceilGeo, mats.ceiling);
         ceilMesh.position.set(rx + room.width / 2, baseY + floorHeight - 0.04, rz + room.depth / 2);
-        ceilMesh.receiveShadow = true;
+
         tagFloor(ceilMesh, floorIdx);
         buildingGroup.add(ceilMesh);
       }
@@ -603,8 +603,7 @@ export function buildBuilding(
           const wallMat = isExterior ? extWallMat : getWallMaterial(room.type, mats, isAccent);
           const wallMesh = new THREE.Mesh(wallGeo, wallMat);
           wallMesh.position.copy(wallPos);
-          wallMesh.castShadow = true;
-          wallMesh.receiveShadow = true;
+
           tagFloor(wallMesh, floorIdx);
           buildingGroup.add(wallMesh);
         }
@@ -654,8 +653,7 @@ export function buildBuilding(
   const roofGeo = new THREE.BoxGeometry(buildingW + 0.5, 0.2, buildingD + 0.5);
   const roofMesh = new THREE.Mesh(roofGeo, mats.roofTop);
   roofMesh.position.set(0, config.floors * floorHeight + 0.1, 0);
-  roofMesh.castShadow = true;
-  roofMesh.receiveShadow = true;
+
   buildingGroup.add(roofMesh);
 
   // Roof parapet (scales with building height)
@@ -672,7 +670,7 @@ export function buildBuilding(
     const pGeo = new THREE.BoxGeometry(p.w, parapetH, p.d);
     const pMesh = new THREE.Mesh(pGeo, isGlassBuilding ? mats.brushedMetal : mats.concreteWall);
     pMesh.position.set(p.x, parapetY, p.z);
-    pMesh.castShadow = true;
+
     buildingGroup.add(pMesh);
   });
 
@@ -688,7 +686,7 @@ export function buildBuilding(
   const groundMesh = new THREE.Mesh(groundGeo, mats.grass);
   groundMesh.rotation.x = -Math.PI / 2;
   groundMesh.position.y = -0.01;
-  groundMesh.receiveShadow = true;
+
   scene.add(groundMesh);
 
   // ─── Environment based on style ──────────────────────────────────
@@ -700,7 +698,7 @@ export function buildBuilding(
   const pathGeo = new THREE.BoxGeometry(3, 0.05, 15);
   const pathMesh = new THREE.Mesh(pathGeo, mats.concreteFloor);
   pathMesh.position.set(0, 0.025, -buildingD / 2 - 7.5);
-  pathMesh.receiveShadow = true;
+
   scene.add(pathMesh);
 
   // Front entrance canopy (scales slightly with building height)
@@ -710,8 +708,7 @@ export function buildBuilding(
   const canopyMat = isGlassBuilding ? mats.brushedMetal : mats.concreteWall;
   const canopyMesh = new THREE.Mesh(canopyGeo, canopyMat);
   canopyMesh.position.set(0, floorHeight * 0.85, -buildingD / 2 - canopyD / 2);
-  canopyMesh.castShadow = true;
-  canopyMesh.receiveShadow = true;
+
   scene.add(canopyMesh);
 
   // Canopy supports
@@ -721,7 +718,7 @@ export function buildBuilding(
       mats.brushedMetal
     );
     colMesh.position.set(cx, floorHeight * 0.85 / 2, -buildingD / 2 - canopyD + 0.15);
-    colMesh.castShadow = true;
+
     scene.add(colMesh);
   }
 
@@ -732,8 +729,7 @@ export function buildBuilding(
       mats.concreteFloor
     );
     stepMesh.position.set(0, s * 0.08 + 0.04, -buildingD / 2 - 0.2 - s * 0.35);
-    stepMesh.receiveShadow = true;
-    stepMesh.castShadow = true;
+
     scene.add(stepMesh);
   }
 
@@ -791,7 +787,7 @@ export function buildBuilding(
       mats.brushedMetal
     );
     bollard.position.set(lp.x, 0.4, lp.z);
-    bollard.castShadow = true;
+
     scene.add(bollard);
 
     const cap = new THREE.Mesh(
@@ -806,7 +802,7 @@ export function buildBuilding(
   const driveGeo = new THREE.BoxGeometry(5, 0.04, 10);
   const driveMesh = new THREE.Mesh(driveGeo, mats.concreteFloor);
   driveMesh.position.set(buildingW / 2 + 2, 0.02, -buildingD / 2 - 5);
-  driveMesh.receiveShadow = true;
+
   scene.add(driveMesh);
 
   scene.add(buildingGroup);
@@ -835,7 +831,7 @@ function buildWaterFeature(
     const bedGeo = new THREE.BoxGeometry(riverLen, 0.3, riverW);
     const bedMesh = new THREE.Mesh(bedGeo, new THREE.MeshBasicMaterial({ color: 0x3D5C3A }));
     bedMesh.position.set(0, -0.4, riverZ);
-    bedMesh.receiveShadow = true;
+
     scene.add(bedMesh);
 
     // Water surface
@@ -849,7 +845,7 @@ function buildWaterFeature(
       const bankGeo = new THREE.BoxGeometry(riverLen, 0.4, 1.5);
       const bankMesh = new THREE.Mesh(bankGeo, new THREE.MeshBasicMaterial({ color: 0x6B5C3D }));
       bankMesh.position.set(0, -0.1, riverZ + side * (riverW / 2 + 0.5));
-      bankMesh.receiveShadow = true;
+
       scene.add(bankMesh);
     }
 
@@ -857,7 +853,7 @@ function buildWaterFeature(
     const promoGeo = new THREE.BoxGeometry(riverLen * 0.7, 0.06, 3);
     const promoMesh = new THREE.Mesh(promoGeo, mats.concreteFloor);
     promoMesh.position.set(0, 0.03, riverZ - riverW / 2 - 2.5);
-    promoMesh.receiveShadow = true;
+
     scene.add(promoMesh);
 
     // Railing along the promenade
@@ -923,7 +919,7 @@ function createBench(mats: MaterialLibrary): THREE.Group {
   const seatGeo = new THREE.BoxGeometry(1.5, 0.06, 0.4);
   const seat = new THREE.Mesh(seatGeo, mats.wood);
   seat.position.y = 0.45;
-  seat.castShadow = true;
+
   g.add(seat);
 
   for (const lx of [-0.6, 0.6]) {
@@ -1005,7 +1001,7 @@ function createTree(mats: MaterialLibrary, height: number): THREE.Group {
     new THREE.MeshBasicMaterial({ color: 0x5C3D1E })
   );
   trunk.position.y = trunkH / 2;
-  trunk.castShadow = true;
+
   g.add(trunk);
 
   const foliageColor = 0x2D6B1E;
@@ -1028,7 +1024,7 @@ function createTree(mats: MaterialLibrary, height: number): THREE.Group {
       (Math.random() - 0.5) * 0.3
     );
     foliage.scale.set(layer.scale, layer.scale * 0.8, layer.scale);
-    foliage.castShadow = true;
+
     g.add(foliage);
   }
 
@@ -1074,7 +1070,7 @@ function createGlassCurtainWall(
       const mGeo = new THREE.BoxGeometry(mullionWidth, frameHeight, 0.05);
       const mMesh = new THREE.Mesh(mGeo, mats.metal);
       mMesh.position.set(mx, pos.y, pos.z);
-      mMesh.castShadow = true;
+
       parent.add(mMesh);
     }
 
@@ -1108,7 +1104,7 @@ function createGlassCurtainWall(
       const mGeo = new THREE.BoxGeometry(0.05, frameHeight, mullionWidth);
       const mMesh = new THREE.Mesh(mGeo, mats.metal);
       mMesh.position.set(pos.x, pos.y, mz);
-      mMesh.castShadow = true;
+
       parent.add(mMesh);
     }
 
@@ -1162,8 +1158,7 @@ function createWallWithWindows(
     const belowGeo = new THREE.BoxGeometry(length, sillH, thickness);
     const belowMesh = new THREE.Mesh(belowGeo, wallMat);
     belowMesh.position.set(pos.x, pos.y - height / 2 + sillH / 2 + 0.06, pos.z);
-    belowMesh.castShadow = true;
-    belowMesh.receiveShadow = true;
+
     parent.add(belowMesh);
 
     const aboveH = height - sillH - winH - 0.12;
@@ -1171,7 +1166,7 @@ function createWallWithWindows(
       const aboveGeo = new THREE.BoxGeometry(length, aboveH, thickness);
       const aboveMesh = new THREE.Mesh(aboveGeo, wallMat);
       aboveMesh.position.set(pos.x, pos.y + height / 2 - aboveH / 2 - 0.06, pos.z);
-      aboveMesh.castShadow = true;
+
       parent.add(aboveMesh);
     }
 
@@ -1183,7 +1178,7 @@ function createWallWithWindows(
         const pierGeo = new THREE.BoxGeometry(pierW, winH, thickness);
         const pierMesh = new THREE.Mesh(pierGeo, wallMat);
         pierMesh.position.set(pierX + pierW / 2, pos.y - height / 2 + sillH + winH / 2 + 0.06, pos.z);
-        pierMesh.castShadow = true;
+
         parent.add(pierMesh);
       }
     }
@@ -1218,7 +1213,7 @@ function createWallWithWindows(
     const belowGeo = new THREE.BoxGeometry(thickness, sillH, length);
     const belowMesh = new THREE.Mesh(belowGeo, wallMat);
     belowMesh.position.set(pos.x, pos.y - height / 2 + sillH / 2 + 0.06, pos.z);
-    belowMesh.castShadow = true;
+
     parent.add(belowMesh);
 
     const aboveH = height - sillH - winH - 0.12;
@@ -1226,7 +1221,7 @@ function createWallWithWindows(
       const aboveGeo = new THREE.BoxGeometry(thickness, aboveH, length);
       const aboveMesh = new THREE.Mesh(aboveGeo, wallMat);
       aboveMesh.position.set(pos.x, pos.y + height / 2 - aboveH / 2 - 0.06, pos.z);
-      aboveMesh.castShadow = true;
+
       parent.add(aboveMesh);
     }
 
@@ -1258,7 +1253,7 @@ function createDoor(
 ): DoorMesh | null {
   const doorGeo = new THREE.BoxGeometry(doorW, doorH, 0.05);
   const doorMesh = new THREE.Mesh(doorGeo, mats.darkWood);
-  doorMesh.castShadow = true;
+
 
   const handleGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.12, 8);
   const handleMesh = new THREE.Mesh(handleGeo, mats.brushedMetal);
@@ -1316,8 +1311,7 @@ function buildStairs(
       baseY + 0.12 + i * stepH + stepH / 2,
       rz + i * stepD + stepD / 2
     );
-    stepMesh.castShadow = true;
-    stepMesh.receiveShadow = true;
+
     parent.add(stepMesh);
   }
 
