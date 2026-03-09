@@ -419,17 +419,17 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
   {
     id: "GN-009",
     name: "Video Walkthrough Generator",
-    description: "Generate a cinematic video walkthrough/flythrough from 3D model or concept renders — camera path, lighting, and transitions auto-composed",
+    description: "Generate a cinematic 4K video walkthrough from concept renders — physics-aware camera motion, golden hour lighting, professional drone cinematography feel. Best-in-class for architecture.",
     category: "generate",
     icon: "Video",
     inputs: [
       { id: "geo-in", label: "3D Model / Renders", type: "geometry" },
       { id: "style-in", label: "Style & Camera", type: "json" },
     ],
-    outputs: [{ id: "video-out", label: "MP4 Video", type: "binary" }],
-    apiEngine: "Kling 2.1 via fal.ai",
-    tags: ["video", "walkthrough", "flythrough", "animation", "render", "cinematic"],
-    executionTime: "2-5 min",
+    outputs: [{ id: "video-out", label: "4K MP4 Video", type: "binary" }],
+    apiEngine: "Kling 3.0 Pro via fal.ai",
+    tags: ["video", "walkthrough", "flythrough", "animation", "render", "cinematic", "4k"],
+    executionTime: "3-8 min",
   },
 
   // ============================================================

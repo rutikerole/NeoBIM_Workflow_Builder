@@ -1331,7 +1331,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
     } else if (catalogueId === "GN-009") {
       // ── Video Walkthrough Generator ────────────────────────────────────
       // Takes a concept render image (from GN-003) + building description
-      // and generates a cinematic walkthrough video via Kling 2.1 (fal.ai).
+      // and generates a cinematic 4K walkthrough video via Kling 3.0 Pro.
 
       if (!process.env.FAL_KEY) {
         return NextResponse.json(
@@ -1374,7 +1374,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const videoResult = await generateWalkthroughVideo({
         imageUrl: renderImageUrl,
         prompt: videoPrompt,
-        duration: "5",
+        duration: "10",
       });
 
       artifact = {
@@ -1383,21 +1383,22 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         tileInstanceId,
         type: "file",
         data: {
-          name: `walkthrough_${Date.now()}.mp4`,
-          type: "MP4 Video",
+          name: videoResult.fileName,
+          type: "MP4 Video (4K)",
+          size: videoResult.fileSize,
           downloadUrl: videoResult.videoUrl,
-          label: "Cinematic Walkthrough Video",
-          content: `${videoResult.durationSeconds}s cinematic walkthrough — ${buildingDesc.slice(0, 100)}`,
+          label: "Cinematic 4K Walkthrough — Kling 3.0 Pro",
+          content: `${videoResult.durationSeconds}s cinematic 4K walkthrough — ${buildingDesc.slice(0, 100)}`,
           videoUrl: videoResult.videoUrl,
           durationSeconds: videoResult.durationSeconds,
           metadata: {
             costUsd: videoResult.costUsd,
             generationTimeMs: videoResult.generationTimeMs,
-            pipeline: "concept render → Kling 2.1 → MP4 video",
-            cameraPrompt: videoPrompt.slice(0, 200),
+            pipeline: "concept render → Kling 3.0 Pro → 4K MP4 video",
+            cameraPrompt: videoPrompt.slice(0, 300),
           },
         },
-        metadata: { engine: "kling-v2.1-standard", real: true, jobId: videoResult.id },
+        metadata: { engine: "kling-v3-pro", real: true, jobId: videoResult.id },
         createdAt: new Date(),
       };
 
