@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp, Box, Film, FileDown } from "lucide-react";
-import { COLORS } from "../constants";
+import {
+  ChevronDown, ChevronUp, Box, Film, FileDown,
+  Layers, Clock, Cpu, Sparkles, FileText, Image as ImageIcon,
+  Video, BarChart3, Table2, Code2, File, Zap,
+  Building2, Ruler, MapPin, Shield,
+} from "lucide-react";
+import { COLORS, CATEGORY_COLORS } from "../constants";
 import { HeroSection } from "../sections/HeroSection";
 import { KpiStrip } from "../sections/KpiStrip";
 import { PipelineViz } from "../sections/PipelineViz";
+import { AnimatedNumber } from "../sections/AnimatedNumber";
 import type { ShowcaseData } from "../useShowcaseData";
 import type { TabId } from "../constants";
 
@@ -16,171 +22,746 @@ interface OverviewTabProps {
   onNavigateTab: (tab: TabId) => void;
 }
 
+// ─── Artifact type icon map ──────────────────────────────────────────────────
+
+const ARTIFACT_ICONS: Record<string, React.ReactNode> = {
+  text: <FileText size={16} />,
+  image: <ImageIcon size={16} />,
+  video: <Video size={16} />,
+  "3d": <Box size={16} />,
+  kpi: <BarChart3 size={16} />,
+  table: <Table2 size={16} />,
+  json: <Code2 size={16} />,
+  svg: <Layers size={16} />,
+  file: <File size={16} />,
+};
+
+const ARTIFACT_COLORS: Record<string, string> = {
+  text: "#8B5CF6",
+  image: "#10B981",
+  video: "#00F5FF",
+  "3d": "#FFBF00",
+  kpi: "#F59E0B",
+  table: "#6366F1",
+  json: "#EC4899",
+  svg: "#14B8A6",
+  file: "#64748B",
+};
+
+const ARTIFACT_LABELS: Record<string, string> = {
+  text: "Document",
+  image: "Render",
+  video: "Walkthrough",
+  "3d": "3D Model",
+  kpi: "Metrics",
+  table: "Data Table",
+  json: "Structured Data",
+  svg: "Floor Plan",
+  file: "Export File",
+};
+
 export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabProps) {
   const [descExpanded, setDescExpanded] = useState(false);
   const descLines = data.textContent.split("\n");
   const shortDesc = descLines.slice(0, 4).join("\n");
   const hasLongDesc = descLines.length > 4;
 
+  // Compute artifact type breakdown
+  const artifactBreakdown = data.pipelineSteps
+    .filter(s => s.artifactType)
+    .map(s => ({
+      type: s.artifactType!,
+      label: s.label,
+      nodeCategory: s.category,
+    }));
+
+  // Derive tech stack from pipeline
+  const techStack = deriveTechStack(data);
+
+  const hasKpis = data.kpiMetrics.length > 0;
+  const hasHero = !!data.videoData?.videoUrl || !!data.heroImageUrl;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* Two-column layout on wide screens */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ── Top Row: Hero + Right Panel ──────────────────────────────────── */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 24,
+        gridTemplateColumns: hasHero ? "3fr 2fr" : "1fr",
+        gap: 20,
+        minHeight: 320,
       }}>
-        {/* Left: Hero */}
-        <div style={{ minWidth: 0 }}>
-          <HeroSection
-            videoData={data.videoData}
-            heroImageUrl={data.heroImageUrl}
-            onExpandVideo={onExpandVideo}
-          />
-          {/* If no hero media, show a placeholder */}
-          {!data.videoData?.videoUrl && !data.heroImageUrl && (
-            <div style={{
-              height: 200,
-              borderRadius: 12,
-              background: COLORS.GLASS_BG,
-              border: `1px solid ${COLORS.GLASS_BORDER}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: COLORS.TEXT_MUTED,
-              fontSize: 13,
-            }}>
-              No media generated
-            </div>
-          )}
-        </div>
+        {/* Left: Hero Media */}
+        {hasHero && (
+          <div style={{ minWidth: 0 }}>
+            <HeroSection
+              videoData={data.videoData}
+              heroImageUrl={data.heroImageUrl}
+              onExpandVideo={onExpandVideo}
+            />
+          </div>
+        )}
 
-        {/* Right: KPIs + Pipeline */}
+        {/* Right: KPIs or Project Info */}
         <div style={{
           display: "flex",
           flexDirection: "column",
-          gap: 16,
+          gap: 12,
           minWidth: 0,
         }}>
-          <KpiStrip metrics={data.kpiMetrics} maxItems={6} compact />
+          {hasKpis ? (
+            <KpiStrip metrics={data.kpiMetrics} maxItems={6} compact />
+          ) : (
+            <ExecutionSummaryPanel data={data} />
+          )}
           <PipelineViz steps={data.pipelineSteps} />
         </div>
       </div>
 
-      {/* Description */}
+      {/* ── Deliverables Grid ────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <SectionHeader icon={<Layers size={13} />} title="Deliverables" />
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+          gap: 10,
+        }}>
+          {artifactBreakdown.map((item, i) => {
+            const color = ARTIFACT_COLORS[item.type] ?? COLORS.TEXT_MUTED;
+            const icon = ARTIFACT_ICONS[item.type] ?? <File size={16} />;
+            const typeLabel = ARTIFACT_LABELS[item.type] ?? item.type;
+
+            return (
+              <motion.div
+                key={`${item.type}-${i}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.04 }}
+                style={{
+                  background: COLORS.GLASS_BG,
+                  border: `1px solid ${COLORS.GLASS_BORDER}`,
+                  borderRadius: 10,
+                  padding: "14px 16px",
+                  position: "relative",
+                  overflow: "hidden",
+                  cursor: "default",
+                  transition: "border-color 0.2s ease",
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = `${color}40`;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = COLORS.GLASS_BORDER;
+                }}
+              >
+                {/* Top accent line */}
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 2,
+                  background: `linear-gradient(90deg, ${color}60, transparent)`,
+                }} />
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: `${color}12`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color,
+                    flexShrink: 0,
+                  }}>
+                    {icon}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: COLORS.TEXT_PRIMARY,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}>
+                      {typeLabel}
+                    </div>
+                    <div style={{
+                      fontSize: 9,
+                      color: COLORS.TEXT_MUTED,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}>
+                      {item.label}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      {/* ── Description ──────────────────────────────────────────────────── */}
       {data.textContent && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          style={{
-            background: COLORS.GLASS_BG,
-            border: `1px solid ${COLORS.GLASS_BORDER}`,
-            borderRadius: 10,
-            padding: "18px 22px",
-          }}
+          transition={{ delay: 0.25 }}
         >
-          <div style={{
-            fontSize: 13,
-            color: COLORS.TEXT_SECONDARY,
-            lineHeight: 1.7,
-            whiteSpace: "pre-wrap",
-          }}>
-            {descExpanded ? data.textContent : shortDesc}
-            {hasLongDesc && (
-              <button
-                onClick={() => setDescExpanded(e => !e)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  background: "none",
-                  border: "none",
-                  color: COLORS.CYAN,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  marginLeft: 8,
-                }}
-              >
-                {descExpanded ? "Show less" : `Show more (+${descLines.length - 4} lines)`}
-                {descExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-              </button>
-            )}
+          <SectionHeader icon={<FileText size={13} />} title="Project Brief" />
+          <div
+            style={{
+              background: COLORS.GLASS_BG,
+              border: `1px solid ${COLORS.GLASS_BORDER}`,
+              borderRadius: 10,
+              padding: "18px 22px",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {/* Blueprint corner marks */}
+            <CornerMarks />
+            <div style={{
+              fontSize: 13,
+              color: COLORS.TEXT_SECONDARY,
+              lineHeight: 1.75,
+              whiteSpace: "pre-wrap",
+            }}>
+              {descExpanded ? data.textContent : shortDesc}
+              {hasLongDesc && (
+                <button
+                  onClick={() => setDescExpanded(e => !e)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    background: "none",
+                    border: "none",
+                    color: COLORS.CYAN,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    marginLeft: 8,
+                  }}
+                >
+                  {descExpanded ? "Show less" : `Show more (+${descLines.length - 4} lines)`}
+                  {descExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+              )}
+            </div>
           </div>
         </motion.div>
       )}
 
-      {/* Quick Actions */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {data.model3dData && (
-          <QuickActionButton
-            icon={<Box size={14} />}
-            label="View 3D Model"
-            color={COLORS.CYAN}
-            onClick={() => onNavigateTab("model")}
-          />
-        )}
-        {data.videoData && (
-          <QuickActionButton
-            icon={<Film size={14} />}
-            label="Watch Video"
-            color={COLORS.VIOLET}
-            onClick={onExpandVideo}
-          />
-        )}
-        <QuickActionButton
-          icon={<FileDown size={14} />}
-          label="Downloads"
-          color={COLORS.AMBER}
-          onClick={() => onNavigateTab("export")}
-        />
+      {/* ── Bottom Row: Tech Stack + Quick Actions ───────────────────────── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 16,
+      }}>
+        {/* Tech Stack */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <SectionHeader icon={<Cpu size={13} />} title="Technology Stack" />
+          <div style={{
+            background: COLORS.GLASS_BG,
+            border: `1px solid ${COLORS.GLASS_BORDER}`,
+            borderRadius: 10,
+            padding: "16px 18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}>
+            {techStack.map((tech, i) => (
+              <motion.div
+                key={tech.name}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.35 + i * 0.04 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: tech.color,
+                    boxShadow: `0 0 8px ${tech.color}40`,
+                  }} />
+                  <span style={{ fontSize: 11, color: COLORS.TEXT_SECONDARY, fontWeight: 500 }}>
+                    {tech.name}
+                  </span>
+                </div>
+                <span style={{
+                  fontSize: 9,
+                  color: COLORS.TEXT_MUTED,
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                  background: "rgba(255,255,255,0.03)",
+                }}>
+                  {tech.role}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Quick Actions + AEC Info */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <SectionHeader icon={<Zap size={13} />} title="Quick Actions" />
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}>
+            {data.model3dData && (
+              <QuickActionButton
+                icon={<Box size={14} />}
+                label="View 3D Model"
+                description="Interactive architectural massing"
+                color={COLORS.CYAN}
+                onClick={() => onNavigateTab("model")}
+              />
+            )}
+            {data.videoData && (
+              <QuickActionButton
+                icon={<Film size={14} />}
+                label="Watch Walkthrough"
+                description={`${data.videoData.durationSeconds}s cinematic · ${data.videoData.shotCount} shots`}
+                color={COLORS.VIOLET}
+                onClick={onExpandVideo}
+              />
+            )}
+            {data.allImageUrls.length > 0 && (
+              <QuickActionButton
+                icon={<ImageIcon size={14} />}
+                label="View Renders"
+                description={`${data.allImageUrls.length} concept render${data.allImageUrls.length > 1 ? "s" : ""}`}
+                color={COLORS.EMERALD}
+                onClick={() => onNavigateTab("media")}
+              />
+            )}
+            <QuickActionButton
+              icon={<FileDown size={14} />}
+              label="Download Center"
+              description="PDF report, video, files"
+              color={COLORS.AMBER}
+              onClick={() => onNavigateTab("export")}
+            />
+          </div>
+        </motion.div>
       </div>
+
+      {/* ── AEC Ambient Footer ───────────────────────────────────────────── */}
+      <AECFooter data={data} />
     </div>
   );
 }
 
+// ─── Execution Summary Panel (shown when no KPIs) ───────────────────────────
+
+function ExecutionSummaryPanel({ data }: { data: ShowcaseData }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsed(e => (e < 100 ? e + 1 : e));
+    }, 20);
+    return () => clearInterval(timer);
+  }, []);
+
+  const stats = [
+    {
+      icon: <Layers size={16} />,
+      label: "Artifacts",
+      value: data.totalArtifacts,
+      color: COLORS.CYAN,
+    },
+    {
+      icon: <Sparkles size={16} />,
+      label: "Nodes Run",
+      value: data.successNodes,
+      suffix: `/ ${data.totalNodes}`,
+      color: COLORS.EMERALD,
+    },
+    {
+      icon: <Clock size={16} />,
+      label: "Pipeline",
+      value: data.pipelineSteps.length,
+      suffix: " steps",
+      color: COLORS.AMBER,
+    },
+  ];
+
+  // Count artifact types
+  const typeCounts: Record<string, number> = {};
+  data.pipelineSteps.forEach(s => {
+    if (s.artifactType) {
+      typeCounts[s.artifactType] = (typeCounts[s.artifactType] ?? 0) + 1;
+    }
+  });
+
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      height: "100%",
+    }}>
+      {/* Stats cards */}
+      {stats.map((stat, i) => (
+        <motion.div
+          key={stat.label}
+          initial={{ opacity: 0, x: 15 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 + i * 0.06 }}
+          style={{
+            background: COLORS.GLASS_BG,
+            border: `1px solid ${COLORS.GLASS_BORDER}`,
+            borderRadius: 10,
+            padding: "14px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            borderRadius: "0 2px 2px 0",
+            background: stat.color,
+          }} />
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            background: `${stat.color}10`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: stat.color,
+            flexShrink: 0,
+          }}>
+            {stat.icon}
+          </div>
+          <div>
+            <div style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: COLORS.TEXT_PRIMARY,
+              lineHeight: 1.1,
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              <AnimatedNumber value={stat.value} duration={1000 + i * 300} />
+              {stat.suffix && (
+                <span style={{ fontSize: 11, color: COLORS.TEXT_MUTED, fontWeight: 400, marginLeft: 3 }}>
+                  {stat.suffix}
+                </span>
+              )}
+            </div>
+            <div style={{
+              fontSize: 10,
+              color: COLORS.TEXT_MUTED,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              fontWeight: 500,
+            }}>
+              {stat.label}
+            </div>
+          </div>
+        </motion.div>
+      ))}
+
+      {/* Artifact type mini-bar */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        style={{
+          display: "flex",
+          gap: 6,
+          flexWrap: "wrap",
+          marginTop: 2,
+        }}
+      >
+        {Object.entries(typeCounts).map(([type, count]) => {
+          const color = ARTIFACT_COLORS[type] ?? COLORS.TEXT_MUTED;
+          return (
+            <div
+              key={type}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "3px 8px",
+                borderRadius: 6,
+                background: `${color}10`,
+                border: `1px solid ${color}20`,
+              }}
+            >
+              <div style={{ color, display: "flex" }}>
+                {ARTIFACT_ICONS[type] ?? <File size={10} />}
+              </div>
+              <span style={{ fontSize: 9, color, fontWeight: 600 }}>
+                {count} {ARTIFACT_LABELS[type] ?? type}
+              </span>
+            </div>
+          );
+        })}
+      </motion.div>
+    </div>
+  );
+}
+
+// ─── Tech Stack Derivation ──────────────────────────────────────────────────
+
+interface TechItem {
+  name: string;
+  role: string;
+  color: string;
+}
+
+function deriveTechStack(data: ShowcaseData): TechItem[] {
+  const techs: TechItem[] = [];
+  const seen = new Set<string>();
+
+  const add = (name: string, role: string, color: string) => {
+    if (!seen.has(name)) {
+      seen.add(name);
+      techs.push({ name, role, color });
+    }
+  };
+
+  data.pipelineSteps.forEach(step => {
+    const cat = step.category;
+    if (cat === "input") add("User Input", "Data source", "#64748B");
+    if (step.label.includes("Brief") || step.label.includes("Analyzer") || step.label.includes("Understanding") || step.label.includes("Parser") || step.label.includes("Extractor")) {
+      add("GPT-4o mini", "AI analysis", "#8B5CF6");
+    }
+    if (step.label.includes("Massing")) add("Procedural Engine", "3D geometry", COLORS.AMBER);
+    if (step.label.includes("Style") || step.label.includes("Composer")) add("GPT-4o mini", "Prompt engineering", "#8B5CF6");
+    if (step.label.includes("Concept Render")) add("DALL-E 3", "Image generation", COLORS.EMERALD);
+    if (step.label.includes("Video") || step.label.includes("Walkthrough")) add("Kling 3.0", "Video synthesis", COLORS.CYAN);
+    if (step.label.includes("3D Recon")) add("Meshy v4", "3D reconstruction", COLORS.AMBER);
+    if (step.label.includes("Floor Plan Gen")) add("GPT-4o + SVG", "Plan generation", "#14B8A6");
+    if (step.label.includes("Quantity") || step.label.includes("BOQ")) add("web-ifc Parser", "BIM extraction", "#F59E0B");
+  });
+
+  if (techs.length === 0) {
+    add("NeoBIM Engine", "Workflow orchestration", COLORS.CYAN);
+  }
+
+  return techs;
+}
+
+// ─── AEC Ambient Footer ─────────────────────────────────────────────────────
+
+function AECFooter({ data }: { data: ShowcaseData }) {
+  const aecFacts = [
+    { icon: <Building2 size={13} />, text: "AEC-grade output quality" },
+    { icon: <Shield size={13} />, text: "Enterprise-ready deliverables" },
+    { icon: <Ruler size={13} />, text: "Dimensionally accurate" },
+    { icon: <MapPin size={13} />, text: "Context-aware generation" },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.5 }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "14px 0",
+        borderTop: `1px solid ${COLORS.GLASS_BORDER}`,
+      }}
+    >
+      <div style={{ display: "flex", gap: 20 }}>
+        {aecFacts.map((fact, i) => (
+          <motion.div
+            key={fact.text}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.55 + i * 0.05 }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              color: COLORS.TEXT_MUTED,
+              fontSize: 10,
+            }}
+          >
+            <span style={{ opacity: 0.5, display: "flex" }}>{fact.icon}</span>
+            {fact.text}
+          </motion.div>
+        ))}
+      </div>
+      <div style={{ fontSize: 9, color: COLORS.TEXT_MUTED, opacity: 0.5 }}>
+        NeoBIM Workflow Engine v2.0
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Section Header ─────────────────────────────────────────────────────────
+
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 10,
+    }}>
+      <span style={{ color: COLORS.TEXT_MUTED, display: "flex" }}>{icon}</span>
+      <span style={{
+        fontSize: 11,
+        fontWeight: 600,
+        color: COLORS.TEXT_SECONDARY,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+      }}>
+        {title}
+      </span>
+      <div style={{
+        flex: 1,
+        height: 1,
+        marginLeft: 8,
+        background: `linear-gradient(90deg, ${COLORS.GLASS_BORDER}, transparent)`,
+      }} />
+    </div>
+  );
+}
+
+// ─── Blueprint Corner Marks ─────────────────────────────────────────────────
+
+function CornerMarks() {
+  const markStyle = (top: boolean, left: boolean): React.CSSProperties => ({
+    position: "absolute",
+    [top ? "top" : "bottom"]: 6,
+    [left ? "left" : "right"]: 6,
+    width: 12,
+    height: 12,
+    borderColor: `${COLORS.CYAN}20`,
+    borderStyle: "solid",
+    borderWidth: 0,
+    ...(top && left ? { borderTopWidth: 1, borderLeftWidth: 1 } : {}),
+    ...(top && !left ? { borderTopWidth: 1, borderRightWidth: 1 } : {}),
+    ...(!top && left ? { borderBottomWidth: 1, borderLeftWidth: 1 } : {}),
+    ...(!top && !left ? { borderBottomWidth: 1, borderRightWidth: 1 } : {}),
+  });
+
+  return (
+    <>
+      <div style={markStyle(true, true)} />
+      <div style={markStyle(true, false)} />
+      <div style={markStyle(false, true)} />
+      <div style={markStyle(false, false)} />
+    </>
+  );
+}
+
+// ─── Quick Action Button ────────────────────────────────────────────────────
+
 function QuickActionButton({
   icon,
   label,
+  description,
   color,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
+  description?: string;
   color: string;
   onClick: () => void;
 }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       onClick={onClick}
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 8,
-        padding: "10px 18px",
-        borderRadius: 8,
-        background: `${color}10`,
-        border: `1px solid ${color}30`,
-        color,
+        gap: 12,
+        padding: "12px 16px",
+        borderRadius: 10,
+        background: COLORS.GLASS_BG,
+        border: `1px solid ${COLORS.GLASS_BORDER}`,
+        color: COLORS.TEXT_PRIMARY,
         fontSize: 12,
-        fontWeight: 600,
+        fontWeight: 500,
         cursor: "pointer",
         transition: "all 0.15s ease",
+        textAlign: "left",
+        width: "100%",
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.background = `${color}20`;
-        e.currentTarget.style.boxShadow = `0 0 20px ${color}15`;
+        e.currentTarget.style.borderColor = `${color}40`;
+        e.currentTarget.style.boxShadow = `0 0 20px ${color}08`;
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.background = `${color}10`;
+        e.currentTarget.style.borderColor = COLORS.GLASS_BORDER;
         e.currentTarget.style.boxShadow = "none";
       }}
     >
-      {icon}
-      {label}
+      <div style={{
+        width: 34,
+        height: 34,
+        borderRadius: 8,
+        background: `${color}10`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color,
+        flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontWeight: 600, fontSize: 12 }}>{label}</div>
+        {description && (
+          <div style={{ fontSize: 10, color: COLORS.TEXT_MUTED, marginTop: 1 }}>
+            {description}
+          </div>
+        )}
+      </div>
+      <svg
+        width="14" height="14" viewBox="0 0 24 24" fill="none"
+        stroke={COLORS.TEXT_MUTED} strokeWidth="2"
+        style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.5 }}
+      >
+        <path d="M9 18l6-6-6-6" />
+      </svg>
     </motion.button>
   );
 }
