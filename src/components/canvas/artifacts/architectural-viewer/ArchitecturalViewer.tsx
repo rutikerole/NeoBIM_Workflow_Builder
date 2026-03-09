@@ -52,7 +52,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
 
   const [viewMode, setViewMode] = useState<ViewMode>("orbit");
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("day");
-  const [showLabels, setShowLabels] = useState(true);
+  const [showLabels, setShowLabels] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
   const [isExploded, setIsExploded] = useState(false);
   const [isSectionCut, setIsSectionCut] = useState(false);
@@ -691,7 +691,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
   }, []);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: isFullscreen ? "100vh" : 420 }}>
+    <div style={{ position: "relative", width: "100%", height: isFullscreen ? "100vh" : "calc(100vh - 120px)", minHeight: 500 }}>
       {/* Loading overlay */}
       {isLoading && (
         <div style={{
@@ -715,7 +715,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
         ref={containerRef}
         style={{
           width: "100%",
-          height: isFullscreen ? "100vh" : 420,
+          height: isFullscreen ? "100vh" : "100%",
           borderRadius: isFullscreen ? 0 : 12,
           overflow: "hidden",
           cursor: viewMode === "orbit" ? "grab" : "crosshair",
@@ -728,13 +728,13 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
       {/* ─── UI Overlay ────────────────────────────────────── */}
       {!isLoading && (
         <div style={{
-          position: "absolute", top: 10, left: 10,
-          display: "flex", flexDirection: "column", gap: 6,
+          position: "absolute", top: 14, left: 14,
+          display: "flex", flexDirection: "column", gap: 8,
           pointerEvents: "none",
           animation: "viewer-fade-in 0.6s ease 0.3s both",
         }}>
           {/* View mode toggle */}
-          <div style={{ display: "flex", gap: 4, pointerEvents: "all" }}>
+          <div style={{ display: "flex", gap: 5, pointerEvents: "all" }}>
             <ToolbarBtn
               active={viewMode === "orbit"}
               onClick={() => { if (viewMode !== "orbit") toggleViewMode(); }}
@@ -748,14 +748,14 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
           </div>
 
           {/* Time of day */}
-          <div style={{ display: "flex", gap: 4, pointerEvents: "all" }}>
+          <div style={{ display: "flex", gap: 5, pointerEvents: "all" }}>
             <ToolbarBtn active={timeOfDay === "day"} onClick={() => setTimeOfDay("day")} label="Day" />
             <ToolbarBtn active={timeOfDay === "sunset"} onClick={() => setTimeOfDay("sunset")} label="Sunset" />
             <ToolbarBtn active={timeOfDay === "night"} onClick={() => setTimeOfDay("night")} label="Night" />
           </div>
 
           {/* Feature toggles */}
-          <div style={{ display: "flex", gap: 4, pointerEvents: "all" }}>
+          <div style={{ display: "flex", gap: 5, pointerEvents: "all" }}>
             <ToolbarBtn active={showLabels} onClick={() => setShowLabels(v => !v)} label="Labels" />
             <ToolbarBtn active={showMinimap} onClick={() => setShowMinimap(v => !v)} label="Map" />
             <ToolbarBtn active={isExploded} onClick={() => setIsExploded(v => !v)} label="Explode" />
@@ -768,8 +768,8 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
       {/* Right side controls */}
       {!isLoading && (
         <div style={{
-          position: "absolute", top: 10, right: 10,
-          display: "flex", flexDirection: "column", gap: 6,
+          position: "absolute", top: 14, right: 14,
+          display: "flex", flexDirection: "column", gap: 8,
           alignItems: "flex-end",
           pointerEvents: "none",
           animation: "viewer-fade-in 0.6s ease 0.5s both",
@@ -780,20 +780,20 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
 
           {/* Building info badge */}
           <div style={{
-            background: "rgba(0,0,0,0.55)",
-            backdropFilter: "blur(10px)",
-            borderRadius: 8,
-            padding: "8px 12px",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(12px)",
+            borderRadius: 10,
+            padding: "10px 14px",
+            border: "1px solid rgba(255,255,255,0.1)",
             pointerEvents: "none",
           }}>
-            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", textTransform: "uppercase" as const, letterSpacing: "0.1em", marginBottom: 4 }}>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", textTransform: "uppercase" as const, letterSpacing: "0.1em", marginBottom: 5, fontWeight: 600 }}>
               Building Info
             </div>
-            <div style={{ fontSize: 11, color: "#E0E0EA", fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: "#F0F0FA", fontWeight: 700 }}>
               {floors}F · {height.toFixed(1)}m · {footprint} m²
             </div>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>
               {buildingType ?? "Mixed-Use"} · GFA {Math.round(floors * footprint * 0.98).toLocaleString()} m²
             </div>
           </div>
@@ -869,17 +869,32 @@ function ToolbarBtn({ active, onClick, label }: { active: boolean; onClick: () =
     <button
       onClick={onClick}
       style={{
-        padding: "4px 10px",
-        borderRadius: 6,
-        background: active ? "rgba(79,138,255,0.25)" : "rgba(0,0,0,0.5)",
-        border: `1px solid ${active ? "rgba(79,138,255,0.5)" : "rgba(255,255,255,0.15)"}`,
-        color: active ? "#7AB4FF" : "rgba(255,255,255,0.5)",
-        fontSize: 10,
+        padding: "6px 14px",
+        borderRadius: 8,
+        background: active ? "rgba(79,138,255,0.3)" : "rgba(0,0,0,0.65)",
+        border: `1.5px solid ${active ? "rgba(79,138,255,0.6)" : "rgba(255,255,255,0.2)"}`,
+        color: active ? "#93C5FF" : "rgba(255,255,255,0.7)",
+        fontSize: 12,
         fontWeight: 600,
         cursor: "pointer",
-        backdropFilter: "blur(10px)",
+        backdropFilter: "blur(12px)",
         transition: "all 0.15s ease",
-        letterSpacing: "0.02em",
+        letterSpacing: "0.03em",
+        boxShadow: active ? "0 0 8px rgba(79,138,255,0.25)" : "0 2px 8px rgba(0,0,0,0.3)",
+      }}
+      onMouseEnter={e => {
+        if (!active) {
+          e.currentTarget.style.background = "rgba(79,138,255,0.15)";
+          e.currentTarget.style.borderColor = "rgba(79,138,255,0.4)";
+          e.currentTarget.style.color = "#B0D4FF";
+        }
+      }}
+      onMouseLeave={e => {
+        if (!active) {
+          e.currentTarget.style.background = "rgba(0,0,0,0.65)";
+          e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+          e.currentTarget.style.color = "rgba(255,255,255,0.7)";
+        }
       }}
     >
       {label}

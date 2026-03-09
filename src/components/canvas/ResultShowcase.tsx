@@ -165,7 +165,7 @@ export function ResultShowcase({ onClose }: ResultShowcaseProps) {
             Back to Results
           </button>
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, overflow: "hidden" }}>
           <ArchitecturalViewer
             floors={floors}
             height={height}
