@@ -739,10 +739,10 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
             style={{
               position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
               backgroundImage: `
-                linear-gradient(rgba(184,115,51,0.06) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(184,115,51,0.06) 1px, transparent 1px),
-                linear-gradient(rgba(184,115,51,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(184,115,51,0.03) 1px, transparent 1px)
+                linear-gradient(rgba(184,115,51,0.10) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(184,115,51,0.10) 1px, transparent 1px),
+                linear-gradient(rgba(184,115,51,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(184,115,51,0.05) 1px, transparent 1px)
               `,
               backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
             }}
@@ -751,8 +751,8 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              zIndex: 0, opacity: 0.15,
-              backgroundImage: 'radial-gradient(circle, #B87333 0.8px, transparent 0.8px)',
+              zIndex: 0, opacity: 0.22,
+              backgroundImage: 'radial-gradient(circle, #B87333 0.7px, transparent 0.7px)',
               backgroundSize: '60px 60px',
             }}
           />
@@ -762,8 +762,8 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
             style={{
               zIndex: 0,
               background: isExecuting
-                ? 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(184,115,51,0.10) 0%, transparent 70%)'
-                : 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(184,115,51,0.06) 0%, transparent 70%)',
+                ? 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(184,115,51,0.14) 0%, transparent 70%)'
+                : 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(184,115,51,0.08) 0%, transparent 70%)',
               animation: 'atelier-glow-pulse 8s ease-in-out infinite',
               transition: 'background 1s ease',
             }}
@@ -773,7 +773,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
             className="absolute inset-0 pointer-events-none"
             style={{
               zIndex: 0,
-              background: 'radial-gradient(circle at 15% 80%, rgba(0,245,255,0.04) 0%, transparent 40%)',
+              background: 'radial-gradient(circle at 15% 80%, rgba(0,245,255,0.05) 0%, transparent 40%)',
             }}
           />
           {/* Edge vignette — darkens corners for cinematic depth */}
@@ -781,7 +781,7 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
             className="absolute inset-0 pointer-events-none"
             style={{
               zIndex: 0,
-              background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 100%)',
+              background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.4) 100%)',
             }}
           />
 
@@ -836,29 +836,11 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
                 borderRadius: 8,
                 marginBottom: 16,
                 marginLeft: 16,
-                opacity: 0.4,
+                opacity: 0.5,
                 transition: "opacity 0.3s ease",
               }}
             />
           </ReactFlow>
-
-          {/* Atmospheric copper glow — enhanced */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              zIndex: 1,
-              background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(184,115,51,0.04) 0%, transparent 70%)',
-            }}
-          />
-
-          {/* Vignette overlay — deeper */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              zIndex: 1,
-              background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 100%)',
-            }}
-          />
 
           {/* Context menu */}
           <AnimatePresence>

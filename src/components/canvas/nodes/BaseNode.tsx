@@ -43,51 +43,65 @@ const CATEGORY_COLOR = CATEGORY_COLORS;
 // ─── Category-specific background patterns ──────────────────────────────────
 
 const CATEGORY_BG: Record<NodeCategory, React.CSSProperties> = {
-  // Subtle dot grid — Atelier style
+  // Blueprint grid — major + minor lines
   input: {
-    backgroundImage: 'radial-gradient(circle, rgba(0,245,255,0.04) 0.5px, transparent 0.5px)',
-    backgroundSize: '12px 12px',
+    backgroundImage: [
+      'linear-gradient(rgba(0,245,255,0.07) 1px, transparent 1px)',
+      'linear-gradient(90deg, rgba(0,245,255,0.07) 1px, transparent 1px)',
+      'linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px)',
+      'linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px)',
+    ].join(', '),
+    backgroundSize: '40px 40px, 40px 40px, 10px 10px, 10px 10px',
   },
-  // Diagonal copper streams
+  // Cross-hatch — structural analysis pattern
   transform: {
     backgroundImage: [
-      'repeating-linear-gradient(135deg, transparent, transparent 11px, rgba(184,115,51,0.04) 11px, rgba(184,115,51,0.04) 12px)',
-      'repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(184,115,51,0.025) 15px, rgba(184,115,51,0.025) 16px)',
+      'repeating-linear-gradient(135deg, transparent, transparent 11px, rgba(184,115,51,0.06) 11px, rgba(184,115,51,0.06) 12px)',
+      'repeating-linear-gradient(45deg, transparent, transparent 11px, rgba(184,115,51,0.06) 11px, rgba(184,115,51,0.06) 12px)',
     ].join(', '),
   },
-  // Amber grid
+  // Isometric grid — 30/150 degree lines
   generate: {
     backgroundImage: [
-      'linear-gradient(rgba(255,191,0,0.03) 1px, transparent 1px)',
-      'linear-gradient(90deg, rgba(255,191,0,0.03) 1px, transparent 1px)',
+      'repeating-linear-gradient(30deg, transparent, transparent 19px, rgba(255,191,0,0.05) 19px, rgba(255,191,0,0.05) 20px)',
+      'repeating-linear-gradient(150deg, transparent, transparent 19px, rgba(255,191,0,0.05) 19px, rgba(255,191,0,0.05) 20px)',
     ].join(', '),
-    backgroundSize: '10px 10px',
   },
-  // Light stipple
+  // Horizontal ruled lines + margin
   export: {
-    backgroundImage: 'radial-gradient(circle, rgba(79,195,247,0.03) 0.5px, transparent 0.5px)',
-    backgroundSize: '8px 8px',
+    backgroundImage: [
+      'repeating-linear-gradient(180deg, transparent, transparent 11px, rgba(79,195,247,0.05) 11px, rgba(79,195,247,0.05) 12px)',
+      'linear-gradient(90deg, rgba(79,195,247,0.08) 1px, transparent 1px)',
+    ].join(', '),
+    backgroundSize: '100% 12px, 20px 100%',
+    backgroundPosition: '0 0, 16px 0',
   },
 };
 
 // ─── Corner Accents (targeting reticle / drafting markers) ──────────────────
 
 function CornerAccents({ color, opacity }: { color: string; opacity: number }) {
-  const c = `rgba(${hexToRgb(color)}, ${opacity})`;
+  const o = Math.max(opacity, 0.30);
+  const c = `rgba(${hexToRgb(color)}, ${o})`;
+  const dotC = `rgba(${hexToRgb(color)}, ${Math.min(o + 0.1, 0.6)})`;
   return (
     <>
       {/* Top-left */}
-      <div style={{ position: "absolute", top: 0, left: 0, width: 8, height: 1.5, background: c, pointerEvents: "none", zIndex: 2 }} />
-      <div style={{ position: "absolute", top: 0, left: 0, width: 1.5, height: 8, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", top: 0, left: 0, width: 14, height: 2, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", top: 0, left: 0, width: 2, height: 14, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", top: -1, left: -1, width: 3, height: 3, borderRadius: "50%", background: dotC, pointerEvents: "none", zIndex: 2 }} />
       {/* Top-right */}
-      <div style={{ position: "absolute", top: 0, right: 0, width: 8, height: 1.5, background: c, pointerEvents: "none", zIndex: 2 }} />
-      <div style={{ position: "absolute", top: 0, right: 0, width: 1.5, height: 8, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", top: 0, right: 0, width: 14, height: 2, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", top: 0, right: 0, width: 2, height: 14, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", top: -1, right: -1, width: 3, height: 3, borderRadius: "50%", background: dotC, pointerEvents: "none", zIndex: 2 }} />
       {/* Bottom-left */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, width: 8, height: 1.5, background: c, pointerEvents: "none", zIndex: 2 }} />
-      <div style={{ position: "absolute", bottom: 0, left: 0, width: 1.5, height: 8, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, width: 14, height: 2, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, width: 2, height: 14, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", bottom: -1, left: -1, width: 3, height: 3, borderRadius: "50%", background: dotC, pointerEvents: "none", zIndex: 2 }} />
       {/* Bottom-right */}
-      <div style={{ position: "absolute", bottom: 0, right: 0, width: 8, height: 1.5, background: c, pointerEvents: "none", zIndex: 2 }} />
-      <div style={{ position: "absolute", bottom: 0, right: 0, width: 1.5, height: 8, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", bottom: 0, right: 0, width: 14, height: 2, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", bottom: 0, right: 0, width: 2, height: 14, background: c, pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", bottom: -1, right: -1, width: 3, height: 3, borderRadius: "50%", background: dotC, pointerEvents: "none", zIndex: 2 }} />
     </>
   );
 }
@@ -127,69 +141,116 @@ function TickMarks({ color }: { color: string }) {
 
 // ─── Category Decorations ───────────────────────────────────────────────────
 
-/** Transform — neural network mini-visualization */
-function NeuralViz({ color, isRunning }: { color: string; isRunning: boolean }) {
-  const c = `rgba(${hexToRgb(color)}, 0.3)`;
-  const c2 = `rgba(${hexToRgb(color)}, 0.15)`;
+/** Input — drafting compass / compass rose */
+function DraftingCompass({ color }: { color: string }) {
+  const c = `rgba(${hexToRgb(color)}, 0.35)`;
+  const c2 = `rgba(${hexToRgb(color)}, 0.2)`;
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" style={{ opacity: 0.85, flexShrink: 0 }}>
+      {/* Compass rose */}
+      <circle cx="11" cy="11" r="8" fill="none" stroke={c2} strokeWidth="0.5" />
+      <circle cx="11" cy="11" r="4" fill="none" stroke={c2} strokeWidth="0.4" strokeDasharray="2 2" />
+      {/* Cardinal directions */}
+      <line x1="11" y1="2" x2="11" y2="6" stroke={c} strokeWidth="0.7" />
+      <line x1="11" y1="16" x2="11" y2="20" stroke={c2} strokeWidth="0.5" />
+      <line x1="2" y1="11" x2="6" y2="11" stroke={c2} strokeWidth="0.5" />
+      <line x1="16" y1="11" x2="20" y2="11" stroke={c2} strokeWidth="0.5" />
+      {/* Compass needle */}
+      <polygon points="11,3 9.5,11 12.5,11" fill={c} />
+      <polygon points="11,19 9.5,11 12.5,11" fill={c2} />
+      <circle cx="11" cy="11" r="1.5" fill={c} />
+    </svg>
+  );
+}
+
+/** Transform — structural truss frame with animated joints */
+function TrussFrame({ color, isRunning }: { color: string; isRunning: boolean }) {
+  const c = `rgba(${hexToRgb(color)}, 0.35)`;
+  const c2 = `rgba(${hexToRgb(color)}, 0.2)`;
   const dur = isRunning ? "1.5s" : "4s";
   return (
-    <svg width="22" height="22" viewBox="0 0 22 22" style={{ opacity: 0.7, flexShrink: 0 }}>
-      <line x1="11" y1="11" x2="4" y2="4" stroke={c2} strokeWidth="0.5" />
-      <line x1="11" y1="11" x2="18" y2="5" stroke={c2} strokeWidth="0.5" />
-      <line x1="11" y1="11" x2="5" y2="17" stroke={c2} strokeWidth="0.5" />
-      <line x1="11" y1="11" x2="17" y2="18" stroke={c2} strokeWidth="0.5" />
-      <circle cx="11" cy="11" r="2" fill={c} />
-      <circle cx="4" cy="4" r="1.5" fill={c2}>
+    <svg width="24" height="22" viewBox="0 0 24 22" style={{ opacity: 0.85, flexShrink: 0 }}>
+      {/* Top chord */}
+      <line x1="2" y1="4" x2="22" y2="4" stroke={c} strokeWidth="0.7" />
+      {/* Bottom chord */}
+      <line x1="2" y1="18" x2="22" y2="18" stroke={c} strokeWidth="0.7" />
+      {/* Verticals */}
+      <line x1="2" y1="4" x2="2" y2="18" stroke={c2} strokeWidth="0.5" />
+      <line x1="12" y1="4" x2="12" y2="18" stroke={c2} strokeWidth="0.5" />
+      <line x1="22" y1="4" x2="22" y2="18" stroke={c2} strokeWidth="0.5" />
+      {/* Diagonals — truss pattern */}
+      <line x1="2" y1="4" x2="12" y2="18" stroke={c2} strokeWidth="0.4" />
+      <line x1="12" y1="4" x2="2" y2="18" stroke={c2} strokeWidth="0.4" />
+      <line x1="12" y1="4" x2="22" y2="18" stroke={c2} strokeWidth="0.4" />
+      <line x1="22" y1="4" x2="12" y2="18" stroke={c2} strokeWidth="0.4" />
+      {/* Joints */}
+      <circle cx="2" cy="4" r="1.5" fill={c}>
         <animate attributeName="r" values="1.2;2;1.2" dur={dur} repeatCount="indefinite" />
       </circle>
-      <circle cx="18" cy="5" r="1.5" fill={c2}>
-        <animate attributeName="r" values="1.2;2;1.2" dur={dur} begin="0.5s" repeatCount="indefinite" />
+      <circle cx="12" cy="4" r="1.5" fill={c}>
+        <animate attributeName="r" values="1.2;2;1.2" dur={dur} begin="0.3s" repeatCount="indefinite" />
       </circle>
-      <circle cx="5" cy="17" r="1.5" fill={c2}>
-        <animate attributeName="r" values="1.2;2;1.2" dur={dur} begin="1s" repeatCount="indefinite" />
+      <circle cx="22" cy="4" r="1.5" fill={c}>
+        <animate attributeName="r" values="1.2;2;1.2" dur={dur} begin="0.6s" repeatCount="indefinite" />
       </circle>
-      <circle cx="17" cy="18" r="1.5" fill={c2}>
-        <animate attributeName="r" values="1.2;2;1.2" dur={dur} begin="1.5s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="11" cy="11" r="6" fill="none" stroke={c2} strokeWidth="0.4" strokeDasharray="2 2" />
+      <circle cx="2" cy="18" r="1.5" fill={c2} />
+      <circle cx="12" cy="18" r="1.5" fill={c2} />
+      <circle cx="22" cy="18" r="1.5" fill={c2} />
     </svg>
   );
 }
 
-/** Generate — wireframe building section drawing */
-function BuildingSection({ color }: { color: string }) {
-  const c = `rgba(${hexToRgb(color)}, 0.3)`;
-  const c2 = `rgba(${hexToRgb(color)}, 0.18)`;
+/** Generate — construction crane */
+function ConstructionCrane({ color }: { color: string }) {
+  const c = `rgba(${hexToRgb(color)}, 0.35)`;
+  const c2 = `rgba(${hexToRgb(color)}, 0.2)`;
   return (
     <svg width="22" height="26" viewBox="0 0 22 26"
-      style={{ opacity: 0.7, flexShrink: 0, animation: "float 6s ease-in-out infinite" }}>
-      <rect x="3" y="5" width="16" height="19" fill="none" stroke={c} strokeWidth="0.6" />
-      <line x1="1" y1="5" x2="21" y2="5" stroke={c} strokeWidth="0.8" />
-      <line x1="3" y1="12" x2="19" y2="12" stroke={c2} strokeWidth="0.4" strokeDasharray="2 1" />
-      <line x1="3" y1="18" x2="19" y2="18" stroke={c2} strokeWidth="0.4" strokeDasharray="2 1" />
-      <rect x="5" y="7" width="3" height="3" fill="none" stroke={c2} strokeWidth="0.4" />
-      <rect x="14" y="7" width="3" height="3" fill="none" stroke={c2} strokeWidth="0.4" />
-      <rect x="5" y="13.5" width="3" height="3" fill="none" stroke={c2} strokeWidth="0.4" />
-      <rect x="14" y="13.5" width="3" height="3" fill="none" stroke={c2} strokeWidth="0.4" />
-      <rect x="9" y="20" width="4" height="4" fill="none" stroke={c2} strokeWidth="0.4" />
-      <line x1="0" y1="14" x2="22" y2="14" stroke={c} strokeWidth="0.3" strokeDasharray="4 2 1 2" />
+      style={{ opacity: 0.85, flexShrink: 0, animation: "float 6s ease-in-out infinite" }}>
+      {/* Tower */}
+      <line x1="8" y1="4" x2="8" y2="24" stroke={c} strokeWidth="0.8" />
+      <line x1="12" y1="4" x2="12" y2="24" stroke={c} strokeWidth="0.8" />
+      {/* Cross bracing */}
+      <line x1="8" y1="8" x2="12" y2="12" stroke={c2} strokeWidth="0.4" />
+      <line x1="12" y1="8" x2="8" y2="12" stroke={c2} strokeWidth="0.4" />
+      <line x1="8" y1="14" x2="12" y2="18" stroke={c2} strokeWidth="0.4" />
+      <line x1="12" y1="14" x2="8" y2="18" stroke={c2} strokeWidth="0.4" />
+      {/* Jib (horizontal boom) */}
+      <line x1="2" y1="4" x2="20" y2="4" stroke={c} strokeWidth="0.7" />
+      {/* Counter-jib */}
+      <line x1="2" y1="4" x2="4" y2="2" stroke={c2} strokeWidth="0.5" />
+      {/* Jib stays */}
+      <line x1="10" y1="2" x2="20" y2="4" stroke={c2} strokeWidth="0.4" />
+      <line x1="10" y1="2" x2="2" y2="4" stroke={c2} strokeWidth="0.4" />
+      {/* Hook cable */}
+      <line x1="18" y1="4" x2="18" y2="10" stroke={c} strokeWidth="0.5" strokeDasharray="1 1" />
+      {/* Hook */}
+      <path d="M17 10 Q17 12 18 12 Q19 12 19 10" fill="none" stroke={c} strokeWidth="0.6" />
+      {/* Base */}
+      <line x1="4" y1="24" x2="16" y2="24" stroke={c} strokeWidth="0.8" />
     </svg>
   );
 }
 
-/** Export — document with corner fold */
-function DocumentFold({ color }: { color: string }) {
+/** Export — rolled blueprint with approval stamp */
+function BlueprintRoll({ color }: { color: string }) {
   const c = `rgba(${hexToRgb(color)}, 0.35)`;
-  const c2 = `rgba(${hexToRgb(color)}, 0.15)`;
+  const c2 = `rgba(${hexToRgb(color)}, 0.18)`;
   return (
-    <svg width="18" height="22" viewBox="0 0 18 22" style={{ opacity: 0.7, flexShrink: 0 }}>
-      <path d="M2 1 L12 1 L16 5 L16 21 L2 21 Z" fill="none" stroke={c} strokeWidth="0.6" />
-      <path d="M12 1 L12 5 L16 5" fill="none" stroke={c} strokeWidth="0.6" />
-      <line x1="4" y1="8" x2="14" y2="8" stroke={c2} strokeWidth="0.5" />
-      <line x1="4" y1="10.5" x2="12" y2="10.5" stroke={c2} strokeWidth="0.5" />
-      <line x1="4" y1="13" x2="13" y2="13" stroke={c2} strokeWidth="0.5" />
-      <line x1="4" y1="15.5" x2="9" y2="15.5" stroke={c2} strokeWidth="0.5" />
-      <circle cx="12" cy="17.5" r="2" fill="none" stroke={c} strokeWidth="0.5" />
+    <svg width="20" height="22" viewBox="0 0 20 22" style={{ opacity: 0.85, flexShrink: 0 }}>
+      {/* Rolled paper body */}
+      <rect x="3" y="2" width="12" height="16" rx="1" fill="none" stroke={c} strokeWidth="0.6" />
+      {/* Roll curl at bottom */}
+      <path d="M3 18 Q3 20 5 20 L15 20 Q17 20 17 18" fill="none" stroke={c} strokeWidth="0.6" />
+      <ellipse cx="10" cy="20" rx="7" ry="1.5" fill="none" stroke={c2} strokeWidth="0.4" />
+      {/* Text lines */}
+      <line x1="5" y1="5" x2="13" y2="5" stroke={c2} strokeWidth="0.4" />
+      <line x1="5" y1="7.5" x2="11" y2="7.5" stroke={c2} strokeWidth="0.4" />
+      <line x1="5" y1="10" x2="12" y2="10" stroke={c2} strokeWidth="0.4" />
+      {/* Approval stamp */}
+      <circle cx="12" cy="14" r="2.5" fill="none" stroke={c} strokeWidth="0.6" />
+      <line x1="10.5" y1="14" x2="13.5" y2="14" stroke={c} strokeWidth="0.5" />
+      <line x1="12" y1="12.5" x2="12" y2="15.5" stroke={c2} strokeWidth="0.4" />
     </svg>
   );
 }
@@ -221,7 +282,7 @@ function NodeHandle({ port, handleType, position, topPct, color }: NodeHandlePro
         width:  hovered ? 12 : 9,
         height: hovered ? 12 : 9,
         background: hovered ? color : "#070809",
-        border: `1.5px solid ${hovered ? color : `rgba(${rgb}, 0.4)`}`,
+        border: `1.5px solid ${hovered ? color : `rgba(${rgb}, 0.5)`}`,
         borderRadius: "50%",
         boxShadow: hovered
           ? `0 0 12px rgba(${rgb}, 0.6), 0 0 4px rgba(${rgb}, 0.3)`
@@ -610,16 +671,16 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
 
         {/* ── Scanning line (Atelier) ── */}
         <div style={{
-          position: "absolute", left: 0, width: "100%", height: "1px",
+          position: "absolute", left: 0, width: "100%", height: "1.5px",
           background: `linear-gradient(90deg, transparent, rgba(${rgb}, 0.4), transparent)`,
           animation: status === "running" ? "atelier-scan 1s linear infinite" : "atelier-scan 4s linear infinite",
-          opacity: 0.3, pointerEvents: "none", zIndex: 3,
+          opacity: 0.45, pointerEvents: "none", zIndex: 3,
         }} />
 
         {/* ── Glow behind node (Atelier) ── */}
         <div style={{
           position: "absolute", inset: "-30px",
-          background: `radial-gradient(ellipse, rgba(${rgb}, 0.06) 0%, transparent 70%)`,
+          background: `radial-gradient(ellipse, rgba(${rgb}, 0.08) 0%, transparent 70%)`,
           filter: "blur(20px)", pointerEvents: "none", zIndex: -1,
           animation: "atelier-pulse 6s ease-in-out infinite",
         }} />
@@ -640,7 +701,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
             position: "absolute",
             inset: 5,
             borderRadius: 2,
-            border: `1px dashed rgba(${rgb}, 0.08)`,
+            border: `1px dashed rgba(${rgb}, 0.12)`,
             pointerEvents: "none", zIndex: 0,
           }} />
         )}
@@ -649,8 +710,8 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
         <div style={{
           position: "absolute",
           top: -1, left: 0, right: 0,
-          height: 1,
-          background: `linear-gradient(90deg, transparent 5%, rgba(${rgb}, 0.4) 30%, rgba(${rgb}, 0.6) 50%, rgba(${rgb}, 0.4) 70%, transparent 95%)`,
+          height: 1.5,
+          background: `linear-gradient(90deg, transparent 5%, rgba(${rgb}, 0.5) 30%, rgba(${rgb}, 0.75) 50%, rgba(${rgb}, 0.5) 70%, transparent 95%)`,
           borderTopLeftRadius: 4,
           borderTopRightRadius: 4,
           pointerEvents: "none",
@@ -666,7 +727,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
         <div style={{
           position: "absolute",
           left: 0, top: 0, bottom: 0,
-          width: 2,
+          width: 2.5,
           background: `linear-gradient(180deg, rgba(${rgb}, 0) 0%, ${color} 30%, ${color} 70%, rgba(${rgb}, 0) 100%)`,
           animation: "accent-pulse 3s ease-in-out infinite",
           zIndex: 1,
@@ -674,8 +735,8 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
         <div style={{
           position: "absolute",
           left: -3, top: 0, bottom: 0,
-          width: 8,
-          background: `radial-gradient(ellipse at left, rgba(${rgb}, 0.12) 0%, transparent 80%)`,
+          width: 10,
+          background: `radial-gradient(ellipse at left, rgba(${rgb}, 0.18) 0%, transparent 80%)`,
           pointerEvents: "none",
           filter: "blur(4px)",
         }} />
@@ -862,8 +923,8 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
           {/* Row 2: Subtitle — Space Mono, tiny, uppercase (Atelier) */}
           {typeLabel && (
             <div style={{
-              fontSize: 8,
-              color: `rgba(${rgb}, 0.5)`,
+              fontSize: 9,
+              color: `rgba(${rgb}, 0.65)`,
               marginTop: 4,
               lineHeight: 1.4,
               overflow: "hidden",
@@ -886,21 +947,22 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
           {/* Row 3: Category decoration + time estimate pill */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
             {/* Category-specific mini visualization */}
-            {category === "transform" && <NeuralViz color={color} isRunning={status === "running"} />}
-            {category === "generate" && <BuildingSection color={color} />}
-            {category === "export" && <DocumentFold color={color} />}
+            {category === "input" && <DraftingCompass color={color} />}
+            {category === "transform" && <TrussFrame color={color} isRunning={status === "running"} />}
+            {category === "generate" && <ConstructionCrane color={color} />}
+            {category === "export" && <BlueprintRoll color={color} />}
             <div style={{ flex: 1 }} />
             {/* Time pill — Atelier */}
             <span style={{
               fontSize: 8,
-              color: "rgba(255,255,255,0.3)",
+              color: "rgba(255,255,255,0.45)",
               whiteSpace: "nowrap",
               flexShrink: 0,
               fontWeight: 400,
               padding: "2px 8px",
               borderRadius: 2,
               background: "rgba(0,0,0,0.3)",
-              border: `1px solid rgba(${rgb}, 0.1)`,
+              border: `1px solid rgba(${rgb}, 0.18)`,
               letterSpacing: "0.05em",
               fontFamily: "'Space Mono', monospace",
               textTransform: "uppercase" as const,

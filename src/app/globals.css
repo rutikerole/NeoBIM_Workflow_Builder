@@ -2029,13 +2029,13 @@
 }
 
 @keyframes atelier-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.6; }
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.65; }
 }
 
 @keyframes atelier-glow-pulse {
-  0%, 100% { opacity: 0.03; }
-  50% { opacity: 0.08; }
+  0%, 100% { opacity: 0.05; }
+  50% { opacity: 0.12; }
 }
 
 /* Atelier font families */
