@@ -128,9 +128,7 @@ function addLivingRoom(cx: number, baseY: number, cz: number, w: number, d: numb
 
   // TV screen
   const tvGeo = new THREE.BoxGeometry(1.6, 0.9, 0.04);
-  const tvMat = new THREE.MeshStandardMaterial({
-    color: 0x111111, roughness: 0.1, metalness: 0.3,
-  });
+  const tvMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
   const tv = new THREE.Mesh(tvGeo, tvMat);
   tv.position.set(0, 0.95, 0);
   tvUnit.add(tv);
@@ -171,7 +169,7 @@ function addLivingRoom(cx: number, baseY: number, cz: number, w: number, d: numb
   // Wall art (abstract rectangle)
   const artCanvas = new THREE.Mesh(
     new THREE.BoxGeometry(1.0, 0.7, 0.02),
-    new THREE.MeshStandardMaterial({ color: 0x2C3E50, roughness: 0.5, metalness: 0.1 })
+    new THREE.MeshBasicMaterial({ color: 0x2C3E50 })
   );
   artCanvas.position.set(cx + w * 0.25, baseY + 1.8, cz + d * 0.46);
   parent.add(artCanvas);
@@ -297,7 +295,7 @@ function addKitchen(cx: number, baseY: number, cz: number, w: number, d: number,
 
   // Sink area
   const sinkGeo = new THREE.BoxGeometry(0.5, 0.08, 0.4);
-  const sinkMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.15, metalness: 0.95 });
+  const sinkMat = new THREE.MeshBasicMaterial({ color: 0x666666 });
   const sink = new THREE.Mesh(sinkGeo, sinkMat);
   sink.position.set(cx + w * 0.2, baseY + counterH + 0.01, cz + d / 2 - counterD / 2 - 0.1);
   parent.add(sink);
@@ -395,7 +393,7 @@ function addBedroom(cx: number, baseY: number, cz: number, w: number, d: number,
   // Mattress
   const mattress = new THREE.Mesh(
     new THREE.BoxGeometry(bedW, 0.22, bedD),
-    new THREE.MeshStandardMaterial({ color: 0xFAF8F5, roughness: 0.9 })
+    new THREE.MeshBasicMaterial({ color: 0xFAF8F5 })
   );
   mattress.position.y = bedH - 0.11;
   mattress.castShadow = true;
@@ -405,7 +403,7 @@ function addBedroom(cx: number, baseY: number, cz: number, w: number, d: number,
   for (const px of [-0.4, 0.4]) {
     const pillow = new THREE.Mesh(
       new THREE.BoxGeometry(0.55, 0.12, 0.35),
-      new THREE.MeshStandardMaterial({ color: 0xEEEBE5, roughness: 0.95 })
+      new THREE.MeshBasicMaterial({ color: 0xEEEBE5 })
     );
     pillow.position.set(px, bedH + 0.06, -bedD / 2 + 0.25);
     pillow.rotation.z = (Math.random() - 0.5) * 0.05;
@@ -512,7 +510,7 @@ function addBathroom(cx: number, baseY: number, cz: number, w: number, d: number
   // Sink basin
   const basin = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.15, 0.08, 16),
-    new THREE.MeshStandardMaterial({ color: 0xF8F8F8, roughness: 0.1, metalness: 0.1 })
+    new THREE.MeshBasicMaterial({ color: 0xF8F8F8 })
   );
   basin.position.set(0, 0.86, 0);
   vanity.add(basin);
@@ -520,10 +518,7 @@ function addBathroom(cx: number, baseY: number, cz: number, w: number, d: number
   // Mirror
   const mirror = new THREE.Mesh(
     new THREE.BoxGeometry(vanityW - 0.1, 0.8, 0.02),
-    new THREE.MeshPhysicalMaterial({
-      color: 0xDDDDDD, roughness: 0.02, metalness: 0.95,
-      envMapIntensity: 2,
-    })
+    new THREE.MeshBasicMaterial({ color: 0xDDDDDD })
   );
   mirror.position.set(0, 1.5, -0.25);
   vanity.add(mirror);
@@ -535,7 +530,7 @@ function addBathroom(cx: number, baseY: number, cz: number, w: number, d: number
   const tubW = Math.min(1.6, w * 0.5);
   const tub = new THREE.Mesh(
     new THREE.BoxGeometry(tubW, 0.5, 0.7),
-    new THREE.MeshStandardMaterial({ color: 0xFAFAFA, roughness: 0.1, metalness: 0.05 })
+    new THREE.MeshBasicMaterial({ color: 0xFAFAFA })
   );
   tub.position.set(cx + w * 0.2, baseY + 0.25, cz - d * 0.25);
   tub.castShadow = true;
@@ -553,13 +548,13 @@ function addBathroom(cx: number, baseY: number, cz: number, w: number, d: number
   const toilet = new THREE.Group();
   const toiletBase = new THREE.Mesh(
     new THREE.BoxGeometry(0.38, 0.38, 0.55),
-    new THREE.MeshStandardMaterial({ color: 0xFAFAFA, roughness: 0.15, metalness: 0.02 })
+    new THREE.MeshBasicMaterial({ color: 0xFAFAFA })
   );
   toiletBase.position.y = 0.19;
   toilet.add(toiletBase);
   const tank = new THREE.Mesh(
     new THREE.BoxGeometry(0.35, 0.35, 0.18),
-    new THREE.MeshStandardMaterial({ color: 0xF5F5F5, roughness: 0.15, metalness: 0.02 })
+    new THREE.MeshBasicMaterial({ color: 0xF5F5F5 })
   );
   tank.position.set(0, 0.35, -0.35);
   toilet.add(tank);
@@ -601,7 +596,7 @@ function addOffice(cx: number, baseY: number, cz: number, w: number, d: number, 
   const monitorGroup = new THREE.Group();
   const screen = new THREE.Mesh(
     new THREE.BoxGeometry(0.7, 0.4, 0.02),
-    new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.3 })
+    new THREE.MeshBasicMaterial({ color: 0x111111 })
   );
   screen.position.y = 0.35;
   monitorGroup.add(screen);
@@ -653,7 +648,7 @@ function addHallway(cx: number, baseY: number, cz: number, mats: MaterialLibrary
   // Decorative vase
   const vase = new THREE.Mesh(
     new THREE.CylinderGeometry(0.06, 0.08, 0.25, 12),
-    new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.6, metalness: 0.1 })
+    new THREE.MeshBasicMaterial({ color: 0x8B7355 })
   );
   vase.position.set(cx, baseY + 0.92, cz);
   parent.add(vase);
@@ -949,9 +944,8 @@ function addBookshelf(cx: number, baseY: number, cz: number, mats: MaterialLibra
         const bookColors = [0x8B0000, 0x00008B, 0x006400, 0x4A0080, 0x8B4513, 0x2F4F4F];
         const book = new THREE.Mesh(
           new THREE.BoxGeometry(bookW, bookH, shelfD * 0.8),
-          new THREE.MeshStandardMaterial({
+          new THREE.MeshBasicMaterial({
             color: bookColors[Math.floor(Math.random() * bookColors.length)],
-            roughness: 0.8,
           })
         );
         book.position.set(bx + bookW / 2, sy + bookH / 2 + 0.01, cz);
@@ -971,7 +965,7 @@ function createPottedPlant(mats: MaterialLibrary, height: number): THREE.Group {
   const potH = height * 0.2;
   const pot = new THREE.Mesh(
     new THREE.CylinderGeometry(potH * 0.5, potH * 0.4, potH, 12),
-    new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7, metalness: 0.05 })
+    new THREE.MeshBasicMaterial({ color: 0x8B6914 })
   );
   pot.position.y = potH / 2;
   pot.castShadow = true;
@@ -980,7 +974,7 @@ function createPottedPlant(mats: MaterialLibrary, height: number): THREE.Group {
   // Soil
   const soil = new THREE.Mesh(
     new THREE.CylinderGeometry(potH * 0.48, potH * 0.48, 0.02, 12),
-    new THREE.MeshStandardMaterial({ color: 0x3D2B1F, roughness: 0.95 })
+    new THREE.MeshBasicMaterial({ color: 0x3D2B1F })
   );
   soil.position.y = potH;
   g.add(soil);
@@ -996,9 +990,8 @@ function createPottedPlant(mats: MaterialLibrary, height: number): THREE.Group {
 
     const leaf = new THREE.Mesh(
       new THREE.SphereGeometry(clusterR, 6, 5),
-      new THREE.MeshStandardMaterial({
+      new THREE.MeshBasicMaterial({
         color: new THREE.Color(0x2D6B1E).multiplyScalar(0.8 + Math.random() * 0.4),
-        roughness: 0.9,
       })
     );
     leaf.position.set(

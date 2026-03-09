@@ -278,34 +278,32 @@ export function createFabricTexture(color: string = "#4A5568"): THREE.CanvasText
 // ─── Material Library ─────────────────────────────────────────────────────────
 
 export interface MaterialLibrary {
-  // Floors
-  herringboneFloor: THREE.MeshStandardMaterial;
-  concreteFloor: THREE.MeshStandardMaterial;
-  tileFloor: THREE.MeshStandardMaterial;
-  marbleFloor: THREE.MeshStandardMaterial;
-  // Walls
-  whiteWall: THREE.MeshStandardMaterial;
-  concreteWall: THREE.MeshStandardMaterial;
-  accentWall: THREE.MeshStandardMaterial;
-  exteriorWall: THREE.MeshStandardMaterial;
-  // Special
-  glass: THREE.MeshPhysicalMaterial;
-  darkGlass: THREE.MeshPhysicalMaterial;
-  metal: THREE.MeshStandardMaterial;
-  brushedMetal: THREE.MeshStandardMaterial;
-  wood: THREE.MeshStandardMaterial;
-  darkWood: THREE.MeshStandardMaterial;
-  fabric: THREE.MeshStandardMaterial;
-  fabricDark: THREE.MeshStandardMaterial;
-  leather: THREE.MeshStandardMaterial;
-  ceiling: THREE.MeshStandardMaterial;
-  roofTop: THREE.MeshStandardMaterial;
-  grass: THREE.MeshStandardMaterial;
-  water: THREE.MeshPhysicalMaterial;
-  emissiveWarm: THREE.MeshStandardMaterial;
-  emissiveCool: THREE.MeshStandardMaterial;
-  stoneWall: THREE.MeshStandardMaterial;
-  terracottaWall: THREE.MeshStandardMaterial;
+  [key: string]: THREE.Material;
+  herringboneFloor: THREE.Material;
+  concreteFloor: THREE.Material;
+  tileFloor: THREE.Material;
+  marbleFloor: THREE.Material;
+  whiteWall: THREE.Material;
+  concreteWall: THREE.Material;
+  accentWall: THREE.Material;
+  exteriorWall: THREE.Material;
+  glass: THREE.Material;
+  darkGlass: THREE.Material;
+  metal: THREE.Material;
+  brushedMetal: THREE.Material;
+  wood: THREE.Material;
+  darkWood: THREE.Material;
+  fabric: THREE.Material;
+  fabricDark: THREE.Material;
+  leather: THREE.Material;
+  ceiling: THREE.Material;
+  roofTop: THREE.Material;
+  grass: THREE.Material;
+  water: THREE.Material;
+  emissiveWarm: THREE.Material;
+  emissiveCool: THREE.Material;
+  stoneWall: THREE.Material;
+  terracottaWall: THREE.Material;
 }
 
 function createBumpMap(scale = 0.03): THREE.CanvasTexture {
@@ -371,94 +369,35 @@ export function createMaterials(): MaterialLibrary {
   });
   grassTex.repeat.set(20, 20);
 
-  // DoubleSide on all building materials prevents face-culling issues
+  // MeshBasicMaterial — guaranteed to render on all GPUs (no PBR shader dependency)
   const DS = THREE.DoubleSide;
 
   return {
-    herringboneFloor: new THREE.MeshStandardMaterial({
-      map: herringboneTex, bumpMap: concreteBump, bumpScale: 0.15,
-      roughness: 0.4, metalness: 0.05, side: DS,
-    }),
-    concreteFloor: new THREE.MeshStandardMaterial({
-      map: concreteTex, bumpMap: concreteBump, bumpScale: 0.3,
-      roughness: 0.8, metalness: 0.02, side: DS,
-    }),
-    tileFloor: new THREE.MeshStandardMaterial({
-      map: tileTex, roughness: 0.3, metalness: 0.05, side: DS,
-    }),
-    marbleFloor: new THREE.MeshStandardMaterial({
-      map: marbleTex, roughness: 0.15, metalness: 0.1, side: DS,
-    }),
-    whiteWall: new THREE.MeshStandardMaterial({
-      color: 0xF5F0EB, roughness: 0.85, metalness: 0.0, side: DS,
-    }),
-    concreteWall: new THREE.MeshStandardMaterial({
-      map: wallConcreteTex, bumpMap: concreteBump, bumpScale: 0.2,
-      roughness: 0.75, metalness: 0.02, side: DS,
-    }),
-    accentWall: new THREE.MeshStandardMaterial({
-      map: darkWoodTex, roughness: 0.45, metalness: 0.05, side: DS,
-    }),
-    exteriorWall: new THREE.MeshStandardMaterial({
-      map: brickTex, roughness: 0.8, metalness: 0.0, side: DS,
-    }),
-    glass: new THREE.MeshPhysicalMaterial({
-      color: 0x88BBDD, roughness: 0.05, metalness: 0.1,
-      transparent: true, opacity: 0.3, side: DS,
-    }),
-    darkGlass: new THREE.MeshPhysicalMaterial({
-      color: 0x334455, roughness: 0.05, metalness: 0.2,
-      transparent: true, opacity: 0.4, side: DS,
-    }),
-    metal: new THREE.MeshStandardMaterial({
-      color: 0x888888, roughness: 0.2, metalness: 0.95, side: DS,
-    }),
-    brushedMetal: new THREE.MeshStandardMaterial({
-      color: 0xAAAAAA, roughness: 0.35, metalness: 0.9, side: DS,
-    }),
-    wood: new THREE.MeshStandardMaterial({
-      map: woodTex, roughness: 0.45, metalness: 0.05, side: DS,
-    }),
-    darkWood: new THREE.MeshStandardMaterial({
-      map: darkWoodTex, roughness: 0.4, metalness: 0.05, side: DS,
-    }),
-    fabric: new THREE.MeshStandardMaterial({
-      map: fabricTex, roughness: 0.9, metalness: 0.0, side: DS,
-    }),
-    fabricDark: new THREE.MeshStandardMaterial({
-      map: fabricDarkTex, roughness: 0.92, metalness: 0.0, side: DS,
-    }),
-    leather: new THREE.MeshStandardMaterial({
-      color: 0x3A2820, roughness: 0.5, metalness: 0.05, side: DS,
-    }),
-    ceiling: new THREE.MeshStandardMaterial({
-      color: 0xFAFAFA, roughness: 0.95, metalness: 0.0, side: DS,
-    }),
-    roofTop: new THREE.MeshStandardMaterial({
-      color: 0x404040, roughness: 0.9, metalness: 0.1, side: DS,
-    }),
-    grass: new THREE.MeshStandardMaterial({
-      map: grassTex, roughness: 0.95, metalness: 0.0, side: DS,
-    }),
-    water: new THREE.MeshPhysicalMaterial({
-      color: 0x1A6B8A, roughness: 0.05, metalness: 0.1,
-      transparent: true, opacity: 0.7, side: DS,
-    }),
-    emissiveWarm: new THREE.MeshStandardMaterial({
-      color: 0xFFE4B5, emissive: 0xFFD080, emissiveIntensity: 2.0,
-      roughness: 0.5, metalness: 0.0, side: DS,
-    }),
-    emissiveCool: new THREE.MeshStandardMaterial({
-      color: 0xCCDDFF, emissive: 0x6688CC, emissiveIntensity: 0.5,
-      roughness: 0.5, metalness: 0.0, side: DS,
-    }),
-    stoneWall: new THREE.MeshStandardMaterial({
-      color: 0xC8BCA8, roughness: 0.85, metalness: 0.02,
-      bumpMap: concreteBump, bumpScale: 0.4, side: DS,
-    }),
-    terracottaWall: new THREE.MeshStandardMaterial({
-      color: 0xB86B4A, roughness: 0.75, metalness: 0.02, side: DS,
-    }),
+    herringboneFloor: new THREE.MeshBasicMaterial({ map: herringboneTex, side: DS }),
+    concreteFloor: new THREE.MeshBasicMaterial({ map: concreteTex, side: DS }),
+    tileFloor: new THREE.MeshBasicMaterial({ map: tileTex, side: DS }),
+    marbleFloor: new THREE.MeshBasicMaterial({ map: marbleTex, side: DS }),
+    whiteWall: new THREE.MeshBasicMaterial({ color: 0xF5F0EB, side: DS }),
+    concreteWall: new THREE.MeshBasicMaterial({ map: wallConcreteTex, side: DS }),
+    accentWall: new THREE.MeshBasicMaterial({ map: darkWoodTex, side: DS }),
+    exteriorWall: new THREE.MeshBasicMaterial({ map: brickTex, side: DS }),
+    glass: new THREE.MeshBasicMaterial({ color: 0x88BBDD, transparent: true, opacity: 0.3, side: DS }),
+    darkGlass: new THREE.MeshBasicMaterial({ color: 0x334455, transparent: true, opacity: 0.4, side: DS }),
+    metal: new THREE.MeshBasicMaterial({ color: 0x888888, side: DS }),
+    brushedMetal: new THREE.MeshBasicMaterial({ color: 0xAAAAAA, side: DS }),
+    wood: new THREE.MeshBasicMaterial({ map: woodTex, side: DS }),
+    darkWood: new THREE.MeshBasicMaterial({ map: darkWoodTex, side: DS }),
+    fabric: new THREE.MeshBasicMaterial({ map: fabricTex, side: DS }),
+    fabricDark: new THREE.MeshBasicMaterial({ map: fabricDarkTex, side: DS }),
+    leather: new THREE.MeshBasicMaterial({ color: 0x3A2820, side: DS }),
+    ceiling: new THREE.MeshBasicMaterial({ color: 0xFAFAFA, side: DS }),
+    roofTop: new THREE.MeshBasicMaterial({ color: 0x404040, side: DS }),
+    grass: new THREE.MeshBasicMaterial({ map: grassTex, side: DS }),
+    water: new THREE.MeshBasicMaterial({ color: 0x1A6B8A, transparent: true, opacity: 0.7, side: DS }),
+    emissiveWarm: new THREE.MeshBasicMaterial({ color: 0xFFD080, side: DS }),
+    emissiveCool: new THREE.MeshBasicMaterial({ color: 0xAABBDD, side: DS }),
+    stoneWall: new THREE.MeshBasicMaterial({ color: 0xC8BCA8, side: DS }),
+    terracottaWall: new THREE.MeshBasicMaterial({ color: 0xB86B4A, side: DS }),
   };
 }
 

@@ -398,7 +398,7 @@ export function getDefaultConfig(style?: BuildingStyle): BuildingConfig {
 
 // ─── Room Floor Material Mapping ──────────────────────────────────────────────
 
-function getFloorMaterial(type: RoomType, mats: MaterialLibrary): THREE.MeshStandardMaterial {
+function getFloorMaterial(type: RoomType, mats: MaterialLibrary): THREE.Material {
   switch (type) {
     case "living":
     case "dining":
@@ -439,7 +439,7 @@ function getFloorMaterial(type: RoomType, mats: MaterialLibrary): THREE.MeshStan
   }
 }
 
-function getWallMaterial(type: RoomType, mats: MaterialLibrary, isAccent = false): THREE.MeshStandardMaterial {
+function getWallMaterial(type: RoomType, mats: MaterialLibrary, isAccent = false): THREE.Material {
   if (isAccent) return mats.accentWall;
   switch (type) {
     case "bathroom": return mats.tileFloor;
@@ -833,9 +833,7 @@ function buildWaterFeature(
 
     // River bed (slightly recessed)
     const bedGeo = new THREE.BoxGeometry(riverLen, 0.3, riverW);
-    const bedMesh = new THREE.Mesh(bedGeo, new THREE.MeshStandardMaterial({
-      color: 0x3D5C3A, roughness: 0.9
-    }));
+    const bedMesh = new THREE.Mesh(bedGeo, new THREE.MeshBasicMaterial({ color: 0x3D5C3A }));
     bedMesh.position.set(0, -0.4, riverZ);
     bedMesh.receiveShadow = true;
     scene.add(bedMesh);
@@ -849,9 +847,7 @@ function buildWaterFeature(
     // River banks - dirt/stone edges
     for (const side of [-1, 1]) {
       const bankGeo = new THREE.BoxGeometry(riverLen, 0.4, 1.5);
-      const bankMesh = new THREE.Mesh(bankGeo, new THREE.MeshStandardMaterial({
-        color: 0x6B5C3D, roughness: 0.95,
-      }));
+      const bankMesh = new THREE.Mesh(bankGeo, new THREE.MeshBasicMaterial({ color: 0x6B5C3D }));
       bankMesh.position.set(0, -0.1, riverZ + side * (riverW / 2 + 0.5));
       bankMesh.receiveShadow = true;
       scene.add(bankMesh);
@@ -908,9 +904,7 @@ function buildWaterFeature(
 
     // Lake bed
     const lakeBedGeo = new THREE.CylinderGeometry(lakeR, lakeR, 0.3, 32);
-    const lakeBedMesh = new THREE.Mesh(lakeBedGeo, new THREE.MeshStandardMaterial({
-      color: 0x3D5C3A, roughness: 0.9,
-    }));
+    const lakeBedMesh = new THREE.Mesh(lakeBedGeo, new THREE.MeshBasicMaterial({ color: 0x3D5C3A }));
     lakeBedMesh.position.set(0, -0.45, lakeZ);
     scene.add(lakeBedMesh);
 
@@ -1008,7 +1002,7 @@ function createTree(mats: MaterialLibrary, height: number): THREE.Group {
   const trunkH = height * 0.4;
   const trunk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.08, 0.15, trunkH, 8),
-    new THREE.MeshStandardMaterial({ color: 0x5C3D1E, roughness: 0.9 })
+    new THREE.MeshBasicMaterial({ color: 0x5C3D1E })
   );
   trunk.position.y = trunkH / 2;
   trunk.castShadow = true;
@@ -1026,7 +1020,7 @@ function createTree(mats: MaterialLibrary, height: number): THREE.Group {
     const c = new THREE.Color(foliageColor).multiplyScalar(shade);
     const foliage = new THREE.Mesh(
       new THREE.SphereGeometry(layer.r, 8, 6),
-      new THREE.MeshStandardMaterial({ color: c, roughness: 0.95 })
+      new THREE.MeshBasicMaterial({ color: c })
     );
     foliage.position.set(
       (Math.random() - 0.5) * 0.3,
@@ -1159,7 +1153,7 @@ function createWallWithWindows(
   isHorizontal: boolean,
   mats: MaterialLibrary,
   parent: THREE.Group,
-  wallMat: THREE.MeshStandardMaterial
+  wallMat: THREE.Material
 ) {
   const winW = 1.2, winH = 1.4, sillH = 0.9;
   const numWindows = Math.max(1, Math.floor(length / 2.5));
