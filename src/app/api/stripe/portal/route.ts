@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 export async function POST() {
   try {
     const session = await auth();
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -17,7 +18,7 @@ export async function POST() {
 
     if (!user?.stripeCustomerId) {
       return NextResponse.json(
-        { error: 'No Stripe customer found' },
+        formatErrorResponse({ title: "No billing account", message: "No Stripe customer found. Please subscribe to a plan first.", action: "View Plans", actionUrl: "/dashboard/billing", code: "BILL_001" }),
         { status: 400 }
       );
     }
@@ -25,7 +26,7 @@ export async function POST() {
     const baseUrl = process.env.NEXTAUTH_URL;
     if (!baseUrl) {
       console.error('[stripe/portal] NEXTAUTH_URL is not configured');
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      return NextResponse.json(formatErrorResponse({ title: "Server configuration error", message: "A server configuration is missing. Please contact support.", code: "NET_001" }), { status: 500 });
     }
 
     const portalSession = await stripe.billingPortal.sessions.create({
@@ -37,7 +38,7 @@ export async function POST() {
   } catch (error: unknown) {
     console.error('Stripe portal error:', error);
     return NextResponse.json(
-      { error: 'Failed to create portal session', details: error instanceof Error ? error.message : String(error) },
+      formatErrorResponse(UserErrors.INTERNAL_ERROR, error instanceof Error ? error.message : String(error)),
       { status: 500 }
     );
   }

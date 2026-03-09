@@ -705,14 +705,14 @@ function PlanSection({ userRole }: { userRole: string }) {
                   fontFamily: "var(--font-jetbrains), monospace",
                   letterSpacing: "0.05em",
                 }}>
-                  API CAPACITY THIS CYCLE
+                  API CAPACITY THIS CYCLE (SAMPLE)
                 </span>
                 <span style={{
                   fontSize: 10, color: clearanceColor,
                   fontFamily: "var(--font-jetbrains), monospace",
                   fontWeight: 700,
                 }}>
-                  35%
+                  --
                 </span>
               </div>
               <div style={{
@@ -723,7 +723,7 @@ function PlanSection({ userRole }: { userRole: string }) {
               }}>
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: "35%" }}
+                  animate={{ width: "0%" }}
                   transition={{ delay: 0.5, duration: 1.2, ease: "easeOut" }}
                   style={{
                     height: "100%", borderRadius: 3,
@@ -738,8 +738,8 @@ function PlanSection({ userRole }: { userRole: string }) {
                 display: "flex", gap: 24, marginTop: 16,
               }}>
                 {[
-                  { label: "CALLS", value: "1,247", max: "10,000" },
-                  { label: "TOKENS", value: "842K", max: "2M" },
+                  { label: "CALLS", value: "--", max: "10,000" },
+                  { label: "TOKENS", value: "--", max: "2M" },
                   { label: "UPTIME", value: "99.9%", max: null },
                 ].map((m) => (
                   <div key={m.label}>

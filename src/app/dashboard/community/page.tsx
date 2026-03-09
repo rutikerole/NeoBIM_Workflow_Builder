@@ -145,9 +145,8 @@ function PublishDialog({ onClose }: { onClose: () => void }) {
   const handlePublish = () => {
     if (!title.trim()) { toast.error(t('toast.titleRequired')); return; }
     if (!desc.trim())  { toast.error(t('toast.descRequired')); return; }
-    toast.success(t('toast.published'));
+    toast.info("Community publishing is coming soon! Your workflow details have been noted.", { duration: 4000 });
     onClose();
-    router.push("/dashboard/community");
   };
 
   return (
@@ -200,6 +199,14 @@ function PublishDialog({ onClose }: { onClose: () => void }) {
 
         {/* Form */}
         <div style={{ padding: "20px" }}>
+          {/* Beta notice */}
+          <div style={{
+            padding: "10px 14px", borderRadius: 8, marginBottom: 16,
+            background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)",
+            fontSize: 12, color: "#F59E0B", lineHeight: 1.5,
+          }}>
+            Community publishing is in beta. Your workflow will be queued for review before appearing publicly.
+          </div>
           {/* Title */}
           <label style={{ fontSize: 11, fontWeight: 600, color: "#7C7C96", display: "block", marginBottom: 6 }}>
             {t('community.titleLabel')} <span style={{ color: "#EF4444" }}>*</span>

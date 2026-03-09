@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { checkEndpointRateLimit } from "@/lib/rate-limit";
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 // GET /api/user/api-keys
 export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -19,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ apiKeys: user?.apiKeys ?? {} });
   } catch (error) {
     console.error("[user/api-keys/GET]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }
 
@@ -28,12 +29,12 @@ export async function PATCH(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const rateLimit = await checkEndpointRateLimit(session.user.id, "api-keys", 5, "1 m");
     if (!rateLimit.success) {
-      return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+      return NextResponse.json(formatErrorResponse({ title: "Too many requests", message: "Too many requests. Please wait a moment.", code: "RATE_001" }), { status: 429 });
     }
 
     const { apiKeys } = await req.json();
@@ -46,6 +47,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[user/api-keys/PATCH]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }

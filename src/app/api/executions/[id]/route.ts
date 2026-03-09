@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -9,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const { id } = await params;
@@ -22,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     });
 
     if (!execution) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(formatErrorResponse({ title: "Execution not found", message: "The requested execution could not be found.", code: "NODE_001" }), { status: 404 });
     }
 
     // Build artifacts from tileResults JSON (where useExecution actually stores them)
@@ -44,7 +45,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ execution: { ...execution, artifacts } });
   } catch (error) {
     console.error("[executions/GET]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }
 
@@ -53,7 +54,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const { id } = await params;
@@ -63,7 +64,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       where: { id, userId: session.user.id },
     });
     if (!existing) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(formatErrorResponse({ title: "Execution not found", message: "The requested execution could not be found.", code: "NODE_001" }), { status: 404 });
     }
 
     const { status, tileResults, errorMessage } = await req.json();
@@ -83,6 +84,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
     return NextResponse.json({ execution });
   } catch (error) {
     console.error("[executions/PUT]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }

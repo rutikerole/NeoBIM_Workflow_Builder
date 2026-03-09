@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe, getPlanByPriceId } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import Stripe from 'stripe';
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
     console.error('[STRIPE_WEBHOOK] STRIPE_WEBHOOK_SECRET not configured');
-    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+    return NextResponse.json(formatErrorResponse({ title: "Server misconfiguration", message: "Webhook secret is not configured. Please contact support.", code: "NET_001" }), { status: 500 });
   }
 
   const body = await req.text();
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
   if (!signature) {
     console.error('[STRIPE_WEBHOOK] Missing stripe-signature header');
     return NextResponse.json(
-      { error: 'Missing stripe-signature header' },
+      formatErrorResponse({ title: "Invalid request", message: "Missing stripe-signature header.", code: "VAL_001" }),
       { status: 400 }
     );
   }
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[STRIPE_WEBHOOK] Webhook signature verification failed:', error);
     return NextResponse.json(
-      { error: 'Webhook signature verification failed' },
+      formatErrorResponse({ title: "Verification failed", message: "Webhook signature verification failed.", code: "VAL_001" }),
       { status: 400 }
     );
   }
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[STRIPE_WEBHOOK] Error processing webhook:', error);
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      formatErrorResponse(UserErrors.INTERNAL_ERROR),
       { status: 500 }
     );
   }

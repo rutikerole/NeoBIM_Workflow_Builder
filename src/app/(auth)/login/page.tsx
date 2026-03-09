@@ -246,7 +246,7 @@ function LoginForm() {
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          style={{ marginBottom: 22 }}
+          style={{ marginBottom: 8 }}
         >
           <label style={{ display: "block", fontSize: 12.5, fontWeight: 500, color: "#7C7C96", marginBottom: 6, letterSpacing: "-0.005em" }}>
             {t('auth.password')}
@@ -274,6 +274,16 @@ function LoginForm() {
             />
           </div>
         </motion.div>
+
+        {/* Forgot password hint */}
+        <div style={{ textAlign: "right", marginBottom: 14 }}>
+          <span style={{ fontSize: 11.5, color: "#5C5C78" }}>
+            Forgot password? Contact{" "}
+            <a href="mailto:support@neobim.io" style={{ color: "#4F8AFF", textDecoration: "none" }}>
+              support
+            </a>
+          </span>
+        </div>
 
         {/* Form-level error */}
         {error && (

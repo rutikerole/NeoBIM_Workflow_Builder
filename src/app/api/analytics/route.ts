@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDashboardMetrics, generateDailyReport, trackEvent } from "@/lib/analytics";
 import { auth } from "@/lib/auth";
+import { formatErrorResponse, UserErrors, AuthErrors } from "@/lib/user-errors";
 
 // Client-side event ingestion (fire-and-forget from browser)
 export async function POST(req: Request) {
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
 
     // Only allow admins to view analytics
     if (!session?.user?.id || (session.user as { role?: string }).role !== "PLATFORM_ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(AuthErrors.NO_PERMISSION), { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -51,6 +52,6 @@ export async function GET(req: Request) {
     return NextResponse.json(metrics);
   } catch (error) {
     console.error("[analytics/GET]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }

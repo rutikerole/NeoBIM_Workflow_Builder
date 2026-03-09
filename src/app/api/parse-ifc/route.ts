@@ -2,18 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { checkEndpointRateLimit } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/safe-error";
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 export const maxDuration = 60; // Vercel: allow 60s for WASM parsing
 
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
   }
 
   const rateLimit = await checkEndpointRateLimit(session.user.id, "parse-ifc", 10, "1 m");
   if (!rateLimit.success) {
-    return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+    return NextResponse.json(formatErrorResponse({ title: "Too many requests", message: "Too many requests. Please wait a moment.", code: "RATE_001" }), { status: 429 });
   }
 
   try {
@@ -21,22 +22,22 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+      return NextResponse.json(formatErrorResponse(UserErrors.MISSING_REQUIRED_FIELD("file")), { status: 400 });
     }
 
     if (!file.name.toLowerCase().endsWith(".ifc")) {
-      return NextResponse.json({ error: "Invalid file type. Please upload an .ifc file." }, { status: 400 });
+      return NextResponse.json(formatErrorResponse({ title: "Invalid file type", message: "Invalid file type. Please upload an .ifc file.", code: "VAL_001" }), { status: 400 });
     }
 
     // Reject empty files
     if (file.size === 0) {
-      return NextResponse.json({ error: "The uploaded file is empty. Please select a valid .ifc file." }, { status: 400 });
+      return NextResponse.json(formatErrorResponse({ title: "Empty file", message: "The uploaded file is empty. Please select a valid .ifc file.", code: "VAL_001" }), { status: 400 });
     }
 
     // Reject files over 50MB
     const MAX_IFC_SIZE = 50 * 1024 * 1024; // 50MB
     if (file.size > MAX_IFC_SIZE) {
-      return NextResponse.json({ error: "File too large. Maximum size is 50MB." }, { status: 413 });
+      return NextResponse.json(formatErrorResponse({ title: "File too large", message: "File too large. Maximum size is 50MB.", code: "VAL_001" }), { status: 413 });
     }
 
     // Validate IFC file header
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     const headerStr = new TextDecoder().decode(headerBytes);
     if (!headerStr.startsWith("ISO-10303-21;")) {
       return NextResponse.json(
-        { error: "Invalid IFC file. Please upload a valid .ifc file (IFC2X3 or IFC4 format)." },
+        formatErrorResponse(UserErrors.IFC_PARSE_FAILED),
         { status: 400 }
       );
     }
@@ -64,6 +65,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("[parse-ifc]", err);
-    return NextResponse.json({ error: safeErrorMessage(err) }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR, safeErrorMessage(err)), { status: 500 });
   }
 }

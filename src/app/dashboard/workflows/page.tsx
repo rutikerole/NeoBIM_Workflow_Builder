@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Workflow, ArrowRight, Trash2, ExternalLink, Clock, Sparkles, Box, Image as ImageIcon } from "lucide-react";
+import { Plus, Workflow, ArrowRight, Trash2, ExternalLink, Clock, Sparkles, Box, Image as ImageIcon, Search } from "lucide-react";
 import { Header } from "@/components/dashboard/Header";
 import { api, type WorkflowSummary } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/utils";
@@ -13,6 +13,7 @@ export default function WorkflowsPage() {
   const router = useRouter();
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -37,6 +38,10 @@ export default function WorkflowsPage() {
       toast.error("Failed to delete workflow");
     }
   }
+
+  const filteredWorkflows = workflows.filter(wf =>
+    wf.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -113,22 +118,63 @@ export default function WorkflowsPage() {
         ) : (
           <div>
             {/* Header row */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <span style={{ fontSize: 13, color: "#5C5C78" }}>
-                {workflows.length} workflow{workflows.length !== 1 ? "s" : ""}
-              </span>
-              <Link
-                href="/dashboard/workflows/new"
-                className="flex items-center gap-2 rounded-lg bg-[#4F8AFF] px-3 py-2 text-xs font-semibold text-white hover:bg-[#3D7AFF] transition-all"
-              >
-                <Plus size={12} />
-                New
-              </Link>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
+              <div style={{ position: "relative", width: 280 }}>
+                <Search size={13} style={{
+                  position: "absolute", left: 10, top: "50%",
+                  transform: "translateY(-50%)", color: "#55556A",
+                  pointerEvents: "none",
+                }} />
+                <input
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search workflows…"
+                  aria-label="Search workflows"
+                  style={{
+                    width: "100%", paddingLeft: 32, paddingRight: 12,
+                    height: 34, borderRadius: 8,
+                    border: "1px solid #1E1E2E",
+                    background: "#0E0E16", color: "#F0F0F5",
+                    fontSize: 12, outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = "rgba(79,138,255,0.4)"; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = "#1E1E2E"; }}
+                />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 13, color: "#5C5C78", whiteSpace: "nowrap" }}>
+                  {filteredWorkflows.length} workflow{filteredWorkflows.length !== 1 ? "s" : ""}
+                </span>
+                <Link
+                  href="/dashboard/workflows/new"
+                  className="flex items-center gap-2 rounded-lg bg-[#4F8AFF] px-3 py-2 text-xs font-semibold text-white hover:bg-[#3D7AFF] transition-all"
+                >
+                  <Plus size={12} />
+                  New
+                </Link>
+              </div>
             </div>
 
             {/* Grid */}
+            {filteredWorkflows.length === 0 ? (
+              <div style={{ padding: "60px 0", textAlign: "center" }}>
+                <p style={{ fontSize: 14, color: "#3A3A50", marginBottom: 8 }}>
+                  No workflows matching &ldquo;{searchQuery}&rdquo;
+                </p>
+                <button
+                  onClick={() => setSearchQuery("")}
+                  style={{
+                    fontSize: 12, color: "#4F8AFF", background: "none",
+                    border: "none", cursor: "pointer",
+                  }}
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
             <div className="workflows-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-              {workflows.map(wf => (
+              {filteredWorkflows.map(wf => (
                 <div
                   key={wf.id}
                   style={{
@@ -213,6 +259,7 @@ export default function WorkflowsPage() {
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
       </main>

@@ -8,12 +8,13 @@ import {
   todaysFlashEvent,
   msUntilMidnightUTC,
 } from "@/lib/gamification";
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const userId = session.user.id;
@@ -103,6 +104,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Dashboard stats error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }

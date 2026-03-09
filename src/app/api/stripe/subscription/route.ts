@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { stripe, isSubscriptionActive } from '@/lib/stripe';
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -22,7 +23,7 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json(formatErrorResponse({ title: "User not found", message: "No user account found for this session.", code: "AUTH_001" }), { status: 404 });
     }
 
     let subscriptionStatus = null;
@@ -51,7 +52,7 @@ export async function GET() {
   } catch (error: unknown) {
     console.error('[STRIPE_SUBSCRIPTION]', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      formatErrorResponse(UserErrors.INTERNAL_ERROR),
       { status: 500 }
     );
   }

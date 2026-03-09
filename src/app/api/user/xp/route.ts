@@ -2,20 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { XP_ACTIONS, levelFromXp } from "@/lib/gamification";
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
+import { checkEndpointRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const userId = session.user.id;
+
+    // Rate limit XP awards: 30 per minute per user
+    const rl = await checkEndpointRateLimit(userId, "user-xp", 30, "1 m");
+    if (!rl.success) {
+      return NextResponse.json(formatErrorResponse({ title: "Too many requests", message: "Please slow down.", code: "RATE_001" }), { status: 429 });
+    }
     const body = await req.json();
     const action = body.action as string;
 
     if (!action || !XP_ACTIONS[action]) {
-      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+      return NextResponse.json(formatErrorResponse({ title: "Invalid action", message: "The XP action is not recognized.", code: "VAL_001" }), { status: 400 });
     }
 
     const config = XP_ACTIONS[action];
@@ -82,6 +90,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("XP award error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }

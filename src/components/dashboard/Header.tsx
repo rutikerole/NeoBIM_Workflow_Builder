@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, User, Command } from "lucide-react";
+import { Search, User, Command } from "lucide-react";
 
 interface HeaderProps {
   title?: string;
@@ -48,7 +48,7 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Search — pill-shaped */}
+        {/* Search — opens CommandPalette (⌘K) */}
         <button
           className="h-[34px] flex items-center gap-2 px-3.5 text-xs transition-all"
           style={{
@@ -59,6 +59,10 @@ export function Header({ title, subtitle }: HeaderProps) {
             fontFamily: "var(--font-jetbrains), monospace",
             fontSize: 11,
             letterSpacing: "0.02em",
+          }}
+          onClick={() => {
+            // Dispatch ⌘K to open CommandPalette
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
           }}
           onMouseEnter={e => {
             e.currentTarget.style.borderColor = "rgba(79,138,255,0.3)";
@@ -107,27 +111,6 @@ export function Header({ title, subtitle }: HeaderProps) {
               K
             </kbd>
           </div>
-        </button>
-
-        {/* Notifications */}
-        <button
-          className="h-[34px] w-[34px] flex items-center justify-center transition-all relative"
-          style={{
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(255,255,255,0.02)",
-            color: "#5C5C78",
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = "rgba(79,138,255,0.2)";
-            e.currentTarget.style.color = "#e2e8f0";
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
-            e.currentTarget.style.color = "#5C5C78";
-          }}
-        >
-          <Bell size={14} />
         </button>
 
         {/* Avatar */}

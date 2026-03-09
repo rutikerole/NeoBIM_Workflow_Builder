@@ -205,9 +205,7 @@ export default function BillingPage() {
                 {t('billing.hackathonDesc')}
               </p>
               <div className="flex items-center gap-2 text-xs text-[#F59E0B]">
-                <span className="font-semibold">⏰ 47 {t('billing.spotsRemaining')}</span>
-                <span>•</span>
-                <span>{t('billing.expiresIn')}</span>
+                <span className="font-semibold">⏰ Limited-time offer</span>
               </div>
             </div>
             <button 

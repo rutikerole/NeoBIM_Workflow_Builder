@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
+import { checkEndpointRateLimit } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -9,7 +11,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const { id } = await params;
@@ -18,13 +20,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
     });
 
     if (!workflow) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(formatErrorResponse({ title: "Not found", message: "Workflow not found.", code: "NODE_001" }), { status: 404 });
     }
 
     return NextResponse.json({ workflow });
   } catch (error) {
     console.error("[workflows/GET]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }
 
@@ -33,7 +35,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
+    }
+
+    // Rate limit saves: 30 per minute
+    const rl = await checkEndpointRateLimit(session.user.id, "workflows-update", 30, "1 m");
+    if (!rl.success) {
+      return NextResponse.json(formatErrorResponse({ title: "Too many requests", message: "Please wait before saving again.", code: "RATE_001" }), { status: 429 });
     }
 
     const { id } = await params;
@@ -45,7 +53,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(formatErrorResponse({ title: "Not found", message: "Workflow not found.", code: "NODE_001" }), { status: 404 });
     }
 
     const workflow = await prisma.workflow.update({
@@ -62,7 +70,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     return NextResponse.json({ workflow });
   } catch (error) {
     console.error("[workflows/PUT]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }
 
@@ -71,7 +79,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const { id } = await params;
@@ -80,7 +88,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(formatErrorResponse({ title: "Not found", message: "Workflow not found.", code: "NODE_001" }), { status: 404 });
     }
 
     await prisma.$transaction([
@@ -91,6 +99,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[workflows/DELETE]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }

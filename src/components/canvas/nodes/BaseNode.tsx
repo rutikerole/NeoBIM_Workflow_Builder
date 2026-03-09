@@ -16,6 +16,7 @@ import type { ExecutionArtifact } from "@/types/execution";
 const INPUT_NODE_IDS = new Set(["IN-001","IN-002","IN-003","IN-004","IN-005","IN-006","IN-007"]);
 
 import { CATEGORY_COLORS, hexToRgb } from "@/lib/ui-constants";
+import { LIVE_NODES } from "@/constants/node-catalogue";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -784,6 +785,25 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
                 flexShrink: 0,
               }}>
                 {t('execution.inputLabel')}
+              </span>
+            )}
+
+            {/* DEMO badge for non-live nodes (mocked execution) */}
+            {!isInput && !LIVE_NODES.has(data.catalogueId) && (
+              <span style={{
+                fontSize: 7,
+                fontWeight: 600,
+                color: "#F59E0B",
+                padding: "2px 6px",
+                background: "rgba(245,158,11,0.08)",
+                border: "1px solid rgba(245,158,11,0.2)",
+                borderRadius: 2,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase" as const,
+                fontFamily: "'Space Mono', monospace",
+                flexShrink: 0,
+              }}>
+                DEMO
               </span>
             )}
 

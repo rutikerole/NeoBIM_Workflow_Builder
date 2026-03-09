@@ -34,6 +34,7 @@ export interface NodeCatalogueItem {
   tags: string[];
   executionTime?: string; // e.g. "< 2s", "< 30s"
   viewType?: string;     // default view type for image generation nodes
+  isLive?: boolean;      // true if node has real API implementation (not mock)
 }
 
 export interface WorkflowNode {

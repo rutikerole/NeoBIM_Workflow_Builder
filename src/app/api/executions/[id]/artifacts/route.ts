@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const { id: executionId } = await params;
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       where: { id: executionId, userId: session.user.id },
     });
     if (!execution) {
-      return NextResponse.json({ error: "Execution not found" }, { status: 404 });
+      return NextResponse.json(formatErrorResponse({ title: "Not found", message: "Execution not found.", code: "NODE_001" }), { status: 404 });
     }
 
     const { nodeId, nodeLabel, type, title, data } = await req.json();
@@ -39,6 +40,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ execution: updatedExecution }, { status: 201 });
   } catch (error) {
     console.error("[executions/artifacts/POST]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }

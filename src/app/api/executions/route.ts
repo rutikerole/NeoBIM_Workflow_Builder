@@ -3,13 +3,14 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { trackFirstExecution } from "@/lib/analytics";
 import type { ExecutionStatus } from "@prisma/client";
+import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 
 // GET /api/executions — list user's executions with workflow name
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ executions });
   } catch (error) {
     console.error("[executions/GET]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }
 
@@ -59,13 +60,13 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     const { workflowId, inputSummary } = await req.json();
 
     if (!workflowId) {
-      return NextResponse.json({ error: "workflowId required" }, { status: 400 });
+      return NextResponse.json(formatErrorResponse({ title: "Missing field", message: "workflowId is required.", code: "VAL_001" }), { status: 400 });
     }
 
     const workflow = await prisma.workflow.findFirst({
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!workflow) {
-      return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
+      return NextResponse.json(formatErrorResponse({ title: "Not found", message: "Workflow not found.", code: "NODE_001" }), { status: 404 });
     }
 
     const execution = await prisma.execution.create({
@@ -92,6 +93,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ execution }, { status: 201 });
   } catch (error) {
     console.error("[executions/POST]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(formatErrorResponse(UserErrors.INTERNAL_ERROR), { status: 500 });
   }
 }

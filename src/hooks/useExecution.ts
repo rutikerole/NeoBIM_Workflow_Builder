@@ -163,6 +163,7 @@ async function executeNode(
   }
 
   // Fall back to mock — pass upstream data so mocks can reflect user input
+  console.info(`[${catalogueId}] Using demo/sample data (no real API for this node)`);
   return mockExecuteNode(
     catalogueId,
     executionId,
