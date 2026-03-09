@@ -364,6 +364,39 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
     executionTime: "< 20s",
   },
 
+  {
+    id: "GN-007",
+    name: "Image to 3D (SAM 3D)",
+    description: "Convert a building image into a 3D model (GLB/PLY) using Meta's SAM 3D via fal.ai",
+    category: "generate",
+    icon: "Box",
+    inputs: [{ id: "image-in", label: "Building Image", type: "image" }],
+    outputs: [
+      { id: "glb-out", label: "3D Model (GLB)", type: "geometry" },
+      { id: "ply-out", label: "Gaussian Splat (PLY)", type: "binary" },
+    ],
+    apiEngine: "fal.ai SAM 3D",
+    tags: ["3d", "sam3d", "image-to-3d", "glb", "ply", "meta", "building", "mesh"],
+    executionTime: "< 30s",
+  },
+  {
+    id: "GN-008",
+    name: "Text to 3D Generator",
+    description: "Generate a realistic 3D building model from text — chains DALL-E 3 image generation with SAM 3D conversion in one step",
+    category: "generate",
+    icon: "Boxes",
+    inputs: [
+      { id: "text-in", label: "Building Description", type: "text" },
+    ],
+    outputs: [
+      { id: "glb-out", label: "3D Model (GLB)", type: "geometry" },
+      { id: "image-out", label: "Generated Image", type: "image" },
+    ],
+    apiEngine: "OpenAI DALL·E 3 + fal.ai SAM 3D",
+    tags: ["text-to-3d", "3d", "ai", "dall-e", "sam3d", "building", "generate", "mesh", "glb"],
+    executionTime: "< 60s",
+  },
+
   // ============================================================
   // EXPORT / OUTPUT NODES (Amber)
   // ============================================================
@@ -490,4 +523,4 @@ export const CATEGORY_CONFIG = {
 } as const;
 
 /** Nodes that use real API calls (not mock/sample data) */
-export const LIVE_NODES = new Set(['TR-003', 'TR-007', 'TR-008', 'GN-003', 'EX-002']);
+export const LIVE_NODES = new Set(['TR-003', 'TR-007', 'TR-008', 'GN-003', 'GN-007', 'GN-008', 'EX-002']);

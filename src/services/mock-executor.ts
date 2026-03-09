@@ -412,6 +412,40 @@ export async function executeNode(
         floors: 5,
       });
 
+    case "GN-007": // Image to 3D (SAM 3D) — mock
+      return mockArtifact(executionId, tileInstanceId, "3d", {
+        glbUrl: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Box/glTF-Binary/Box.glb",
+        plyUrl: null,
+        seed: 42,
+        label: "3D Model (SAM 3D) — Mock",
+        metadata: {
+          glbFileSize: 648,
+          plyFileSize: null,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          costUsd: 0.02,
+        },
+      });
+
+    case "GN-008": { // Text to 3D Generator — mock
+      const t2dPrompt = String(inputData?.content ?? inputData?.prompt ?? "modern building");
+      const t2dSeed = t2dPrompt.slice(0, 15).replace(/\s+/g, "-").toLowerCase() || "building";
+      return mockArtifact(executionId, tileInstanceId, "3d", {
+        glbUrl: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Box/glTF-Binary/Box.glb",
+        plyUrl: null,
+        seed: 42,
+        label: "3D Model (Text to 3D) — Mock",
+        sourceImageUrl: `https://picsum.photos/seed/${t2dSeed}/1024/1024`,
+        revisedPrompt: `Photorealistic architectural rendering of: ${t2dPrompt}`,
+        metadata: {
+          glbFileSize: 648,
+          plyFileSize: null,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          costUsd: 0.06,
+          pipeline: "text → DALL-E 3 → SAM 3D",
+        },
+      });
+    }
+
     case "EX-001": { // IFC Exporter
       const ifcContent = `ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('BuildFlow Mock Export'),'2;1');\nFILE_NAME('mock_building.ifc','${new Date().toISOString().split("T")[0]}',('BuildFlow'),('BuildFlow'),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n#1=IFCPROJECT('0001',#2,$,'Mock Building Project',$,$,$,$,$);\nENDSEC;\nEND-ISO-10303-21;`;
       const ifcBase64 = typeof Buffer !== "undefined" ? Buffer.from(ifcContent).toString("base64") : btoa(ifcContent);
@@ -531,6 +565,7 @@ function getNodeDelay(catalogueId: string): number {
     "GN-002": 5000,
     "GN-003": 4000,
     "GN-004": 4500,
+    "GN-008": 5000,
     "EX-001": 2500,
     "EX-002": 1800,
     "EX-003": 2200,

@@ -259,6 +259,57 @@ export function validateGN004Input(_: unknown): ValidationResult {
 }
 
 /**
+ * GN-007: Image to 3D (SAM 3D)
+ */
+export function validateGN007Input(inputData: unknown): ValidationResult {
+  const input = inputData as Record<string, unknown> | null | undefined;
+  const imageUrl = input?.url ?? input?.imageUrl ?? null;
+  const imageBase64 = input?.fileData ?? input?.imageBase64 ?? input?.base64 ?? null;
+
+  if (!imageUrl && !imageBase64) {
+    return {
+      valid: false,
+      error: "No image provided for 3D conversion",
+      userError: UserErrors.MISSING_REQUIRED_FIELD("building image"),
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * GN-008: Text to 3D Generator
+ */
+export function validateGN008Input(inputData: unknown): ValidationResult {
+  const input = inputData as Record<string, unknown> | null | undefined;
+
+  // Accept building description object from upstream
+  if (input?._raw || input?.projectName) {
+    return { valid: true };
+  }
+
+  const prompt = input?.prompt ?? input?.content ?? "";
+
+  if (typeof prompt !== "string" || prompt.trim().length < 10) {
+    return {
+      valid: false,
+      error: "Prompt too short (min 10 chars) — describe the building you want to generate",
+      userError: UserErrors.PROMPT_TOO_SHORT,
+    };
+  }
+
+  if (typeof prompt === "string" && prompt.length > 2000) {
+    return {
+      valid: false,
+      error: "Prompt too long (max 2000 chars)",
+      userError: UserErrors.PROMPT_TOO_LONG,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Validate input based on node catalogue ID
  */
 export function validateNodeInput(
@@ -284,6 +335,10 @@ export function validateNodeInput(
       return validateTR008Input(inputData);
     case "EX-002":
       return validateEX002Input(inputData);
+    case "GN-007":
+      return validateGN007Input(inputData);
+    case "GN-008":
+      return validateGN008Input(inputData);
     default:
       return { valid: true }; // Unknown nodes pass (might be new)
   }

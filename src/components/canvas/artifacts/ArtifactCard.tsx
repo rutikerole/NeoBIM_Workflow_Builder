@@ -11,6 +11,11 @@ const MassingViewer = dynamic(() => import("./MassingViewer"), {
   loading: () => <div style={{ height: 220, background: "#0D0D1A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#3A3A50" }}>Loading 3D viewer…</span></div>,
 });
 
+const Building3DViewer = dynamic(() => import("./Building3DViewer"), {
+  ssr: false,
+  loading: () => <div style={{ height: 320, background: "#0D0D1A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#3A3A50" }}>Loading 3D viewer…</span></div>,
+});
+
 const FloorPlan3DViewer = dynamic(() => import("./FloorPlan3DViewer"), {
   ssr: false,
   loading: () => <div style={{ height: 400, background: "#07070e", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#3A3A50" }}>Loading 3D viewer…</span></div>,
@@ -639,6 +644,68 @@ interface Massing3dData {
 function Massing3dBody({ data }: { data: Massing3dData }) {
   const { t } = useLocale();
   const [viewMode, setViewMode] = useState<"massing" | "floorplan">("massing");
+
+  // SAM 3D / Text-to-3D GLB model — render with Building3DViewer
+  const glbData = data as unknown as Record<string, unknown>;
+  if (glbData?.glbUrl && typeof glbData.glbUrl === "string") {
+    const isTextTo3D = typeof glbData.sourceImageUrl === "string";
+    const metaData = glbData.metadata as Record<string, unknown> | undefined;
+    const pipeline = metaData?.pipeline as string | undefined;
+
+    return (
+      <div style={{ padding: "0 8px 10px 10px" }}>
+        {/* Show source image for Text-to-3D pipeline */}
+        {isTextTo3D && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 10, color: "#6A6A80", marginBottom: 4, fontWeight: 500 }}>
+              Source Image (DALL-E 3)
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={glbData.sourceImageUrl as string}
+              alt="Generated source image"
+              style={{
+                width: "100%",
+                height: 160,
+                objectFit: "cover",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            />
+          </div>
+        )}
+        <div style={{ fontSize: 10, color: "#6A6A80", marginBottom: 4, fontWeight: 500 }}>
+          {isTextTo3D ? "3D Model (SAM 3D)" : "3D Model"}
+        </div>
+        <Building3DViewer glbUrl={glbData.glbUrl as string} height={320} />
+        <div style={{ marginTop: 6, display: "flex", gap: 6 }}>
+          <a
+            href={glbData.glbUrl as string}
+            download="model.glb"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 10, color: "#4FC3F7", textDecoration: "underline" }}
+          >
+            Download GLB
+          </a>
+          {typeof glbData.plyUrl === "string" && (
+            <a
+              href={glbData.plyUrl as string}
+              download="model.ply"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 10, color: "#4FC3F7", textDecoration: "underline" }}
+            >
+              Download PLY
+            </a>
+          )}
+        </div>
+        <div style={{ fontSize: 9, color: "#4A4A60", fontStyle: "italic", marginTop: 4 }}>
+          {pipeline ? `Pipeline: ${pipeline}` : "Generated via SAM 3D (Meta)"} · Files expire in 7 days
+        </div>
+      </div>
+    );
+  }
 
   if (!data?.floors || !data?.height) {
     return <div style={{ padding: "8px 14px", fontSize: 11, color: "#5C5C78" }}>{t('artifact.noMassing')}</div>;
