@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Header } from "@/components/dashboard/Header";
 import { useSession } from "next-auth/react";
-import { Check, Sparkles, Zap, Loader2 } from "lucide-react";
+import { Check, Sparkles, Zap, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useLocale } from "@/hooks/useLocale";
@@ -17,13 +18,37 @@ interface UsageStats {
 
 export default function BillingPage() {
   const { t } = useLocale();
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
+  const searchParams = useSearchParams();
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgradingTo, setUpgradingTo] = useState<string | null>(null);
 
   const userRole = (session?.user as { role?: string })?.role || "FREE";
   const currentPlan = userRole === "FREE" ? "Free" : userRole === "PRO" ? "Pro" : "Team";
+
+  // Handle success/cancel redirects from Stripe
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+
+    if (success === "true") {
+      toast.success("Payment successful! Your plan is being activated...", {
+        icon: <CheckCircle2 size={18} />,
+        duration: 5000,
+      });
+      // Refresh session to pick up new role from DB
+      updateSession();
+      // Clean URL
+      window.history.replaceState({}, "", "/dashboard/billing");
+    } else if (canceled === "true") {
+      toast.error("Checkout was canceled. No charges were made.", {
+        icon: <XCircle size={18} />,
+        duration: 4000,
+      });
+      window.history.replaceState({}, "", "/dashboard/billing");
+    }
+  }, [searchParams, updateSession]);
 
   useEffect(() => {
     api.executions.list({ limit: 1000 })

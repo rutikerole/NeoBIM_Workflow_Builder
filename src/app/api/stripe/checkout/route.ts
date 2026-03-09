@@ -95,6 +95,9 @@ export async function POST(req: Request) {
 
     // Create checkout session
     try {
+      // Auto-apply coupon if configured, otherwise allow promo code input
+      const defaultCoupon = process.env.STRIPE_DEFAULT_COUPON_ID;
+
       const checkoutSession = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
@@ -102,6 +105,9 @@ export async function POST(req: Request) {
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${process.env.NEXTAUTH_URL}/dashboard/billing?success=true`,
         cancel_url: `${process.env.NEXTAUTH_URL}/dashboard/billing?canceled=true`,
+        ...(defaultCoupon
+          ? { discounts: [{ coupon: defaultCoupon }] }
+          : { allow_promotion_codes: true }),
         metadata: {
           userId: user.id,
           plan: normalizedPlan,

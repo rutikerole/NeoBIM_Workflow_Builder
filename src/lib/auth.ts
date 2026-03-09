@@ -13,6 +13,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   callbacks: {
     ...authConfig.callbacks,
+    async jwt({ token, user, trigger }) {
+      // On sign-in, populate token from user object
+      if (user) {
+        token.sub = user.id;
+        token.email = user.email;
+        token.name = user.name;
+        token.picture = user.image;
+        token.role = (user as { role?: string }).role;
+      }
+      // On session update (e.g. after Stripe payment), refresh role from DB
+      if (trigger === "update" && token.sub) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { role: true },
+          });
+          if (dbUser) {
+            token.role = dbUser.role;
+          }
+        } catch {
+          // Keep existing token role if DB lookup fails
+        }
+      }
+      return token;
+    },
     async signIn({ user }) {
       try {
         if (user.id) {
