@@ -90,11 +90,9 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     }
     if (sceneRef.current) {
       const { scene, minimapRenderer } = sceneRef.current;
-      // Dispose all geometries and materials in the scene
       scene.traverse((obj) => {
         if (obj instanceof THREE.Mesh) {
           obj.geometry?.dispose();
-          // Don't dispose shared materials here — disposeMaterials handles that
         }
       });
       scene.clear();
@@ -103,12 +101,51 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     }
     while (container.firstChild) container.removeChild(container.firstChild);
 
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-    if (w === 0 || h === 0) return; // not visible yet
+    // Container must have real pixel dimensions — if not, retry after layout
+    let w = container.clientWidth;
+    let h = container.clientHeight;
+    if (w === 0 || h === 0) {
+      // Fallback: force minimum dimensions so scene always renders
+      w = w || container.offsetWidth || 600;
+      h = h || container.offsetHeight || 400;
+      if (w === 0 || h === 0) {
+        // Still zero — defer to next frame when layout is ready
+        const retryId = requestAnimationFrame(() => {
+          setIsLoading(true); // keep loading state
+          buildScene();
+        });
+        return () => { cancelAnimationFrame(retryId); };
+      }
+    }
 
+    // Everything below is wrapped in try-catch so errors never leave viewer stuck on loading
+    let renderer: THREE.WebGLRenderer;
+    let scene: THREE.Scene;
+    let camera: THREE.PerspectiveCamera;
+    let orbitControls: OrbitControls;
+    let fpControls: PointerLockControls;
+    let mats: ReturnType<typeof createMaterials>;
+    let minimapRenderer: THREE.WebGLRenderer;
+    let envTex: THREE.Texture;
+    let sectionPlane: THREE.Plane;
+    let doors: DoorMesh[] = [];
+    let roomLabels: THREE.Group = new THREE.Group();
+    let buildingGroup: THREE.Group = new THREE.Group();
+    let velocity: THREE.Vector3;
+    let clock: THREE.Clock;
+
+    // Event handler refs for cleanup
+    let onKeyDown: ((e: KeyboardEvent) => void) | null = null;
+    let onKeyUp: ((e: KeyboardEvent) => void) | null = null;
+    let onMouseClick: ((e: MouseEvent) => void) | null = null;
+    let onMouseMove: ((e: MouseEvent) => void) | null = null;
+    let onResize: (() => void) | null = null;
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    let hoverThrottleId: ReturnType<typeof setTimeout> | null = null;
+
+    try {
     // ─── Renderer ──────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({
+    renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
       powerPreference: "high-performance",
@@ -127,16 +164,16 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     const effectiveFloors = Math.max(1, Math.min(floors, 30));
     const floorH = styleProp?.floorHeightOverride ?? 3.6;
     const bldgHeight = effectiveFloors * floorH;
-    // Camera distance accounts for both building width and height
     const approxWidth = Math.sqrt(footprint * 1.5);
     const maxDimension = Math.max(bldgHeight, approxWidth);
     const camDist = Math.max(30, maxDimension * 1.8, bldgHeight * 1.5);
     const camHeight = Math.max(12, bldgHeight * 0.55, 8 + bldgHeight * 0.3);
-    const fogNear = Math.max(40, camDist);
-    const fogFar = Math.max(150, camDist * 4);
+    // Fog: push far enough that building is NEVER hidden at orbit distance
+    const fogNear = Math.max(60, camDist * 2);
+    const fogFar = Math.max(300, camDist * 6);
 
     // ─── Scene ─────────────────────────────────────────────────
-    const scene = new THREE.Scene();
+    scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x87CEEB, fogNear, fogFar);
 
     // Sky dome
@@ -147,12 +184,12 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     scene.add(skyMesh);
 
     // ─── Camera ─────────────────────────────────────────────────
-    const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, Math.max(500, camDist * 3));
+    camera = new THREE.PerspectiveCamera(50, w / h, 0.1, Math.max(500, camDist * 4));
     camera.position.set(camDist, camHeight, camDist);
     camera.lookAt(0, bldgHeight * 0.4, 0);
 
     // ─── Controls ──────────────────────────────────────────────
-    const orbitControls = new OrbitControls(camera, renderer.domElement);
+    orbitControls = new OrbitControls(camera, renderer.domElement);
     orbitControls.enableDamping = true;
     orbitControls.dampingFactor = 0.06;
     orbitControls.rotateSpeed = 0.6;
@@ -166,7 +203,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     orbitControls.autoRotateSpeed = 0.3;
     orbitControls.enablePan = true;
 
-    const fpControls = new PointerLockControls(camera, renderer.domElement);
+    fpControls = new PointerLockControls(camera, renderer.domElement);
     fpControls.addEventListener("lock", () => {
       orbitControls.enabled = false;
     });
@@ -182,7 +219,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     scene.add(hemiLight);
 
     const sunLight = new THREE.DirectionalLight(0xFFEECC, 1.5);
-    sunLight.position.set(25, 40, 20);
+    sunLight.position.set(25, Math.max(40, bldgHeight * 0.8), 20);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.setScalar(2048);
     sunLight.shadow.camera.near = 0.5;
@@ -201,7 +238,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     scene.add(fillLight);
 
     // ─── Materials ─────────────────────────────────────────────
-    const mats = createMaterials();
+    mats = createMaterials();
 
     // ─── Building style (from prompt analysis) ────────────────
     const buildingStyle: BuildingStyle = styleRef.current ?? {
@@ -238,7 +275,10 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     const config = { ...getDefaultConfig(buildingStyle), rooms: buildingRooms, floors: effectiveFloors };
 
     // ─── Build ─────────────────────────────────────────────────
-    const { doors, roomLabels, buildingGroup } = buildBuilding(config, mats, scene);
+    const buildResult = buildBuilding(config, mats, scene);
+    doors = buildResult.doors;
+    roomLabels = buildResult.roomLabels;
+    buildingGroup = buildResult.buildingGroup;
 
     // Find building center for furniture
     let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
@@ -251,7 +291,12 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     const centerX = (minX + maxX) / 2;
     const centerZ = (minZ + maxZ) / 2;
 
-    addFurniture(buildingRooms, centerX, centerZ, config.floorHeight, mats, buildingGroup);
+    // Furniture — wrapped in its own try-catch so a furniture error doesn't kill the whole scene
+    try {
+      addFurniture(buildingRooms, centerX, centerZ, config.floorHeight, mats, buildingGroup);
+    } catch (furnitureErr) {
+      console.warn("[ArchitecturalViewer] Furniture generation failed, continuing without:", furnitureErr);
+    }
 
     // ─── Environment map ───────────────────────────────────────
     const pmremGen = new THREE.PMREMGenerator(renderer);
@@ -261,13 +306,13 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     const envDir = new THREE.DirectionalLight(0xFFFFFF, 1);
     envDir.position.set(1, 2, 1);
     envScene.add(envDir);
-    const envTex = pmremGen.fromScene(envScene, 0.04).texture;
+    envTex = pmremGen.fromScene(envScene, 0.04).texture;
     scene.environment = envTex;
     pmremGen.dispose();
 
     // ─── Minimap ───────────────────────────────────────────────
     const minimapSize = 160;
-    const minimapRenderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+    minimapRenderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
     minimapRenderer.setSize(minimapSize, minimapSize);
     minimapRenderer.setPixelRatio(1);
     minimapRenderer.domElement.style.cssText =
@@ -278,23 +323,22 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
 
     const bw = maxX - minX;
     const bd = maxZ - minZ;
-    const mmS = Math.max(bw, bd) * 0.8;
+    const mmS = Math.max(bw, bd, 10) * 0.8;
     const minimapCamera = new THREE.OrthographicCamera(-mmS, mmS, mmS, -mmS, 0.1, Math.max(200, bldgHeight + 50));
     minimapCamera.position.set(0, Math.max(50, bldgHeight + 20), 0);
     minimapCamera.lookAt(0, 0, 0);
 
     // ─── Section plane ─────────────────────────────────────────
-    // Section plane cuts at mid-building for better visibility on tall buildings
     const sectionCutHeight = Math.max(config.floorHeight + 1.5, bldgHeight * 0.4);
-    const sectionPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), sectionCutHeight);
+    sectionPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), sectionCutHeight);
 
     // ─── Movement state ────────────────────────────────────────
-    const velocity = new THREE.Vector3();
+    velocity = new THREE.Vector3();
     const moveState = {
       forward: false, backward: false, left: false, right: false,
     };
 
-    const onKeyDown = (e: KeyboardEvent) => {
+    onKeyDown = (e: KeyboardEvent) => {
       switch (e.code) {
         case "KeyW": case "ArrowUp": moveState.forward = true; break;
         case "KeyS": case "ArrowDown": moveState.backward = true; break;
@@ -302,7 +346,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
         case "KeyD": case "ArrowRight": moveState.right = true; break;
       }
     };
-    const onKeyUp = (e: KeyboardEvent) => {
+    onKeyUp = (e: KeyboardEvent) => {
       switch (e.code) {
         case "KeyW": case "ArrowUp": moveState.forward = false; break;
         case "KeyS": case "ArrowDown": moveState.backward = false; break;
@@ -318,7 +362,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
-    const onMouseClick = (e: MouseEvent) => {
+    onMouseClick = (e: MouseEvent) => {
       if (viewModeRef.current !== "orbit") return;
       const rect = renderer.domElement.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -337,10 +381,9 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     renderer.domElement.addEventListener("click", onMouseClick);
 
     // ─── Throttled hover detection ──────────────────────────────
-    let hoverThrottleId: ReturnType<typeof setTimeout> | null = null;
-    const onMouseMove = (e: MouseEvent) => {
+    onMouseMove = (e: MouseEvent) => {
       if (viewModeRef.current !== "orbit" || hoverThrottleId) return;
-      hoverThrottleId = setTimeout(() => { hoverThrottleId = null; }, 50); // 20fps hover
+      hoverThrottleId = setTimeout(() => { hoverThrottleId = null; }, 50);
 
       const rect = renderer.domElement.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -366,7 +409,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     renderer.domElement.addEventListener("mousemove", onMouseMove);
 
     // ─── Store refs ────────────────────────────────────────────
-    const clock = new THREE.Clock();
+    clock = new THREE.Clock();
     sceneRef.current = {
       scene, camera, orbitControls, fpControls, doors, roomLabels, buildingGroup,
       sunLight, ambientLight, hemiLight, skyMesh, clock, velocity,
@@ -384,8 +427,6 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     const introTarget = new THREE.Vector3(0, bldgHeight * 0.4, 0);
     camera.position.copy(introStartPos);
 
-    // Fade in loading complete
-    setIsLoading(false);
     // Fade minimap in after intro
     setTimeout(() => {
       if (minimapRenderer.domElement) minimapRenderer.domElement.style.opacity = "1";
@@ -397,7 +438,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
 
     function animate() {
       animFrameRef.current = requestAnimationFrame(animate);
-      const delta = Math.min(clock.getDelta(), 0.05); // cap to avoid jumps
+      const delta = Math.min(clock.getDelta(), 0.05);
       const sr = sceneRef.current;
       if (!sr) return;
       sr.frameCount++;
@@ -406,7 +447,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
       if (introTime < introDuration && !fpControls.isLocked) {
         introTime += delta;
         const t = Math.min(introTime / introDuration, 1);
-        const ease = 1 - Math.pow(1 - t, 4); // smooth quartic ease-out
+        const ease = 1 - Math.pow(1 - t, 4);
         camera.position.lerpVectors(introStartPos, introEndPos, ease);
         camera.lookAt(introTarget);
         orbitControls.target.copy(introTarget);
@@ -414,7 +455,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
 
       // ─── First-person movement (smooth acceleration) ────────
       if (fpControls.isLocked) {
-        const friction = 1 - Math.min(1, 10 * delta); // smooth deceleration
+        const friction = 1 - Math.min(1, 10 * delta);
         velocity.x *= friction;
         velocity.z *= friction;
 
@@ -494,8 +535,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     animate();
 
     // ─── Resize (debounced) ─────────────────────────────────────
-    let resizeTimer: ReturnType<typeof setTimeout>;
-    const onResize = () => {
+    onResize = () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         if (!container) return;
@@ -509,29 +549,35 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     };
     window.addEventListener("resize", onResize);
 
+    } catch (err) {
+      console.error("[ArchitecturalViewer] Scene build failed:", err);
+    } finally {
+      // ALWAYS clear loading state so the canvas becomes visible
+      setIsLoading(false);
+    }
+
     // ─── Cleanup ───────────────────────────────────────────────
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.removeEventListener("keyup", onKeyUp);
-      renderer.domElement.removeEventListener("click", onMouseClick);
-      renderer.domElement.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("resize", onResize);
-      clearTimeout(resizeTimer);
+      if (onKeyDown) document.removeEventListener("keydown", onKeyDown);
+      if (onKeyUp) document.removeEventListener("keyup", onKeyUp);
+      if (onMouseClick && rendererRef.current) rendererRef.current.domElement.removeEventListener("click", onMouseClick);
+      if (onMouseMove && rendererRef.current) rendererRef.current.domElement.removeEventListener("mousemove", onMouseMove);
+      if (onResize) window.removeEventListener("resize", onResize);
+      clearTimeout(resizeTimer!);
       if (hoverThrottleId) clearTimeout(hoverThrottleId);
       cancelAnimationFrame(animFrameRef.current);
-      fpControls.dispose();
-      orbitControls.dispose();
-      // Dispose all geometries
-      scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
-          obj.geometry?.dispose();
-        }
-      });
-      renderer.dispose();
-      minimapRenderer?.dispose();
-      envTex.dispose();
-      disposeMaterials(mats);
-      scene.clear();
+      try {
+        fpControls?.dispose();
+        orbitControls?.dispose();
+        scene?.traverse((obj) => {
+          if (obj instanceof THREE.Mesh) obj.geometry?.dispose();
+        });
+        renderer!?.dispose();
+        minimapRenderer!?.dispose();
+        envTex!?.dispose();
+        if (mats!) disposeMaterials(mats!);
+        scene?.clear();
+      } catch { /* cleanup errors are non-critical */ }
       sceneRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -548,14 +594,14 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     if (!sr) return;
 
     const { sunLight, ambientLight, hemiLight, skyMesh, scene } = sr;
-    const fogNear = Math.max(40, sr.camDist);
-    const fogFar = Math.max(150, sr.camDist * 4);
+    const fogNear = Math.max(60, sr.camDist * 2);
+    const fogFar = Math.max(300, sr.camDist * 6);
 
     switch (timeOfDay) {
       case "day":
         sunLight.color.set(0xFFEECC);
         sunLight.intensity = 1.5;
-        sunLight.position.set(25, 40, 20);
+        sunLight.position.set(25, Math.max(40, sr.bldgHeight * 0.8), 20);
         ambientLight.color.set(0x8899AA);
         ambientLight.intensity = 0.5;
         hemiLight.color.set(0x87CEEB);
@@ -584,7 +630,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
         ambientLight.intensity = 0.2;
         hemiLight.color.set(0x223355);
         hemiLight.groundColor.set(0x111122);
-        scene.fog = new THREE.Fog(0x0A0A1A, Math.min(20, fogNear * 0.5), Math.min(80, fogFar * 0.5));
+        scene.fog = new THREE.Fog(0x0A0A1A, Math.max(30, fogNear * 0.4), Math.max(100, fogFar * 0.4));
         updateSkyColors((skyMesh.material as THREE.MeshBasicMaterial), "night");
         if (rendererRef.current) rendererRef.current.toneMappingExposure = 0.6;
         break;
@@ -646,7 +692,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
   }, []);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div style={{ position: "relative", width: "100%", height: isFullscreen ? "100vh" : 420 }}>
       {/* Loading overlay */}
       {isLoading && (
         <div style={{
@@ -670,8 +716,7 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
         ref={containerRef}
         style={{
           width: "100%",
-          height: isFullscreen ? "100vh" : "100%",
-          minHeight: isFullscreen ? "100vh" : 320,
+          height: isFullscreen ? "100vh" : 420,
           borderRadius: isFullscreen ? 0 : 12,
           overflow: "hidden",
           cursor: viewMode === "orbit" ? "grab" : "crosshair",
