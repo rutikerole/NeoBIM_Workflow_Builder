@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from "react";
 import { Package, ChevronRight, Search, X, GripVertical } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import { toast } from "sonner";
 import { NODE_CATALOGUE, CATEGORY_CONFIG, LIVE_NODES } from "@/constants/node-catalogue";
 import type { NodeCatalogueItem, NodeCategory } from "@/types/nodes";
 import { useUIStore } from "@/stores/ui-store";
@@ -37,8 +36,13 @@ const FILTER_TABS: { value: FilterValue; label: string }[] = [
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function NodeLibrarySidebar() {
-  const { isNodeLibraryOpen, toggleNodeLibrary, requestAddNode } = useUIStore();
+interface NodeLibrarySidebarProps {
+  /** When true, the library content is always shown (no toggle header). Used in RightNodePanel. */
+  alwaysOpen?: boolean;
+}
+
+export function NodeLibrarySidebar({ alwaysOpen = false }: NodeLibrarySidebarProps) {
+  const { isNodeLibraryOpen, toggleNodeLibrary } = useUIStore();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterValue>("all");
 
@@ -59,87 +63,88 @@ export function NodeLibrarySidebar() {
     return result;
   }, [search, activeFilter]);
 
-  const handleClickAdd = (item: NodeCatalogueItem) => {
-    requestAddNode(item.id);
-    toast.success(`Adding ${item.name} to canvas`);
-  };
+  // Click-to-add removed — nodes should only be added via drag-and-drop
 
   const handleDragStart = (e: React.DragEvent, nodeId: string) => {
     e.dataTransfer.setData("application/reactflow-nodeid", nodeId);
     e.dataTransfer.effectAllowed = "move";
   };
 
-  return (
-    <div style={{ padding: "0 8px", position: "relative", zIndex: 1 }}>
+  const showContent = alwaysOpen || isNodeLibraryOpen;
 
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <button
-        onClick={toggleNodeLibrary}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "8px 10px",
-          borderRadius: 10,
-          background: isNodeLibraryOpen ? "rgba(0,245,255,0.06)" : "transparent",
-          border: `1px solid ${isNodeLibraryOpen ? "rgba(0,245,255,0.14)" : "transparent"}`,
-          cursor: "pointer",
-          transition: "all 180ms ease",
-        }}
-      >
-        <Package
-          size={15}
+  return (
+    <div style={{ padding: "0 8px", position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: alwaysOpen ? "100%" : "auto" }}>
+
+      {/* ── Header (hidden in alwaysOpen / right-panel mode) ──────────── */}
+      {!alwaysOpen && (
+        <button
+          onClick={toggleNodeLibrary}
           style={{
-            color: isNodeLibraryOpen ? "#00F5FF" : "rgba(255,255,255,0.35)",
-            flexShrink: 0,
-            transition: "color 180ms ease",
-          }}
-        />
-        <span
-          style={{
-            flex: 1,
-            textAlign: "left",
-            fontSize: 12.5,
-            fontWeight: 550,
-            color: isNodeLibraryOpen ? "#E2E8F0" : "rgba(255,255,255,0.45)",
-            fontFamily: "var(--font-dm-sans), sans-serif",
-            letterSpacing: "0.2px",
-            whiteSpace: "nowrap",
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 10px",
+            borderRadius: 10,
+            background: isNodeLibraryOpen ? "rgba(0,245,255,0.06)" : "transparent",
+            border: `1px solid ${isNodeLibraryOpen ? "rgba(0,245,255,0.14)" : "transparent"}`,
+            cursor: "pointer",
+            transition: "all 180ms ease",
           }}
         >
-          Node Library
-        </span>
-        <span
-          style={{
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: "0.5px",
-            color: "rgba(0,245,255,0.5)",
-            fontFamily: "var(--font-jetbrains), monospace",
-            padding: "1px 5px",
-            borderRadius: 4,
-            background: "rgba(0,245,255,0.06)",
-            border: "1px solid rgba(0,245,255,0.12)",
-            flexShrink: 0,
-          }}
-        >
-          {NODE_CATALOGUE.length}
-        </span>
-        <ChevronRight
-          size={13}
-          style={{
-            color: "rgba(255,255,255,0.3)",
-            transform: isNodeLibraryOpen ? "rotate(90deg)" : "rotate(0deg)",
-            transition: "transform 200ms ease",
-            flexShrink: 0,
-          }}
-        />
-      </button>
+          <Package
+            size={15}
+            style={{
+              color: isNodeLibraryOpen ? "#00F5FF" : "rgba(255,255,255,0.35)",
+              flexShrink: 0,
+              transition: "color 180ms ease",
+            }}
+          />
+          <span
+            style={{
+              flex: 1,
+              textAlign: "left",
+              fontSize: 12.5,
+              fontWeight: 550,
+              color: isNodeLibraryOpen ? "#E2E8F0" : "rgba(255,255,255,0.45)",
+              fontFamily: "var(--font-dm-sans), sans-serif",
+              letterSpacing: "0.2px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Node Library
+          </span>
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.5px",
+              color: "rgba(0,245,255,0.5)",
+              fontFamily: "var(--font-jetbrains), monospace",
+              padding: "1px 5px",
+              borderRadius: 4,
+              background: "rgba(0,245,255,0.06)",
+              border: "1px solid rgba(0,245,255,0.12)",
+              flexShrink: 0,
+            }}
+          >
+            {NODE_CATALOGUE.length}
+          </span>
+          <ChevronRight
+            size={13}
+            style={{
+              color: "rgba(255,255,255,0.3)",
+              transform: isNodeLibraryOpen ? "rotate(90deg)" : "rotate(0deg)",
+              transition: "transform 200ms ease",
+              flexShrink: 0,
+            }}
+          />
+        </button>
+      )}
 
       {/* ── Expanded content ──────────────────────────────────────────── */}
-      {isNodeLibraryOpen && (
-        <div style={{ marginTop: 6 }}>
+      {showContent && (
+        <div style={{ marginTop: alwaysOpen ? 0 : 6, display: "flex", flexDirection: "column", flex: alwaysOpen ? 1 : "none", minHeight: 0 }}>
 
           {/* Search */}
           <div style={{ position: "relative", marginBottom: 6 }}>
@@ -240,7 +245,8 @@ export function NodeLibrarySidebar() {
           {/* Scrollable node list */}
           <div
             style={{
-              maxHeight: 340,
+              flex: 1,
+              minHeight: 0,
               overflowY: "auto",
               display: "flex",
               flexDirection: "column",
@@ -263,7 +269,6 @@ export function NodeLibrarySidebar() {
                 <NodeItem
                   key={node.id}
                   node={node}
-                  onClickAdd={handleClickAdd}
                   onDragStart={handleDragStart}
                 />
               ))
@@ -281,7 +286,7 @@ export function NodeLibrarySidebar() {
             textAlign: "center",
             letterSpacing: "0.3px",
           }}>
-            DRAG TO CANVAS · CLICK TO ADD
+            DRAG TO CANVAS TO ADD
           </div>
         </div>
       )}
@@ -293,11 +298,10 @@ export function NodeLibrarySidebar() {
 
 interface NodeItemProps {
   node: NodeCatalogueItem;
-  onClickAdd: (node: NodeCatalogueItem) => void;
   onDragStart: (e: React.DragEvent, nodeId: string) => void;
 }
 
-function NodeItem({ node, onClickAdd, onDragStart }: NodeItemProps) {
+function NodeItem({ node, onDragStart }: NodeItemProps) {
   const [hovered, setHovered] = useState(false);
   const cfg = CATEGORY_CONFIG[node.category];
   const rgb = hexToRgb(cfg.color);
@@ -307,10 +311,9 @@ function NodeItem({ node, onClickAdd, onDragStart }: NodeItemProps) {
     <div
       draggable
       onDragStart={(e) => onDragStart(e, node.id)}
-      onClick={() => onClickAdd(node)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      title={`${node.name} — ${node.description}\nDrag to canvas or click to add`}
+      title={`${node.name} — ${node.description}\nDrag to canvas to add`}
       style={{
         display: "flex",
         alignItems: "center",
