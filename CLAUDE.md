@@ -12,6 +12,7 @@ npm test                 # Run all tests (vitest)
 npm run test:watch       # Tests in watch mode
 npm run test:ui          # Vitest UI dashboard
 npm run test:coverage    # Tests with coverage (70% threshold enforced)
+npx vitest run path/to/file.test.ts  # Run a single test file
 npx prisma generate      # Regenerate Prisma client (run after pulling changes)
 npx prisma db push       # Push schema changes to DB
 ```
@@ -70,7 +71,18 @@ src/
 └── constants/            # node-catalogue, prebuilt-workflows, unit-rates
 ```
 
+### API Route Conventions
+
+- Protected routes: get session via `await auth()`, check `session?.user?.id`, return 401 if missing
+- Dynamic routes: accept `params` as `Promise<{id: string}>` and `await` it
+- Always verify resource ownership: `findFirst({ where: { id, ownerId: session.user.id } })`
+- Rate limit authenticated routes with `checkEndpointRateLimit(userId, "endpoint-name", limit, "1 m")`
+- All errors returned via `formatErrorResponse()` with appropriate status codes
+- Analytics calls are fire-and-forget: `.catch(() => {})`
+
 ### Database (Prisma)
+
+Schema: `prisma/schema.prisma`. All models use CUID IDs and `@@map()` for snake_case table names.
 
 Key models: `User` (roles: FREE/PRO/TEAM_ADMIN/PLATFORM_ADMIN, Stripe fields, XP/level), `Workflow` (tileGraph JSON for edges+nodes), `TileInstance` (node on canvas), `Execution` (status: PENDING/RUNNING/SUCCESS/PARTIAL/FAILED), `Artifact` (output types: TEXT/JSON/IMAGE/THREE_D/FILE/TABLE/KPI), `CommunityPublication`, `Review`.
 
@@ -88,13 +100,14 @@ Key models: `User` (roles: FREE/PRO/TEAM_ADMIN/PLATFORM_ADMIN, Stripe fields, XP
 
 ## Environment Variables
 
-Requires `.env.local` (not committed). Key vars: `DATABASE_URL`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. Set `NEXT_PUBLIC_ENABLE_MOCK_EXECUTION=true` for local dev without API keys.
+Requires `.env.local` (not committed). See `.env.example` for a template. Key vars: `DATABASE_URL`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. Set `NEXT_PUBLIC_ENABLE_MOCK_EXECUTION=true` for local dev without API keys.
 
 ## Testing
 
 - Framework: Vitest with `@testing-library/react`
-- Setup file: `tests/setup.ts`
+- Setup file: `tests/setup.ts` (mocks all env vars before tests)
 - Test dirs: `tests/unit/`, `tests/integration/`, `tests/mocks/`
+- Test environment: `node` (configured in `vitest.config.ts`)
 - Coverage thresholds: 70% (lines, functions, branches, statements)
 
 ## Security

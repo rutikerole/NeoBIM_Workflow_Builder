@@ -1,2 +1,9 @@
 {"id":"775a5856-5cc8-444d-9616-24ba8689b6b1","timestamp":"2026-03-08T05:59:11.750Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"user_login"}
 {"id":"4cd32c60-017f-4f5c-b39b-e2214ea57b5a","timestamp":"2026-03-08T06:01:47.318Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"workflow_created","properties":{"workflowId":"cmmhch8p50002fvvbew9i9qni"}}
+{"id":"ead87cee-3af2-4435-900f-51602a2ab8b2","timestamp":"2026-03-08T13:17:42.140Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"user_login"}
+{"id":"9667e625-66af-4a56-9164-8f6640c1e65d","timestamp":"2026-03-08T13:18:55.736Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"node_used","properties":{"catalogueId":"IN-001","nodeLabel":"Text Prompt"}}
+{"id":"4e6f069f-6205-4292-ae45-145b9b815357","timestamp":"2026-03-08T13:19:17.002Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"node_used","properties":{"catalogueId":"TR-003","nodeLabel":"Design Brief Analyzer"}}
+{"id":"17ce1d7a-828d-4fc0-9e81-1255a52f7e26","timestamp":"2026-03-08T13:19:20.509Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"node_used","properties":{"catalogueId":"GN-001","nodeLabel":"Massing Generator"}}
+{"id":"e935bee9-aa38-4112-b69b-5d5ac7d5b7fa","timestamp":"2026-03-08T13:19:53.031Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"node_used","properties":{"catalogueId":"GN-003","nodeLabel":"Concept Render Generator"}}
+{"id":"07ea1492-8e01-4cd2-bfee-39a5c7a110ca","timestamp":"2026-03-08T13:19:53.031Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"workflow_executed","properties":{"nodeCount":4,"catalogueIds":["IN-001","TR-003","GN-001","GN-003"]}}
+{"id":"ae28786e-f159-42c4-9884-e18637bc96f7","timestamp":"2026-03-08T15:07:09.025Z","userId":"cmmdh1l94000004l8v14nq5gu","eventName":"user_login"}

@@ -1,5 +1,6 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;1,700&display=swap');
+@import "tailwindcss";
+@import "../styles/mobile-responsive.css";
 
 @layer base {
   :root {
@@ -2019,6 +2020,5 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MOBILE RESPONSIVE STYLES
+   MOBILE RESPONSIVE STYLES (imported at top of file — see line 1)
    ═══════════════════════════════════════════════════════════════════ */
-@import "../styles/mobile-responsive.css";
