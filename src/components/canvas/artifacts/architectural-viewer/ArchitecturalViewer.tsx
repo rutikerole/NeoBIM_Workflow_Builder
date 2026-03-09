@@ -728,72 +728,75 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
       {/* ─── UI Overlay ────────────────────────────────────── */}
       {!isLoading && (
         <div style={{
-          position: "absolute", top: 14, left: 14,
-          display: "flex", flexDirection: "column", gap: 8,
+          position: "absolute", top: 16, left: 16,
+          display: "flex", flexDirection: "column", gap: 6,
           pointerEvents: "none",
           animation: "viewer-fade-in 0.6s ease 0.3s both",
         }}>
           {/* View mode toggle */}
-          <div style={{ display: "flex", gap: 5, pointerEvents: "all" }}>
-            <ToolbarBtn
-              active={viewMode === "orbit"}
-              onClick={() => { if (viewMode !== "orbit") toggleViewMode(); }}
-              label="Orbit"
-            />
-            <ToolbarBtn
-              active={viewMode === "firstperson"}
-              onClick={() => { if (viewMode !== "firstperson") toggleViewMode(); }}
-              label="Walk"
-            />
-          </div>
+          <ToolbarGroup pointerEvents="all">
+            <GroupLabel>View</GroupLabel>
+            <div style={{ display: "flex", gap: 2 }}>
+              <ToolbarBtn active={viewMode === "orbit"} onClick={() => { if (viewMode !== "orbit") toggleViewMode(); }} label="🌐 Orbit" />
+              <ToolbarBtn active={viewMode === "firstperson"} onClick={() => { if (viewMode !== "firstperson") toggleViewMode(); }} label="🚶 Walk" />
+            </div>
+          </ToolbarGroup>
 
           {/* Time of day */}
-          <div style={{ display: "flex", gap: 5, pointerEvents: "all" }}>
-            <ToolbarBtn active={timeOfDay === "day"} onClick={() => setTimeOfDay("day")} label="Day" />
-            <ToolbarBtn active={timeOfDay === "sunset"} onClick={() => setTimeOfDay("sunset")} label="Sunset" />
-            <ToolbarBtn active={timeOfDay === "night"} onClick={() => setTimeOfDay("night")} label="Night" />
-          </div>
+          <ToolbarGroup pointerEvents="all">
+            <GroupLabel>Lighting</GroupLabel>
+            <div style={{ display: "flex", gap: 2 }}>
+              <ToolbarBtn active={timeOfDay === "day"} onClick={() => setTimeOfDay("day")} label="☀️ Day" />
+              <ToolbarBtn active={timeOfDay === "sunset"} onClick={() => setTimeOfDay("sunset")} label="🌅 Dusk" />
+              <ToolbarBtn active={timeOfDay === "night"} onClick={() => setTimeOfDay("night")} label="🌙 Night" />
+            </div>
+          </ToolbarGroup>
 
           {/* Feature toggles */}
-          <div style={{ display: "flex", gap: 5, pointerEvents: "all" }}>
-            <ToolbarBtn active={showLabels} onClick={() => setShowLabels(v => !v)} label="Labels" />
-            <ToolbarBtn active={showMinimap} onClick={() => setShowMinimap(v => !v)} label="Map" />
-            <ToolbarBtn active={isExploded} onClick={() => setIsExploded(v => !v)} label="Explode" />
-            <ToolbarBtn active={isSectionCut} onClick={() => setIsSectionCut(v => !v)} label="Section" />
-            <ToolbarBtn active={isXray} onClick={() => setIsXray(v => !v)} label="X-Ray" />
-          </div>
+          <ToolbarGroup pointerEvents="all">
+            <GroupLabel>Analysis</GroupLabel>
+            <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+              <ToolbarBtn active={showLabels} onClick={() => setShowLabels(v => !v)} label="Tags" />
+              <ToolbarBtn active={showMinimap} onClick={() => setShowMinimap(v => !v)} label="Map" />
+              <ToolbarBtn active={isExploded} onClick={() => setIsExploded(v => !v)} label="Explode" />
+              <ToolbarBtn active={isSectionCut} onClick={() => setIsSectionCut(v => !v)} label="Section" />
+              <ToolbarBtn active={isXray} onClick={() => setIsXray(v => !v)} label="X-Ray" />
+            </div>
+          </ToolbarGroup>
         </div>
       )}
 
       {/* Right side controls */}
       {!isLoading && (
         <div style={{
-          position: "absolute", top: 14, right: 14,
-          display: "flex", flexDirection: "column", gap: 8,
+          position: "absolute", top: 16, right: 16,
+          display: "flex", flexDirection: "column", gap: 6,
           alignItems: "flex-end",
           pointerEvents: "none",
           animation: "viewer-fade-in 0.6s ease 0.5s both",
         }}>
           <div style={{ pointerEvents: "all" }}>
-            <ToolbarBtn active={isFullscreen} onClick={toggleFullscreen} label={isFullscreen ? "Exit" : "Full"} />
+            <ToolbarBtn active={isFullscreen} onClick={toggleFullscreen} label={isFullscreen ? "✕ Exit" : "⛶ Full"} />
           </div>
 
           {/* Building info badge */}
           <div style={{
-            background: "rgba(0,0,0,0.65)",
-            backdropFilter: "blur(12px)",
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
             borderRadius: 10,
             padding: "10px 14px",
-            border: "1px solid rgba(255,255,255,0.1)",
+            border: "1px solid rgba(255,255,255,0.08)",
             pointerEvents: "none",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
           }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", textTransform: "uppercase" as const, letterSpacing: "0.1em", marginBottom: 5, fontWeight: 600 }}>
+            <div style={{ fontSize: 8, color: "rgba(0,245,255,0.5)", textTransform: "uppercase" as const, letterSpacing: "0.14em", marginBottom: 5, fontWeight: 700, fontFamily: "'Space Mono', monospace" }}>
               Building Info
             </div>
-            <div style={{ fontSize: 13, color: "#F0F0FA", fontWeight: 700 }}>
+            <div style={{ fontSize: 14, color: "#F0F0FA", fontWeight: 700, letterSpacing: "-0.01em" }}>
               {floors}F · {height.toFixed(1)}m · {footprint} m²
             </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>
               {buildingType ?? "Mixed-Use"} · GFA {Math.round(floors * footprint * 0.98).toLocaleString()} m²
             </div>
           </div>
@@ -864,36 +867,66 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
 
 // ─── Toolbar Button ───────────────────────────────────────────────────────────
 
+// ─── Toolbar Group (glass panel) ──────────────────────────────────────────────
+
+function ToolbarGroup({ children, pointerEvents }: { children: React.ReactNode; pointerEvents?: string }) {
+  return (
+    <div style={{
+      background: "rgba(0,0,0,0.5)",
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
+      borderRadius: 10,
+      padding: "6px 8px 8px",
+      border: "1px solid rgba(255,255,255,0.07)",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+      pointerEvents: (pointerEvents as React.CSSProperties["pointerEvents"]) ?? "none",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: 8, fontWeight: 700, color: "rgba(0,245,255,0.45)",
+      textTransform: "uppercase" as const, letterSpacing: "0.14em",
+      padding: "0 4px 4px", fontFamily: "'Space Mono', monospace",
+    }}>
+      {children}
+    </div>
+  );
+}
+
 function ToolbarBtn({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
       onClick={onClick}
       style={{
-        padding: "6px 14px",
-        borderRadius: 8,
-        background: active ? "rgba(79,138,255,0.3)" : "rgba(0,0,0,0.65)",
-        border: `1.5px solid ${active ? "rgba(79,138,255,0.6)" : "rgba(255,255,255,0.2)"}`,
-        color: active ? "#93C5FF" : "rgba(255,255,255,0.7)",
-        fontSize: 12,
-        fontWeight: 600,
+        padding: "5px 11px",
+        borderRadius: 6,
+        background: active
+          ? "linear-gradient(135deg, rgba(0,245,255,0.2), rgba(79,138,255,0.2))"
+          : "rgba(255,255,255,0.04)",
+        border: active ? "1px solid rgba(0,245,255,0.35)" : "1px solid transparent",
+        color: active ? "#7EDDFF" : "rgba(255,255,255,0.55)",
+        fontSize: 11,
+        fontWeight: active ? 700 : 500,
         cursor: "pointer",
-        backdropFilter: "blur(12px)",
-        transition: "all 0.15s ease",
-        letterSpacing: "0.03em",
-        boxShadow: active ? "0 0 8px rgba(79,138,255,0.25)" : "0 2px 8px rgba(0,0,0,0.3)",
+        transition: "all 0.2s ease",
+        letterSpacing: "0.02em",
+        boxShadow: active ? "0 0 10px rgba(0,245,255,0.12)" : "none",
       }}
       onMouseEnter={e => {
         if (!active) {
-          e.currentTarget.style.background = "rgba(79,138,255,0.15)";
-          e.currentTarget.style.borderColor = "rgba(79,138,255,0.4)";
-          e.currentTarget.style.color = "#B0D4FF";
+          e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+          e.currentTarget.style.color = "#FFFFFF";
         }
       }}
       onMouseLeave={e => {
         if (!active) {
-          e.currentTarget.style.background = "rgba(0,0,0,0.65)";
-          e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
-          e.currentTarget.style.color = "rgba(255,255,255,0.7)";
+          e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+          e.currentTarget.style.color = "rgba(255,255,255,0.55)";
         }
       }}
     >
