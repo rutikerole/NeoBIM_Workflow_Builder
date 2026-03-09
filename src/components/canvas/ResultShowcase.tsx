@@ -219,10 +219,18 @@ export function ResultShowcase({ onClose }: ResultShowcaseProps) {
         style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(4,4,8,0.98)", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#F0F0F5" }}>3D Architectural Walkthrough</span>
-          <button onClick={() => setShow3DViewer(false)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 18px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "#B0B0C5", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s ease" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#F0F0F5"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#B0B0C5"; }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          <button onClick={() => setShow3DViewer(false)} style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 22px", borderRadius: 9,
+            background: "rgba(0,245,255,0.08)",
+            border: "1.5px solid rgba(0,245,255,0.25)",
+            color: "#00F5FF", fontSize: 13, fontWeight: 600,
+            cursor: "pointer", transition: "all 0.2s ease",
+            letterSpacing: "0.02em",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,245,255,0.15)"; e.currentTarget.style.borderColor = "rgba(0,245,255,0.4)"; e.currentTarget.style.boxShadow = "0 0 16px rgba(0,245,255,0.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,245,255,0.08)"; e.currentTarget.style.borderColor = "rgba(0,245,255,0.25)"; e.currentTarget.style.boxShadow = "none"; }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
             Back to Results
           </button>
         </div>
@@ -278,10 +286,18 @@ export function ResultShowcase({ onClose }: ResultShowcaseProps) {
           background: "rgba(5,5,8,0.88)", backdropFilter: "blur(24px)",
         }}>
           <button onClick={onClose}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 16px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#8888A0", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.15s ease" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#E0E0F0"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#8888A0"; }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "10px 22px", borderRadius: 9,
+              background: "rgba(0,245,255,0.08)",
+              border: "1.5px solid rgba(0,245,255,0.25)",
+              color: "#00F5FF", fontSize: 13, fontWeight: 600,
+              cursor: "pointer", transition: "all 0.2s ease",
+              letterSpacing: "0.02em",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,245,255,0.15)"; e.currentTarget.style.borderColor = "rgba(0,245,255,0.4)"; e.currentTarget.style.boxShadow = "0 0 16px rgba(0,245,255,0.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,245,255,0.08)"; e.currentTarget.style.borderColor = "rgba(0,245,255,0.25)"; e.currentTarget.style.boxShadow = "none"; }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
             Back to Workflow
           </button>
           {/* Pipeline status pills */}
