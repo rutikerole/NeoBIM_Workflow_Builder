@@ -26,7 +26,7 @@ import {
 import dynamic from "next/dynamic";
 import { BaseNode } from "./nodes/BaseNode";
 import { AnimatedEdge } from "./edges/AnimatedEdge";
-// NodeLibraryPanel moved to left sidebar — see NodeLibrarySidebar component
+import { RightNodePanel } from "./panels/RightNodePanel";
 import { CanvasToolbar } from "./toolbar/CanvasToolbar";
 
 import { ExecutionLog } from "./ExecutionLog";
@@ -663,7 +663,8 @@ function WorkflowCanvasInner({ workflowId: _workflowId }: WorkflowCanvasInnerPro
         )}
       </AnimatePresence>
 
-      {/* Node Library moved to left sidebar — see NodeLibrarySidebar in Sidebar.tsx */}
+      {/* Right-side Node Library panel — canvas only */}
+      <RightNodePanel />
 
       {/* Canvas area */}
       <div
