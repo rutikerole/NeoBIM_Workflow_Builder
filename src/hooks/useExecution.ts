@@ -274,7 +274,9 @@ async function pollVideoGeneration(
       }
 
       if (status.isComplete) {
-        // Build the final artifact with real video URLs
+        // Single continuous video — no segments
+        const videoUrl = status.exteriorVideoUrl ?? status.interiorVideoUrl ?? "";
+
         const finalArtifact: ExecutionArtifact = {
           id: `video-${nodeId}`,
           executionId,
@@ -282,25 +284,13 @@ async function pollVideoGeneration(
           type: "video",
           data: {
             ...currentArtifactData,
-            videoUrl: status.exteriorVideoUrl,
-            downloadUrl: status.exteriorVideoUrl,
-            label: "AEC Cinematic Walkthrough — 15s (exterior + interior)",
+            videoUrl,
+            downloadUrl: videoUrl,
+            label: "AEC Cinematic Walkthrough — 10s",
             videoGenerationStatus: "complete",
             generationProgress: 100,
-            segments: [
-              {
-                videoUrl: status.exteriorVideoUrl,
-                downloadUrl: status.exteriorVideoUrl,
-                durationSeconds: 5,
-                label: "Exterior — All Elevations & Aerial",
-              },
-              {
-                videoUrl: status.interiorVideoUrl,
-                downloadUrl: status.interiorVideoUrl,
-                durationSeconds: 10,
-                label: "Interior AEC Walkthrough",
-              },
-            ],
+            durationSeconds: 10,
+            shotCount: 1,
           },
           metadata: { engine: "kling-official", real: true },
           createdAt: new Date(),
@@ -309,16 +299,13 @@ async function pollVideoGeneration(
         addArtifactFn(nodeId, finalArtifact);
         clearVideoProgressFn(nodeId);
 
-        // Persist videos to R2 (fire-and-forget — don't block playback)
-        if (status.exteriorVideoUrl) {
-          persistVideoToR2(status.exteriorVideoUrl, `exterior-${nodeId}.mp4`, nodeId, addArtifactFn, finalArtifact).catch(() => {});
-        }
-        if (status.interiorVideoUrl) {
-          persistVideoToR2(status.interiorVideoUrl, `interior-${nodeId}.mp4`, nodeId, addArtifactFn, finalArtifact).catch(() => {});
+        // Persist video to R2 (fire-and-forget — don't block playback)
+        if (videoUrl) {
+          persistVideoToR2(videoUrl, `walkthrough-${nodeId}.mp4`, nodeId, addArtifactFn, finalArtifact).catch(() => {});
         }
 
         toast.success("Video walkthrough ready!", {
-          description: "15s AEC cinematic walkthrough generated successfully",
+          description: "10s cinematic walkthrough generated successfully",
           duration: 5000,
         });
         return;
@@ -782,7 +769,7 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
             // Kling API path: poll server for progress
             log("info", "Video generation started in background — polling for progress");
             toast.info("Video generating in background...", {
-              description: "15s AEC walkthrough — you'll be notified when it's ready",
+              description: "10s AEC walkthrough — you'll be notified when it's ready",
               duration: 5000,
             });
 

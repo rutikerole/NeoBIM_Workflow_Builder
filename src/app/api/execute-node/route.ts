@@ -1457,7 +1457,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
       if (renderImageUrl) {
         try {
-          // Submit both video tasks to Kling API (non-blocking — returns task IDs immediately)
+          // Submit single 10s video task to Kling API (non-blocking — returns task ID immediately)
           const submitted = await submitDualWalkthrough(
             renderImageUrl,
             buildingDesc,
@@ -1466,11 +1466,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           );
 
           const pipelineLabel = isFloorPlanInput
-            ? "floor plan SVG → PNG → Kling Official API (pro, dual) → 2× MP4 video"
-            : "concept render → Kling Official API (pro, dual) → 2× MP4 video";
+            ? "floor plan SVG → PNG → Kling Official API (pro) → MP4 video"
+            : "concept render → Kling Official API (pro) → MP4 video";
           const walkthroughLabel = isFloorPlanInput
-            ? "Floor Plan → Cinematic Walkthrough — 15s (generating...)"
-            : "AEC Cinematic Walkthrough — 15s (generating...)";
+            ? "Floor Plan → Cinematic Walkthrough — 10s (generating...)"
+            : "AEC Cinematic Walkthrough — 10s (generating...)";
 
           // Return a "generating" artifact with task IDs — frontend will poll for progress
           artifact = {
@@ -1483,12 +1483,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               videoUrl: "",  // Will be filled when generation completes
               downloadUrl: "",
               label: walkthroughLabel,
-              content: `15s AEC walkthrough: 5s fast exterior + 10s detailed interior — ${buildingDesc.slice(0, 100)}`,
-              durationSeconds: 15,
-              shotCount: 2,
+              content: `10s AEC walkthrough: exterior approach → orbit → interior entry — ${buildingDesc.slice(0, 100)}`,
+              durationSeconds: 10,
+              shotCount: 1,
               pipeline: pipelineLabel,
-              costUsd: 1.50,
-              segments: [],
+              costUsd: 1.00,
               // Video generation state — frontend uses these to poll
               videoGenerationStatus: "processing",
               exteriorTaskId: submitted.exteriorTaskId,
@@ -1499,8 +1498,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             metadata: {
               engine: "kling-official",
               real: true,
-              exteriorTaskId: submitted.exteriorTaskId,
-              interiorTaskId: submitted.interiorTaskId,
+              taskId: submitted.exteriorTaskId,
               submittedAt: submitted.submittedAt,
               isFloorPlanInput,
             },

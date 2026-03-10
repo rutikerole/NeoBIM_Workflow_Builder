@@ -639,6 +639,67 @@ export function buildFloorPlanInteriorPrompt(buildingDescription: string, roomIn
   );
 }
 
+// ─── Combined Single-Video Prompts (10s, no segments) ────────────────────────
+
+/**
+ * Combined walkthrough prompt for concept render input.
+ * Single continuous 10s video: exterior approach → orbit → interior entry.
+ * Replaces the old dual 5s+10s approach with one smooth shot.
+ */
+export function buildCombinedWalkthroughPrompt(buildingDescription: string): string {
+  const desc = buildingDescription.slice(0, 500);
+  const { isHighrise, hasGlass } = detectBuildingType(desc);
+
+  const materialNote = hasGlass
+    ? "Glass curtain wall with sky reflections, aluminum mullions, triple-glazed low-e units."
+    : "Photorealistic materials — exposed concrete with formwork marks, weathering steel cladding, anodized aluminum frames.";
+
+  const interiorStyle = isHighrise
+    ? "grand double-height lobby with Carrara marble reception desk, polished terrazzo floor, recessed LED cove lighting, " +
+      "open-plan office with Herman Miller workstations, full-height glass partitions, panoramic city views"
+    : "polished concrete lobby with feature reception desk, natural timber accents, " +
+      "open workspaces with contemporary furniture, floor-to-ceiling windows with natural light";
+
+  return (
+    `Hyper-realistic cinematic architectural visualization, indistinguishable from real drone footage, of: ${desc.slice(0, 150)}. ` +
+    "Shot on RED V-Raptor 8K, anamorphic lens, f/2.8. Single continuous camera movement. " +
+    "Camera starts at street level — slow forward dolly toward the building entrance, " +
+    "capturing polished stone paving, landscaped forecourt, mature trees casting dappled shadows, the full building rising above. " +
+    "Camera smoothly orbits the building revealing depth and massing — façade details, structural grid, curtain wall profiles. " +
+    "Camera glides through the main entrance into the interior — " +
+    `${interiorStyle}. ` +
+    `${materialNote} ` +
+    "Golden hour sunlight, volumetric haze, cinematic color grading, photorealistic global illumination, " +
+    "V-Ray/Corona render quality, 8K textures, ultra detailed, no distortion, no artifacts."
+  );
+}
+
+/**
+ * Combined floor plan prompt for a single 10s video.
+ * 2D plan → 3D building extrusion → interior walkthrough in one continuous shot.
+ */
+export function buildFloorPlanCombinedPrompt(buildingDescription: string, roomInfo?: string): string {
+  const desc = buildingDescription.slice(0, 400);
+  const rooms = roomInfo ? ` Rooms: ${roomInfo.slice(0, 200)}.` : "";
+
+  return (
+    `Hyper-realistic cinematic architectural visualization. Source image is a 2D architectural floor plan of: ${desc.slice(0, 150)}.${rooms} ` +
+    "Shot on RED V-Raptor 8K, anamorphic lens. Single continuous camera movement. " +
+    "Camera starts looking down at the architectural floor plan — clean drawing with room layouts, wall lines, and labels. " +
+    "The 2D drawing begins transforming — floor plan lines rise and extrude upward into solid 3D walls, " +
+    "glass windows materialize in openings, concrete floor slabs form between stories, " +
+    "a complete photorealistic building grows from the flat blueprint. " +
+    "Camera lifts and smoothly orbits the newly formed 3D building — " +
+    "glass façade reflecting golden hour sky, stone cladding, landscaped entrance with mature trees. " +
+    "Camera descends and glides through the main entrance into the interior — " +
+    "polished stone lobby, feature reception desk, recessed LED lighting, " +
+    "contemporary furniture, floor-to-ceiling windows with warm natural light streaming in. " +
+    "Golden hour sunlight, volumetric atmospheric haze, cinematic color grading, " +
+    "photorealistic global illumination, V-Ray/Corona render quality, " +
+    "8K textures, ultra detailed, no distortion, no artifacts."
+  );
+}
+
 /**
  * Build a cinematic AEC walkthrough prompt from the building description.
  * Single-video fallback: complete 15s timeline in one video.
@@ -708,11 +769,14 @@ export interface SubmittedVideoTasks {
 }
 
 /**
- * Submit both video generation tasks to Kling API and return immediately
- * with the task IDs (no polling/waiting).
+ * Submit a SINGLE 10s video generation task to Kling API and return immediately.
+ * Produces one smooth continuous video (no multi-shot segments).
  *
- * When `options.isFloorPlan` is true, uses floor-plan-specific prompts that
- * describe a 2D plan → 3D building transformation instead of a standard walkthrough.
+ * When `options.isFloorPlan` is true, uses a floor-plan-specific combined prompt
+ * that describes a 2D plan → 3D building transformation + interior walkthrough.
+ *
+ * Returns the same task ID for both exterior/interior fields for backward compat
+ * with the existing polling infrastructure.
  */
 export async function submitDualWalkthrough(
   imageUrl: string,
@@ -722,34 +786,26 @@ export async function submitDualWalkthrough(
 ): Promise<SubmittedVideoTasks> {
   const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark, oversaturated colors, CGI look, video game graphics, toy model, miniature, tilt-shift, abstract, surreal, people walking, cars moving, birds flying, lens flare";
 
-  const exteriorPrompt = options?.isFloorPlan
-    ? buildFloorPlanExteriorPrompt(buildingDescription, options.roomInfo)
-    : buildExteriorPrompt(buildingDescription);
-  const interiorPrompt = options?.isFloorPlan
-    ? buildFloorPlanInteriorPrompt(buildingDescription, options.roomInfo)
-    : buildInteriorPrompt(buildingDescription);
+  // Single combined prompt covering full exterior → interior journey
+  const prompt = options?.isFloorPlan
+    ? buildFloorPlanCombinedPrompt(buildingDescription, options.roomInfo)
+    : buildCombinedWalkthroughPrompt(buildingDescription);
 
-  console.log(`[Video] Submitting DUAL walkthrough tasks (non-blocking)${options?.isFloorPlan ? " [FLOOR PLAN MODE]" : ""}`);
+  console.log(`[Video] Submitting SINGLE 10s walkthrough task${options?.isFloorPlan ? " [FLOOR PLAN MODE]" : ""}`);
 
-  // Submit both tasks in parallel — don't poll, return task IDs immediately
-  const [exteriorResult, interiorResult] = await Promise.all([
-    createTask(imageUrl, exteriorPrompt, negativePrompt, "5", "16:9", mode),
-    createTask(imageUrl, interiorPrompt, negativePrompt, "10", "16:9", mode),
-  ]);
+  // Submit ONE 10s task — one smooth continuous video
+  const result = await createTask(imageUrl, prompt, negativePrompt, "10", "16:9", mode);
+  const taskId = result.data.task_id;
 
-  const result = {
-    exteriorTaskId: exteriorResult.data.task_id,
-    interiorTaskId: interiorResult.data.task_id,
+  console.log("[Video] Task submitted!", { taskId });
+
+  // Return same ID for both fields (backward compat with polling infrastructure)
+  return {
+    exteriorTaskId: taskId,
+    interiorTaskId: taskId,
     buildingDescription,
     submittedAt: Date.now(),
   };
-
-  console.log("[Video] Tasks submitted!", {
-    exteriorTaskId: result.exteriorTaskId,
-    interiorTaskId: result.interiorTaskId,
-  });
-
-  return result;
 }
 
 export interface VideoTaskStatus {
@@ -764,18 +820,30 @@ export interface VideoTaskStatus {
 }
 
 /**
- * Check the status of both video tasks. Returns progress percentage
+ * Check the status of video task(s). Returns progress percentage
  * and video URLs when available. Non-blocking single check.
+ *
+ * Handles single-video mode (both IDs are the same) — only queries once.
  */
 export async function checkDualVideoStatus(
   exteriorTaskId: string,
   interiorTaskId: string,
 ): Promise<VideoTaskStatus> {
-  // Check both tasks in parallel
-  const [extResult, intResult] = await Promise.all([
-    klingFetch(`${KLING_IMAGE2VIDEO_PATH}/${exteriorTaskId}`, { method: "GET" }),
-    klingFetch(`${KLING_IMAGE2VIDEO_PATH}/${interiorTaskId}`, { method: "GET" }),
-  ]);
+  const isSingleMode = exteriorTaskId === interiorTaskId;
+
+  let extResult, intResult;
+
+  if (isSingleMode) {
+    // Single video mode — query once
+    extResult = await klingFetch(`${KLING_IMAGE2VIDEO_PATH}/${exteriorTaskId}`, { method: "GET" });
+    intResult = extResult; // Same task
+  } else {
+    // Dual mode (legacy) — query both
+    [extResult, intResult] = await Promise.all([
+      klingFetch(`${KLING_IMAGE2VIDEO_PATH}/${exteriorTaskId}`, { method: "GET" }),
+      klingFetch(`${KLING_IMAGE2VIDEO_PATH}/${interiorTaskId}`, { method: "GET" }),
+    ]);
+  }
 
   const extStatus = extResult.data.task_status as VideoTaskStatus["exteriorStatus"];
   const intStatus = intResult.data.task_status as VideoTaskStatus["interiorStatus"];
@@ -783,7 +851,7 @@ export async function checkDualVideoStatus(
   const extUrl = extResult.data.task_result?.videos?.[0]?.url ?? null;
   const intUrl = intResult.data.task_result?.videos?.[0]?.url ?? null;
 
-  // Calculate progress: exterior = 33% weight (5s), interior = 67% weight (10s)
+  // Progress: single mode = 100% weight on one task
   const statusToProgress = (s: string) =>
     s === "succeed" ? 100 : s === "processing" ? 50 : s === "submitted" ? 10 : 0;
 
