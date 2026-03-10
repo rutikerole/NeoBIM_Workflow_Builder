@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS } from "../constants";
 import type { ComplianceItem } from "../useShowcaseData";
 
@@ -31,6 +32,7 @@ const STATUS_CONFIG = {
 };
 
 export function ComplianceBadges({ items }: ComplianceBadgesProps) {
+  const { t } = useLocale();
   if (items.length === 0) return null;
 
   return (
@@ -41,7 +43,7 @@ export function ComplianceBadges({ items }: ComplianceBadgesProps) {
         color: COLORS.TEXT_SECONDARY,
         marginBottom: 12,
       }}>
-        Compliance Checks
+        {t('showcase.complianceChecks')}
       </div>
 
       <div style={{

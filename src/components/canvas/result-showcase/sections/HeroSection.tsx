@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Play, Maximize2 } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS } from "../constants";
 import type { VideoInfo } from "../useShowcaseData";
 
@@ -12,6 +13,7 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ videoData, heroImageUrl, onExpandVideo }: HeroSectionProps) {
+  const { t } = useLocale();
   if (!videoData?.videoUrl && !heroImageUrl) return null;
 
   return (
@@ -79,7 +81,7 @@ export function HeroSection({ videoData, heroImageUrl, onExpandVideo }: HeroSect
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Play size={12} style={{ color: COLORS.CYAN }} />
               <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.TEXT_PRIMARY }}>
-                Cinematic Walkthrough
+                {t('showcase.cinematicWalkthrough')}
               </span>
               <span style={{ fontSize: 10, color: COLORS.TEXT_MUTED }}>
                 {videoData.durationSeconds}s · {videoData.shotCount} shots
@@ -111,7 +113,7 @@ export function HeroSection({ videoData, heroImageUrl, onExpandVideo }: HeroSect
               }}
             >
               <Maximize2 size={10} />
-              Fullscreen
+              {t('showcase.fullscreen')}
             </button>
           </>
         )}

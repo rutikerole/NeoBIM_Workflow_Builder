@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS } from "../constants";
 import type { CostItem } from "../useShowcaseData";
 
@@ -9,6 +10,7 @@ interface CostBreakdownBarsProps {
 }
 
 export function CostBreakdownBars({ items }: CostBreakdownBarsProps) {
+  const { t } = useLocale();
   if (items.length === 0) return null;
 
   const maxVal = Math.max(...items.map(i => i.value), 1);
@@ -21,7 +23,7 @@ export function CostBreakdownBars({ items }: CostBreakdownBarsProps) {
         color: COLORS.TEXT_SECONDARY,
         marginBottom: 12,
       }}>
-        Cost Breakdown
+        {t('showcase.costBreakdown')}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

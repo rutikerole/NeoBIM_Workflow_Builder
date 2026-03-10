@@ -4,7 +4,17 @@ import { motion } from "framer-motion";
 import {
   LayoutDashboard, Film, BarChart3, Box, Download,
 } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS, TAB_DEFS, type TabId } from "./constants";
+import type { TranslationKey } from "@/lib/i18n";
+
+const TAB_LABEL_KEYS: Record<TabId, TranslationKey> = {
+  overview: 'showcase.tabOverview',
+  media: 'showcase.tabMedia',
+  data: 'showcase.tabData',
+  model: 'showcase.tabModel',
+  export: 'showcase.tabExport',
+};
 
 const ICONS: Record<TabId, React.ReactNode> = {
   overview: <LayoutDashboard size={14} />,
@@ -21,7 +31,8 @@ interface TabBarProps {
 }
 
 export function TabBar({ availableTabs, activeTab, onTabChange }: TabBarProps) {
-  const visibleTabs = TAB_DEFS.filter(t => availableTabs.includes(t.id));
+  const { t } = useLocale();
+  const visibleTabs = TAB_DEFS.filter(td => availableTabs.includes(td.id));
 
   return (
     <div
@@ -69,7 +80,7 @@ export function TabBar({ availableTabs, activeTab, onTabChange }: TabBarProps) {
             }}
           >
             {ICONS[tab.id]}
-            {tab.label}
+            {t(TAB_LABEL_KEYS[tab.id])}
             {isActive && (
               <motion.div
                 layoutId="tab-indicator"

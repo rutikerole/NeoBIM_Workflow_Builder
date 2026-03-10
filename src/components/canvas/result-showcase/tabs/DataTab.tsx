@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronDown } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS } from "../constants";
 import { KpiStrip } from "../sections/KpiStrip";
 import { CostBreakdownBars } from "../sections/CostBreakdownBars";
@@ -14,12 +15,13 @@ interface DataTabProps {
 }
 
 export function DataTab({ data }: DataTabProps) {
+  const { t } = useLocale();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       {/* Full KPI Dashboard */}
       {data.kpiMetrics.length > 0 && (
         <section>
-          <SectionTitle>Key Performance Indicators</SectionTitle>
+          <SectionTitle>{t('showcase.kpiTitle')}</SectionTitle>
           <KpiStrip metrics={data.kpiMetrics} maxItems={20} />
         </section>
       )}
@@ -41,7 +43,7 @@ export function DataTab({ data }: DataTabProps) {
       {/* Tables */}
       {data.tableData.length > 0 && (
         <section>
-          <SectionTitle>Tables</SectionTitle>
+          <SectionTitle>{t('showcase.tables')}</SectionTitle>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {data.tableData.map((table, idx) => (
               <TableView key={idx} table={table} index={idx} />
@@ -53,7 +55,7 @@ export function DataTab({ data }: DataTabProps) {
       {/* JSON Explorer */}
       {data.jsonData.length > 0 && (
         <section>
-          <SectionTitle>Structured Data</SectionTitle>
+          <SectionTitle>{t('showcase.structuredData')}</SectionTitle>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {data.jsonData.map((item, idx) => (
               <JsonExplorer key={idx} label={item.label} json={item.json} />
@@ -68,6 +70,7 @@ export function DataTab({ data }: DataTabProps) {
 // ─── Table Component ────────────────────────────────────────────────────────
 
 function TableView({ table, index }: { table: TableDataItem; index: number }) {
+  const { t } = useLocale();
   const [showAll, setShowAll] = useState(false);
   const visibleRows = showAll ? table.rows : table.rows.slice(0, 15);
 
@@ -177,7 +180,7 @@ function TableView({ table, index }: { table: TableDataItem; index: number }) {
                       fontSize: 12,
                     }}
                   >
-                    {i === 0 ? "Total" : i === table.headers.length - 1
+                    {i === 0 ? t('showcase.total') : i === table.headers.length - 1
                       ? grandTotal!.toLocaleString(undefined, { maximumFractionDigits: 2 })
                       : ""}
                   </td>
@@ -203,7 +206,7 @@ function TableView({ table, index }: { table: TableDataItem; index: number }) {
             borderTop: `1px solid ${COLORS.GLASS_BORDER}`,
           }}
         >
-          {showAll ? "Show less" : `Show all ${table.rows.length} rows`}
+          {showAll ? t('showcase.showLess') : `${t('showcase.showAllRows')} ${table.rows.length} ${t('showcase.rows')}`}
         </button>
       )}
     </motion.div>
@@ -213,6 +216,7 @@ function TableView({ table, index }: { table: TableDataItem; index: number }) {
 // ─── JSON Explorer ──────────────────────────────────────────────────────────
 
 function JsonExplorer({ label, json }: { label: string; json: Record<string, unknown> }) {
+  const { t } = useLocale();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -242,7 +246,7 @@ function JsonExplorer({ label, json }: { label: string; json: Record<string, unk
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         {label}
         <span style={{ fontSize: 10, color: COLORS.TEXT_MUTED, fontWeight: 400 }}>
-          {Object.keys(json).length} keys
+          {Object.keys(json).length} {t('showcase.keys')}
         </span>
       </button>
 

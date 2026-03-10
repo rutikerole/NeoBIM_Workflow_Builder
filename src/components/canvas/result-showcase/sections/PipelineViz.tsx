@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS, CATEGORY_COLORS } from "../constants";
 import type { PipelineStep } from "../useShowcaseData";
 
@@ -16,6 +17,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 };
 
 export function PipelineViz({ steps }: PipelineVizProps) {
+  const { t } = useLocale();
   if (steps.length === 0) return null;
 
   return (
@@ -28,7 +30,7 @@ export function PipelineViz({ steps }: PipelineVizProps) {
         letterSpacing: "0.08em",
         marginBottom: 10,
       }}>
-        Pipeline
+        {t('showcase.pipelineTitle')}
       </div>
 
       <div style={{

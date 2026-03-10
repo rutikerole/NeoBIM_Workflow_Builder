@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS } from "../constants";
 import type { ShowcaseData, ProceduralModelData, GlbModelData } from "../useShowcaseData";
 
@@ -20,6 +21,7 @@ interface ModelTabProps {
 }
 
 export function ModelTab({ data }: ModelTabProps) {
+  const { t } = useLocale();
   const model = data.model3dData;
 
   if (!model && !data.svgContent) {
@@ -32,7 +34,7 @@ export function ModelTab({ data }: ModelTabProps) {
         color: COLORS.TEXT_MUTED,
         fontSize: 13,
       }}>
-        No 3D model available
+        {t('showcase.no3dModel')}
       </div>
     );
   }
@@ -85,26 +87,26 @@ export function ModelTab({ data }: ModelTabProps) {
             color: COLORS.TEXT_PRIMARY,
             marginBottom: 4,
           }}>
-            Building Specifications
+            {t('showcase.buildingSpecs')}
           </div>
 
           {model.kind === "procedural" && (
             <SpecGrid specs={[
-              { label: "Building Type", value: model.buildingType },
-              { label: "Floors", value: String(model.floors) },
-              { label: "Height", value: `${model.height}m` },
-              { label: "Footprint", value: `${model.footprint} m²` },
-              { label: "GFA", value: `${model.gfa.toLocaleString()} m²` },
-              { label: "Renderer", value: "Procedural" },
+              { label: t('showcase.specBuildingType'), value: model.buildingType },
+              { label: t('showcase.specFloors'), value: String(model.floors) },
+              { label: t('showcase.specHeight'), value: `${model.height}m` },
+              { label: t('showcase.specFootprint'), value: `${model.footprint} m²` },
+              { label: t('showcase.specGfa'), value: `${model.gfa.toLocaleString()} m²` },
+              { label: t('showcase.specRenderer'), value: t('showcase.procedural') },
             ]} />
           )}
 
           {model.kind === "glb" && (
             <SpecGrid specs={[
-              { label: "Format", value: "GLB / glTF" },
-              ...(model.polycount ? [{ label: "Polycount", value: model.polycount.toLocaleString() }] : []),
-              ...(model.topology ? [{ label: "Topology", value: model.topology }] : []),
-              { label: "Renderer", value: "Three.js" },
+              { label: t('showcase.specFormat'), value: t('showcase.glbFormat') },
+              ...(model.polycount ? [{ label: t('showcase.specPolycount'), value: model.polycount.toLocaleString() }] : []),
+              ...(model.topology ? [{ label: t('showcase.specTopology'), value: model.topology }] : []),
+              { label: t('showcase.specRenderer'), value: t('showcase.threejs') },
             ]} />
           )}
         </motion.div>

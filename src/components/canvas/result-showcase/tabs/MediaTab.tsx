@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize2, X } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS } from "../constants";
 import type { ShowcaseData } from "../useShowcaseData";
 
@@ -12,6 +13,7 @@ interface MediaTabProps {
 }
 
 export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
+  const { t } = useLocale();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   return (
@@ -19,7 +21,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
       {/* Video Section */}
       {data.videoData?.videoUrl && (
         <section>
-          <SectionTitle>Video Walkthrough</SectionTitle>
+          <SectionTitle>{t('showcase.videoWalkthrough')}</SectionTitle>
           <div style={{
             borderRadius: 12,
             overflow: "hidden",
@@ -63,7 +65,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
                 }}
               >
                 <Maximize2 size={10} />
-                Theater Mode
+                {t('showcase.theaterMode')}
               </button>
             </div>
           </div>
@@ -79,10 +81,10 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
             borderRadius: 8,
           }}>
             {[
-              { label: "Duration", value: `${data.videoData.durationSeconds}s` },
-              { label: "Shots", value: String(data.videoData.shotCount) },
-              ...(data.videoData.pipeline ? [{ label: "Pipeline", value: data.videoData.pipeline }] : []),
-              ...(data.videoData.costUsd != null ? [{ label: "Cost", value: `$${data.videoData.costUsd.toFixed(2)}` }] : []),
+              { label: t('showcase.duration'), value: `${data.videoData.durationSeconds}s` },
+              { label: t('showcase.shots'), value: String(data.videoData.shotCount) },
+              ...(data.videoData.pipeline ? [{ label: t('showcase.pipeline'), value: data.videoData.pipeline }] : []),
+              ...(data.videoData.costUsd != null ? [{ label: t('showcase.cost'), value: `$${data.videoData.costUsd.toFixed(2)}` }] : []),
             ].map(item => (
               <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: 10, color: COLORS.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -100,7 +102,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
       {/* Image Gallery */}
       {data.allImageUrls.length > 0 && (
         <section>
-          <SectionTitle>Images & Renders</SectionTitle>
+          <SectionTitle>{t('showcase.imagesRenders')}</SectionTitle>
           <div style={{
             display: "grid",
             gridTemplateColumns: data.allImageUrls.length === 1
@@ -145,7 +147,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
       {/* SVG Floor Plan */}
       {data.svgContent && (
         <section>
-          <SectionTitle>Floor Plan</SectionTitle>
+          <SectionTitle>{t('showcase.floorPlan')}</SectionTitle>
           <div style={{
             background: "#fff",
             borderRadius: 10,

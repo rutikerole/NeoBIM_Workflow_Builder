@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle2, Zap, ArrowLeft } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS } from "./constants";
 
 interface ShowcaseHeaderProps {
@@ -19,6 +20,7 @@ export function ShowcaseHeader({
   totalNodes,
   onClose,
 }: ShowcaseHeaderProps) {
+  const { t } = useLocale();
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -65,7 +67,7 @@ export function ShowcaseHeader({
           }}
         >
           <ArrowLeft size={13} />
-          Back
+          {t('showcase.back')}
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -92,7 +94,7 @@ export function ShowcaseHeader({
           >
             <CheckCircle2 size={10} style={{ color: COLORS.EMERALD }} />
             <span style={{ fontSize: 10, fontWeight: 600, color: COLORS.EMERALD }}>
-              Complete
+              {t('showcase.complete')}
             </span>
           </div>
         </div>
@@ -103,13 +105,13 @@ export function ShowcaseHeader({
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <Zap size={11} style={{ color: COLORS.AMBER }} />
           <span style={{ fontSize: 11, color: COLORS.TEXT_MUTED }}>
-            {totalArtifacts} artifacts
+            {totalArtifacts} {t('showcase.artifacts')}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <CheckCircle2 size={11} style={{ color: COLORS.EMERALD }} />
           <span style={{ fontSize: 11, color: COLORS.TEXT_MUTED }}>
-            {successNodes}/{totalNodes} nodes
+            {successNodes}/{totalNodes} {t('showcase.nodes')}
           </span>
         </div>
       </div>

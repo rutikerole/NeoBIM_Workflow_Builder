@@ -8,6 +8,7 @@ import {
   Video, BarChart3, Table2, Code2, File, Zap,
   Building2, Ruler, MapPin, Shield,
 } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 import { COLORS, CATEGORY_COLORS } from "../constants";
 import { HeroSection } from "../sections/HeroSection";
 import { KpiStrip } from "../sections/KpiStrip";
@@ -15,6 +16,7 @@ import { PipelineViz } from "../sections/PipelineViz";
 import { AnimatedNumber } from "../sections/AnimatedNumber";
 import type { ShowcaseData } from "../useShowcaseData";
 import type { TabId } from "../constants";
+import type { TranslationKey } from "@/lib/i18n";
 
 interface OverviewTabProps {
   data: ShowcaseData;
@@ -48,19 +50,20 @@ const ARTIFACT_COLORS: Record<string, string> = {
   file: "#64748B",
 };
 
-const ARTIFACT_LABELS: Record<string, string> = {
-  text: "Document",
-  image: "Render",
-  video: "Walkthrough",
-  "3d": "3D Model",
-  kpi: "Metrics",
-  table: "Data Table",
-  json: "Structured Data",
-  svg: "Floor Plan",
-  file: "Export File",
+const ARTIFACT_LABEL_KEYS: Record<string, TranslationKey> = {
+  text: "showcase.typeDocument",
+  image: "showcase.typeRender",
+  video: "showcase.typeWalkthrough",
+  "3d": "showcase.type3dModel",
+  kpi: "showcase.typeMetrics",
+  table: "showcase.typeDataTable",
+  json: "showcase.typeStructuredData",
+  svg: "showcase.typeFloorPlan",
+  file: "showcase.typeExportFile",
 };
 
 export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabProps) {
+  const { t } = useLocale();
   const [descExpanded, setDescExpanded] = useState(false);
   const descLines = data.textContent.split("\n");
   const shortDesc = descLines.slice(0, 4).join("\n");
@@ -124,7 +127,7 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
       >
-        <SectionHeader icon={<Layers size={13} />} title="Deliverables" />
+        <SectionHeader icon={<Layers size={13} />} title={t('showcase.deliverables')} />
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
@@ -133,7 +136,8 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
           {artifactBreakdown.map((item, i) => {
             const color = ARTIFACT_COLORS[item.type] ?? COLORS.TEXT_MUTED;
             const icon = ARTIFACT_ICONS[item.type] ?? <File size={16} />;
-            const typeLabel = ARTIFACT_LABELS[item.type] ?? item.type;
+            const labelKey = ARTIFACT_LABEL_KEYS[item.type];
+            const typeLabel = labelKey ? t(labelKey) : item.type;
 
             return (
               <motion.div
@@ -220,7 +224,7 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
           animate={{ opacity: 1 }}
           transition={{ delay: 0.25 }}
         >
-          <SectionHeader icon={<FileText size={13} />} title="Project Brief" />
+          <SectionHeader icon={<FileText size={13} />} title={t('showcase.projectBrief')} />
           <div
             style={{
               background: COLORS.GLASS_BG,
@@ -256,7 +260,7 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
                     marginLeft: 8,
                   }}
                 >
-                  {descExpanded ? "Show less" : `Show more (+${descLines.length - 4} lines)`}
+                  {descExpanded ? t('showcase.showLess') : `${t('showcase.showMoreLines')} (+${descLines.length - 4} ${t('showcase.lines')})`}
                   {descExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                 </button>
               )}
@@ -277,7 +281,7 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <SectionHeader icon={<Cpu size={13} />} title="Technology Stack" />
+          <SectionHeader icon={<Cpu size={13} />} title={t('showcase.technologyStack')} />
           <div style={{
             background: COLORS.GLASS_BG,
             border: `1px solid ${COLORS.GLASS_BORDER}`,
@@ -331,7 +335,7 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <SectionHeader icon={<Zap size={13} />} title="Quick Actions" />
+          <SectionHeader icon={<Zap size={13} />} title={t('showcase.quickActions')} />
           <div style={{
             display: "flex",
             flexDirection: "column",
@@ -340,8 +344,8 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
             {data.model3dData && (
               <QuickActionButton
                 icon={<Box size={14} />}
-                label="View 3D Model"
-                description="Interactive architectural massing"
+                label={t('showcase.view3dModel')}
+                description={t('showcase.interactiveMassing')}
                 color={COLORS.CYAN}
                 onClick={() => onNavigateTab("model")}
               />
@@ -349,8 +353,8 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
             {data.videoData && (
               <QuickActionButton
                 icon={<Film size={14} />}
-                label="Watch Walkthrough"
-                description={`${data.videoData.durationSeconds}s cinematic · ${data.videoData.shotCount} shots`}
+                label={t('showcase.watchWalkthrough')}
+                description={`${data.videoData.durationSeconds}s · ${data.videoData.shotCount} ${t('showcase.shots').toLowerCase()}`}
                 color={COLORS.VIOLET}
                 onClick={onExpandVideo}
               />
@@ -358,16 +362,16 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
             {data.allImageUrls.length > 0 && (
               <QuickActionButton
                 icon={<ImageIcon size={14} />}
-                label="View Renders"
-                description={`${data.allImageUrls.length} concept render${data.allImageUrls.length > 1 ? "s" : ""}`}
+                label={t('showcase.viewRenders')}
+                description={`${data.allImageUrls.length} ${data.allImageUrls.length > 1 ? t('showcase.conceptRenders') : t('showcase.conceptRender')}`}
                 color={COLORS.EMERALD}
                 onClick={() => onNavigateTab("media")}
               />
             )}
             <QuickActionButton
               icon={<FileDown size={14} />}
-              label="Download Center"
-              description="PDF report, video, files"
+              label={t('showcase.downloadCenter')}
+              description={t('showcase.pdfVideoFiles')}
               color={COLORS.AMBER}
               onClick={() => onNavigateTab("export")}
             />
@@ -384,25 +388,26 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab }: OverviewTabP
 // ─── Execution Summary Panel (shown when no KPIs) ───────────────────────────
 
 function ExecutionSummaryPanel({ data }: { data: ShowcaseData }) {
+  const { t } = useLocale();
   const stats = [
     {
       icon: <Layers size={16} />,
-      label: "Artifacts",
+      label: t('showcase.statsArtifacts'),
       value: data.totalArtifacts,
       color: COLORS.CYAN,
     },
     {
       icon: <Sparkles size={16} />,
-      label: "Nodes Run",
+      label: t('showcase.statsNodesRun'),
       value: data.successNodes,
       suffix: `/ ${data.totalNodes}`,
       color: COLORS.EMERALD,
     },
     {
       icon: <Clock size={16} />,
-      label: "Pipeline",
+      label: t('showcase.statsPipeline'),
       value: data.pipelineSteps.length,
-      suffix: " steps",
+      suffix: ` ${t('showcase.statsSteps')}`,
       color: COLORS.AMBER,
     },
   ];
@@ -522,7 +527,7 @@ function ExecutionSummaryPanel({ data }: { data: ShowcaseData }) {
                 {ARTIFACT_ICONS[type] ?? <File size={10} />}
               </div>
               <span style={{ fontSize: 9, color, fontWeight: 600 }}>
-                {count} {ARTIFACT_LABELS[type] ?? type}
+                {count} {ARTIFACT_LABEL_KEYS[type] ? t(ARTIFACT_LABEL_KEYS[type]) : type}
               </span>
             </div>
           );
@@ -576,11 +581,12 @@ function deriveTechStack(data: ShowcaseData): TechItem[] {
 // ─── AEC Ambient Footer ─────────────────────────────────────────────────────
 
 function AECFooter({ data }: { data: ShowcaseData }) {
+  const { t } = useLocale();
   const aecFacts = [
-    { icon: <Building2 size={13} />, text: "AEC-grade output quality" },
-    { icon: <Shield size={13} />, text: "Enterprise-ready deliverables" },
-    { icon: <Ruler size={13} />, text: "Dimensionally accurate" },
-    { icon: <MapPin size={13} />, text: "Context-aware generation" },
+    { icon: <Building2 size={13} />, text: t('showcase.aecGrade') },
+    { icon: <Shield size={13} />, text: t('showcase.enterpriseReady') },
+    { icon: <Ruler size={13} />, text: t('showcase.dimensionallyAccurate') },
+    { icon: <MapPin size={13} />, text: t('showcase.contextAware') },
   ];
 
   return (
