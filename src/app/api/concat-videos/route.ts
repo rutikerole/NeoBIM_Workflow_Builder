@@ -27,9 +27,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  console.log("[RENDER] /api/concat-videos called");
+  console.log("[RENDER] R2 configured:", isR2Configured());
+
   if (!isR2Configured()) {
+    console.error("[RENDER] ❌ R2 NOT configured — concat-videos cannot work without R2 storage!");
     return NextResponse.json(
-      formatErrorResponse({ title: "Storage not configured", message: "R2 storage is not configured", code: "NET_001" }),
+      formatErrorResponse({ title: "Storage not configured", message: "R2 storage is not configured. Video concatenation requires R2 for output storage.", code: "NET_001" }),
       { status: 503 },
     );
   }

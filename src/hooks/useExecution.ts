@@ -232,6 +232,10 @@ async function pollVideoGeneration(
 ): Promise<void> {
   const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
 
+  console.log("[POLL] === Starting video poll ===");
+  console.log("[POLL] exteriorTaskId:", exteriorTaskId);
+  console.log("[POLL] interiorTaskId:", interiorTaskId);
+
   setVideoProgressFn(nodeId, {
     progress: 5,
     status: "processing",
@@ -243,16 +247,26 @@ async function pollVideoGeneration(
     await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
 
     try {
+      console.log("[POLL] Checking video status...");
       const res = await fetch(
         `/api/video-status?exteriorTaskId=${encodeURIComponent(exteriorTaskId)}&interiorTaskId=${encodeURIComponent(interiorTaskId)}`
       );
 
       if (!res.ok) {
-        console.error("[Video Poll] HTTP error:", res.status);
+        console.error("[POLL] HTTP error:", res.status);
         continue; // Retry on server errors
       }
 
       const status = await res.json();
+      console.log("[POLL] Status response:", JSON.stringify(status));
+      console.log("[POLL] Exterior status:", status.exteriorStatus);
+      console.log("[POLL] Interior status:", status.interiorStatus);
+      console.log("[POLL] Exterior video URL:", status.exteriorVideoUrl || "NONE");
+      console.log("[POLL] Interior video URL:", status.interiorVideoUrl || "NONE");
+      console.log("[POLL] Progress:", status.progress);
+      console.log("[POLL] isComplete:", status.isComplete);
+      console.log("[POLL] hasFailed:", status.hasFailed);
+      console.log("[POLL] failureMessage:", status.failureMessage || "NONE");
 
       // Update progress in store
       setVideoProgressFn(nodeId, {
@@ -286,9 +300,14 @@ async function pollVideoGeneration(
         let finalVideoUrl = status.exteriorVideoUrl ?? "";
         let persistedUrl: string | undefined;
 
+        console.log("[RENDER] Videos received by frontend:");
+        console.log("[RENDER] Exterior URL:", status.exteriorVideoUrl || "NONE");
+        console.log("[RENDER] Interior URL:", status.interiorVideoUrl || "NONE");
+        console.log("[RENDER] Are both present?", !!status.exteriorVideoUrl && !!status.interiorVideoUrl);
+
         if (status.exteriorVideoUrl && status.interiorVideoUrl) {
           try {
-            console.log("[Video Poll] Stitching 5s + 10s into single 15s MP4...");
+            console.log("[RENDER] Both videos available — calling /api/concat-videos to stitch 5s + 10s...");
             const concatRes = await fetch("/api/concat-videos", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -299,18 +318,26 @@ async function pollVideoGeneration(
               }),
             });
 
+            console.log("[RENDER] concat-videos response status:", concatRes.status);
             if (concatRes.ok) {
               const concatData = await concatRes.json();
               finalVideoUrl = concatData.videoUrl;
               persistedUrl = concatData.videoUrl; // Already on R2
-              console.log("[Video Poll] Stitched 15s video ready:", finalVideoUrl);
+              console.log("[RENDER] ✅ Stitched 15s video ready:", finalVideoUrl);
             } else {
-              console.warn("[Video Poll] Concat failed, using exterior clip as fallback");
+              const concatError = await concatRes.text();
+              console.warn("[RENDER] ❌ Concat FAILED (status " + concatRes.status + "):", concatError);
+              console.warn("[RENDER] Falling back to exterior clip ONLY (5s)");
             }
           } catch (concatErr) {
-            console.warn("[Video Poll] Concat error, using exterior clip:", concatErr);
+            console.warn("[RENDER] ❌ Concat error, using exterior clip ONLY (5s):", concatErr);
           }
+        } else {
+          console.warn("[RENDER] Missing one or both video URLs — cannot concat");
+          console.warn("[RENDER] Will use exterior URL only:", finalVideoUrl?.slice(0, 100));
         }
+
+        console.log("[RENDER] What is being set as the final video?", finalVideoUrl?.slice(0, 150));
 
         const finalArtifact: ExecutionArtifact = {
           id: `video-${nodeId}`,

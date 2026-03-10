@@ -234,12 +234,17 @@ async function createTask(
 ): Promise<KlingTaskResponse> {
   const errors: string[] = [];
 
-  const isBase64 = !imageUrl.startsWith("http");
-  console.log(`[Video] createTask: image type: ${isBase64 ? `base64 (${imageUrl.length} chars)` : `URL: ${imageUrl.slice(0, 100)}`}`);
+  console.log("========== createTask START ==========");
+  console.log("[CREATE] image type:", imageUrl?.startsWith("http") ? "URL" : "base64");
+  console.log("[CREATE] image length:", imageUrl?.length);
+  console.log("[CREATE] prompt (FULL):", prompt);
+  console.log("[CREATE] duration:", duration);
+  console.log("[CREATE] mode:", mode);
+  console.log("[CREATE] aspectRatio:", aspectRatio);
 
   for (const modelName of MODELS) {
     try {
-      console.log(`[Video] Trying model: ${modelName}, mode: ${mode}, duration: ${duration}s`);
+      console.log(`[CREATE] Trying model: ${modelName}`);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const body: Record<string, any> = {
@@ -257,12 +262,19 @@ async function createTask(
         body.cfg_scale = 0.5;
       }
 
+      console.log("[CREATE] EXACT Kling API request body:", JSON.stringify({
+        ...body,
+        image: body.image?.length > 100 ? body.image?.slice(0, 50) + "...[truncated, total=" + body.image.length + "]" : body.image,
+      }));
+
       const result = await klingFetch(KLING_IMAGE2VIDEO_PATH, {
         method: "POST",
         body,
       });
 
-      console.log(`[Video] Task created with ${modelName}! taskId=${result.data.task_id}`);
+      console.log(`[CREATE] ✅ Task created with ${modelName}! taskId=${result.data.task_id}`);
+      console.log("[CREATE] Full API response:", JSON.stringify(result));
+      console.log("========== createTask END ==========");
       return result;
     } catch (err) {
       const msg = (err as Error).message;
@@ -650,6 +662,14 @@ export async function submitDualWalkthrough(
   mode: "std" | "pro" = "pro",
   options?: { isFloorPlan?: boolean; roomInfo?: string },
 ): Promise<SubmittedVideoTasks> {
+  console.log("========== submitDualWalkthrough START ==========");
+  console.log("[DUAL] imageUrl type:", imageUrl?.startsWith("http") ? "URL" : "base64");
+  console.log("[DUAL] imageUrl length:", imageUrl?.length);
+  console.log("[DUAL] buildingDescription:", buildingDescription?.slice(0, 200));
+  console.log("[DUAL] mode:", mode);
+  console.log("[DUAL] isFloorPlan:", options?.isFloorPlan);
+  console.log("[DUAL] roomInfo:", options?.roomInfo?.slice(0, 200) || "NONE");
+
   const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark, oversaturated colors, CGI look, video game graphics, toy model, miniature, tilt-shift, abstract, surreal, people walking, cars moving, birds flying, lens flare";
 
   const exteriorPrompt = options?.isFloorPlan
@@ -659,7 +679,10 @@ export async function submitDualWalkthrough(
     ? buildFloorPlanInteriorPrompt(buildingDescription, options.roomInfo)
     : buildInteriorPrompt(buildingDescription);
 
-  console.log(`[Video] Submitting DUAL walkthrough tasks (5s + 10s)${options?.isFloorPlan ? " [FLOOR PLAN MODE]" : ""}`);
+  console.log("[DUAL] exteriorPrompt (FULL):", exteriorPrompt);
+  console.log("[DUAL] interiorPrompt (FULL):", interiorPrompt);
+  console.log("[DUAL] About to submit TWO tasks in parallel...");
+  console.log("[DUAL] Exterior: duration=5, Interior: duration=10");
 
   // Submit both tasks in parallel — don't poll, return task IDs immediately
   const [exteriorResult, interiorResult] = await Promise.all([
@@ -667,17 +690,17 @@ export async function submitDualWalkthrough(
     createTask(imageUrl, interiorPrompt, negativePrompt, "10", "16:9", mode),
   ]);
 
+  console.log("[DUAL] Both tasks submitted!");
+  console.log("[DUAL] Exterior task ID:", exteriorResult.data.task_id);
+  console.log("[DUAL] Interior task ID:", interiorResult.data.task_id);
+  console.log("========== submitDualWalkthrough END ==========");
+
   const result = {
     exteriorTaskId: exteriorResult.data.task_id,
     interiorTaskId: interiorResult.data.task_id,
     buildingDescription,
     submittedAt: Date.now(),
   };
-
-  console.log("[Video] Tasks submitted!", {
-    exteriorTaskId: result.exteriorTaskId,
-    interiorTaskId: result.interiorTaskId,
-  });
 
   return result;
 }

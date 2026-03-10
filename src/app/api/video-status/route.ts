@@ -35,7 +35,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    console.log("[POLL] /api/video-status called with exteriorTaskId:", exteriorTaskId, "interiorTaskId:", interiorTaskId);
     const status = await checkDualVideoStatus(exteriorTaskId, interiorTaskId);
+    console.log("[POLL] checkDualVideoStatus result:", JSON.stringify(status));
 
     return NextResponse.json({
       ...status,

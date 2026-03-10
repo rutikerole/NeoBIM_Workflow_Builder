@@ -1385,8 +1385,17 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // Takes a concept render image (from GN-003) + building description
       // and generates a cinematic walkthrough video via Kling 3.0 Official API.
 
-      console.log("[GN-009] === INPUT DATA KEYS ===", Object.keys(inputData ?? {}));
-      console.log("[GN-009] Has fileData:", !!(inputData?.fileData), "Has url:", !!(inputData?.url), "Has imageUrl:", !!(inputData?.imageUrl), "Has svg:", !!(inputData?.svg));
+      console.log("========== GN-009 VIDEO WALKTHROUGH START ==========");
+      console.log("[GN-009] All input keys:", Object.keys(inputData ?? {}));
+      console.log("[GN-009] fileData present:", !!(inputData?.fileData));
+      console.log("[GN-009] fileData length:", typeof inputData?.fileData === "string" ? inputData.fileData.length : 0);
+      console.log("[GN-009] imageUrl present:", !!(inputData?.imageUrl));
+      console.log("[GN-009] url present:", !!(inputData?.url));
+      console.log("[GN-009] svg present:", !!(inputData?.svg));
+      console.log("[GN-009] content (buildingDesc) present:", !!(inputData?.content));
+      console.log("[GN-009] content value:", JSON.stringify(inputData?.content)?.slice(0, 200));
+      console.log("[GN-009] description present:", !!(inputData?.description));
+      console.log("[GN-009] mimeType:", inputData?.mimeType);
       console.log("[GN-009] KLING_ACCESS_KEY set:", !!process.env.KLING_ACCESS_KEY, "KLING_SECRET_KEY set:", !!process.env.KLING_SECRET_KEY);
 
       if (!process.env.KLING_ACCESS_KEY || !process.env.KLING_SECRET_KEY) {
@@ -1534,9 +1543,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         console.warn("[KLING]    To fix: deploy to a public URL, or use ngrok to tunnel localhost.");
       }
 
-      console.log("[KLING] Step 4: Submitting to Kling API...");
-      console.log("[KLING] Step 4: Image:", isBase64Direct ? `base64 (${renderImageUrl.length} chars)` : renderImageUrl.slice(0, 150));
-      console.log("[KLING] Step 4: Mode: pro, Floor plan:", isFloorPlanInput, "Base64 direct:", isBase64Direct);
+      console.log("[GN-009] About to call video function:");
+      console.log("[GN-009] Function name: submitDualWalkthrough");
+      console.log("[GN-009] Image being passed (first 100 chars):", renderImageUrl?.slice(0, 100));
+      console.log("[GN-009] Image type:", renderImageUrl?.startsWith("http") ? "URL" : renderImageUrl?.startsWith("data:") ? "data URI" : "raw base64");
+      console.log("[GN-009] Image total length:", renderImageUrl?.length);
+      console.log("[GN-009] Mode: pro");
+      console.log("[GN-009] isFloorPlan flag:", isFloorPlanInput);
+      console.log("[GN-009] roomInfo:", roomInfo || "NONE");
+      console.log("[GN-009] buildingDesc (first 200 chars):", buildingDesc?.slice(0, 200));
 
       // Submit dual video tasks (5s exterior + 10s interior) to Kling API
       try {
@@ -1547,10 +1562,14 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           isFloorPlanInput ? { isFloorPlan: true, roomInfo } : undefined,
         );
 
-        console.log("[KLING] Step 5: ✅ Kling tasks submitted!", {
-          exteriorTaskId: submitted.exteriorTaskId,
-          interiorTaskId: submitted.interiorTaskId,
-        });
+        console.log("[GN-009] Video function returned:");
+        console.log("[GN-009] Result type:", typeof submitted);
+        console.log("[GN-009] Result keys:", Object.keys(submitted));
+        console.log("[GN-009] Has exteriorTaskId:", !!submitted.exteriorTaskId);
+        console.log("[GN-009] Has interiorTaskId:", !!submitted.interiorTaskId);
+        console.log("[GN-009] exteriorTaskId:", submitted.exteriorTaskId || "NONE");
+        console.log("[GN-009] interiorTaskId:", submitted.interiorTaskId || "NONE");
+        console.log("[GN-009] submittedAt:", submitted.submittedAt);
 
         const pipelineLabel = isFloorPlanInput
           ? "floor plan image → Kling Official API (pro, dual) → ffmpeg concat → MP4"
@@ -1590,9 +1609,14 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           },
           createdAt: new Date(),
         };
+        console.log("[GN-009] Artifact data.exteriorTaskId:", submitted.exteriorTaskId);
+        console.log("[GN-009] Artifact data.interiorTaskId:", submitted.interiorTaskId);
+        console.log("[GN-009] Artifact data.videoGenerationStatus:", "processing");
+        console.log("[GN-009] Artifact data.durationSeconds:", 15);
+        console.log("========== GN-009 VIDEO WALKTHROUGH END ==========");
       } catch (klingErr) {
         const errMsg = klingErr instanceof Error ? klingErr.message : String(klingErr);
-        console.error("[KLING] Step 5: ❌ Kling API failed:", errMsg);
+        console.error("[GN-009] ❌ Kling API failed:", errMsg);
 
         const isLocal = !isBase64Direct && (renderImageUrl.includes("localhost") || renderImageUrl.includes("127.0.0.1"));
         const userMessage = isLocal
