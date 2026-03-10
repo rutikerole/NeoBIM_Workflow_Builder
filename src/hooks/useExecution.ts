@@ -825,6 +825,32 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
           updateNodeStatus(node.id, "success");
           log("info", `${node.data.label} completed with mock fallback`);
 
+          // Check if mock artifact requires background video generation (same as success path)
+          const mockArtData = mockArtifact.data as Record<string, unknown> | undefined;
+          if (mockArtifact.type === "video" && mockArtData?.videoGenerationStatus === "client-rendering") {
+            log("info", "Starting client-side Three.js walkthrough rendering (mock fallback)");
+            toast.info("Rendering 15s walkthrough...", {
+              description: "Three.js AEC cinematic walkthrough — rendering in your browser",
+              duration: 5000,
+            });
+            renderClientWalkthrough(
+              node.id,
+              mockArtData,
+              executionId,
+              addArtifact,
+              setVideoGenProgress,
+              clearVideoGenProgress,
+            ).catch(err => {
+              console.error("[Client Render] Unhandled error:", err);
+              setVideoGenProgress(node.id, {
+                progress: 0,
+                status: "failed",
+                phase: "Error",
+                failureMessage: err instanceof Error ? err.message : "Rendering failed",
+              });
+            });
+          }
+
           setEdgeFlowing(node.id, true);
           setTimeout(() => setEdgeFlowing(node.id, false), FLOW_DURATION_MS);
         } catch {

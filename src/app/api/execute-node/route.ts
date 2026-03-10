@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
     // STEP 1: Validate input BEFORE hitting any APIs
     assertValidInput(catalogueId, inputData);
 
-    let artifact: ExecutionArtifact;
+    let artifact!: ExecutionArtifact;
 
     if (catalogueId === "TR-003") {
       // Design Brief Analyzer — GPT-4o-mini
@@ -1409,17 +1409,6 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         (inputData?.imageUrl as string) ??
         "";
 
-      if (!renderImageUrl) {
-        return NextResponse.json(
-          formatErrorResponse({
-            title: "No render image provided",
-            message: "GN-009 requires an upstream concept render. Connect a Concept Render Generator (GN-003) node.",
-            code: "NODE_001",
-          }),
-          { status: 400 }
-        );
-      }
-
       // Build video from building description (from upstream TR-003 or fallback)
       const buildingDesc =
         (inputData?.content as string) ??
@@ -1427,45 +1416,89 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         (inputData?.prompt as string) ??
         "Modern architectural building";
 
-      // Submit both video tasks to Kling API (non-blocking — returns task IDs immediately)
-      const submitted = await submitDualWalkthrough(
-        renderImageUrl,
-        buildingDesc,
-        "pro",
-      );
+      let klingSucceeded = false;
 
-      // Return a "generating" artifact with task IDs — frontend will poll for progress
-      artifact = {
-        id: generateId(),
-        executionId: executionId ?? "local",
-        tileInstanceId,
-        type: "video",
-        data: {
-          name: `walkthrough_${generateId()}.mp4`,
-          videoUrl: "",  // Will be filled when generation completes
-          downloadUrl: "",
-          label: "AEC Cinematic Walkthrough — 15s (generating...)",
-          content: `15s AEC walkthrough: 5s fast exterior + 10s detailed interior — ${buildingDesc.slice(0, 100)}`,
-          durationSeconds: 15,
-          shotCount: 2,
-          pipeline: "concept render → Kling Official API (pro, dual) → 2× MP4 video",
-          costUsd: 1.50,
-          segments: [],
-          // Video generation state — frontend uses these to poll
-          videoGenerationStatus: "processing",
-          exteriorTaskId: submitted.exteriorTaskId,
-          interiorTaskId: submitted.interiorTaskId,
-          generationProgress: 0,
-        },
-        metadata: {
-          engine: "kling-official",
-          real: true,
-          exteriorTaskId: submitted.exteriorTaskId,
-          interiorTaskId: submitted.interiorTaskId,
-          submittedAt: submitted.submittedAt,
-        },
-        createdAt: new Date(),
-      };
+      if (renderImageUrl) {
+        try {
+          // Submit both video tasks to Kling API (non-blocking — returns task IDs immediately)
+          const submitted = await submitDualWalkthrough(
+            renderImageUrl,
+            buildingDesc,
+            "pro",
+          );
+
+          // Return a "generating" artifact with task IDs — frontend will poll for progress
+          artifact = {
+            id: generateId(),
+            executionId: executionId ?? "local",
+            tileInstanceId,
+            type: "video",
+            data: {
+              name: `walkthrough_${generateId()}.mp4`,
+              videoUrl: "",  // Will be filled when generation completes
+              downloadUrl: "",
+              label: "AEC Cinematic Walkthrough — 15s (generating...)",
+              content: `15s AEC walkthrough: 5s fast exterior + 10s detailed interior — ${buildingDesc.slice(0, 100)}`,
+              durationSeconds: 15,
+              shotCount: 2,
+              pipeline: "concept render → Kling Official API (pro, dual) → 2× MP4 video",
+              costUsd: 1.50,
+              segments: [],
+              // Video generation state — frontend uses these to poll
+              videoGenerationStatus: "processing",
+              exteriorTaskId: submitted.exteriorTaskId,
+              interiorTaskId: submitted.interiorTaskId,
+              generationProgress: 0,
+            },
+            metadata: {
+              engine: "kling-official",
+              real: true,
+              exteriorTaskId: submitted.exteriorTaskId,
+              interiorTaskId: submitted.interiorTaskId,
+              submittedAt: submitted.submittedAt,
+            },
+            createdAt: new Date(),
+          };
+          klingSucceeded = true;
+        } catch (klingErr) {
+          console.error("[GN-009] Kling API failed, falling back to Three.js client rendering:", klingErr);
+        }
+      }
+
+      // Fallback to Three.js client-side rendering if Kling failed or no render image
+      if (!klingSucceeded) {
+        const upFloors = Number(inputData?.floors) || 5;
+        const upFloorHeight = Number(inputData?.height) / upFloors || 3.6;
+        const upFootprint = Number(inputData?.footprint) || 600;
+        const upBuildingType = String(inputData?.buildingType ?? "modern office building");
+
+        artifact = {
+          id: generateId(),
+          executionId: executionId ?? "local",
+          tileInstanceId,
+          type: "video",
+          data: {
+            name: `walkthrough_${generateId()}.webm`,
+            videoUrl: "",
+            downloadUrl: "",
+            label: "AEC Cinematic Walkthrough — 15s Three.js Render",
+            content: `15s AEC walkthrough: drone pull-in → orbit → interior → section rise — ${buildingDesc.slice(0, 100)}`,
+            durationSeconds: 15,
+            shotCount: 4,
+            pipeline: "Three.js client-side → WebM video",
+            costUsd: 0,
+            videoGenerationStatus: "client-rendering",
+            _buildingConfig: {
+              floors: upFloors,
+              floorHeight: upFloorHeight,
+              footprint: upFootprint,
+              buildingType: upBuildingType,
+            },
+          },
+          metadata: { engine: "threejs-client", real: false },
+          createdAt: new Date(),
+        };
+      }
       } // end else (Kling API path)
 
     } else if (catalogueId === "GN-010") {
