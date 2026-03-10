@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { X, Download, Clock, Clapperboard, Film, DollarSign, SkipForward, Building2, DoorOpen } from "lucide-react";
+import { X, Download, Clock, Clapperboard, Film, DollarSign, SkipForward, Building2, DoorOpen, Loader2 as Loader } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 import { useExecutionStore } from "@/stores/execution-store";
 import type { VideoSegment } from "@/types/execution";
@@ -33,19 +33,20 @@ export function FullscreenVideoPlayer() {
   if (!nodeId || !artifact || artifact.type !== "video") return null;
 
   const d = artifact.data as Record<string, unknown>;
-  const segments = (d?.segments as VideoSegment[]) ?? [];
+  const rawSegments = d?.segments;
+  const segments: VideoSegment[] = Array.isArray(rawSegments) ? rawSegments : [];
   const hasSegments = segments.length > 1;
 
   const currentSegment = hasSegments ? segments[currentSegmentIndex] : null;
   const videoUrl = hasSegments
     ? (currentSegment?.videoUrl ?? "")
-    : ((d?.videoUrl as string) ?? (d?.downloadUrl as string) ?? "");
-  const downloadUrl = (d?.downloadUrl as string) ?? (d?.videoUrl as string) ?? "";
-  const fileName = (d?.name as string) ?? "walkthrough.mp4";
-  const shotCount = (d?.shotCount as number) ?? (hasSegments ? segments.length : 1);
-  const totalDurationSec = (d?.durationSeconds as number) ?? 15;
-  const pipeline = (d?.pipeline as string) ?? "Kling 3.0";
-  const costUsd = (d?.costUsd as number) ?? null;
+    : (typeof d?.videoUrl === "string" ? d.videoUrl : typeof d?.downloadUrl === "string" ? d.downloadUrl : "");
+  const downloadUrl = typeof d?.downloadUrl === "string" ? d.downloadUrl : typeof d?.videoUrl === "string" ? d.videoUrl : "";
+  const fileName = typeof d?.name === "string" ? d.name : "walkthrough.mp4";
+  const shotCount = typeof d?.shotCount === "number" ? d.shotCount : (hasSegments ? segments.length : 1);
+  const totalDurationSec = typeof d?.durationSeconds === "number" ? d.durationSeconds : 15;
+  const pipeline = typeof d?.pipeline === "string" ? d.pipeline : "Kling 3.0";
+  const costUsd = typeof d?.costUsd === "number" ? d.costUsd : null;
 
   // Handle segment end — auto-advance
   const handleVideoEnded = () => {
@@ -160,22 +161,45 @@ export function FullscreenVideoPlayer() {
             position: "relative",
           }}
         >
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            controls
-            autoPlay
-            crossOrigin="anonymous"
-            playsInline
-            onEnded={handleVideoEnded}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            style={{
+          {videoUrl ? (
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              controls
+              autoPlay
+              crossOrigin="anonymous"
+              playsInline
+              onEnded={handleVideoEnded}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              style={{
+                width: "100%",
+                display: "block",
+                borderRadius: 12,
+              }}
+            />
+          ) : (
+            <div style={{
               width: "100%",
-              display: "block",
+              minHeight: 400,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              gap: 12,
+              background: "#000",
               borderRadius: 12,
-            }}
-          />
+            }}>
+              <Loader size={28} style={{ color: "#00F5FF", animation: "spin 1.5s linear infinite" }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F5" }}>
+                Video is rendering...
+              </span>
+              <span style={{ fontSize: 11, color: "#5C5C78" }}>
+                The walkthrough will appear here when ready
+              </span>
+              <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+            </div>
+          )}
 
           {/* Current segment label overlay */}
           {hasSegments && currentSegment && (
@@ -199,7 +223,7 @@ export function FullscreenVideoPlayer() {
                 color: "#00F5FF",
                 fontFamily: "'Space Mono', monospace",
               }}>
-                {currentSegment.label}
+                {String(currentSegment.label ?? "Segment")}
               </span>
               <span style={{
                 fontSize: 10,
@@ -357,8 +381,8 @@ export function FullscreenVideoPlayer() {
           {[
             { label: "Total Duration", value: `${totalDurationSec}s`, icon: <Clock size={14} />, color: "#00F5FF" },
             { label: "Segments", value: String(shotCount), icon: <Clapperboard size={14} />, color: "#FFBF00" },
-            { label: "Pipeline", value: pipeline.includes("Kling") ? "Kling 3.0" : pipeline, icon: <Film size={14} />, color: "#8B5CF6" },
-            { label: "Cost", value: costUsd != null ? `$${costUsd.toFixed(2)}` : "--", icon: <DollarSign size={14} />, color: "#FFBF00" },
+            { label: "Pipeline", value: pipeline.includes("Kling") ? "Kling 3.0" : pipeline.includes("Three.js") ? "Three.js" : String(pipeline).slice(0, 30), icon: <Film size={14} />, color: "#8B5CF6" },
+            { label: "Cost", value: costUsd != null ? `$${costUsd.toFixed(2)}` : "Free", icon: <DollarSign size={14} />, color: "#FFBF00" },
           ].map((card, i) => (
             <motion.div
               key={card.label}
@@ -447,7 +471,7 @@ export function FullscreenVideoPlayer() {
 
         {/* Pipeline info */}
         <div style={{ fontSize: 10, color: "#4A4A60", fontStyle: "italic" }}>
-          {pipeline}
+          {String(pipeline)}
         </div>
       </div>
     </motion.div>
