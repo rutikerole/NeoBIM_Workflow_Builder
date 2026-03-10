@@ -1402,12 +1402,49 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
       } else {
 
-      // Extract render image URL from upstream GN-003
-      const renderImageUrl =
-        (inputData?.url as string) ??
-        (inputData?.images_out as string) ??
-        (inputData?.imageUrl as string) ??
-        "";
+      // ── Detect floor plan SVG input (from GN-004 upstream) ──
+      let renderImageUrl = "";
+      let isFloorPlanInput = false;
+      let roomInfo = "";
+
+      if (inputData?.svg && typeof inputData.svg === "string") {
+        // Floor plan detected — convert SVG to PNG and upload to R2
+        console.log("[GN-009] Floor plan SVG detected, converting to PNG for Kling...");
+        try {
+          const sharp = (await import("sharp")).default;
+          const pngBuffer = await sharp(Buffer.from(inputData.svg))
+            .resize(1280, 960, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+            .png({ quality: 90 })
+            .toBuffer();
+
+          const { uploadToR2 } = await import("@/lib/r2");
+          const uploadResult = await uploadToR2(pngBuffer, `floorplan-${generateId()}.png`, "image/png");
+          if (uploadResult.success) {
+            renderImageUrl = uploadResult.url;
+            isFloorPlanInput = true;
+            console.log("[GN-009] Floor plan PNG uploaded to R2:", renderImageUrl);
+          } else {
+            console.warn("[GN-009] R2 upload failed:", uploadResult.error);
+          }
+        } catch (svgErr) {
+          console.warn("[GN-009] SVG→PNG conversion failed:", svgErr);
+        }
+
+        // Extract room info for richer prompts
+        const roomList = inputData.roomList as Array<{ name: string; area: number }> | undefined;
+        if (roomList?.length) {
+          roomInfo = roomList.map(r => `${r.name} (${r.area}m²)`).join(", ");
+        }
+      }
+
+      // Fallback: extract render image URL from upstream GN-003
+      if (!renderImageUrl) {
+        renderImageUrl =
+          (inputData?.url as string) ??
+          (inputData?.images_out as string) ??
+          (inputData?.imageUrl as string) ??
+          "";
+      }
 
       // Build video from building description (from upstream TR-003 or fallback)
       const buildingDesc =
@@ -1425,7 +1462,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             renderImageUrl,
             buildingDesc,
             "pro",
+            isFloorPlanInput ? { isFloorPlan: true, roomInfo } : undefined,
           );
+
+          const pipelineLabel = isFloorPlanInput
+            ? "floor plan SVG → PNG → Kling Official API (pro, dual) → 2× MP4 video"
+            : "concept render → Kling Official API (pro, dual) → 2× MP4 video";
+          const walkthroughLabel = isFloorPlanInput
+            ? "Floor Plan → Cinematic Walkthrough — 15s (generating...)"
+            : "AEC Cinematic Walkthrough — 15s (generating...)";
 
           // Return a "generating" artifact with task IDs — frontend will poll for progress
           artifact = {
@@ -1437,11 +1482,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               name: `walkthrough_${generateId()}.mp4`,
               videoUrl: "",  // Will be filled when generation completes
               downloadUrl: "",
-              label: "AEC Cinematic Walkthrough — 15s (generating...)",
+              label: walkthroughLabel,
               content: `15s AEC walkthrough: 5s fast exterior + 10s detailed interior — ${buildingDesc.slice(0, 100)}`,
               durationSeconds: 15,
               shotCount: 2,
-              pipeline: "concept render → Kling Official API (pro, dual) → 2× MP4 video",
+              pipeline: pipelineLabel,
               costUsd: 1.50,
               segments: [],
               // Video generation state — frontend uses these to poll
@@ -1449,6 +1494,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               exteriorTaskId: submitted.exteriorTaskId,
               interiorTaskId: submitted.interiorTaskId,
               generationProgress: 0,
+              isFloorPlanInput,
             },
             metadata: {
               engine: "kling-official",
@@ -1456,6 +1502,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               exteriorTaskId: submitted.exteriorTaskId,
               interiorTaskId: submitted.interiorTaskId,
               submittedAt: submitted.submittedAt,
+              isFloorPlanInput,
             },
             createdAt: new Date(),
           };

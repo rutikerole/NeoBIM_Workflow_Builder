@@ -578,6 +578,67 @@ export function buildInteriorPrompt(buildingDescription: string): string {
   );
 }
 
+// ─── Floor Plan → Video Prompts ──────────────────────────────────────────────
+
+/**
+ * Build prompt for floor plan exterior (5s): 2D plan transforms into 3D building.
+ * The source image IS the floor plan — Kling will animate it into a 3D reveal.
+ *
+ * Scene timeline:
+ *   0s–2s: Top-down view of a professional architectural floor plan on a drafting table
+ *   2s–4s: The floor plan lines begin rising, extruding into 3D walls and a complete building
+ *   4s–5s: Camera sweeps to a dramatic exterior aerial orbit of the newly formed 3D building
+ */
+export function buildFloorPlanExteriorPrompt(buildingDescription: string, roomInfo?: string): string {
+  const desc = buildingDescription.slice(0, 400);
+  const rooms = roomInfo ? ` Rooms: ${roomInfo.slice(0, 200)}.` : "";
+
+  return (
+    `Hyper-realistic cinematic architectural visualization. Source image is a 2D architectural floor plan drawing of: ${desc.slice(0, 150)}.${rooms} ` +
+    "Shot on RED V-Raptor 8K, anamorphic lens, f/2.8 shallow depth of field. " +
+    "Camera starts looking straight down at the architectural floor plan — clean white paper with room layouts, wall lines, and labels. " +
+    "The 2D drawing magically begins transforming — floor plan lines rise and extrude upward into solid 3D walls, " +
+    "glass windows materialize in wall openings, concrete floor slabs form between stories, " +
+    "a complete photorealistic multi-story building grows organically from the flat blueprint. " +
+    "Camera smoothly lifts and orbits as the 3D building finishes forming — " +
+    "revealing a stunning modern building with full material detail: glass curtain walls reflecting golden hour sky, " +
+    "stone and concrete cladding, aluminum window frames, landscaped entrance, mature trees casting shadows. " +
+    "Golden hour warm sunlight with long dramatic shadows, volumetric atmospheric haze, " +
+    "cinematic color grading, photorealistic global illumination, V-Ray/Corona render quality, " +
+    "8K texture resolution, ultra detailed, no distortion, no artifacts."
+  );
+}
+
+/**
+ * Build prompt for floor plan interior (10s): Camera descends into the building
+ * that was built from the floor plan, walking through the rooms.
+ *
+ * Scene timeline:
+ *   0s–3s: Aerial view of 3D building → camera descends through roof into interior
+ *   3s–10s: First-person walkthrough through rooms matching the floor plan layout
+ */
+export function buildFloorPlanInteriorPrompt(buildingDescription: string, roomInfo?: string): string {
+  const desc = buildingDescription.slice(0, 400);
+  const rooms = roomInfo ? ` Floor plan rooms: ${roomInfo.slice(0, 300)}.` : "";
+
+  return (
+    `Hyper-realistic cinematic interior architectural visualization of: ${desc.slice(0, 150)}.${rooms} ` +
+    "Shot on ARRI Alexa Mini, wide-angle prime lens, cinematic shallow depth of field. " +
+    "Camera descends from aerial view through the building's roof — " +
+    "roof peels away in a dramatic sectional cutaway revealing every floor in cross-section, " +
+    "structural beams, concrete columns, floor slabs, staircases, elevator shafts, MEP risers. " +
+    "Camera enters the main floor — moving through rooms exactly as laid out in the architectural plan. " +
+    "Grand entrance lobby with polished stone flooring, feature reception desk, recessed linear LED lighting. " +
+    "Glides through corridors — suspended ceiling grid, integrated lighting, acoustic panels. " +
+    "Enters living spaces and offices — contemporary furniture, floor-to-ceiling windows with natural light streaming in, " +
+    "real material textures: hardwood floors, natural stone countertops, brushed metal fixtures, woven textiles. " +
+    "Through each room showing the spatial flow of the architectural plan brought to life in photorealistic 3D. " +
+    "Warm 3200K interior lighting blended with cool 5600K daylight, realistic caustics through glass, volumetric light rays, " +
+    "photorealistic material rendering — real wood grain, honed stone, brushed stainless, woven carpet texture, " +
+    "V-Ray/Corona render quality, 8K textures, ultra detailed, no distortion, no artifacts."
+  );
+}
+
 /**
  * Build a cinematic AEC walkthrough prompt from the building description.
  * Single-video fallback: complete 15s timeline in one video.
@@ -649,18 +710,26 @@ export interface SubmittedVideoTasks {
 /**
  * Submit both video generation tasks to Kling API and return immediately
  * with the task IDs (no polling/waiting).
+ *
+ * When `options.isFloorPlan` is true, uses floor-plan-specific prompts that
+ * describe a 2D plan → 3D building transformation instead of a standard walkthrough.
  */
 export async function submitDualWalkthrough(
   imageUrl: string,
   buildingDescription: string,
   mode: "std" | "pro" = "pro",
+  options?: { isFloorPlan?: boolean; roomInfo?: string },
 ): Promise<SubmittedVideoTasks> {
   const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark, oversaturated colors, CGI look, video game graphics, toy model, miniature, tilt-shift, abstract, surreal, people walking, cars moving, birds flying, lens flare";
 
-  const exteriorPrompt = buildExteriorPrompt(buildingDescription);
-  const interiorPrompt = buildInteriorPrompt(buildingDescription);
+  const exteriorPrompt = options?.isFloorPlan
+    ? buildFloorPlanExteriorPrompt(buildingDescription, options.roomInfo)
+    : buildExteriorPrompt(buildingDescription);
+  const interiorPrompt = options?.isFloorPlan
+    ? buildFloorPlanInteriorPrompt(buildingDescription, options.roomInfo)
+    : buildInteriorPrompt(buildingDescription);
 
-  console.log("[Video] Submitting DUAL walkthrough tasks (non-blocking)");
+  console.log(`[Video] Submitting DUAL walkthrough tasks (non-blocking)${options?.isFloorPlan ? " [FLOOR PLAN MODE]" : ""}`);
 
   // Submit both tasks in parallel — don't poll, return task IDs immediately
   const [exteriorResult, interiorResult] = await Promise.all([
