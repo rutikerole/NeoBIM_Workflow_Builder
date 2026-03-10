@@ -1462,38 +1462,12 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           klingSucceeded = true;
         } catch (klingErr) {
           const errMsg = klingErr instanceof Error ? klingErr.message : String(klingErr);
-          console.error("[GN-009] Kling API failed:", errMsg);
-
-          // If it's a billing/balance error, surface it to the user — don't silently fall back
-          if (errMsg.includes("balance") || errMsg.includes("1102")) {
-            artifact = {
-              id: generateId(),
-              executionId: executionId ?? "local",
-              tileInstanceId,
-              type: "video",
-              data: {
-                name: "video_generation_failed",
-                videoUrl: "",
-                downloadUrl: "",
-                label: "Video Generation Failed — Kling Account Balance Empty",
-                content: "Your Kling AI account has no credits remaining. Please top up your balance at klingai.com to generate professional photorealistic walkthrough videos.",
-                durationSeconds: 0,
-                shotCount: 0,
-                pipeline: "Kling Official API — BILLING ERROR",
-                costUsd: 0,
-                videoGenerationStatus: "failed",
-                failureReason: "Kling account balance is empty. Top up at klingai.com.",
-              },
-              metadata: { engine: "kling-official", real: true, error: errMsg },
-              createdAt: new Date(),
-            };
-            klingSucceeded = true; // Don't fall through to Three.js — show the error
-          }
-          // For other errors (network, model unavailable, etc.), fall back to Three.js
+          console.error("[GN-009] Kling API failed, falling back to Three.js:", errMsg);
+          // Always fall through to Three.js so the user gets a video + progress loader
         }
       }
 
-      // Fallback to Three.js client-side rendering if Kling failed (non-billing) or no render image
+      // Fallback to Three.js client-side rendering if Kling failed or no render image
       if (!klingSucceeded) {
         const upFloors = Number(inputData?.floors) || 5;
         const upFloorHeight = Number(inputData?.height) / upFloors || 3.6;

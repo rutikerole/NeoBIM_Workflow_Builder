@@ -40,8 +40,9 @@ export function HeroSection({ videoData, heroImageUrl, onExpandVideo }: HeroSect
   }, [hasSegments, segments, segmentIndex]);
 
   const isGenerating = videoGenProgress && (videoGenProgress.status === "rendering" || videoGenProgress.status === "processing" || videoGenProgress.status === "submitting");
+  const isFailed = videoGenProgress?.status === "failed";
 
-  if (!videoData?.videoUrl && !heroImageUrl && !isGenerating) return null;
+  if (!videoData?.videoUrl && !heroImageUrl && !isGenerating && !isFailed) return null;
 
   return (
     <motion.div
@@ -151,6 +152,35 @@ export function HeroSection({ videoData, heroImageUrl, onExpandVideo }: HeroSect
                 </div>
               );
             })}
+          </div>
+        </div>
+      ) : isFailed ? (
+        /* ── Video Generation Failed ── */
+        <div style={{
+          width: "100%",
+          minHeight: 280,
+          maxHeight: 400,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 16,
+          background: "linear-gradient(135deg, #0a0a0f 0%, #1a1111 100%)",
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: "50%",
+            background: "rgba(255,80,80,0.15)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span style={{ fontSize: 18, color: "#ff5050" }}>!</span>
+          </div>
+          <div style={{ textAlign: "center", maxWidth: 400 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#ff5050", marginBottom: 6 }}>
+              Video Rendering Failed
+            </div>
+            <div style={{ fontSize: 11, color: COLORS.TEXT_MUTED, lineHeight: 1.5 }}>
+              {videoGenProgress.failureMessage ?? "An error occurred during video rendering. Please try again."}
+            </div>
           </div>
         </div>
       ) : heroImageUrl ? (
