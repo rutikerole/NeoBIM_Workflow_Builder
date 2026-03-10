@@ -59,7 +59,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
                 Rendering Walkthrough
               </div>
               <div style={{ fontSize: 11, color: COLORS.TEXT_MUTED }}>
-                {videoGenProgress.phase ?? "Initializing"} — {videoGenProgress.progress}%
+                {videoGenProgress.phase ?? "Initializing"} — {Math.min(Math.max(videoGenProgress.progress ?? 0, 0), 100)}%
               </div>
             </div>
 
@@ -74,7 +74,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
             }}>
               <motion.div
                 initial={{ width: "0%" }}
-                animate={{ width: `${videoGenProgress.progress}%` }}
+                animate={{ width: `${Math.min(Math.max(videoGenProgress.progress ?? 0, 0), 100)}%` }}
                 transition={{ duration: 0.3 }}
                 style={{
                   height: "100%",
