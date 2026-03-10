@@ -390,7 +390,7 @@ export async function generateDualWalkthrough(
   buildingDescription: string,
   mode: "std" | "pro" = "pro",
 ): Promise<DualVideoResult> {
-  const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark";
+  const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark, oversaturated colors, CGI look, video game graphics, toy model, miniature, tilt-shift, abstract, surreal, people walking, cars moving, birds flying, lens flare";
 
   const exteriorPrompt = buildExteriorPrompt(buildingDescription);
   const interiorPrompt = buildInteriorPrompt(buildingDescription);
@@ -464,41 +464,43 @@ export function buildExteriorPrompt(buildingDescription: string): string {
   const { isHighrise, hasGlass } = detectBuildingType(desc);
 
   const materialNote = hasGlass
-    ? "Glass curtain wall façade reflecting sunlight, visible structural grid, realistic ray-traced reflections."
-    : "Highly detailed facade panels, exposed steel structural frame, reinforced concrete slabs, realistic architectural materials with photorealistic accuracy.";
+    ? "Glass curtain wall façade with physically accurate reflections of sky and clouds, visible unitized panel joints, structural silicone seals, aluminum mullion profiles, triple-glazed low-e coated units."
+    : "Photorealistic material rendering — exposed steel I-beams with visible bolt connections, bush-hammered concrete texture with formwork marks, weathering steel Corten cladding panels, anodized aluminum window frames.";
 
   if (isHighrise) {
     return (
-      `Ultra-realistic 3D BIM architectural visualization of: ${desc.slice(0, 200)}. ` +
-      "Highly detailed parametric architecture, high-polygon detailed BIM building model. " +
-      "Camera starts at front elevation view, slowly moving forward toward the main entrance — " +
-      "large glass façade reflecting sunlight, visible structural grid, landscaped plaza, realistic shadows and architectural proportions. " +
-      "Camera smoothly transitions to side elevation with cinematic orbit movement — " +
-      "building depth becomes visible, façade panels, balconies, structural columns, curtain wall systems, and architectural details clearly visible. " +
-      "Camera rises upward into aerial top view — roof plan visible with detailed BIM elements: " +
-      "HVAC units, skylights, rooftop mechanical equipment, service walkways, parapet walls, and full site plan. " +
+      `Hyper-realistic cinematic architectural visualization, indistinguishable from real drone footage, of: ${desc.slice(0, 180)}. ` +
+      "Shot on RED V-Raptor 8K, anamorphic lens, f/2.8 shallow depth of field. " +
+      "Camera starts at street level showing front elevation — slow forward dolly toward grand entrance lobby, " +
+      "capturing every surface detail: polished granite paving, stainless steel bollards, recessed ground lighting, mature landscaped trees casting dappled shadows, " +
+      "the full tower rising above with perfectly proportioned floor-to-floor heights and visible structural grid. " +
+      "Camera smoothly orbits to side elevation with fluid Steadicam movement — " +
+      "revealing the building's true depth and massing, curtain wall depth profiles, shadow box spandrel panels, " +
+      "protruding balcony slabs with glass balustrades, vertical fin sunshading elements. " +
+      "Camera rises on a sweeping crane shot to dramatic aerial view — " +
+      "rooftop with HVAC chillers, cooling towers, photovoltaic arrays, green roof planters, helicopter pad markings, mechanical penthouse louvres. " +
       `${materialNote} ` +
-      "Cinematic drone movement, smooth orbit, slow dolly camera motion, " +
-      "natural daylight, realistic shadows, global illumination, " +
-      "photorealistic architecture render, professional BIM visualization, extremely detailed geometry, 4K architectural animation, " +
-      "Unreal Engine quality rendering, ray tracing, ultra detailed, no distortion."
+      "Golden hour warm sunlight with long dramatic shadows, volumetric atmospheric haze, " +
+      "cinematic color grading, photorealistic global illumination, sub-surface scattering on translucent materials, " +
+      "8K texture resolution, V-Ray/Corona render quality, ultra detailed, no distortion, no artifacts."
     );
   }
 
   return (
-    `Ultra-realistic 3D BIM architectural visualization of: ${desc.slice(0, 200)}. ` +
-    "Highly detailed parametric architecture, high-polygon detailed BIM building model. " +
-    "Camera starts at front elevation view, slowly moving forward toward the main entrance — " +
-    "large façade with visible structural grid, entrance canopy, ground floor frontage, landscaped plaza, realistic shadows and architectural proportions. " +
-    "Camera smoothly transitions to side elevation with cinematic orbit movement — " +
-    "building depth becomes visible, façade panels, structural columns, curtain wall systems, secondary entrances, and architectural details clearly visible. " +
-    "Camera rises dramatically to aerial bird's-eye top-down view — " +
-    "complete roof plan visible with BIM elements: mechanical penthouses, HVAC units, skylights, solar panels, drainage, service walkways, parapet walls, and surrounding streets. " +
+    `Hyper-realistic cinematic architectural visualization, indistinguishable from real drone footage, of: ${desc.slice(0, 180)}. ` +
+    "Shot on RED V-Raptor 8K, anamorphic lens, f/2.8 shallow depth of field. " +
+    "Camera starts showing front elevation — slow forward dolly toward main entrance, " +
+    "capturing polished stone paving, landscaped forecourt, entrance canopy with steel tension cables, " +
+    "ground floor glazed shopfronts, the full building rising with proportioned structural bays. " +
+    "Camera smoothly orbits to side elevation with fluid Steadicam movement — " +
+    "revealing full building depth, façade material transitions, rain screen cladding panels, " +
+    "structural columns visible through glazing, secondary service entrances, loading dock. " +
+    "Camera rises on sweeping crane shot to bird's-eye aerial — " +
+    "complete roof visible with mechanical penthouses, HVAC plant, solar panels, green roof, drainage outlets, parapet coping stones, surrounding streetscape. " +
     `${materialNote} ` +
-    "Cinematic drone movement, smooth orbit, architectural flythrough, slow dolly camera motion, " +
-    "natural daylight, realistic shadows, global illumination, " +
-    "photorealistic architecture render, professional BIM visualization, extremely detailed geometry, 4K architectural animation, " +
-    "Unreal Engine quality rendering, ray tracing, ultra detailed, no distortion."
+    "Golden hour warm sunlight with long dramatic shadows, volumetric atmospheric haze, " +
+    "cinematic color grading, photorealistic global illumination, sub-surface scattering on translucent materials, " +
+    "8K texture resolution, V-Ray/Corona render quality, ultra detailed, no distortion, no artifacts."
   );
 }
 
@@ -518,64 +520,61 @@ export function buildInteriorPrompt(buildingDescription: string): string {
 
   if (isHighrise) {
     return (
-      `Ultra-realistic 3D BIM architectural visualization interior of: ${desc.slice(0, 200)}. ` +
-      "Highly detailed parametric architecture, high-polygon detailed BIM building model. " +
-      "Scene begins with BIM sectional cutaway — roof transitions to reveal floors layer by layer, " +
-      "structural beams, columns, floor slabs, building core, staircases, and elevator shafts all clearly visible in cross-section. " +
-      "Camera then moves inside the building showing modern grand double-height lobby — " +
-      "reception desk, exposed concrete columns with steel base plates, polished terrazzo flooring, " +
-      "elevator bank with stainless steel doors and floor indicator panels. " +
-      "Camera glides through corridor with suspended acoustic ceiling, recessed LED downlights, fire sprinkler heads, smoke detectors, " +
-      "enters typical office floor revealing open plan workspace, glass partitions, raised access floor, " +
-      "cable trays visible below ceiling, floor-to-ceiling curtain wall mullions, " +
-      "furniture layout, lighting fixtures, and architectural finishes clearly visible. " +
-      "Camera approaches window wall revealing panoramic views through high-performance glazing. " +
-      "Soft interior lighting, natural daylight, global illumination, realistic shadows, " +
-      "real material textures — concrete formwork marks, brushed steel, timber veneers, glass, " +
-      "cinematic smooth dolly camera motion, architectural flythrough, " +
-      "photorealistic architecture render, professional BIM visualization, extremely detailed geometry, 4K architectural animation, " +
-      "Unreal Engine quality rendering, ray tracing, ultra detailed, no distortion."
+      `Hyper-realistic cinematic interior architectural visualization, indistinguishable from real footage, of: ${desc.slice(0, 180)}. ` +
+      "Shot on ARRI Alexa Mini, wide-angle prime lens, cinematic shallow depth of field. " +
+      "Scene opens with dramatic sectional cutaway — building slices open revealing every floor in cross-section, " +
+      "steel wide-flange beams with bolted connections, reinforced concrete columns with visible rebar ties, " +
+      "post-tensioned floor slabs, concrete building core with elevator shafts and fire stairs, MEP risers with color-coded pipes. " +
+      "Camera descends into grand double-height lobby — " +
+      "Carrara marble reception desk, board-formed concrete feature walls, polished terrazzo floor with brass inlay strips, " +
+      "recessed linear LED cove lighting, floor-to-ceiling frameless glass entrance doors. " +
+      "Camera glides through corridor — suspended metal ceiling with integrated linear diffusers, " +
+      "recessed LED downlights casting precise beam patterns, chrome sprinkler heads, smoke detectors. " +
+      "Enters open-plan office — Herman Miller workstations, acoustic felt ceiling baffles, " +
+      "full-height glass partitions with manifestation dots, raised access floor with visible cable management, " +
+      "panoramic city views through floor-to-ceiling curtain wall. " +
+      "Warm 3200K interior lighting blended with cool 5600K daylight, realistic caustics through glass, volumetric light rays, " +
+      "photorealistic material rendering — real wood grain, brushed stainless, honed stone, woven carpet texture, " +
+      "V-Ray/Corona render quality, 8K textures, ultra detailed, no distortion, no artifacts."
     );
   }
 
   if (isResidential) {
     return (
-      `Ultra-realistic 3D BIM architectural visualization interior of: ${desc.slice(0, 200)}. ` +
-      "Highly detailed parametric architecture, high-polygon detailed BIM building model. " +
-      "Scene begins with BIM sectional cutaway — roof peels away to reveal floor structure layer by layer, " +
-      "timber joists, load-bearing walls, floor slabs, staircases, and service risers visible in cross-section. " +
-      "Camera moves inside through the front entrance — solid timber door frame, entrance hall with tiled floor, " +
-      "glides into open-plan living room with double-height space, exposed timber ceiling joists, engineered hardwood flooring, " +
-      "floor-to-ceiling windows with triple-glazed units and integrated blinds, " +
-      "moves through kitchen with stone countertops, integrated appliances, pendant lights over island, " +
-      "glass partitions, staircases, furniture layout, lighting fixtures, and architectural finishes clearly visible, " +
-      "exits through sliding glass doors onto terrace showing outdoor living space and landscaped garden. " +
-      "Soft interior lighting, warm morning sunlight streaming through windows, global illumination, realistic shadows, " +
-      "high-end material finishes throughout, " +
-      "cinematic smooth dolly camera motion, architectural flythrough, " +
-      "photorealistic architecture render, professional BIM visualization, extremely detailed geometry, 4K architectural animation, " +
-      "Unreal Engine quality rendering, ray tracing, ultra detailed, no distortion."
+      `Hyper-realistic cinematic interior architectural visualization, indistinguishable from real footage, of: ${desc.slice(0, 180)}. ` +
+      "Shot on ARRI Alexa Mini, wide-angle prime lens, cinematic shallow depth of field. " +
+      "Scene opens with dramatic sectional cutaway — roof peels away revealing timber rafter structure, " +
+      "engineered I-joists, insulated cavity walls, service voids with plumbing and electrical runs. " +
+      "Camera enters through solid European oak front door — herringbone tile entrance hall, " +
+      "glides into double-height living space with exposed glulam beams, wide-plank engineered oak flooring, " +
+      "floor-to-ceiling triple-glazed windows with motorized blinds filtering warm sunlight, " +
+      "bespoke built-in joinery in satin lacquer finish. " +
+      "Moves through kitchen — book-matched Calacatta marble island, integrated Gaggenau appliances, " +
+      "hand-made ceramic splashback tiles, brushed brass pendant fixtures. " +
+      "Through full-height sliding glass doors onto covered terrace — ipe timber decking, cast concrete planters, " +
+      "architectural landscaping with ornamental grasses and specimen trees. " +
+      "Warm morning sunlight streaming through windows casting long shadows on surfaces, " +
+      "visible dust particles in volumetric light rays, realistic caustics through glass, " +
+      "photorealistic material rendering — real wood grain, natural stone veining, brushed metal, linen texture, " +
+      "V-Ray/Corona render quality, 8K textures, ultra detailed, no distortion, no artifacts."
     );
   }
 
   return (
-    `Ultra-realistic 3D BIM architectural visualization interior of: ${desc.slice(0, 200)}. ` +
-    "Highly detailed parametric architecture, high-polygon detailed BIM building model. " +
-    "Scene begins with BIM sectional cutaway — roof transitions to reveal floors layer by layer, " +
-    "structural beams, columns, floor slabs, building core, staircases, and elevator shafts all clearly visible in cross-section. " +
-    "Camera moves inside the building — enters through main entrance showing spacious lobby, " +
-    "high ceilings, exposed structural columns, polished concrete floor, feature reception desk, " +
-    "glides through corridor with suspended ceiling grid, LED panels, sprinkler heads, air diffusers, " +
-    "passes glazed meeting room with acoustic glass partitions, " +
-    "enters open office area with workstations, glass partitions, furniture layout, lighting fixtures, " +
-    "exposed ceiling showing painted ductwork and cable trays, " +
-    "staircases, elevators, and architectural finishes clearly visible throughout, " +
-    "approaches large windows revealing exterior view through high-performance glazing. " +
-    "Soft interior lighting, natural daylight, global illumination, realistic shadows, " +
-    "real material textures — concrete, timber, steel, and glass, " +
-    "cinematic smooth dolly camera motion, architectural flythrough, " +
-    "photorealistic architecture render, professional BIM visualization, extremely detailed geometry, 4K architectural animation, " +
-    "Unreal Engine quality rendering, ray tracing, ultra detailed, no distortion."
+    `Hyper-realistic cinematic interior architectural visualization, indistinguishable from real footage, of: ${desc.slice(0, 180)}. ` +
+    "Shot on ARRI Alexa Mini, wide-angle prime lens, cinematic shallow depth of field. " +
+    "Scene opens with dramatic sectional cutaway — building slices open revealing every floor, " +
+    "steel beams with bolted connections, concrete columns, floor slabs, building core, elevator shafts, fire stairs. " +
+    "Camera enters through main entrance — polished concrete lobby with double-height ceiling, " +
+    "feature reception desk in stone and timber, recessed linear LED lighting, frameless glass doors. " +
+    "Glides through corridor — suspended metal ceiling grid, integrated LED panels, sprinkler heads, " +
+    "air diffusers, acoustic wall panels in felt fabric. " +
+    "Passes glazed meeting room — frameless glass partitions, acoustic seals visible, cable management below raised floor. " +
+    "Enters open office — contemporary workstations, task lighting, acoustic ceiling baffles, " +
+    "exposed painted ductwork and cable trays above, full-height curtain wall with city views. " +
+    "Warm 3200K interior lighting blended with cool 5600K daylight, realistic caustics through glass, volumetric light rays, " +
+    "photorealistic material rendering — concrete formwork marks, real wood grain, brushed steel, woven carpet, " +
+    "V-Ray/Corona render quality, 8K textures, ultra detailed, no distortion, no artifacts."
   );
 }
 
@@ -656,7 +655,7 @@ export async function submitDualWalkthrough(
   buildingDescription: string,
   mode: "std" | "pro" = "pro",
 ): Promise<SubmittedVideoTasks> {
-  const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark";
+  const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark, oversaturated colors, CGI look, video game graphics, toy model, miniature, tilt-shift, abstract, surreal, people walking, cars moving, birds flying, lens flare";
 
   const exteriorPrompt = buildExteriorPrompt(buildingDescription);
   const interiorPrompt = buildInteriorPrompt(buildingDescription);
