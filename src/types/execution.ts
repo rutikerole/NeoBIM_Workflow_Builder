@@ -78,6 +78,13 @@ export interface FileArtifactData {
   label?: string;
 }
 
+export interface VideoSegment {
+  videoUrl: string;
+  downloadUrl: string;
+  durationSeconds: number;
+  label: string;
+}
+
 export interface VideoArtifactData {
   videoUrl: string;
   downloadUrl: string;
@@ -87,4 +94,11 @@ export interface VideoArtifactData {
   pipeline?: string;
   costUsd?: number;
   label?: string;
+  /** Multi-segment videos (e.g., 5s exterior + 10s interior) */
+  segments?: VideoSegment[];
+  /** Background generation status */
+  videoGenerationStatus?: "processing" | "complete" | "failed";
+  exteriorTaskId?: string;
+  interiorTaskId?: string;
+  generationProgress?: number;
 }

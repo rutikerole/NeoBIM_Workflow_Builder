@@ -175,6 +175,120 @@ async function executeNode(
 }
 
 const FLOW_DURATION_MS = 1600;
+const VIDEO_POLL_INTERVAL_MS = 6_000; // Poll every 6 seconds
+const VIDEO_POLL_TIMEOUT_MS = 600_000; // 10 minute timeout
+
+/** Poll /api/video-status until video generation completes or fails */
+async function pollVideoGeneration(
+  nodeId: string,
+  exteriorTaskId: string,
+  interiorTaskId: string,
+  addArtifactFn: (nodeId: string, artifact: ExecutionArtifact) => void,
+  setVideoProgressFn: (nodeId: string, state: { progress: number; status: "submitting" | "processing" | "complete" | "failed"; exteriorTaskId?: string; interiorTaskId?: string; failureMessage?: string }) => void,
+  clearVideoProgressFn: (nodeId: string) => void,
+  currentArtifactData: Record<string, unknown>,
+  executionId: string,
+): Promise<void> {
+  const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
+
+  setVideoProgressFn(nodeId, {
+    progress: 5,
+    status: "processing",
+    exteriorTaskId,
+    interiorTaskId,
+  });
+
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
+
+    try {
+      const res = await fetch(
+        `/api/video-status?exteriorTaskId=${encodeURIComponent(exteriorTaskId)}&interiorTaskId=${encodeURIComponent(interiorTaskId)}`
+      );
+
+      if (!res.ok) {
+        console.error("[Video Poll] HTTP error:", res.status);
+        continue; // Retry on server errors
+      }
+
+      const status = await res.json();
+
+      // Update progress in store
+      setVideoProgressFn(nodeId, {
+        progress: status.progress,
+        status: status.isComplete ? "complete" : status.hasFailed ? "failed" : "processing",
+        exteriorTaskId,
+        interiorTaskId,
+        failureMessage: status.failureMessage ?? undefined,
+      });
+
+      if (status.hasFailed) {
+        console.error("[Video Poll] Generation failed:", status.failureMessage);
+        toast.error("Video generation failed", {
+          description: status.failureMessage ?? "Unknown error",
+          duration: 6000,
+        });
+        clearVideoProgressFn(nodeId);
+        return;
+      }
+
+      if (status.isComplete) {
+        // Build the final artifact with real video URLs
+        const finalArtifact: ExecutionArtifact = {
+          id: `video-${nodeId}`,
+          executionId,
+          tileInstanceId: nodeId,
+          type: "video",
+          data: {
+            ...currentArtifactData,
+            videoUrl: status.exteriorVideoUrl,
+            downloadUrl: status.exteriorVideoUrl,
+            label: "AEC Cinematic Walkthrough — 15s (exterior + interior)",
+            videoGenerationStatus: "complete",
+            generationProgress: 100,
+            segments: [
+              {
+                videoUrl: status.exteriorVideoUrl,
+                downloadUrl: status.exteriorVideoUrl,
+                durationSeconds: 5,
+                label: "Exterior — All Elevations & Aerial",
+              },
+              {
+                videoUrl: status.interiorVideoUrl,
+                downloadUrl: status.interiorVideoUrl,
+                durationSeconds: 10,
+                label: "Interior AEC Walkthrough",
+              },
+            ],
+          },
+          metadata: { engine: "kling-official", real: true },
+          createdAt: new Date(),
+        };
+
+        addArtifactFn(nodeId, finalArtifact);
+        clearVideoProgressFn(nodeId);
+
+        toast.success("Video walkthrough ready!", {
+          description: "15s AEC cinematic walkthrough generated successfully",
+          duration: 5000,
+        });
+        return;
+      }
+    } catch (err) {
+      console.error("[Video Poll] Error:", err);
+      // Continue polling on network errors
+    }
+  }
+
+  // Timeout
+  setVideoProgressFn(nodeId, {
+    progress: 0,
+    status: "failed",
+    failureMessage: "Video generation timed out after 10 minutes",
+  });
+  toast.error("Video generation timed out", { duration: 6000 });
+  clearVideoProgressFn(nodeId);
+}
 
 interface UseExecutionOptions {
   onLog?: (entry: LogEntry) => void;
@@ -305,6 +419,8 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
     setRegeneratingNode,
     regeneratingNodeId,
     artifacts,
+    setVideoGenProgress,
+    clearVideoGenProgress,
   } = useExecutionStore();
   
   const isDemoMode = useUIStore(s => s.isDemoMode);
@@ -454,6 +570,35 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
         updateNodeStatus(node.id, "success");
         log("success", `${node.data.label} completed`, String(artifact.type));
         trackNodeUsed(node.data.catalogueId, node.data.label);
+
+        // If this is a video node with background generation, start polling
+        const artData = artifact.data as Record<string, unknown> | undefined;
+        if (
+          artifact.type === "video" &&
+          artData?.videoGenerationStatus === "processing" &&
+          artData?.exteriorTaskId &&
+          artData?.interiorTaskId
+        ) {
+          log("info", "Video generation started in background — polling for progress");
+          toast.info("Video generating in background...", {
+            description: "15s AEC walkthrough — you'll be notified when it's ready",
+            duration: 5000,
+          });
+
+          // Fire-and-forget: poll in background, don't block the workflow
+          pollVideoGeneration(
+            node.id,
+            artData.exteriorTaskId as string,
+            artData.interiorTaskId as string,
+            addArtifact,
+            setVideoGenProgress,
+            clearVideoGenProgress,
+            artData,
+            executionId,
+          ).catch(err => {
+            console.error("[Video Poll] Unhandled error:", err);
+          });
+        }
 
         // Show warnings if any
         if (artifact.metadata?.warnings && Array.isArray(artifact.metadata.warnings)) {
@@ -616,6 +761,8 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
     completeExecution,
     setProgress,
     setRateLimited,
+    setVideoGenProgress,
+    clearVideoGenProgress,
     log,
   ]);
 

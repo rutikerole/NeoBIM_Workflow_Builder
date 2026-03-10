@@ -551,18 +551,23 @@ export async function executeNode(
         },
       });
 
-    case "GN-009": { // Video Walkthrough Generator — mock (Kling 3.0 Official API)
+    case "GN-009": { // Video Walkthrough Generator — mock (Kling Official API)
       const vidDesc = String(inputData?.content ?? inputData?.description ?? "modern building");
+      const mockVidUrl = "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4";
       return mockArtifact(executionId, tileInstanceId, "video", {
         name: `walkthrough_${Date.now()}.mp4`,
-        videoUrl: "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
-        downloadUrl: "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
-        label: "Cinematic Walkthrough — Kling 3.0 (3 shots) — Mock",
-        content: `15s cinematic multi-shot walkthrough (3 camera angles) — ${vidDesc.slice(0, 100)}`,
+        videoUrl: mockVidUrl,
+        downloadUrl: mockVidUrl,
+        label: "AEC Cinematic Walkthrough — 15s (exterior + interior) — Mock",
+        content: `15s AEC walkthrough: 5s fast exterior (all elevations + aerial) + 10s detailed interior walkthrough — ${vidDesc.slice(0, 100)}`,
         durationSeconds: 15,
-        shotCount: 3,
-        pipeline: "concept render → Kling 3.0 Official API (multi-shot) → MP4 video",
+        shotCount: 2,
+        pipeline: "concept render → Kling Official API (pro, dual) → 2× MP4 video",
         costUsd: 1.50,
+        segments: [
+          { videoUrl: mockVidUrl, downloadUrl: mockVidUrl, durationSeconds: 5, label: "Exterior — All Elevations & Aerial" },
+          { videoUrl: mockVidUrl, downloadUrl: mockVidUrl, durationSeconds: 10, label: "Interior AEC Walkthrough" },
+        ],
       });
     }
 

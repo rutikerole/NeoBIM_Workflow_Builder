@@ -21,7 +21,7 @@ import { assertValidInput } from "@/lib/validation";
 import { APIError, UserErrors, formatErrorResponse } from "@/lib/user-errors";
 import { generatePDFBase64 } from "@/services/pdf-report-server";
 import { reconstructHiFi3D, isMeshyConfigured } from "@/services/meshy-service";
-import { generateWalkthroughVideo, buildArchitecturalMultiShot } from "@/services/video-service";
+import { submitDualWalkthrough } from "@/services/video-service";
 
 // Detect region/city from text for cost estimation
 function detectRegionFromText(text: string): string | null {
@@ -145,7 +145,14 @@ export async function POST(req: NextRequest) {
 
     if (catalogueId === "TR-003") {
       // Design Brief Analyzer — GPT-4o-mini
-      const prompt = inputData?.prompt ?? inputData?.content ?? "Modern mixed-use building";
+      // Accept text prompt OR structured JSON from TR-002
+      let prompt: string;
+      if (inputData?.building_type || inputData?.buildingType || inputData?.floors) {
+        // Structured JSON from TR-002 — stringify it as input for GPT
+        prompt = JSON.stringify(inputData);
+      } else {
+        prompt = (inputData?.prompt as string) ?? (inputData?.content as string) ?? "Modern mixed-use building";
+      }
       const description = await generateBuildingDescription(prompt, apiKey);
 
       artifact = {
@@ -1363,38 +1370,50 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         );
       }
 
-      // Build multi-shot camera prompts from building description
+      // Build video from building description (from upstream TR-003 or fallback)
       const buildingDesc =
         (inputData?.content as string) ??
         (inputData?.description as string) ??
         (inputData?.prompt as string) ??
         "Modern architectural building";
 
-      const multiPrompt = buildArchitecturalMultiShot(buildingDesc);
+      // Submit both video tasks to Kling API (non-blocking — returns task IDs immediately)
+      const submitted = await submitDualWalkthrough(
+        renderImageUrl,
+        buildingDesc,
+        "pro",
+      );
 
-      const videoResult = await generateWalkthroughVideo({
-        imageUrl: renderImageUrl,
-        multiPrompt,
-        duration: "15",
-      });
-
+      // Return a "generating" artifact with task IDs — frontend will poll for progress
       artifact = {
         id: generateId(),
         executionId: executionId ?? "local",
         tileInstanceId,
         type: "video",
         data: {
-          name: videoResult.fileName,
-          videoUrl: videoResult.videoUrl,
-          downloadUrl: videoResult.videoUrl,
-          label: `Cinematic Walkthrough — Kling 3.0 (${videoResult.shotCount} shots)`,
-          content: `${videoResult.durationSeconds}s cinematic multi-shot walkthrough — ${buildingDesc.slice(0, 100)}`,
-          durationSeconds: videoResult.durationSeconds,
-          shotCount: videoResult.shotCount,
-          pipeline: "concept render → Kling 3.0 Official API (multi-shot) → MP4 video",
-          costUsd: videoResult.costUsd,
+          name: `walkthrough_${generateId()}.mp4`,
+          videoUrl: "",  // Will be filled when generation completes
+          downloadUrl: "",
+          label: "AEC Cinematic Walkthrough — 15s (generating...)",
+          content: `15s AEC walkthrough: 5s fast exterior + 10s detailed interior — ${buildingDesc.slice(0, 100)}`,
+          durationSeconds: 15,
+          shotCount: 2,
+          pipeline: "concept render → Kling Official API (pro, dual) → 2× MP4 video",
+          costUsd: 1.50,
+          segments: [],
+          // Video generation state — frontend uses these to poll
+          videoGenerationStatus: "processing",
+          exteriorTaskId: submitted.exteriorTaskId,
+          interiorTaskId: submitted.interiorTaskId,
+          generationProgress: 0,
         },
-        metadata: { engine: "kling-v3-official", real: true, jobId: videoResult.id },
+        metadata: {
+          engine: "kling-official",
+          real: true,
+          exteriorTaskId: submitted.exteriorTaskId,
+          interiorTaskId: submitted.interiorTaskId,
+          submittedAt: submitted.submittedAt,
+        },
         createdAt: new Date(),
       };
 

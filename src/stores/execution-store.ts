@@ -8,6 +8,14 @@ import type {
   TileExecutionResult,
 } from "@/types/execution";
 
+export interface VideoGenerationState {
+  progress: number; // 0-100
+  status: "submitting" | "processing" | "complete" | "failed";
+  exteriorTaskId?: string;
+  interiorTaskId?: string;
+  failureMessage?: string;
+}
+
 interface ExecutionState {
   // Current execution
   currentExecution: Execution | null;
@@ -20,6 +28,9 @@ interface ExecutionState {
 
   // Artifacts by tile instance ID
   artifacts: Map<string, ExecutionArtifact>;
+
+  // Video generation progress per node (for background video generation)
+  videoGenProgress: Map<string, VideoGenerationState>;
 
   // Regeneration tracking: nodeId → count (max 3)
   regenerationCounts: Map<string, number>;
@@ -36,6 +47,10 @@ interface ExecutionState {
   completeExecution: (status: ExecutionStatus) => void;
   clearCurrentExecution: () => void;
   setProgress: (progress: number) => void;
+
+  // Video generation progress
+  setVideoGenProgress: (nodeId: string, state: VideoGenerationState) => void;
+  clearVideoGenProgress: (nodeId: string) => void;
 
   // Regeneration
   incrementRegenCount: (tileInstanceId: string) => boolean; // returns false if at max
@@ -76,6 +91,7 @@ export const useExecutionStore = create<ExecutionState>()((set, get) => ({
   executionProgress: 0,
   isRateLimited: false,
   artifacts: new Map(),
+  videoGenProgress: new Map(),
   regenerationCounts: new Map(),
   regeneratingNodeId: null,
   history: [],
@@ -89,6 +105,7 @@ export const useExecutionStore = create<ExecutionState>()((set, get) => ({
       executionProgress: 0,
       isRateLimited: false, // reset on new execution
       artifacts: new Map(),
+      videoGenProgress: new Map(),
       regenerationCounts: new Map(),
     }),
 
@@ -141,6 +158,20 @@ export const useExecutionStore = create<ExecutionState>()((set, get) => ({
     set({ currentExecution: null, isExecuting: false, executionProgress: 0 }),
 
   setProgress: (progress) => set({ executionProgress: progress }),
+
+  setVideoGenProgress: (nodeId, state) =>
+    set((s) => {
+      const newMap = new Map(s.videoGenProgress);
+      newMap.set(nodeId, state);
+      return { videoGenProgress: newMap };
+    }),
+
+  clearVideoGenProgress: (nodeId) =>
+    set((s) => {
+      const newMap = new Map(s.videoGenProgress);
+      newMap.delete(nodeId);
+      return { videoGenProgress: newMap };
+    }),
 
   addToHistory: (execution) =>
     set((state) => ({
