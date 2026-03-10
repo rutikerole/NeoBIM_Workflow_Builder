@@ -7,10 +7,12 @@ import {
   ArrowRight, Zap, Sparkles, Users, LayoutGrid,
   Box, Play, Image as ImageIcon, FileCode,
   MousePointerClick, Workflow, Layers, Settings, Target, Calendar,
+  ChevronUp, ClipboardList, Send, Copy, Building2, Star,
 } from "lucide-react";
 import { MiniWorkflowDiagram } from "@/components/shared/MiniWorkflowDiagram";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 import { useLocale } from '@/hooks/useLocale';
+import type { TranslationKey } from '@/lib/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -223,6 +225,37 @@ const SHOWCASE = [
 
 const PARTNER_LOGOS = ["BUILT FOR AEC", "COMPLEMENT TO REVIT & RHINO", "NO CAD NEEDED", "SCHEMATIC DESIGN PHASE"];
 
+// ─── Community Social Proof Data ────────────────────────────────────────────
+
+const COMMUNITY_WORKFLOWS = [
+  { name: "MEP Coordination Clash Review", builder: "Sarah M.", role: "MEP Lead", firm: "Arup", discipline: "MEP", phase: "RIBA Stage 4", uses: 342, duplicated: 89, color: "#3B82F6" },
+  { name: "Pre-Commencement Condition Discharge", builder: "James T.", role: "Project Manager", firm: "Mace Group", discipline: "Planning", phase: "Stage 5", uses: 218, duplicated: 56, color: "#8B5CF6" },
+  { name: "RIBA Stage 4 Drawing Issue Workflow", builder: "Priya K.", role: "BIM Manager", firm: "Foster + Partners", discipline: "Architecture", phase: "RIBA Stage 4", uses: 567, duplicated: 134, color: "#10B981" },
+  { name: "Structural Steel Takeoff & BOQ", builder: "Marcus W.", role: "QS Engineer", firm: "Turner & Townsend", discipline: "Structures", phase: "Stage 3–4", uses: 421, duplicated: 97, color: "#F59E0B" },
+  { name: "Façade Panel Schedule Generator", builder: "Lena H.", role: "Façade Engineer", firm: "Schüco", discipline: "Envelope", phase: "Detail Design", uses: 189, duplicated: 43, color: "#EF4444" },
+  { name: "Site Logistics & Crane Reach Analysis", builder: "David C.", role: "Site Manager", firm: "Laing O'Rourke", discipline: "Construction", phase: "Pre-Construction", uses: 305, duplicated: 71, color: "#06B6D4" },
+];
+
+// ─── Workflow Request Seed Data ─────────────────────────────────────────────
+
+interface WorkflowRequest {
+  id: string;
+  name: string;
+  discipline: string;
+  problem: string;
+  email: string;
+  votes: number;
+  createdAt: string;
+}
+
+const SEED_REQUESTS: WorkflowRequest[] = [
+  { id: "req-001", name: "Acoustic Performance Assessment", discipline: "Building Physics", problem: "Need automated reverberation time calculations from room geometry and material specifications for compliance with BB93 and ADE.", email: "hidden", votes: 47, createdAt: "2026-03-08" },
+  { id: "req-002", name: "Fire Escape Route Compliance Check", discipline: "Fire Safety", problem: "Automated travel distance and exit width verification against Approved Document B from IFC model geometry.", email: "hidden", votes: 83, createdAt: "2026-03-07" },
+  { id: "req-003", name: "Daylight Factor Analysis Pipeline", discipline: "Environmental Design", problem: "Generate daylight factor reports from IFC model with automated window-to-floor ratios and Part L compliance checks.", email: "hidden", votes: 61, createdAt: "2026-03-09" },
+  { id: "req-004", name: "Embodied Carbon Calculator", discipline: "Sustainability", problem: "Calculate whole-life carbon from material schedules against RICS methodology and LETI 2030 targets.", email: "hidden", votes: 129, createdAt: "2026-03-06" },
+  { id: "req-005", name: "Accessibility Audit Workflow", discipline: "Inclusive Design", problem: "Check corridor widths, door clearances, and ramp gradients against Part M and BS 8300 requirements from BIM model.", email: "hidden", votes: 35, createdAt: "2026-03-10" },
+];
+
 // ─── News Ticker ─────────────────────────────────────────────────────────────
 
 const NEWS_ITEMS = [
@@ -268,6 +301,209 @@ function NewsTicker({ items = NEWS_ITEMS, whatsNewLabel }: { items?: string[]; w
   );
 }
 
+// ─── Roadmap Data ─────────────────────────────────────────────────────────────
+
+interface RoadmapItem {
+  id: string;
+  titleKey: TranslationKey;
+  descKey: TranslationKey;
+  category: "input" | "transform" | "generate" | "export";
+  status: "proposed" | "in-review" | "approved" | "in-progress";
+  defaultVotes: number;
+  priority: "P1" | "P2" | "P3";
+}
+
+const ROADMAP_ITEMS: RoadmapItem[] = [
+  { id: "RFI-001", titleKey: "landing.roadmap.item1Title", descKey: "landing.roadmap.item1Desc", category: "transform", status: "in-review", defaultVotes: 142, priority: "P1" },
+  { id: "RFI-002", titleKey: "landing.roadmap.item2Title", descKey: "landing.roadmap.item2Desc", category: "generate", status: "proposed", defaultVotes: 98, priority: "P2" },
+  { id: "RFI-003", titleKey: "landing.roadmap.item3Title", descKey: "landing.roadmap.item3Desc", category: "transform", status: "approved", defaultVotes: 231, priority: "P1" },
+  { id: "RFI-004", titleKey: "landing.roadmap.item4Title", descKey: "landing.roadmap.item4Desc", category: "input", status: "in-progress", defaultVotes: 187, priority: "P1" },
+  { id: "RFI-005", titleKey: "landing.roadmap.item5Title", descKey: "landing.roadmap.item5Desc", category: "generate", status: "proposed", defaultVotes: 76, priority: "P3" },
+  { id: "RFI-006", titleKey: "landing.roadmap.item6Title", descKey: "landing.roadmap.item6Desc", category: "export", status: "in-review", defaultVotes: 164, priority: "P2" },
+];
+
+const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  proposed: { bg: "rgba(92,92,120,0.15)", text: "#9898B0", border: "rgba(92,92,120,0.3)" },
+  "in-review": { bg: "rgba(245,158,11,0.12)", text: "#F59E0B", border: "rgba(245,158,11,0.3)" },
+  approved: { bg: "rgba(16,185,129,0.12)", text: "#10B981", border: "rgba(16,185,129,0.3)" },
+  "in-progress": { bg: "rgba(79,138,255,0.12)", text: "#4F8AFF", border: "rgba(79,138,255,0.3)" },
+};
+
+const CATEGORY_LABELS: Record<string, TranslationKey> = {
+  input: "landing.roadmap.categoryInput",
+  transform: "landing.roadmap.categoryTransform",
+  generate: "landing.roadmap.categoryGenerate",
+  export: "landing.roadmap.categoryExport",
+};
+
+const STATUS_LABELS: Record<string, TranslationKey> = {
+  proposed: "landing.roadmap.statusProposed",
+  "in-review": "landing.roadmap.statusInReview",
+  approved: "landing.roadmap.statusApproved",
+  "in-progress": "landing.roadmap.statusInProgress",
+};
+
+const PRIORITY_COLORS: Record<string, string> = {
+  P1: "#EF4444",
+  P2: "#F59E0B",
+  P3: "#6B7280",
+};
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status, label }: { status: string; label: string }) {
+  const colors = STATUS_COLORS[status] ?? STATUS_COLORS.proposed;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px",
+      padding: "3px 8px", borderRadius: 6,
+      background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`,
+    }}>
+      {status === "in-progress" && (
+        <span style={{
+          width: 6, height: 6, borderRadius: "50%", background: colors.text,
+          animation: "pulse 2s ease-in-out infinite",
+        }} />
+      )}
+      {label}
+    </span>
+  );
+}
+
+// ─── Vote Card ────────────────────────────────────────────────────────────────
+
+function VoteCard({
+  item, votes, hasVoted, onVote, t, maxVotes,
+}: {
+  item: RoadmapItem;
+  votes: number;
+  hasVoted: boolean;
+  onVote: () => void;
+  t: (key: TranslationKey) => string;
+  maxVotes: number;
+}) {
+  const color = CATEGORY_COLORS[item.category] ?? "#4F8AFF";
+  const rgb = hexToRgb(color);
+  const progress = maxVotes > 0 ? (votes / maxVotes) * 100 : 0;
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      transition={{ duration: 0.5, ease: smoothEase }}
+      className="node-card"
+      style={{
+        background: "rgba(18,18,30,0.85)",
+        backdropFilter: "blur(20px)",
+        border: `1px solid rgba(${rgb}, 0.2)`,
+        borderRadius: 16,
+        overflow: "hidden",
+        position: "relative",
+        transition: "border-color 0.3s, box-shadow 0.3s",
+      }}
+      whileHover={{
+        borderColor: `rgba(${rgb}, 0.4)`,
+        boxShadow: `0 8px 40px rgba(0,0,0,0.4), 0 0 30px rgba(${rgb}, 0.08)`,
+      }}
+    >
+      {/* Category header */}
+      <div className="node-header" style={{
+        padding: "10px 16px",
+        background: `linear-gradient(135deg, rgba(${rgb}, 0.12) 0%, rgba(${rgb}, 0.04) 100%)`,
+        borderBottom: `1px solid rgba(${rgb}, 0.15)`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: `0 0 8px ${color}` }} />
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color }}>{t(CATEGORY_LABELS[item.category])}</span>
+        </div>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5C5C78", fontWeight: 600 }}>{item.id}</span>
+      </div>
+
+      {/* Blueprint overlay */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.03 }}>
+        <div className="blueprint-grid" />
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: "16px 16px 12px", position: "relative" }}>
+        {/* Title + Priority */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+          <h4 style={{ fontSize: 15, fontWeight: 700, color: "#F0F0F5", margin: 0, lineHeight: 1.3 }}>{t(item.titleKey)}</h4>
+          <span style={{
+            fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, flexShrink: 0,
+            background: `${PRIORITY_COLORS[item.priority]}15`,
+            color: PRIORITY_COLORS[item.priority],
+            border: `1px solid ${PRIORITY_COLORS[item.priority]}30`,
+          }}>{item.priority}</span>
+        </div>
+
+        {/* Description */}
+        <p style={{
+          fontSize: 13, color: "#9898B0", lineHeight: 1.5, margin: "0 0 12px",
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+        }}>{t(item.descKey)}</p>
+
+        {/* Status + Revision */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <StatusBadge status={item.status} label={t(STATUS_LABELS[item.status])} />
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5C5C78" }}>
+            {t('landing.roadmap.revision')} A
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 12 }} />
+
+        {/* Vote row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: "#F0F0F5" }}>
+            {votes.toLocaleString()}
+            <span style={{ fontSize: 10, fontWeight: 500, color: "#5C5C78", marginLeft: 4 }}>{t('landing.roadmap.votes')}</span>
+          </span>
+          <button
+            onClick={onVote}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+              cursor: "pointer", transition: "all 0.2s",
+              border: hasVoted ? "1px solid rgba(16,185,129,0.3)" : `1px solid rgba(${rgb}, 0.3)`,
+              background: hasVoted ? "rgba(16,185,129,0.12)" : `rgba(${rgb}, 0.08)`,
+              color: hasVoted ? "#10B981" : color,
+            }}
+            onMouseEnter={e => {
+              if (!hasVoted) {
+                (e.currentTarget as HTMLElement).style.background = `rgba(${rgb}, 0.2)`;
+                (e.currentTarget as HTMLElement).style.boxShadow = `0 0 12px rgba(${rgb}, 0.15)`;
+              }
+            }}
+            onMouseLeave={e => {
+              if (!hasVoted) {
+                (e.currentTarget as HTMLElement).style.background = `rgba(${rgb}, 0.08)`;
+                (e.currentTarget as HTMLElement).style.boxShadow = "none";
+              }
+            }}
+          >
+            <ChevronUp size={14} />
+            {hasVoted ? t('landing.roadmap.voted') : t('landing.roadmap.voteButton')}
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+          <motion.div
+            initial={{ width: 0 }}
+            whileInView={{ width: `${progress}%` }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: smoothEase, delay: 0.3 }}
+            style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${color}, rgba(${rgb}, 0.3))` }}
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -279,6 +515,90 @@ export default function LandingPage() {
 
 
   const newsItems = [t('landing.news1'), t('landing.news2'), t('landing.news3'), t('landing.news4'), t('landing.news5')];
+
+  // ─── Roadmap vote state (localStorage-persisted) ────────────────────────────
+  const defaultVotes = Object.fromEntries(ROADMAP_ITEMS.map(i => [i.id, i.defaultVotes]));
+  const [roadmapVotes, setRoadmapVotes] = useState<Record<string, number>>(defaultVotes);
+  const [votedItems, setVotedItems] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("buildflow-roadmap-votes");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.votes) setRoadmapVotes(parsed.votes);
+        if (parsed.voted) setVotedItems(new Set(parsed.voted));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleVote = (itemId: string) => {
+    setRoadmapVotes(prev => {
+      const alreadyVoted = votedItems.has(itemId);
+      const next = { ...prev, [itemId]: prev[itemId] + (alreadyVoted ? -1 : 1) };
+      const nextVoted = new Set(votedItems);
+      if (alreadyVoted) nextVoted.delete(itemId); else nextVoted.add(itemId);
+      setVotedItems(nextVoted);
+      try {
+        localStorage.setItem("buildflow-roadmap-votes", JSON.stringify({ votes: next, voted: [...nextVoted] }));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const totalVotes = Object.values(roadmapVotes).reduce((s, v) => s + v, 0);
+  const maxVotes = Math.max(...Object.values(roadmapVotes), 1);
+
+  // ─── Workflow Request state ────────────────────────────────────────────────
+  const [workflowRequests, setWorkflowRequests] = useState<WorkflowRequest[]>(SEED_REQUESTS);
+  const [requestVoted, setRequestVoted] = useState<Set<string>>(new Set());
+  const [requestForm, setRequestForm] = useState({ name: '', discipline: '', problem: '', email: '' });
+  const [requestSubmitted, setRequestSubmitted] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("buildflow-workflow-requests");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.requests) setWorkflowRequests(parsed.requests);
+        if (parsed.voted) setRequestVoted(new Set(parsed.voted));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleRequestVote = (reqId: string) => {
+    setWorkflowRequests(prev => {
+      const alreadyVoted = requestVoted.has(reqId);
+      const next = prev.map(r => r.id === reqId ? { ...r, votes: r.votes + (alreadyVoted ? -1 : 1) } : r);
+      const nextVoted = new Set(requestVoted);
+      if (alreadyVoted) nextVoted.delete(reqId); else nextVoted.add(reqId);
+      setRequestVoted(nextVoted);
+      try { localStorage.setItem("buildflow-workflow-requests", JSON.stringify({ requests: next, voted: [...nextVoted] })); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const handleRequestSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestForm.name || !requestForm.discipline || !requestForm.problem || !requestForm.email) return;
+    const newReq: WorkflowRequest = {
+      id: `req-${Date.now()}`,
+      name: requestForm.name,
+      discipline: requestForm.discipline,
+      problem: requestForm.problem,
+      email: "hidden",
+      votes: 1,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setWorkflowRequests(prev => {
+      const next = [newReq, ...prev];
+      try { localStorage.setItem("buildflow-workflow-requests", JSON.stringify({ requests: next, voted: [...requestVoted] })); } catch { /* ignore */ }
+      return next;
+    });
+    setRequestForm({ name: '', discipline: '', problem: '', email: '' });
+    setRequestSubmitted(true);
+    setTimeout(() => setRequestSubmitted(false), 4000);
+  };
 
   const features = [
     { icon: <LayoutGrid size={22} />, color: "#3B82F6", title: t('landing.visualBuilder'), description: t('landing.visualBuilderDesc'), bullets: [t('landing.visualBullet1'), t('landing.visualBullet2'), t('landing.visualBullet3')] },
@@ -321,7 +641,7 @@ export default function LandingPage() {
             {[
               { label: t('landing.workflows'), href: '#workflows' },
               { label: t('landing.community'), href: '#community' },
-              { label: t('landing.docs'), href: '#docs' },
+              { label: 'Request', href: '#request-workflow' },
               { label: t('landing.pricing'), href: '#pricing' },
             ].map(l => (
               <a key={l.href} href={l.href} style={{
@@ -1322,6 +1642,41 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── CTA Banner — Community Roadmap ─────────────────────────── */}
+        <div className="landing-roadmap-cta-strip" style={{
+          position: "relative", padding: "28px 48px",
+          borderTop: "1px solid rgba(245,158,11,0.15)",
+          borderBottom: "1px solid rgba(245,158,11,0.15)",
+          background: "linear-gradient(90deg, rgba(245,158,11,0.04) 0%, rgba(184,115,51,0.04) 50%, rgba(245,158,11,0.04) 100%)",
+        }}>
+          {/* Glow lines */}
+          <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent)" }} />
+          <div style={{ position: "absolute", bottom: -1, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(184,115,51,0.3), transparent)" }} />
+          <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <ClipboardList size={18} style={{ color: "#F59E0B", flexShrink: 0 }} />
+              <span className="blueprint-annotation" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "2px", color: "#F59E0B", textTransform: "uppercase" as const }}>{t('landing.roadmap.ctaLabel')}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: "#F0F0F5" }}>{t('landing.roadmap.ctaText')}</span>
+            </div>
+            <a
+              href="#community"
+              onClick={e => { e.preventDefault(); document.getElementById("community")?.scrollIntoView({ behavior: "smooth" }); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "10px 22px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: "rgba(245,158,11,0.12)", color: "#F59E0B",
+                border: "1px solid rgba(245,158,11,0.25)",
+                textDecoration: "none", cursor: "pointer", transition: "all 0.2s",
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(245,158,11,0.2)"; el.style.boxShadow = "0 0 16px rgba(245,158,11,0.15)"; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(245,158,11,0.12)"; el.style.boxShadow = "none"; }}
+            >
+              {t('landing.roadmap.ctaButton')} <ArrowRight size={14} />
+            </a>
+          </div>
+        </div>
+
         {/* ── Workflow Showcase — Live Pipeline Demos ───────────────── */}
         <section id="workflows" className="landing-section" style={{
           padding: "120px 48px", position: "relative", overflow: "hidden",
@@ -1419,8 +1774,486 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── Community Social Proof — What Others Built ───────────── */}
+        <section id="what-others-built" className="landing-section" style={{
+          padding: "120px 48px", position: "relative", overflow: "hidden",
+          background: "linear-gradient(180deg, #07070D 0%, #0A0A16 50%, #07070D 100%)",
+        }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div className="blueprint-grid" style={{ opacity: 0.2 }} />
+            <div className="orb-drift-2" style={{ position: "absolute", top: "10%", left: "10%", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)", filter: "blur(25px)" }} />
+            <div className="orb-drift-3" style={{ position: "absolute", bottom: "10%", right: "8%", width: 380, height: 380, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,138,255,0.06) 0%, transparent 70%)", filter: "blur(20px)" }} />
+          </div>
+
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
+              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+              style={{ textAlign: "center", marginBottom: 64 }}
+            >
+              <span className="blueprint-annotation" style={{ marginBottom: 16, display: "block", color: "rgba(16,185,129,0.5)" }}>
+                COMMUNITY
+              </span>
+              <div className="accent-line" style={{ background: "linear-gradient(90deg, #10B981, #06B6D4)" }} />
+              <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 900, color: "#F0F0F5", letterSpacing: "-0.04em", lineHeight: 1.1 }}>
+                What Others{" "}
+                <span style={{ background: "linear-gradient(135deg, #10B981, #06B6D4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Have Built</span>
+              </h2>
+              <p style={{ fontSize: 16, color: "#7C7C96", maxWidth: 520, margin: "16px auto 0", lineHeight: 1.7 }}>
+                Real workflows created by AEC professionals on BuildFlow. Browse, duplicate, and build on what the community has already proven.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
+              variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
+              className="landing-social-proof-grid"
+              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
+            >
+              {COMMUNITY_WORKFLOWS.map((wf, i) => {
+                const rgb = hexToRgb(wf.color);
+                return (
+                  <motion.div key={wf.name} variants={fadeUp} transition={{ duration: 0.5, delay: i * 0.06, ease: smoothEase }}
+                    className="node-card"
+                    style={{ '--node-port-color': wf.color } as React.CSSProperties}
+                  >
+                    {/* Header */}
+                    <div className="node-header" style={{
+                      background: `linear-gradient(135deg, rgba(${rgb}, 0.12), rgba(${rgb}, 0.04))`,
+                      borderBottom: `1px solid rgba(${rgb}, 0.12)`,
+                      borderRadius: "16px 16px 0 0",
+                    }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: wf.color, boxShadow: `0 0 8px ${wf.color}` }} />
+                      <span style={{ color: wf.color }}>{wf.discipline.toUpperCase()}</span>
+                      <span style={{ marginLeft: "auto", fontSize: 8, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>{wf.phase}</span>
+                    </div>
+
+                    <div style={{ padding: "20px 20px 16px" }}>
+                      <h4 style={{ fontSize: 15, fontWeight: 700, color: "#F0F0F5", margin: "0 0 12px", lineHeight: 1.3 }}>{wf.name}</h4>
+
+                      {/* Builder info */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 8,
+                          background: `linear-gradient(135deg, rgba(${rgb}, 0.2), rgba(${rgb}, 0.08))`,
+                          border: `1px solid rgba(${rgb}, 0.2)`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: wf.color, flexShrink: 0,
+                        }}>
+                          <Building2 size={13} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "#F0F0F5" }}>{wf.builder}</div>
+                          <div style={{ fontSize: 10, color: "#5C5C78" }}>{wf.role} · {wf.firm}</div>
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 12 }} />
+
+                      {/* Stats */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <Star size={12} style={{ color: wf.color }} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#F0F0F5", fontFamily: "monospace" }}>{wf.uses.toLocaleString()}</span>
+                            <span style={{ fontSize: 9, color: "#5C5C78" }}>runs</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <Copy size={11} style={{ color: "#5C5C78" }} />
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", fontFamily: "monospace" }}>{wf.duplicated}</span>
+                            <span style={{ fontSize: 9, color: "#5C5C78" }}>cloned</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div style={{ marginTop: 10, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          whileInView={{ width: `${Math.min((wf.uses / 600) * 100, 100)}%` }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 1.2, ease: smoothEase, delay: 0.3 + i * 0.1 }}
+                          style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${wf.color}, rgba(${rgb}, 0.3))` }}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+
+            {/* Community stat bar */}
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true }}
+              variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase, delay: 0.3 }}
+              style={{
+                marginTop: 40, display: "flex", justifyContent: "center", gap: 40, flexWrap: "wrap",
+                padding: "20px 24px", borderRadius: 14,
+                background: "rgba(18,18,30,0.6)", border: "1px solid rgba(16,185,129,0.1)",
+              }}
+            >
+              {[
+                { label: "Active Builders", value: "1,240+", color: "#10B981" },
+                { label: "Workflows Shared", value: "380+", color: "#06B6D4" },
+                { label: "Total Executions", value: "52,000+", color: "#F59E0B" },
+              ].map(stat => (
+                <div key={stat.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: stat.color, fontFamily: '"SF Mono", "Fira Code", monospace' }}>{stat.value}</div>
+                  <div style={{ fontSize: 10, color: "#5C5C78", textTransform: "uppercase", letterSpacing: "0.15em", marginTop: 2 }}>{stat.label}</div>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── Community Voting / Tender Board ──────────────────────── */}
+        <section id="community" className="landing-section" style={{
+          padding: "120px 48px", position: "relative", overflow: "hidden",
+          background: "linear-gradient(180deg, #07070D 0%, #0A0A14 50%, #07070D 100%)",
+        }}>
+          {/* Background */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div className="blueprint-grid" style={{ opacity: 0.25 }} />
+            <div className="orb-drift-1" style={{ position: "absolute", top: "10%", right: "8%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)", filter: "blur(25px)" }} />
+            <div className="orb-drift-2" style={{ position: "absolute", bottom: "15%", left: "5%", width: 350, height: 350, borderRadius: "50%", background: "radial-gradient(circle, rgba(184,115,51,0.06) 0%, transparent 70%)", filter: "blur(20px)" }} />
+          </div>
+
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
+            {/* Header */}
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
+              variants={stagger}
+              style={{ textAlign: "center", marginBottom: 56 }}
+            >
+              <motion.span variants={fadeUp} className="blueprint-annotation" style={{
+                fontSize: 9, fontWeight: 700, letterSpacing: "3px", color: "#F59E0B",
+                textTransform: "uppercase" as const, display: "block", marginBottom: 16,
+              }}>
+                {t('landing.roadmap.sectionAnnotation')}
+              </motion.span>
+              <motion.div variants={fadeUp} className="accent-line" style={{
+                width: 48, height: 2, margin: "0 auto 24px",
+                background: "linear-gradient(90deg, #F59E0B, #B87333)",
+                borderRadius: 1,
+              }} />
+              <motion.h2 variants={fadeUp} style={{
+                fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, color: "#F0F0F5",
+                lineHeight: 1.15, margin: "0 0 16px",
+              }}>
+                {t('landing.roadmap.sectionTitle1')}{' '}
+                <span style={{ background: "linear-gradient(135deg, #F59E0B, #B87333)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  {t('landing.roadmap.sectionTitle2')}
+                </span>
+              </motion.h2>
+              <motion.p variants={fadeUp} style={{ fontSize: 16, color: "#9898B0", maxWidth: 560, margin: "0 auto" }}>
+                {t('landing.roadmap.sectionSubtitle')}
+              </motion.p>
+            </motion.div>
+
+            {/* Stats strip */}
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-60px" }}
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: smoothEase }}
+              style={{
+                display: "flex", justifyContent: "center", gap: 48, marginBottom: 48, flexWrap: "wrap",
+              }}
+            >
+              {[
+                { label: t('landing.roadmap.totalVotes'), value: totalVotes, color: "#F59E0B" },
+                { label: t('landing.roadmap.itemsInPipeline'), value: ROADMAP_ITEMS.length, color: "#4F8AFF" },
+                { label: t('landing.roadmap.itemsApproved'), value: ROADMAP_ITEMS.filter(i => i.status === "approved" || i.status === "in-progress").length, color: "#10B981" },
+              ].map(stat => (
+                <div key={stat.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 28, fontWeight: 800, color: stat.color }}>
+                    <AnimatedNumber value={stat.value} color={stat.color} />
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#5C5C78", textTransform: "uppercase" as const, letterSpacing: "1px", marginTop: 4 }}>
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Vote cards grid */}
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-60px" }}
+              variants={stagger}
+              className="landing-roadmap-grid"
+              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 40 }}
+            >
+              {ROADMAP_ITEMS.map(item => (
+                <VoteCard
+                  key={item.id}
+                  item={item}
+                  votes={roadmapVotes[item.id] ?? item.defaultVotes}
+                  hasVoted={votedItems.has(item.id)}
+                  onVote={() => handleVote(item.id)}
+                  t={t}
+                  maxVotes={maxVotes}
+                />
+              ))}
+            </motion.div>
+
+            {/* Footer CTA */}
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true }}
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: smoothEase }}
+              style={{ textAlign: "center" }}
+            >
+              <Link
+                href="/login"
+                style={{
+                  fontSize: 14, color: "#F59E0B", textDecoration: "none",
+                  fontWeight: 600, transition: "color 0.2s",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#FFBF00"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#F59E0B"; }}
+              >
+                {t('landing.roadmap.signUpToVote')} →
+              </Link>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── Workflow Request / Brief Submission ──────────────────── */}
+        <section id="request-workflow" className="landing-section" style={{
+          padding: "120px 48px", position: "relative", overflow: "hidden",
+          background: "linear-gradient(180deg, #07070D 0%, #0C0A14 50%, #07070D 100%)",
+        }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div className="blueprint-grid" style={{ opacity: 0.2 }} />
+            <div className="orb-drift-1" style={{ position: "absolute", top: "15%", right: "10%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(184,115,51,0.08) 0%, transparent 70%)", filter: "blur(25px)" }} />
+            <div className="orb-drift-3" style={{ position: "absolute", bottom: "10%", left: "5%", width: 350, height: 350, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%)", filter: "blur(20px)" }} />
+          </div>
+
+          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
+            {/* Section Header */}
+            <motion.div
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
+              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
+              style={{ textAlign: "center", marginBottom: 56 }}
+            >
+              <span className="blueprint-annotation" style={{ marginBottom: 16, display: "block", color: "rgba(184,115,51,0.6)" }}>
+                WORKFLOW BRIEF
+              </span>
+              <div className="accent-line" style={{ background: "linear-gradient(90deg, #B87333, #F59E0B)" }} />
+              <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 900, color: "#F0F0F5", letterSpacing: "-0.04em", lineHeight: 1.1 }}>
+                Request a{" "}
+                <span style={{ background: "linear-gradient(135deg, #B87333, #F59E0B)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Workflow</span>
+              </h2>
+              <p style={{ fontSize: 16, color: "#7C7C96", maxWidth: 560, margin: "16px auto 0", lineHeight: 1.7 }}>
+                Tell us what workflow your practice needs. We build the most requested ones first. Your brief goes live so others can back the same idea.
+              </p>
+            </motion.div>
+
+            {/* Two-column: Form + Live Feed */}
+            <div className="landing-request-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, alignItems: "start" }}>
+              {/* LEFT: Submission Form */}
+              <motion.div
+                initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
+                variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }}
+              >
+                <div className="node-card" style={{ '--node-port-color': '#B87333' } as React.CSSProperties}>
+                  <div className="node-header" style={{
+                    background: "linear-gradient(135deg, rgba(184,115,51,0.15), rgba(184,115,51,0.04))",
+                    borderBottom: "1px solid rgba(184,115,51,0.12)",
+                    borderRadius: "16px 16px 0 0",
+                  }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#B87333", boxShadow: "0 0 8px #B87333" }} />
+                    <span style={{ color: "#B87333" }}>SUBMIT YOUR BRIEF</span>
+                  </div>
+
+                  <form onSubmit={handleRequestSubmit} style={{ padding: "24px 24px 20px" }}>
+                    {/* Workflow Name */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "#5C5C78", marginBottom: 6, fontFamily: "monospace" }}>
+                        Workflow Name
+                      </label>
+                      <input
+                        type="text"
+                        value={requestForm.name}
+                        onChange={e => setRequestForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="e.g. Acoustic Performance Assessment"
+                        style={{
+                          width: "100%", padding: "12px 14px", borderRadius: 10, fontSize: 14,
+                          background: "rgba(7,7,13,0.8)", border: "1px solid rgba(184,115,51,0.15)",
+                          color: "#F0F0F5", outline: "none", transition: "border-color 0.2s",
+                          boxSizing: "border-box",
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = "rgba(184,115,51,0.4)"; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = "rgba(184,115,51,0.15)"; }}
+                      />
+                    </div>
+
+                    {/* Industry / Discipline */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "#5C5C78", marginBottom: 6, fontFamily: "monospace" }}>
+                        Discipline / Industry
+                      </label>
+                      <input
+                        type="text"
+                        value={requestForm.discipline}
+                        onChange={e => setRequestForm(prev => ({ ...prev, discipline: e.target.value }))}
+                        placeholder="e.g. Structural Engineering, MEP, Planning"
+                        style={{
+                          width: "100%", padding: "12px 14px", borderRadius: 10, fontSize: 14,
+                          background: "rgba(7,7,13,0.8)", border: "1px solid rgba(184,115,51,0.15)",
+                          color: "#F0F0F5", outline: "none", transition: "border-color 0.2s",
+                          boxSizing: "border-box",
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = "rgba(184,115,51,0.4)"; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = "rgba(184,115,51,0.15)"; }}
+                      />
+                    </div>
+
+                    {/* Problem it solves */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "#5C5C78", marginBottom: 6, fontFamily: "monospace" }}>
+                        What Problem Does It Solve?
+                      </label>
+                      <textarea
+                        value={requestForm.problem}
+                        onChange={e => setRequestForm(prev => ({ ...prev, problem: e.target.value }))}
+                        placeholder="Describe the workflow you need and why it matters to your practice..."
+                        rows={3}
+                        style={{
+                          width: "100%", padding: "12px 14px", borderRadius: 10, fontSize: 14,
+                          background: "rgba(7,7,13,0.8)", border: "1px solid rgba(184,115,51,0.15)",
+                          color: "#F0F0F5", outline: "none", transition: "border-color 0.2s",
+                          resize: "vertical", fontFamily: "inherit", lineHeight: 1.6,
+                          boxSizing: "border-box",
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = "rgba(184,115,51,0.4)"; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = "rgba(184,115,51,0.15)"; }}
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={{ display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "#5C5C78", marginBottom: 6, fontFamily: "monospace" }}>
+                        Your Email (we notify you when it&apos;s built)
+                      </label>
+                      <input
+                        type="email"
+                        value={requestForm.email}
+                        onChange={e => setRequestForm(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="you@practice.com"
+                        style={{
+                          width: "100%", padding: "12px 14px", borderRadius: 10, fontSize: 14,
+                          background: "rgba(7,7,13,0.8)", border: "1px solid rgba(184,115,51,0.15)",
+                          color: "#F0F0F5", outline: "none", transition: "border-color 0.2s",
+                          boxSizing: "border-box",
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = "rgba(184,115,51,0.4)"; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = "rgba(184,115,51,0.15)"; }}
+                      />
+                    </div>
+
+                    {/* Submit button */}
+                    <button
+                      type="submit"
+                      style={{
+                        width: "100%", padding: "14px 24px", borderRadius: 12,
+                        background: requestSubmitted
+                          ? "rgba(16,185,129,0.15)"
+                          : "linear-gradient(135deg, #B87333, #F59E0B)",
+                        color: requestSubmitted ? "#10B981" : "#050510",
+                        fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        transition: "all 0.3s",
+                        boxShadow: requestSubmitted ? "none" : "0 4px 20px rgba(184,115,51,0.3)",
+                      }}
+                    >
+                      {requestSubmitted ? (
+                        <>Brief Submitted Successfully</>
+                      ) : (
+                        <>
+                          <Send size={15} />
+                          Submit Workflow Brief
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+
+              {/* RIGHT: Live Community Feed */}
+              <motion.div
+                initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
+                variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase, delay: 0.15 }}
+              >
+                <div className="node-card" style={{ '--node-port-color': '#F59E0B' } as React.CSSProperties}>
+                  <div className="node-header" style={{
+                    background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))",
+                    borderBottom: "1px solid rgba(245,158,11,0.12)",
+                    borderRadius: "16px 16px 0 0",
+                  }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981", boxShadow: "0 0 8px #10B981", animation: "glow-pulse 2s infinite" }} />
+                    <span style={{ color: "#F59E0B" }}>LIVE COMMUNITY FEED</span>
+                    <span style={{ marginLeft: "auto", fontSize: 9, color: "#5C5C78", fontFamily: "monospace" }}>{workflowRequests.length} briefs</span>
+                  </div>
+
+                  <div style={{ padding: "8px 0", maxHeight: 460, overflowY: "auto" }}>
+                    {[...workflowRequests].sort((a, b) => b.votes - a.votes).map((req, i) => {
+                      const hasVoted = requestVoted.has(req.id);
+                      return (
+                        <div key={req.id} style={{
+                          padding: "14px 20px",
+                          borderBottom: i < workflowRequests.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                          transition: "background 0.15s",
+                        }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(245,158,11,0.03)"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                            {/* Vote button */}
+                            <button
+                              onClick={() => handleRequestVote(req.id)}
+                              style={{
+                                display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                                padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer",
+                                background: hasVoted ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.08)",
+                                color: hasVoted ? "#10B981" : "#F59E0B",
+                                transition: "all 0.2s", flexShrink: 0, minWidth: 40,
+                              }}
+                            >
+                              <ChevronUp size={14} />
+                              <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>{req.votes}</span>
+                            </button>
+
+                            {/* Content */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <h5 style={{ fontSize: 14, fontWeight: 700, color: "#F0F0F5", margin: "0 0 4px", lineHeight: 1.3 }}>{req.name}</h5>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                                <span style={{
+                                  fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px",
+                                  padding: "2px 6px", borderRadius: 4,
+                                  background: "rgba(79,138,255,0.1)", color: "#4F8AFF",
+                                  border: "1px solid rgba(79,138,255,0.2)",
+                                }}>{req.discipline}</span>
+                                <span style={{ fontSize: 10, color: "#3A3A50", fontFamily: "monospace" }}>{req.createdAt}</span>
+                              </div>
+                              <p style={{
+                                fontSize: 12, color: "#7C7C96", lineHeight: 1.5, margin: 0,
+                                display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                              }}>{req.problem}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
         {/* ── How It Works — Horizontal Pipeline ───────────────────── */}
-        <section id="community" className="landing-section" style={{ padding: "120px 48px", position: "relative", overflow: "hidden" }}>
+        <section id="how-it-works" className="landing-section" style={{ padding: "120px 48px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             <div className="blueprint-grid" style={{ opacity: 0.2 }} />
             {/* Large animated pipeline SVG */}
@@ -1803,7 +2636,7 @@ export default function LandingPage() {
       </main>
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
-      <footer style={{
+      <footer className="landing-footer-wrapper" style={{
         borderTop: "1px solid rgba(255,255,255,0.04)",
         padding: "32px 48px",
         background: "rgba(7,7,13,0.9)",
@@ -1855,58 +2688,209 @@ export default function LandingPage() {
 
       {/* Mobile Responsive Styles */}
       <style jsx global>{`
-        @media (max-width: 768px) {
-          section[style*="minHeight: 100vh"] {
-            padding: 80px 24px 120px !important;
-          }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
 
-          h1 {
-            font-size: 2.5rem !important;
+        /* ─── Tablet: 769px – 1024px ───────────────────────────── */
+        @media (max-width: 1024px) {
+          .landing-grid-3 {
+            grid-template-columns: 1fr 1fr !important;
           }
-
-          div[style*="gridTemplateColumns: repeat(3, 1fr)"],
-          div[style*="gridTemplateColumns: repeat(4, 1fr)"] {
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
+          .landing-social-proof-grid {
+            grid-template-columns: 1fr 1fr !important;
           }
-
-          div[style*="gridTemplateColumns: 1fr 40px 1fr 40px 1fr"] {
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
+          .landing-roadmap-grid {
+            grid-template-columns: 1fr 1fr !important;
           }
-
-          div[style*="gridTemplateColumns: 1fr 40px 1fr 40px 1fr"] > div[style*="display: flex"][style*="justifyContent: center"]:has(svg) {
+          .landing-pipeline-showcase {
+            flex-wrap: wrap !important;
+          }
+          .landing-pipeline-showcase > .node-card {
+            flex: 1 1 calc(50% - 48px) !important;
+            min-width: 200px !important;
+          }
+          .landing-pipeline-connector:nth-child(even) {
             display: none !important;
-          }
-
-          nav[style*="padding: 0 48px"] {
-            padding: 0 20px !important;
-          }
-
-          section[style*="padding: 88px 48px"] {
-            padding: 48px 24px !important;
-          }
-
-          section[style*="padding: 48px 48px 88px"] {
-            padding: 32px 24px 48px !important;
-          }
-
-          div[style*="display: flex"][style*="gap: 12"] > a {
-            width: 100%;
-            justify-content: center;
-          }
-
-          a[style*="padding"][style*="borderRadius"] {
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
           }
         }
 
+        /* ─── Mobile: 768px and below ──────────────────────────── */
+        @media (max-width: 768px) {
+          /* ── Navbar ── */
+          .landing-nav-links {
+            display: none !important;
+          }
+          .landing-login-link {
+            display: none !important;
+          }
+
+          /* ── Hero ── */
+          .landing-side-toolbar,
+          .landing-prompt-card,
+          .landing-floating-card {
+            display: none !important;
+          }
+          .landing-partners {
+            gap: 12px !important;
+            flex-wrap: wrap !important;
+            padding: 0 20px !important;
+            justify-content: center !important;
+          }
+          .landing-partners span {
+            font-size: 8px !important;
+            letter-spacing: 1px !important;
+          }
+
+          /* ── Pipeline Grid (Core Capabilities) ── */
+          .landing-pipeline-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          .landing-wire-connector {
+            display: none !important;
+          }
+
+          /* ── Built For Strip ── */
+          .landing-built-for {
+            flex-direction: column !important;
+            gap: 12px !important;
+          }
+          .landing-built-for-divider {
+            display: none !important;
+          }
+
+          /* ── Stats Row ── */
+          .landing-stats-row {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 20px 16px !important;
+            padding: 32px 20px !important;
+          }
+          .landing-stats-row > div[style*="width: 1"] {
+            display: none !important;
+          }
+
+          /* ── Pipeline Showcase ── */
+          .landing-pipeline-showcase {
+            flex-direction: column !important;
+            gap: 16px !important;
+          }
+          .landing-pipeline-connector {
+            display: none !important;
+          }
+
+          /* ── All 3-column grids ── */
+          .landing-grid-3 {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          /* ── Social Proof grid ── */
+          .landing-social-proof-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          /* ── Roadmap ── */
+          .landing-roadmap-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          .landing-roadmap-cta-strip {
+            padding: 20px 16px !important;
+          }
+          .landing-roadmap-cta-strip > div {
+            flex-direction: column !important;
+            text-align: center;
+            gap: 12px !important;
+          }
+
+          /* ── Workflow Request Layout ── */
+          .landing-request-layout {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+
+          /* ── Steps (How It Works) ── */
+          .landing-steps {
+            flex-direction: column !important;
+            gap: 16px !important;
+          }
+          .landing-step-connector {
+            display: none !important;
+          }
+
+          /* ── Footer ── */
+          .landing-footer {
+            flex-direction: column !important;
+            gap: 16px !important;
+            text-align: center !important;
+          }
+          .landing-footer-wrapper {
+            padding: 24px 16px !important;
+          }
+
+          /* ── Section padding override ── */
+          .landing-section {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+          section.landing-section {
+            padding-top: 64px !important;
+            padding-bottom: 64px !important;
+          }
+
+          /* ── News ticker ── */
+          .landing-news-ticker {
+            height: 30px !important;
+          }
+
+          /* ── Buttons: ensure tappable size ── */
+          button, a[href] {
+            min-height: 44px;
+          }
+
+          /* ── Hero heading ── */
+          h1 {
+            font-size: clamp(1.8rem, 8vw, 2.5rem) !important;
+          }
+
+          /* ── Hero content padding ── */
+          div[style*="maxWidth: 1000"] {
+            padding: 0 16px !important;
+          }
+        }
+
+        /* ─── Small phones: 480px and below ───────────────────── */
         @media (max-width: 480px) {
           h1 {
-            font-size: 2rem !important;
+            font-size: 1.7rem !important;
+          }
+          h2 {
+            font-size: 1.5rem !important;
+          }
+          .landing-stats-row {
+            grid-template-columns: 1fr !important;
+          }
+          .landing-partners {
+            display: none !important;
+          }
+          .landing-section {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+          }
+        }
+
+        /* ─── Min 320px safety ─────────────────────────────────── */
+        @media (max-width: 360px) {
+          h1 {
+            font-size: 1.5rem !important;
+            letter-spacing: -0.02em !important;
+          }
+          .landing-news-ticker {
+            display: none !important;
           }
         }
       `}</style>
