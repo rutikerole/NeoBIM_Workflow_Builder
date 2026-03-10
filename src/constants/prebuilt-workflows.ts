@@ -1,5 +1,23 @@
 import type { WorkflowTemplate } from "@/types/workflow";
 
+// ─── Layout Constants ────────────────────────────────────────────────────────
+// Input nodes are 320px wide, standard nodes are 220px wide.
+// We use generous gaps (200px after input, 120px between standard nodes)
+// to prevent visual overlap from glows, corner accents, and fitView scaling.
+const INPUT_W = 320;
+const NODE_W = 220;
+const GAP_AFTER_INPUT = 200;  // gap between input right edge and next node
+const GAP_BETWEEN = 120;      // gap between standard nodes
+
+const X1 = 0;                                          // input node
+const X2 = X1 + INPUT_W + GAP_AFTER_INPUT;             // 520
+const X3 = X2 + NODE_W + GAP_BETWEEN;                  // 860
+const X4 = X3 + NODE_W + GAP_BETWEEN;                  // 1200
+const X5 = X4 + NODE_W + GAP_BETWEEN;                  // 1540
+const X6 = X5 + NODE_W + GAP_BETWEEN;                  // 1880
+
+const Y = 200; // default vertical position
+
 export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
   {
     id: "wf-01",
@@ -18,7 +36,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-001",
             label: "Text Prompt",
@@ -32,7 +50,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 380, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "TR-003",
             label: "Design Brief Analyzer",
@@ -49,7 +67,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 660, y: 200 },
+          position: { x: X3, y: Y },
           data: {
             catalogueId: "GN-001",
             label: "Massing Generator",
@@ -66,7 +84,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n4",
           type: "workflowNode",
-          position: { x: 940, y: 200 },
+          position: { x: X4, y: Y },
           data: {
             catalogueId: "GN-003",
             label: "Concept Render Generator",
@@ -105,7 +123,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-005",
             label: "Parameter Input",
@@ -119,7 +137,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 380, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "TR-005",
             label: "Visualization Style Composer",
@@ -139,7 +157,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 660, y: 200 },
+          position: { x: X3, y: Y },
           data: {
             catalogueId: "GN-003",
             label: "Concept Render Generator",
@@ -178,7 +196,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-005",
             label: "Parameter Input",
@@ -192,7 +210,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 380, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "GN-001",
             label: "Massing Generator",
@@ -229,7 +247,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-005",
             label: "Parameter Input",
@@ -243,7 +261,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 380, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "GN-001",
             label: "Massing Generator",
@@ -260,7 +278,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 660, y: 200 },
+          position: { x: X3, y: Y },
           data: {
             catalogueId: "EX-001",
             label: "IFC Exporter",
@@ -299,7 +317,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-004",
             label: "IFC Upload",
@@ -313,7 +331,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 380, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "TR-007",
             label: "Quantity Extractor",
@@ -327,7 +345,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 660, y: 200 },
+          position: { x: X3, y: Y },
           data: {
             catalogueId: "TR-008",
             label: "BOQ / Cost Mapper",
@@ -341,7 +359,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n4",
           type: "workflowNode",
-          position: { x: 940, y: 200 },
+          position: { x: X4, y: Y },
           data: {
             catalogueId: "EX-002",
             label: "BOQ / Spreadsheet Exporter",
@@ -377,7 +395,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-001",
             label: "Text Prompt",
@@ -391,7 +409,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 380, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "TR-003",
             label: "Design Brief Analyzer",
@@ -408,7 +426,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 660, y: 200 },
+          position: { x: X3, y: Y },
           data: {
             catalogueId: "GN-004",
             label: "Floor Plan Generator",
@@ -446,7 +464,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 250 },
+          position: { x: X1, y: 250 },
           data: {
             catalogueId: "IN-001",
             label: "Text Prompt",
@@ -460,7 +478,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 400, y: 250 },
+          position: { x: X2, y: 250 },
           data: {
             catalogueId: "TR-003",
             label: "Design Brief Analyzer",
@@ -477,7 +495,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 740, y: 120 },
+          position: { x: X3, y: 100 },
           data: {
             catalogueId: "GN-004",
             label: "Floor Plan Generator",
@@ -494,7 +512,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n4",
           type: "workflowNode",
-          position: { x: 740, y: 380 },
+          position: { x: X3, y: 400 },
           data: {
             catalogueId: "GN-003",
             label: "Concept Render Generator",
@@ -533,7 +551,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-006",
             label: "Location Input",
@@ -547,7 +565,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 380, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "TR-012",
             label: "Site Analysis",
@@ -564,7 +582,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 660, y: 200 },
+          position: { x: X3, y: Y },
           data: {
             catalogueId: "TR-003",
             label: "Design Brief Analyzer",
@@ -581,7 +599,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n4",
           type: "workflowNode",
-          position: { x: 940, y: 200 },
+          position: { x: X4, y: Y },
           data: {
             catalogueId: "GN-003",
             label: "Concept Render Generator",
@@ -626,7 +644,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-002",
             label: "PDF Upload",
@@ -640,7 +658,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 380, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "TR-001",
             label: "Brief Parser",
@@ -654,7 +672,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 660, y: 200 },
+          position: { x: X3, y: Y },
           data: {
             catalogueId: "TR-002",
             label: "Requirements Extractor",
@@ -668,7 +686,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n4",
           type: "workflowNode",
-          position: { x: 940, y: 200 },
+          position: { x: X4, y: Y },
           data: {
             catalogueId: "TR-003",
             label: "Design Brief Analyzer",
@@ -685,7 +703,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n5",
           type: "workflowNode",
-          position: { x: 1220, y: 200 },
+          position: { x: X5, y: Y },
           data: {
             catalogueId: "GN-003",
             label: "Concept Render Generator",
@@ -702,7 +720,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n6",
           type: "workflowNode",
-          position: { x: 1500, y: 200 },
+          position: { x: X6, y: Y },
           data: {
             catalogueId: "GN-009",
             label: "Video Walkthrough Generator",
@@ -750,7 +768,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n1",
           type: "workflowNode",
-          position: { x: 100, y: 200 },
+          position: { x: X1, y: Y },
           data: {
             catalogueId: "IN-003",
             label: "Image Upload",
@@ -764,7 +782,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n2",
           type: "workflowNode",
-          position: { x: 350, y: 200 },
+          position: { x: X2, y: Y },
           data: {
             catalogueId: "TR-004",
             label: "Image Understanding",
@@ -781,7 +799,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: 600, y: 200 },
+          position: { x: X3, y: Y },
           data: {
             catalogueId: "GN-001",
             label: "Massing Generator",
@@ -798,7 +816,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n4",
           type: "workflowNode",
-          position: { x: 850, y: 200 },
+          position: { x: X4, y: Y },
           data: {
             catalogueId: "TR-005",
             label: "Visualization Style Composer",
@@ -818,7 +836,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n5",
           type: "workflowNode",
-          position: { x: 1100, y: 200 },
+          position: { x: X5, y: Y },
           data: {
             catalogueId: "GN-003",
             label: "Concept Render Generator",
@@ -835,7 +853,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n6",
           type: "workflowNode",
-          position: { x: 1380, y: 200 },
+          position: { x: X6, y: Y },
           data: {
             catalogueId: "GN-009",
             label: "Video Walkthrough Generator",

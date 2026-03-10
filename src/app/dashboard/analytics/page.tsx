@@ -339,7 +339,7 @@ export default function AnalyticsPage() {
       <PageBackground />
       <Header title={t('analytics.title')} subtitle={t('analytics.subtitle')} />
 
-      <main style={{ flex: 1, overflowY: "auto", padding: "28px 36px", position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto", width: "100%" }}>
+      <main className="analytics-page" style={{ flex: 1, overflowY: "auto", padding: "28px 36px", position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto", width: "100%" }}>
         {/* Live telemetry indicator */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}
           style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 24, justifyContent: "flex-end" }}>
@@ -350,7 +350,7 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* KPI Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
+        <div className="analytics-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
           <KPICard icon={<Workflow size={15} />} label={t('analytics.totalRuns')} value={data.totalExecutions} color="#4F8AFF" delay={0.05} />
           <KPICard icon={<CheckCircle2 size={15} />} label={t('analytics.successRate')} value={data.successRate} suffix="%" color="#10B981" delay={0.1} gauge={data.successRate} />
           <KPICard icon={<Clock size={15} />} label={t('analytics.avgDuration')} value={avgSec} suffix="s" color="#A78BFA" delay={0.15} />
@@ -358,7 +358,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Charts */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+        <div className="analytics-charts-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
           <SectionCard delay={0.3} accentColor="#4F8AFF">
             <h3 style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F5", margin: "0 0 16px", letterSpacing: "-0.01em" }}>
               {t('analytics.dailyExecutions')}

@@ -7,7 +7,7 @@ import {
   ArrowRight, Zap, Sparkles, Users, LayoutGrid,
   Box, Play, Image as ImageIcon, FileCode,
   MousePointerClick, Workflow, Layers, Settings, Target, Calendar,
-  ChevronUp, ClipboardList, Send, Copy, Building2, Star,
+  ChevronUp, ChevronDown, ClipboardList, Send, Copy, Building2, Star,
 } from "lucide-react";
 import { MiniWorkflowDiagram } from "@/components/shared/MiniWorkflowDiagram";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
@@ -1055,7 +1055,7 @@ export default function LandingPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7, duration: 0.5 }}
-              style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 24 }}
+              style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}
             >
               <Link href="/demo" style={{
                 display: "flex", alignItems: "center", gap: 8,
@@ -1076,8 +1076,80 @@ export default function LandingPage() {
                 <Calendar size={15} />
                 {t('landing.bookDemo')}
               </Link>
+
+              {/* Explore Community CTA */}
+              <a
+                href="#what-others-built"
+                onClick={e => { e.preventDefault(); document.getElementById("what-others-built")?.scrollIntoView({ behavior: "smooth" }); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "10px 20px", borderRadius: 10,
+                  border: "1px solid rgba(16,185,129,0.2)",
+                  background: "rgba(16,185,129,0.05)",
+                  color: "#10B981", fontSize: 14, fontWeight: 600,
+                  textDecoration: "none", transition: "all 0.25s",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background = "rgba(16,185,129,0.12)";
+                  el.style.borderColor = "rgba(16,185,129,0.35)";
+                  el.style.boxShadow = "0 0 24px rgba(16,185,129,0.12)";
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background = "rgba(16,185,129,0.05)";
+                  el.style.borderColor = "rgba(16,185,129,0.2)";
+                  el.style.boxShadow = "none";
+                }}
+              >
+                <Users size={15} />
+                Explore Community
+                <ChevronDown size={14} style={{ opacity: 0.6 }} />
+              </a>
             </motion.div>
           </div>
+
+          {/* Scroll-down indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.8, duration: 0.8 }}
+            className="landing-scroll-indicator"
+            style={{
+              position: "absolute", bottom: 100, left: "50%", transform: "translateX(-50%)",
+              zIndex: 30, display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+              cursor: "pointer",
+            }}
+            onClick={() => document.getElementById("what-others-built")?.scrollIntoView({ behavior: "smooth" })}
+          >
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase",
+              color: "rgba(16,185,129,0.4)",
+              fontFamily: '"SF Mono", "Fira Code", monospace',
+            }}>
+              scroll
+            </span>
+            <motion.div
+              animate={{ y: [0, 6, 0] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+              style={{
+                width: 28, height: 44, borderRadius: 14,
+                border: "1.5px solid rgba(16,185,129,0.2)",
+                display: "flex", alignItems: "flex-start", justifyContent: "center",
+                paddingTop: 8,
+              }}
+            >
+              <motion.div
+                animate={{ y: [0, 12, 0], opacity: [1, 0.3, 1] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  width: 4, height: 8, borderRadius: 2,
+                  background: "rgba(16,185,129,0.5)",
+                }}
+              />
+            </motion.div>
+          </motion.div>
 
           {/* Partner logos at bottom of hero */}
           <motion.div
@@ -2840,6 +2912,11 @@ export default function LandingPage() {
           section.landing-section {
             padding-top: 64px !important;
             padding-bottom: 64px !important;
+          }
+
+          /* ── Scroll indicator ── */
+          .landing-scroll-indicator {
+            display: none !important;
           }
 
           /* ── News ticker ── */

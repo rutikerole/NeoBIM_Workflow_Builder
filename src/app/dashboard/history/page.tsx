@@ -589,9 +589,9 @@ export default function HistoryPage() {
       <PageBackground />
       <Header title={t('history.title')} subtitle={t('history.subtitle')} />
 
-      <main style={{ flex: 1, overflowY: "auto", padding: "28px 36px", position: "relative", zIndex: 1 }}>
+      <main className="history-page" style={{ flex: 1, overflowY: "auto", padding: "28px 36px", position: "relative", zIndex: 1 }}>
         {/* Stat cards */}
-        <div style={{ display: "flex", gap: 14, marginBottom: 28 }}>
+        <div className="history-stats-bar" style={{ display: "flex", gap: 14, marginBottom: 28 }}>
           <StatCard label={t('history.totalRuns')} value={executions.length} color="#4F8AFF" delay={0.05} />
           <StatCard label={t('history.today')} value={todayCount} color="#A78BFA" delay={0.1} />
           <StatCard label={t('history.successful')} value={executions.filter(e => e.status === "SUCCESS").length} color="#34D399" delay={0.15} />
@@ -603,9 +603,10 @@ export default function HistoryPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.35 }}
+          className="history-actions"
           style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}
         >
-          <div className="dp-filter-group">
+          <div className="dp-filter-group history-filter-bar">
             {filters.map(f => (
               <button key={f.key} className="dp-filter-btn"
                 data-active={statusFilter === f.key ? "true" : "false"}

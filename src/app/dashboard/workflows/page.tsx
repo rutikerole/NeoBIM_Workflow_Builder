@@ -86,7 +86,7 @@ export default function WorkflowsPage() {
               <p style={{ fontSize: 11, color: "#5C5C78", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 12 }}>
                 Popular starting points
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              <div className="workflows-page-templates" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 {[
                   { label: "Brief → 3D Concept", desc: "Analyze a brief and generate 3D massing", icon: <Box size={16} className="text-[#8B5CF6]" />, color: "#8B5CF6" },
                   { label: "Brief → Render", desc: "Go from project brief to AI concept render", icon: <ImageIcon size={16} className="text-[#10B981]" />, color: "#10B981" },

@@ -341,7 +341,7 @@ export default function BillingPage() {
             <p className="text-sm text-[#7C7C96]">{t('billing.moneyBack')}</p>
           </div>
 
-          <div className="grid grid-cols-3 gap-6">
+          <div className="billing-plans grid grid-cols-3 gap-6">
             {plans.map((plan, index) => (
               <motion.div
                 key={plan.name}
