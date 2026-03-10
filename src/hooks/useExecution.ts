@@ -297,47 +297,24 @@ async function pollVideoGeneration(
           failureMessage: undefined,
         });
 
-        let finalVideoUrl = status.exteriorVideoUrl ?? "";
-        let persistedUrl: string | undefined;
-
         console.log("[RENDER] Videos received by frontend:");
         console.log("[RENDER] Exterior URL:", status.exteriorVideoUrl || "NONE");
         console.log("[RENDER] Interior URL:", status.interiorVideoUrl || "NONE");
         console.log("[RENDER] Are both present?", !!status.exteriorVideoUrl && !!status.interiorVideoUrl);
 
-        if (status.exteriorVideoUrl && status.interiorVideoUrl) {
-          try {
-            console.log("[RENDER] Both videos available — calling /api/concat-videos to stitch 5s + 10s...");
-            const concatRes = await fetch("/api/concat-videos", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                exteriorUrl: status.exteriorVideoUrl,
-                interiorUrl: status.interiorVideoUrl,
-                filename: `walkthrough-${nodeId}.mp4`,
-              }),
-            });
-
-            console.log("[RENDER] concat-videos response status:", concatRes.status);
-            if (concatRes.ok) {
-              const concatData = await concatRes.json();
-              finalVideoUrl = concatData.videoUrl;
-              persistedUrl = concatData.videoUrl; // Already on R2
-              console.log("[RENDER] ✅ Stitched 15s video ready:", finalVideoUrl);
-            } else {
-              const concatError = await concatRes.text();
-              console.warn("[RENDER] ❌ Concat FAILED (status " + concatRes.status + "):", concatError);
-              console.warn("[RENDER] Falling back to exterior clip ONLY (5s)");
-            }
-          } catch (concatErr) {
-            console.warn("[RENDER] ❌ Concat error, using exterior clip ONLY (5s):", concatErr);
-          }
-        } else {
-          console.warn("[RENDER] Missing one or both video URLs — cannot concat");
-          console.warn("[RENDER] Will use exterior URL only:", finalVideoUrl?.slice(0, 100));
+        // Build segments array for sequential playback (no server-side concat needed)
+        const segments: { videoUrl: string; downloadUrl: string; durationSeconds: number; label: string }[] = [];
+        if (status.exteriorVideoUrl) {
+          segments.push({ videoUrl: status.exteriorVideoUrl, downloadUrl: status.exteriorVideoUrl, durationSeconds: 5, label: "Exterior — 5s" });
+        }
+        if (status.interiorVideoUrl) {
+          segments.push({ videoUrl: status.interiorVideoUrl, downloadUrl: status.interiorVideoUrl, durationSeconds: 10, label: "Interior — 10s" });
         }
 
-        console.log("[RENDER] What is being set as the final video?", finalVideoUrl?.slice(0, 150));
+        // Use exterior as primary videoUrl for backward compat, but segments drive playback
+        const finalVideoUrl = status.exteriorVideoUrl ?? "";
+        console.log("[RENDER] Segments built:", segments.length, "clips, total", segments.reduce((s, c) => s + c.durationSeconds, 0), "s");
+        console.log("[RENDER] Primary videoUrl (exterior):", finalVideoUrl?.slice(0, 100));
 
         const finalArtifact: ExecutionArtifact = {
           id: `video-${nodeId}`,
@@ -348,12 +325,13 @@ async function pollVideoGeneration(
             ...currentArtifactData,
             videoUrl: finalVideoUrl,
             downloadUrl: finalVideoUrl,
-            persistedUrl,
-            label: "AEC Cinematic Walkthrough — 15s",
+            interiorVideoUrl: status.interiorVideoUrl ?? "",
+            segments,
+            label: "Cinematic Walkthrough — 15s · 2 shots",
             videoGenerationStatus: "complete",
             generationProgress: 100,
             durationSeconds: 15,
-            shotCount: 1,
+            shotCount: 2,
           },
           metadata: { engine: "kling-official", real: true },
           createdAt: new Date(),
@@ -361,11 +339,6 @@ async function pollVideoGeneration(
 
         addArtifactFn(nodeId, finalArtifact);
         clearVideoProgressFn(nodeId);
-
-        // If concat didn't already persist to R2, persist the exterior clip
-        if (!persistedUrl && finalVideoUrl) {
-          persistVideoToR2(finalVideoUrl, `walkthrough-${nodeId}.mp4`, nodeId, addArtifactFn, finalArtifact).catch(() => {});
-        }
 
         toast.success("Video walkthrough ready!", {
           description: "15s cinematic walkthrough generated successfully",
