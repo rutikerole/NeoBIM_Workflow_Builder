@@ -11,7 +11,9 @@ interface VideoBodyProps {
   nodeId?: string;
 }
 
-export function VideoBody({ data, nodeId }: VideoBodyProps) {
+export function VideoBody({ data: rawData, nodeId }: VideoBodyProps) {
+  // Guard against null/undefined data
+  const data = rawData ?? ({} as VideoArtifactData);
   const setVideoPlayerNodeId = useUIStore(s => s.setVideoPlayerNodeId);
   const videoGenProgress = useExecutionStore(s => nodeId ? s.videoGenProgress.get(nodeId) : undefined);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -248,24 +250,41 @@ export function VideoBody({ data, nodeId }: VideoBodyProps) {
         background: "#000",
         marginBottom: 8,
       }}>
-        <video
-          ref={videoRef}
-          src={currentVideoUrl}
-          controls
-          preload="metadata"
-          crossOrigin="anonymous"
-          playsInline
-          onEnded={handleVideoEnded}
-          onPlay={handlePlay}
-          onPause={handlePause}
-          style={{
+        {currentVideoUrl ? (
+          <video
+            ref={videoRef}
+            src={currentVideoUrl}
+            controls
+            preload="metadata"
+            crossOrigin="anonymous"
+            playsInline
+            onEnded={handleVideoEnded}
+            onPlay={handlePlay}
+            onPause={handlePause}
+            style={{
+              width: "100%",
+              height: 180,
+              objectFit: "cover",
+              display: "block",
+              borderRadius: 8,
+            }}
+          />
+        ) : (
+          <div style={{
             width: "100%",
             height: 180,
-            objectFit: "cover",
-            display: "block",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.3)",
             borderRadius: 8,
-          }}
-        />
+            fontSize: 11,
+            color: "#5C5C78",
+          }}>
+            <Film size={16} style={{ marginRight: 6, opacity: 0.5 }} />
+            No video available
+          </div>
+        )}
 
         {/* Segment indicator overlay */}
         {hasSegments && (
@@ -296,7 +315,7 @@ export function VideoBody({ data, nodeId }: VideoBodyProps) {
                   fontFamily: "'Space Mono', monospace",
                 }}
               >
-                {seg.label?.split("—")[0]?.trim() ?? `Part ${i + 1}`} ({seg.durationSeconds}s)
+                {String(seg.label?.split("—")[0]?.trim() ?? `Part ${i + 1}`)} ({seg.durationSeconds}s)
               </button>
             ))}
           </div>
@@ -339,7 +358,7 @@ export function VideoBody({ data, nodeId }: VideoBodyProps) {
               ) : (
                 <SkipForward size={7} />
               )}
-              {seg.label ?? `Part ${i + 1}`}
+              {String(seg.label ?? `Part ${i + 1}`)}
             </button>
           ))}
         </div>
@@ -429,8 +448,8 @@ export function VideoBody({ data, nodeId }: VideoBodyProps) {
           </button>
         )}
 
-        {/* Download button */}
-        <a
+        {/* Download button — only show when URL exists */}
+        {(data?.downloadUrl || data?.videoUrl) && <a
           href={data?.downloadUrl ?? data?.videoUrl}
           download={data?.name ?? "walkthrough.mp4"}
           style={{
@@ -447,7 +466,7 @@ export function VideoBody({ data, nodeId }: VideoBodyProps) {
         >
           <Download size={10} />
           Download
-        </a>
+        </a>}
       </div>
     </div>
   );

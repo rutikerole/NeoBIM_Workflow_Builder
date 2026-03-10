@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { X, Download, Clock, Clapperboard, Film, DollarSign, SkipForward, Building2, DoorOpen, Loader2 as Loader } from "lucide-react";
+import React, { useRef, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Download, Clock, Clapperboard, Film, DollarSign, Building2, DoorOpen, Loader2 as Loader } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 import { useExecutionStore } from "@/stores/execution-store";
 import type { VideoSegment } from "@/types/execution";
@@ -17,6 +17,16 @@ export function FullscreenVideoPlayer() {
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // ESC key to close fullscreen
+  useEffect(() => {
+    if (!nodeId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nodeId, close]);
+
   useEffect(() => {
     if (!videoRef.current) return;
     const v = videoRef.current;
@@ -30,9 +40,9 @@ export function FullscreenVideoPlayer() {
     };
   }, [nodeId, currentSegmentIndex]);
 
-  if (!nodeId || !artifact || artifact.type !== "video") return null;
+  const isOpen = !!(nodeId && artifact && artifact.type === "video");
 
-  const d = artifact.data as Record<string, unknown>;
+  const d = isOpen ? (artifact.data as Record<string, unknown>) : null;
   const rawSegments = d?.segments;
   const segments: VideoSegment[] = Array.isArray(rawSegments) ? rawSegments : [];
   const hasSegments = segments.length > 1;
@@ -47,6 +57,16 @@ export function FullscreenVideoPlayer() {
   const totalDurationSec = typeof d?.durationSeconds === "number" ? d.durationSeconds : 15;
   const pipeline = typeof d?.pipeline === "string" ? d.pipeline : "Kling 3.0";
   const costUsd = typeof d?.costUsd === "number" ? d.costUsd : null;
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentSegmentIndex(0);
+      setCurrentTime(0);
+      setVideoDuration(0);
+      setIsPlaying(false);
+    }
+  }, [isOpen]);
 
   // Handle segment end — auto-advance
   const handleVideoEnded = () => {
@@ -93,7 +113,10 @@ export function FullscreenVideoPlayer() {
   ];
 
   return (
+    <AnimatePresence>
+      {isOpen && (
     <motion.div
+      key="fullscreen-video"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -305,7 +328,7 @@ export function FullscreenVideoPlayer() {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                   }}>
-                    {seg.label ?? `Part ${i + 1}`}
+                    {String(seg.label ?? `Part ${i + 1}`)}
                   </span>
                   <span style={{
                     position: "relative", zIndex: 1,
@@ -417,57 +440,63 @@ export function FullscreenVideoPlayer() {
           ))}
         </motion.div>
 
-        {/* Segment download buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          style={{
-            display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
-          }}
-        >
-          {hasSegments ? (
-            segments.map((seg, i) => (
+        {/* Segment download buttons — only show when URLs exist */}
+        {(hasSegments ? segments.some(s => s.downloadUrl || s.videoUrl) : !!downloadUrl) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            style={{
+              display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
+            }}
+          >
+            {hasSegments ? (
+              segments.map((seg, i) => {
+                const segUrl = seg.downloadUrl ?? seg.videoUrl;
+                if (!segUrl) return null;
+                return (
+                  <a
+                    key={i}
+                    href={segUrl}
+                    download={`walkthrough_part${i + 1}.mp4`}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      padding: "10px 20px", borderRadius: 8,
+                      background: i === 0
+                        ? "rgba(0,245,255,0.08)"
+                        : "rgba(139,92,246,0.08)",
+                      border: `1px solid ${i === 0 ? "rgba(0,245,255,0.25)" : "rgba(139,92,246,0.25)"}`,
+                      color: i === 0 ? "#00F5FF" : "#8B5CF6",
+                      fontSize: 12, fontWeight: 600,
+                      textDecoration: "none", cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <Download size={14} />
+                    {String(seg.label ?? `Part ${i + 1}`)}
+                  </a>
+                );
+              })
+            ) : (
               <a
-                key={i}
-                href={seg.downloadUrl ?? seg.videoUrl}
-                download={`walkthrough_part${i + 1}.mp4`}
+                href={downloadUrl}
+                download={fileName}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
-                  padding: "10px 20px", borderRadius: 8,
-                  background: i === 0
-                    ? "rgba(0,245,255,0.08)"
-                    : "rgba(139,92,246,0.08)",
-                  border: `1px solid ${i === 0 ? "rgba(0,245,255,0.25)" : "rgba(139,92,246,0.25)"}`,
-                  color: i === 0 ? "#00F5FF" : "#8B5CF6",
-                  fontSize: 12, fontWeight: 600,
+                  padding: "12px 28px", borderRadius: 8,
+                  background: "rgba(0,245,255,0.1)",
+                  border: "1px solid rgba(0,245,255,0.3)",
+                  color: "#00F5FF", fontSize: 14, fontWeight: 600,
                   textDecoration: "none", cursor: "pointer",
                   transition: "all 0.15s ease",
                 }}
               >
-                <Download size={14} />
-                {seg.label ?? `Part ${i + 1}`}
+                <Download size={16} />
+                Download Video
               </a>
-            ))
-          ) : (
-            <a
-              href={downloadUrl}
-              download={fileName}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "12px 28px", borderRadius: 8,
-                background: "rgba(0,245,255,0.1)",
-                border: "1px solid rgba(0,245,255,0.3)",
-                color: "#00F5FF", fontSize: 14, fontWeight: 600,
-                textDecoration: "none", cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <Download size={16} />
-              Download Video
-            </a>
-          )}
-        </motion.div>
+            )}
+          </motion.div>
+        )}
 
         {/* Pipeline info */}
         <div style={{ fontSize: 10, color: "#4A4A60", fontStyle: "italic" }}>
@@ -475,5 +504,7 @@ export function FullscreenVideoPlayer() {
         </div>
       </div>
     </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
