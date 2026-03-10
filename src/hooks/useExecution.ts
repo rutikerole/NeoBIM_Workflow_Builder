@@ -768,6 +768,30 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
           }
         }
 
+        // For GN-009 (Video): ensure uploaded image data reaches the node
+        // regardless of edge structure — search ALL artifacts for fileData/imageUrl
+        if (nodeCatalogueId === "GN-009" && upstreamArtifact) {
+          const upData = upstreamArtifact.data as Record<string, unknown>;
+          if (!upData.fileData && !upData.url && !upData.imageUrl) {
+            for (const [, art] of artifactMap) {
+              const d = art.data as Record<string, unknown>;
+              if (d?.fileData && typeof d.fileData === "string") {
+                upData.fileData = d.fileData;
+                if (d.mimeType) upData.mimeType = d.mimeType;
+                if (d.fileName) upData.fileName = d.fileName;
+                console.log("[Execution] Injected fileData into GN-009 from upstream input node");
+                break;
+              }
+              if (d?.imageUrl && typeof d.imageUrl === "string") {
+                upData.imageUrl = d.imageUrl;
+                upData.url = d.imageUrl;
+                console.log("[Execution] Injected imageUrl into GN-009 from upstream node");
+                break;
+              }
+            }
+          }
+        }
+
         const artifact = await executeNode(node, executionId, upstreamArtifact, useReal, isDemoMode);
         artifactMap.set(node.id, artifact);
 
