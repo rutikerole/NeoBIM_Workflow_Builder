@@ -803,6 +803,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
             category: "generate",
             status: "idle",
             inputs: [
+              { id: "image-in", label: "Source Image", type: "image" },
               { id: "geo-in", label: "3D Model / Renders", type: "geometry" },
               { id: "style-in", label: "Style & Camera", type: "json" },
             ],
@@ -813,8 +814,8 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
       ],
       edges: [
         { id: "e1-2", source: "n1", sourceHandle: "image-out", target: "n2", targetHandle: "image-in", type: "animatedEdge" },
-        { id: "e2-3a", source: "n2", sourceHandle: "feat-out", target: "n3", targetHandle: "geo-in", type: "animatedEdge" },
-        { id: "e2-3b", source: "n2", sourceHandle: "text-out", target: "n3", targetHandle: "style-in", type: "animatedEdge" },
+        { id: "e1-3", source: "n1", sourceHandle: "image-out", target: "n3", targetHandle: "image-in", type: "animatedEdge" },
+        { id: "e2-3a", source: "n2", sourceHandle: "text-out", target: "n3", targetHandle: "style-in", type: "animatedEdge" },
       ],
     },
   },
