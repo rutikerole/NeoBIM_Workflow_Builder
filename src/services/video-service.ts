@@ -234,6 +234,9 @@ async function createTask(
 ): Promise<KlingTaskResponse> {
   const errors: string[] = [];
 
+  const isBase64 = !imageUrl.startsWith("http");
+  console.log(`[Video] createTask: image type: ${isBase64 ? `base64 (${imageUrl.length} chars)` : `URL: ${imageUrl.slice(0, 100)}`}`);
+
   for (const modelName of MODELS) {
     try {
       console.log(`[Video] Trying model: ${modelName}, mode: ${mode}, duration: ${duration}s`);

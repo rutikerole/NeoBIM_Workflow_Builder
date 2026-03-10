@@ -1412,6 +1412,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       console.log("[KLING] Step 1: url present:", !!(inputData?.url), "imageUrl present:", !!(inputData?.imageUrl), "svg present:", !!(inputData?.svg));
 
       // ── Priority 1: Direct image upload from IN-003 (original user file) ──
+      // FIX F: Send base64 directly to Kling API — no temp-image URL needed.
+      // Kling's image field accepts both URLs and base64 encoded strings.
       if (inputData?.fileData && typeof inputData.fileData === "string") {
         const imgMime = (inputData.mimeType as string) ?? "image/jpeg";
         const raw = inputData.fileData as string;
@@ -1419,8 +1421,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
         console.log("[KLING] Step 2: Clean base64 length:", cleanBase64.length, "mime:", imgMime);
 
-        // Strategy: R2 (cloud URL) → Redis-backed temp-image (self-hosted URL)
-        // Try R2 first (if configured)
+        // Strategy: R2 URL (if configured) → raw base64 directly to Kling
+        // Try R2 first (if configured) — a URL is fastest for Kling
         try {
           const { uploadToR2, isR2Configured } = await import("@/lib/r2");
           if (isR2Configured()) {
@@ -1439,27 +1441,18 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           console.warn("[KLING] Step 2a: R2 upload failed:", r2Err);
         }
 
-        // Fallback: store in Upstash Redis, serve via /api/temp-image/[id]
+        // FIX F: Send raw base64 directly to Kling (skip temp-image entirely)
         if (!renderImageUrl) {
-          console.log("[KLING] Step 2b: Storing image in Upstash Redis...");
-          try {
-            const { storeImage, getTempImageUrl, isLocalhost } = await import("@/lib/temp-image-store");
-            const id = await storeImage(cleanBase64, imgMime);
-            renderImageUrl = getTempImageUrl(id);
-            console.log("[KLING] Step 2b: ✅ Temp image URL:", renderImageUrl);
-            if (isLocalhost()) {
-              console.warn("[KLING] Step 2b: ⚠️  URL is localhost — Kling cannot reach it. Deploy or use ngrok.");
-            }
-          } catch (tmpErr) {
-            const msg = tmpErr instanceof Error ? tmpErr.message : String(tmpErr);
-            console.error("[KLING] Step 2b: ❌ Redis store failed:", msg);
-          }
+          console.log("[KLING] Step 2b: Sending base64 DIRECTLY to Kling (Fix F — no temp-image URL)");
+          renderImageUrl = cleanBase64;
+          console.log("[KLING] Step 2b: ✅ Using raw base64, length:", cleanBase64.length);
         }
 
         isFloorPlanInput = true;
       }
 
       // ── Priority 2: Floor plan SVG from GN-004 ──
+      // FIX F: Convert SVG→PNG, then send base64 directly to Kling.
       if (!renderImageUrl && inputData?.svg && typeof inputData.svg === "string") {
         console.log("[KLING] Step 2 (SVG): Floor plan SVG detected, converting to PNG...");
         try {
@@ -1469,7 +1462,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             .png({ quality: 90 })
             .toBuffer();
 
-          // Try R2 first
+          // Try R2 first (if configured)
           const { uploadToR2, isR2Configured } = await import("@/lib/r2");
           if (isR2Configured()) {
             const uploadResult = await uploadToR2(pngBuffer, `floorplan-${generateId()}.png`, "image/png");
@@ -1481,16 +1474,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             }
           }
 
-          // Fallback: store in Redis
+          // FIX F: Send PNG base64 directly to Kling (skip temp-image)
           if (!renderImageUrl) {
-            console.log("[KLING] Step 2 (SVG): Storing PNG in Redis...");
-            const { storeImage, getTempImageUrl, isLocalhost } = await import("@/lib/temp-image-store");
-            const id = await storeImage(pngBuffer.toString("base64"), "image/png");
-            renderImageUrl = getTempImageUrl(id);
-            console.log("[KLING] Step 2 (SVG): ✅ Temp image URL:", renderImageUrl);
-            if (isLocalhost()) {
-              console.warn("[KLING] Step 2 (SVG): ⚠️  URL is localhost — Kling cannot reach it.");
-            }
+            console.log("[KLING] Step 2 (SVG): Sending PNG base64 DIRECTLY to Kling (Fix F)");
+            renderImageUrl = pngBuffer.toString("base64");
+            console.log("[KLING] Step 2 (SVG): ✅ Using raw base64, length:", renderImageUrl.length);
           }
           isFloorPlanInput = true;
         } catch (svgErr) {
@@ -1539,15 +1527,16 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         );
       }
 
-      // Warn if the image URL is localhost — Kling servers cannot reach it
-      if (renderImageUrl.includes("localhost") || renderImageUrl.includes("127.0.0.1")) {
+      // Detect if image is base64 (Fix F) vs URL
+      const isBase64Direct = !renderImageUrl.startsWith("http");
+      if (!isBase64Direct && (renderImageUrl.includes("localhost") || renderImageUrl.includes("127.0.0.1"))) {
         console.warn("[KLING] ⚠️  Image URL is localhost — Kling API cannot access this.");
         console.warn("[KLING]    To fix: deploy to a public URL, or use ngrok to tunnel localhost.");
       }
 
       console.log("[KLING] Step 4: Submitting to Kling API...");
-      console.log("[KLING] Step 4: Image URL:", renderImageUrl.slice(0, 150));
-      console.log("[KLING] Step 4: Mode: pro, Floor plan:", isFloorPlanInput);
+      console.log("[KLING] Step 4: Image:", isBase64Direct ? `base64 (${renderImageUrl.length} chars)` : renderImageUrl.slice(0, 150));
+      console.log("[KLING] Step 4: Mode: pro, Floor plan:", isFloorPlanInput, "Base64 direct:", isBase64Direct);
 
       // Submit dual video tasks (5s exterior + 10s interior) to Kling API
       try {
@@ -1605,7 +1594,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         const errMsg = klingErr instanceof Error ? klingErr.message : String(klingErr);
         console.error("[KLING] Step 5: ❌ Kling API failed:", errMsg);
 
-        const isLocal = renderImageUrl.includes("localhost") || renderImageUrl.includes("127.0.0.1");
+        const isLocal = !isBase64Direct && (renderImageUrl.includes("localhost") || renderImageUrl.includes("127.0.0.1"));
         const userMessage = isLocal
           ? "Kling cannot access the image because the app is running on localhost. Deploy the app to a public URL, or use ngrok to tunnel localhost (e.g. ngrok http 3000)."
           : `Kling video generation failed: ${errMsg}`;
