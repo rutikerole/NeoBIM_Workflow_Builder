@@ -347,6 +347,23 @@ SITE: ${analysis.siteRelationship}
 KEY FEATURES:
 ${analysis.features.map(f => `• ${f}`).join("\n")}`;
 
+      // Upload the original image to R2 so downstream nodes (GN-009) can access it via URL
+      let sourceImageUrl: string | undefined;
+      try {
+        const { uploadBase64ToR2, isR2Configured } = await import("@/lib/r2");
+        if (isR2Configured()) {
+          const imgName = `image-input-${generateId()}.${typeof mimeType === "string" && mimeType.includes("png") ? "png" : "jpg"}`;
+          const r2Url = await uploadBase64ToR2(base64Data as string, imgName, (typeof mimeType === "string" ? mimeType : "image/jpeg"));
+          // uploadBase64ToR2 returns the URL string (or original data URI on failure)
+          if (r2Url && r2Url.startsWith("http")) {
+            sourceImageUrl = r2Url;
+            console.log("[TR-004] Source image uploaded to R2:", sourceImageUrl);
+          }
+        }
+      } catch (r2Err) {
+        console.warn("[TR-004] R2 upload of source image failed:", r2Err);
+      }
+
       artifact = {
         id: generateId(),
         executionId: executionId ?? "local",
@@ -357,6 +374,9 @@ ${analysis.features.map(f => `• ${f}`).join("\n")}`;
           label: `Image Analysis: ${analysis.buildingType}`,
           prompt: analysis.description,
           _raw: analysis,
+          // Pass the original image through so downstream nodes can use it
+          ...(sourceImageUrl && { imageUrl: sourceImageUrl, url: sourceImageUrl }),
+          ...(typeof mimeType === "string" && { mimeType }),
         },
         metadata: { model: "gpt-4o-mini", real: true },
         createdAt: new Date(),
@@ -1437,13 +1457,33 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         }
       }
 
-      // Fallback: extract render image URL from upstream GN-003
+      // Fallback: extract render image URL from upstream GN-003 or TR-004
       if (!renderImageUrl) {
         renderImageUrl =
           (inputData?.url as string) ??
           (inputData?.images_out as string) ??
           (inputData?.imageUrl as string) ??
           "";
+      }
+
+      // Fallback: if we have base64 image data (from IN-003 upload), convert to URL
+      if (!renderImageUrl && inputData?.fileData && typeof inputData.fileData === "string") {
+        try {
+          console.log("[GN-009] Base64 image detected from upload, converting to R2 URL...");
+          const { uploadBase64ToR2, isR2Configured } = await import("@/lib/r2");
+          if (isR2Configured()) {
+            const imgMime = (inputData.mimeType as string) ?? "image/jpeg";
+            const ext = imgMime.includes("png") ? "png" : "jpg";
+            const r2Url = await uploadBase64ToR2(inputData.fileData as string, `upload-${generateId()}.${ext}`, imgMime);
+            if (r2Url && r2Url.startsWith("http")) {
+              renderImageUrl = r2Url;
+              isFloorPlanInput = true; // uploaded floor plan image
+              console.log("[GN-009] Uploaded image to R2:", renderImageUrl);
+            }
+          }
+        } catch (uploadErr) {
+          console.warn("[GN-009] Base64→R2 upload failed:", uploadErr);
+        }
       }
 
       // Build video from building description (from upstream TR-003 or fallback)
