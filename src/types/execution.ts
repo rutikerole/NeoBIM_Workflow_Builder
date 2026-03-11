@@ -109,4 +109,5 @@ export interface VideoArtifactData {
   exteriorTaskId?: string;
   interiorTaskId?: string;
   generationProgress?: number;
+  usedOmni?: boolean;
 }

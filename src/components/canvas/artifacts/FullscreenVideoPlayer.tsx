@@ -55,7 +55,8 @@ export function FullscreenVideoPlayer() {
   const fileName = typeof d?.name === "string" ? d.name : "walkthrough.mp4";
   const shotCount = typeof d?.shotCount === "number" ? d.shotCount : (hasSegments ? segments.length : 1);
   const totalDurationSec = typeof d?.durationSeconds === "number" ? d.durationSeconds : 15;
-  const pipeline = typeof d?.pipeline === "string" ? d.pipeline : "Kling 3.0";
+  const defaultModel = d?.usedOmni === true ? "Kling 3.0 Omni" : "Kling 2.6";
+  const pipeline = typeof d?.pipeline === "string" ? d.pipeline : defaultModel;
   const costUsd = typeof d?.costUsd === "number" ? d.costUsd : null;
 
   useEffect(() => {
@@ -416,7 +417,7 @@ export function FullscreenVideoPlayer() {
           {[
             { label: "Total Duration", value: `${totalDurationSec}s`, icon: <Clock size={14} />, color: "#00F5FF" },
             { label: "Segments", value: String(shotCount), icon: <Clapperboard size={14} />, color: "#FFBF00" },
-            { label: "Pipeline", value: pipeline.includes("Kling") ? "Kling 3.0" : pipeline.includes("Three.js") ? "Three.js" : String(pipeline).slice(0, 30), icon: <Film size={14} />, color: "#8B5CF6" },
+            { label: "Pipeline", value: pipeline.includes("Three.js") ? "Three.js" : pipeline.includes("Kling") ? pipeline : String(pipeline).slice(0, 30), icon: <Film size={14} />, color: "#8B5CF6" },
             { label: "Cost", value: costUsd != null ? `$${costUsd.toFixed(2)}` : "Free", icon: <DollarSign size={14} />, color: "#FFBF00" },
           ].map((card, i) => (
             <motion.div

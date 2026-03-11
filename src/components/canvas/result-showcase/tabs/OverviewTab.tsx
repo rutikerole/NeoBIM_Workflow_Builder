@@ -693,13 +693,15 @@ function deriveTechStack(data: ShowcaseData): TechItem[] {
     }
   };
 
-  // Derive Kling status from video artifact
+  // Derive Kling status and model name from video artifact
   let klingBadge: TechItem["statusBadge"] | undefined;
+  let klingModelName = "Kling 2.6";
   if (data.videoData?.nodeId) {
     const videoArtifact = useExecutionStore.getState().artifacts.get(data.videoData.nodeId);
     if (videoArtifact) {
       const meta = (videoArtifact.metadata ?? {}) as Record<string, unknown>;
       const artData = (videoArtifact.data ?? {}) as Record<string, unknown>;
+      klingModelName = artData.usedOmni === true ? "Kling 3.0 Omni" : "Kling 2.6";
       if (meta.engine === "kling-official" && artData.videoGenerationStatus === "complete") {
         klingBadge = { text: "Active", badgeColor: COLORS.EMERALD };
       } else if (meta.engine === "kling-official" && artData.videoGenerationStatus === "processing") {
@@ -726,7 +728,7 @@ function deriveTechStack(data: ShowcaseData): TechItem[] {
     if (step.label.includes("Massing")) add("Procedural Engine", "3D geometry", COLORS.AMBER);
     if (step.label.includes("Style") || step.label.includes("Composer")) add("GPT-4o mini", "Prompt engineering", "#8B5CF6");
     if (step.label.includes("Concept Render")) add("DALL-E 3", "Image generation", COLORS.EMERALD);
-    if (step.label.includes("Video") || step.label.includes("Walkthrough")) add("Kling 3.0", "Video synthesis", COLORS.CYAN, klingBadge);
+    if (step.label.includes("Video") || step.label.includes("Walkthrough")) add(klingModelName, "Video synthesis", COLORS.CYAN, klingBadge);
     if (step.label.includes("3D Recon")) add("Meshy v4", "3D reconstruction", COLORS.AMBER);
     if (step.label.includes("Floor Plan Gen")) add("GPT-4o + SVG", "Plan generation", "#14B8A6");
     if (step.label.includes("Quantity") || step.label.includes("BOQ")) add("web-ifc Parser", "BIM extraction", "#F59E0B");

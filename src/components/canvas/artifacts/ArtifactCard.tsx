@@ -102,7 +102,9 @@ function getQualityBadge(artifact: ExecutionArtifact): QualityBadge | null {
   }
 
   if (artifact.type === "video") {
-    return { label: "AI Generated · Kling 3.0", color: "#00F5FF", bg: "rgba(0,245,255,0.12)" };
+    const d = artifact.data as Record<string, unknown> | undefined;
+    const model = d?.usedOmni === true ? "Kling 3.0 Omni" : "Kling 2.6";
+    return { label: `AI Generated · ${model}`, color: "#00F5FF", bg: "rgba(0,245,255,0.12)" };
   }
 
   return null;
