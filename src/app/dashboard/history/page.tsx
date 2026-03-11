@@ -557,7 +557,7 @@ export default function HistoryPage() {
       const params = new URLSearchParams();
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 5000);
+      const tid = setTimeout(() => ctrl.abort(), 15000);
       const res = await fetch(`/api/executions?${params}`, { signal: ctrl.signal, cache: 'no-store' });
       clearTimeout(tid);
       if (res.ok) { const { executions } = await res.json() as { executions: Execution[] }; setExecutions(executions); setError(null); }
