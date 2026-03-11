@@ -49,26 +49,30 @@ export function ShowcaseHeader({
             display: "flex",
             alignItems: "center",
             gap: 6,
-            padding: "6px 14px",
+            padding: "8px 18px",
             borderRadius: 8,
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: "rgba(255,255,255,0.7)",
-            fontSize: 12,
-            fontWeight: 500,
+            background: "rgba(0,245,255,0.08)",
+            border: "1px solid rgba(0,245,255,0.25)",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 600,
             cursor: "pointer",
-            transition: "all 0.15s ease",
+            transition: "all 0.2s ease",
             flexShrink: 0,
+            backdropFilter: "blur(8px)",
+            boxShadow: "0 0 12px rgba(0,245,255,0.06)",
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+            e.currentTarget.style.background = "rgba(0,245,255,0.15)";
             e.currentTarget.style.color = "#fff";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+            e.currentTarget.style.borderColor = "rgba(0,245,255,0.4)";
+            e.currentTarget.style.boxShadow = "0 0 20px rgba(0,245,255,0.12)";
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-            e.currentTarget.style.color = "rgba(255,255,255,0.7)";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+            e.currentTarget.style.background = "rgba(0,245,255,0.08)";
+            e.currentTarget.style.color = "#fff";
+            e.currentTarget.style.borderColor = "rgba(0,245,255,0.25)";
+            e.currentTarget.style.boxShadow = "0 0 12px rgba(0,245,255,0.06)";
           }}
         >
           <ArrowLeft size={13} />

@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FileDown, Film, File, Download, Package, Image as ImageIcon,
-  FileText, Table2, Code2, Layers, CheckCircle, Loader2,
+  FileText, Table2, Code2, Layers, CheckCircle, Loader2, ArrowLeft, X,
 } from "lucide-react";
 import { useExecutionStore } from "@/stores/execution-store";
 import { useWorkflowStore } from "@/stores/workflow-store";
@@ -22,6 +22,7 @@ export function ExportTab({ data }: ExportTabProps) {
   const artifacts = useExecutionStore(s => s.artifacts);
   const nodes = useWorkflowStore(s => s.nodes);
   const [generating, setGenerating] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<{ url: string; type: "image" | "video" } | null>(null);
 
   // ─── PDF Generation ─────────────────────────────────────────────────
   const handleGeneratePDF = useCallback(async () => {
@@ -109,6 +110,7 @@ export function ExportTab({ data }: ExportTabProps) {
     primary?: boolean;
     id: string;
     badge?: string;
+    previewType?: "image" | "video";
   }> = [];
 
   // 1. PDF Report — always first and primary
@@ -132,6 +134,7 @@ export function ExportTab({ data }: ExportTabProps) {
       subtitle: `${data.videoData.durationSeconds}s · ${data.videoData.shotCount} shots · MP4`,
       color: "#8B5CF6",
       action: data.videoData.downloadUrl,
+      previewType: "video",
     });
   }
 
@@ -144,6 +147,7 @@ export function ExportTab({ data }: ExportTabProps) {
       subtitle: t('showcase.hiResRender'),
       color: COLORS.EMERALD,
       action: url,
+      previewType: "image",
     });
   });
 
@@ -351,7 +355,14 @@ export function ExportTab({ data }: ExportTabProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.03 * i }}
           >
-            {typeof card.action === "string" ? (
+            {typeof card.action === "string" && card.previewType ? (
+              <div
+                onClick={() => setPreviewUrl({ url: card.action as string, type: card.previewType! })}
+                style={{ cursor: "pointer" }}
+              >
+                <DownloadCard {...card} isGenerating={generating === card.id} />
+              </div>
+            ) : typeof card.action === "string" ? (
               <a href={card.action} download style={{ textDecoration: "none" }}>
                 <DownloadCard {...card} isGenerating={generating === card.id} />
               </a>
@@ -390,6 +401,130 @@ export function ExportTab({ data }: ExportTabProps) {
           to { transform: rotate(360deg); }
         }
       `}</style>
+
+      {/* Preview Lightbox */}
+      <AnimatePresence>
+        {previewUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewUrl(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 100,
+              background: "rgba(0,0,0,0.92)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "zoom-out",
+              padding: 40,
+            }}
+          >
+            {/* Top-left back button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setPreviewUrl(null); }}
+              style={{
+                position: "absolute",
+                top: 20,
+                left: 20,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: 8,
+                padding: "8px 16px",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                zIndex: 101,
+              }}
+            >
+              <ArrowLeft size={14} />
+              Back
+            </button>
+
+            {/* Top-right: Download + Close */}
+            <div style={{
+              position: "absolute",
+              top: 20,
+              right: 20,
+              display: "flex",
+              gap: 8,
+            }}>
+              <a
+                href={previewUrl.url}
+                download
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "rgba(255,255,255,0.1)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <Download size={14} />
+                Download
+              </a>
+              <button
+                onClick={() => setPreviewUrl(null)}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: 8,
+                  color: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            {previewUrl.type === "video" ? (
+              <motion.video
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                src={previewUrl.url}
+                controls
+                autoPlay
+                style={{
+                  maxWidth: "90vw",
+                  maxHeight: "85vh",
+                  borderRadius: 8,
+                }}
+                onClick={e => e.stopPropagation()}
+              />
+            ) : (
+              <motion.img
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                src={previewUrl.url}
+                alt="Preview"
+                style={{
+                  maxWidth: "90vw",
+                  maxHeight: "85vh",
+                  objectFit: "contain",
+                  borderRadius: 8,
+                }}
+                onClick={e => e.stopPropagation()}
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

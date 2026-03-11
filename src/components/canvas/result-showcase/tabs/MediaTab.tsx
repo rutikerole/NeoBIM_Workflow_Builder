@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, X, Download, ExternalLink, Loader2 } from "lucide-react";
+import { Maximize2, X, Download, ExternalLink, Loader2, ArrowLeft } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 import { useExecutionStore } from "@/stores/execution-store";
 import { COLORS } from "../constants";
@@ -400,6 +400,31 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
               padding: 40,
             }}
           >
+            {/* Top-left close button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setLightboxUrl(null); }}
+              style={{
+                position: "absolute",
+                top: 20,
+                left: 20,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: 8,
+                padding: "8px 16px",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                zIndex: 101,
+              }}
+            >
+              <ArrowLeft size={14} />
+              Back
+            </button>
+
             <div style={{
               position: "absolute",
               top: 20,
