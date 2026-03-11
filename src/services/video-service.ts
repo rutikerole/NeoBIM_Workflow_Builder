@@ -21,14 +21,14 @@ import { generateId } from "@/lib/utils";
 
 const KLING_BASE_URL = "https://api.klingai.com";
 const KLING_IMAGE2VIDEO_PATH = "/v1/videos/image2video";
+const KLING_OMNI_PATH = "/v1/videos/omni";
 const COST_PER_SECOND = 0.10;
 const REQUEST_TIMEOUT_MS = 600_000; // 10 minutes
 const POLL_INTERVAL_MS = 8_000;     // 8 seconds between status checks
 const JWT_EXPIRY_SECONDS = 1800;
 
-// Model names in priority order — try best first, fall back
-// kling-v3-0 / kling-v3-0-omni may be available on newer API versions (Kling 3.0 Omni)
-const MODELS = ["kling-v3-0", "kling-v3-0-omni", "kling-v2-6", "kling-v2-1-master", "kling-v2-1", "kling-v1-6"] as const;
+// Model names for /v1/videos/image2video — v2.x only (v3 uses the Omni endpoint)
+const MODELS = ["kling-v2-6", "kling-v2-1-master", "kling-v2-1", "kling-v1-6"] as const;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -305,12 +305,14 @@ async function createTask(
       });
 
       console.log(`[KLING] ✅ Task created with MODEL: ${modelName}, taskId=${result.data.task_id}`);
+      console.error("[KLING-MODEL] SUCCESS:", modelName, "duration:", duration, "mode:", mode);
       console.log("[CREATE] Full API response:", JSON.stringify(result));
       console.log("========== createTask END ==========");
       return result;
     } catch (err) {
       const msg = (err as Error).message;
       errors.push(`${modelName}: ${msg}`);
+      console.error("[KLING-MODEL] FAILED:", modelName, "error:", msg.slice(0, 100));
       console.warn(`[Video] ${modelName} failed: ${msg}`);
     }
   }
@@ -965,10 +967,86 @@ export async function submitSingleWalkthrough(
   return { taskId: result.data.task_id, submittedAt: Date.now() };
 }
 
+// ─── Kling 3.0 Omni Endpoint ────────────────────────────────────────────────
+
+/**
+ * Create a task via the Kling 3.0 Omni endpoint (/v1/videos/omni).
+ * Omni uses `omni_version` instead of `model_name`, `image_1` instead of `image`,
+ * and references images in the prompt via `@image_1`.
+ * Supports flexible 3-15s duration.
+ */
+async function createOmniTask(
+  imageUrl: string,
+  prompt: string,
+  negativePrompt: string,
+  duration: string,
+  aspectRatio: string,
+  mode: string,
+): Promise<KlingTaskResponse> {
+  console.log("========== createOmniTask START ==========");
+  console.log("[OMNI] Trying Kling 3.0 via", KLING_OMNI_PATH);
+  console.log("[OMNI] duration:", duration, "mode:", mode, "aspect:", aspectRatio);
+
+  const body = {
+    omni_version: "v3",
+    image_1: imageUrl,
+    prompt: `${prompt.slice(0, 2450)} @image_1`,
+    negative_prompt: negativePrompt.slice(0, 2500),
+    aspect_ratio: aspectRatio,
+    mode,
+    duration,
+  };
+
+  console.log("[OMNI] Request body (image truncated):", JSON.stringify({
+    ...body,
+    image_1: body.image_1?.length > 100
+      ? body.image_1.slice(0, 50) + "...[truncated, total=" + body.image_1.length + "]"
+      : body.image_1,
+  }));
+
+  const result = await klingFetch(KLING_OMNI_PATH, { method: "POST", body });
+
+  console.error("[KLING-MODEL] SUCCESS: omni-v3 (Kling 3.0 Omni)", "duration:", duration, "mode:", mode);
+  console.log("[OMNI] Task created! taskId:", result.data.task_id);
+  console.log("========== createOmniTask END ==========");
+  return result;
+}
+
+/**
+ * Submit a floor plan video via Kling 3.0 Omni endpoint (12s), falling back
+ * to v2.6 on the standard image2video endpoint (10s) if Omni is unavailable.
+ */
+export async function submitFloorPlanWalkthrough(
+  imageUrl: string,
+  prompt: string,
+  mode: "std" | "pro" = "pro",
+): Promise<SubmittedSingleVideoTask & { usedOmni: boolean; durationSeconds: number }> {
+  const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, watermark";
+
+  // ── Attempt 1: Kling 3.0 Omni (better quality, 12s flexible duration) ──
+  try {
+    console.log("[GN-009] ═══ Trying Kling 3.0 Omni endpoint FIRST ═══");
+    const result = await createOmniTask(imageUrl, prompt, negativePrompt, "12", "16:9", mode);
+    console.log("[GN-009] Kling 3.0 Omni succeeded! taskId:", result.data.task_id);
+    return { taskId: result.data.task_id, submittedAt: Date.now(), usedOmni: true, durationSeconds: 12 };
+  } catch (err) {
+    const msg = (err as Error).message;
+    console.error("[KLING-MODEL] FAILED: omni-v3 (Kling 3.0)", "error:", msg.slice(0, 200));
+    console.warn("[GN-009] Kling 3.0 Omni unavailable — falling back to v2.6 standard endpoint");
+  }
+
+  // ── Attempt 2: Fallback to v2.6 on /v1/videos/image2video (10s) ──
+  console.log("[GN-009] ═══ Fallback: v2.6 via /v1/videos/image2video ═══");
+  const result = await createTask(imageUrl, prompt, negativePrompt, "10", "16:9", mode);
+  console.log("[GN-009] v2.6 fallback succeeded! taskId:", result.data.task_id);
+  return { taskId: result.data.task_id, submittedAt: Date.now(), usedOmni: false, durationSeconds: 10 };
+}
+
 /**
  * Check status of a single video task. Non-blocking single check.
+ * When `useOmniPolling` is true, polls via the Omni endpoint path.
  */
-export async function checkSingleVideoStatus(taskId: string): Promise<{
+export async function checkSingleVideoStatus(taskId: string, useOmniPolling = false): Promise<{
   status: "submitted" | "processing" | "succeed" | "failed";
   videoUrl: string | null;
   progress: number;
@@ -976,7 +1054,8 @@ export async function checkSingleVideoStatus(taskId: string): Promise<{
   hasFailed: boolean;
   failureMessage: string | null;
 }> {
-  const result = await klingFetch(`${KLING_IMAGE2VIDEO_PATH}/${taskId}`, { method: "GET" });
+  const pollPath = useOmniPolling ? KLING_OMNI_PATH : KLING_IMAGE2VIDEO_PATH;
+  const result = await klingFetch(`${pollPath}/${taskId}`, { method: "GET" });
 
   const taskStatus = result.data.task_status as "submitted" | "processing" | "succeed" | "failed";
   const videoUrl = result.data.task_result?.videos?.[0]?.url ?? null;

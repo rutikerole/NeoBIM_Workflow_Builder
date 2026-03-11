@@ -268,8 +268,9 @@ async function pollSingleVideoGeneration(
     await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
 
     try {
-      console.log("[POLL] Checking single video status...");
-      const res = await fetch(`/api/video-status?taskId=${encodeURIComponent(taskId)}`);
+      const useOmni = currentArtifactData.usedOmni === true;
+      console.log("[POLL] Checking single video status...", useOmni ? "(Omni v3)" : "(v2.x)");
+      const res = await fetch(`/api/video-status?taskId=${encodeURIComponent(taskId)}${useOmni ? "&omni=true" : ""}`);
 
       if (!res.ok) {
         console.error("[POLL] HTTP error:", res.status);
@@ -298,6 +299,10 @@ async function pollSingleVideoGeneration(
       if (status.isComplete && status.videoUrl) {
         console.log("[RENDER] Single video complete! URL:", status.videoUrl.slice(0, 100));
 
+        const durationSec = (currentArtifactData.durationSeconds as number) || 10;
+        const isOmni = currentArtifactData.usedOmni === true;
+        const labelPrefix = isOmni ? "Kling 3.0 Walkthrough" : "Cinematic Walkthrough";
+
         const finalArtifact: ExecutionArtifact = {
           id: `video-${nodeId}`,
           executionId,
@@ -307,13 +312,13 @@ async function pollSingleVideoGeneration(
             ...currentArtifactData,
             videoUrl: status.videoUrl,
             downloadUrl: status.videoUrl,
-            label: "Cinematic Walkthrough — 10s · 1 shot",
+            label: `${labelPrefix} — ${durationSec}s · 1 shot`,
             videoGenerationStatus: "complete",
             generationProgress: 100,
-            durationSeconds: 10,
+            durationSeconds: durationSec,
             shotCount: 1,
           },
-          metadata: { engine: "kling-official", real: true },
+          metadata: { engine: "kling-official", real: true, usedOmni: isOmni },
           createdAt: new Date(),
         };
 
@@ -321,7 +326,7 @@ async function pollSingleVideoGeneration(
         clearVideoProgressFn(nodeId);
 
         toast.success("Video walkthrough ready!", {
-          description: "10s cinematic walkthrough generated successfully",
+          description: `${durationSec}s ${isOmni ? "Kling 3.0" : "cinematic"} walkthrough generated successfully`,
           duration: 5000,
         });
         return;

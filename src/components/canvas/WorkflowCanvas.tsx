@@ -51,16 +51,14 @@ const ArchitecturalViewer = dynamic(
   { ssr: false }
 );
 
-// Fullscreen video player — client-only
-const FullscreenVideoPlayer = dynamic(
-  () => import("./artifacts/FullscreenVideoPlayer").then(m => ({ default: m.FullscreenVideoPlayer })),
-  { ssr: false }
-);
+// Fullscreen video player — direct import to avoid dynamic() hook instability with React 19
+import { FullscreenVideoPlayer } from "./artifacts/FullscreenVideoPlayer";
 
 import { useWorkflowStore, isUntitledWorkflow } from "@/stores/workflow-store";
 import { SaveWorkflowModal } from "./modals/SaveWorkflowModal";
 import { useExecutionStore } from "@/stores/execution-store";
 import { useUIStore } from "@/stores/ui-store";
+import { useShallow } from "zustand/react/shallow";
 import { NODE_CATALOGUE_MAP, CATEGORY_CONFIG } from "@/constants/node-catalogue";
 import type { WorkflowNodeData, NodeCategory } from "@/types/nodes";
 import type { WorkflowNode, WorkflowEdge } from "@/types/nodes";
@@ -460,7 +458,18 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
       setIsLoadingWorkflow(false);
     });
   }, [urlWorkflowId, currentWorkflow?.id, loadWorkflow, fitView, restoreExecutionArtifacts, clearArtifacts, clearCurrentExecution]);
-  const { isNodeLibraryOpen, setPromptModeActive, isPromptModeActive, toggleNodeLibrary, isDemoMode, setShowExecutionCompleteModal, pendingNodeAdd, clearPendingNodeAdd } = useUIStore();
+  const { isNodeLibraryOpen, setPromptModeActive, isPromptModeActive, toggleNodeLibrary, isDemoMode, setShowExecutionCompleteModal, pendingNodeAdd, clearPendingNodeAdd } = useUIStore(
+    useShallow((s) => ({
+      isNodeLibraryOpen: s.isNodeLibraryOpen,
+      setPromptModeActive: s.setPromptModeActive,
+      isPromptModeActive: s.isPromptModeActive,
+      toggleNodeLibrary: s.toggleNodeLibrary,
+      isDemoMode: s.isDemoMode,
+      setShowExecutionCompleteModal: s.setShowExecutionCompleteModal,
+      pendingNodeAdd: s.pendingNodeAdd,
+      clearPendingNodeAdd: s.clearPendingNodeAdd,
+    }))
+  );
 
   // Execution timing for celebration modal
   const executionStartRef = useRef<number | null>(null);

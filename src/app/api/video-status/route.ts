@@ -31,8 +31,9 @@ export async function GET(req: NextRequest) {
   try {
     // ── Single video mode (floor plans) ──
     if (singleTaskId) {
-      console.log("[POLL] /api/video-status (single) taskId:", singleTaskId);
-      const status = await checkSingleVideoStatus(singleTaskId);
+      const useOmni = searchParams.get("omni") === "true";
+      console.log("[POLL] /api/video-status (single) taskId:", singleTaskId, "omni:", useOmni);
+      const status = await checkSingleVideoStatus(singleTaskId, useOmni);
       console.log("[POLL] checkSingleVideoStatus result:", JSON.stringify(status));
 
       return NextResponse.json({

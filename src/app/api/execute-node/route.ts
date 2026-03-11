@@ -22,7 +22,7 @@ import { APIError, UserErrors, formatErrorResponse } from "@/lib/user-errors";
 import { generatePDFBase64 } from "@/services/pdf-report-server";
 import { uploadBase64ToR2 } from "@/lib/r2";
 import { reconstructHiFi3D, isMeshyConfigured } from "@/services/meshy-service";
-import { submitDualWalkthrough, submitDualTextToVideo, submitSingleWalkthrough, buildFloorPlanCombinedPrompt } from "@/services/video-service";
+import { submitDualWalkthrough, submitDualTextToVideo, submitSingleWalkthrough, submitFloorPlanWalkthrough, buildFloorPlanCombinedPrompt } from "@/services/video-service";
 import {
   logWorkflowStart, logRateLimit, logNodeStart, logNodeSuccess,
   logNodeError, logValidationError, logInfo,
@@ -1728,15 +1728,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
         try {
           if (isFloorPlanInput) {
-            // ── SINGLE 10s video for floor plans (continuous exterior→interior shot) ──
-            console.log("[GN-009] Function: submitSingleWalkthrough (floor plan → single 10s continuous shot)");
+            // ── Floor plan video: tries Kling 3.0 Omni (12s) → fallback v2.6 (10s) ──
+            console.log("[GN-009] Function: submitFloorPlanWalkthrough (Omni v3 12s → fallback v2.6 10s)");
             console.log("[GN-009] buildFloorPlanCombinedPrompt args — buildingDesc length:", buildingDesc?.length, "roomInfo length:", roomInfo?.length);
             const combinedPrompt = buildFloorPlanCombinedPrompt(buildingDesc, roomInfo);
             console.log("[GN-009] FINAL PROMPT SENT TO KLING:", combinedPrompt?.slice(0, 1500));
 
-            const submitted = await submitSingleWalkthrough(renderImageUrl, combinedPrompt, "pro");
+            const submitted = await submitFloorPlanWalkthrough(renderImageUrl, combinedPrompt, "pro");
 
-            console.log("[GN-009] Single task submitted! taskId:", submitted.taskId);
+            console.log("[GN-009] Floor plan task submitted! taskId:", submitted.taskId, "usedOmni:", submitted.usedOmni, "duration:", submitted.durationSeconds);
 
             artifact = {
               id: generateId(),
@@ -1747,16 +1747,21 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 name: `walkthrough_${generateId()}.mp4`,
                 videoUrl: "",
                 downloadUrl: "",
-                label: "Floor Plan -> Cinematic Walkthrough — 10s (generating...)",
-                content: `10s AEC walkthrough: exterior + interior in one continuous shot — ${buildingDesc.slice(0, 100)}`,
-                durationSeconds: 10,
+                label: submitted.usedOmni
+                  ? `Floor Plan → Kling 3.0 Walkthrough — ${submitted.durationSeconds}s (generating...)`
+                  : `Floor Plan → Cinematic Walkthrough — ${submitted.durationSeconds}s (generating...)`,
+                content: `${submitted.durationSeconds}s AEC walkthrough: exterior + interior in one continuous shot — ${buildingDesc.slice(0, 100)}`,
+                durationSeconds: submitted.durationSeconds,
                 shotCount: 1,
-                pipeline: "floor plan image → Kling Official API (pro, single 10s) → MP4",
-                costUsd: 1.00,
+                pipeline: submitted.usedOmni
+                  ? `floor plan → Kling 3.0 Omni (pro, ${submitted.durationSeconds}s) → MP4`
+                  : `floor plan → Kling v2.6 (pro, ${submitted.durationSeconds}s) → MP4`,
+                costUsd: submitted.durationSeconds * 0.10,
                 videoGenerationStatus: "processing",
                 taskId: submitted.taskId,
                 generationProgress: 0,
                 isFloorPlanInput: true,
+                usedOmni: submitted.usedOmni,
               },
               metadata: {
                 engine: "kling-official",
@@ -1764,11 +1769,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 taskId: submitted.taskId,
                 submittedAt: submitted.submittedAt,
                 isFloorPlanInput: true,
+                usedOmni: submitted.usedOmni,
               },
               createdAt: new Date(),
             };
             console.log("[GN-009] Artifact data.taskId:", submitted.taskId);
-            console.log("[GN-009] Artifact data.durationSeconds: 10");
+            console.log("[GN-009] Artifact data.usedOmni:", submitted.usedOmni);
+            console.log("[GN-009] Artifact data.durationSeconds:", submitted.durationSeconds);
           } else {
             // ── DUAL video for non-floor-plan (concept renders) ──
             console.log("[GN-009] Function: submitDualWalkthrough (concept render → dual 5s+10s)");
