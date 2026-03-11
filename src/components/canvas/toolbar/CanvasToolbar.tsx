@@ -578,7 +578,13 @@ export function CanvasToolbar({
                   background: isWorkflowReady
                     ? "rgba(0,245,255,0.08)"
                     : "transparent",
-                  border: isWorkflowReady
+                  borderTop: isWorkflowReady
+                    ? "1px solid rgba(0,245,255,0.3)"
+                    : "1px solid rgba(255,255,255,0.08)",
+                  borderBottom: isWorkflowReady
+                    ? "1px solid rgba(0,245,255,0.3)"
+                    : "1px solid rgba(255,255,255,0.08)",
+                  borderLeft: isWorkflowReady
                     ? "1px solid rgba(0,245,255,0.3)"
                     : "1px solid rgba(255,255,255,0.08)",
                   borderRight: "none",

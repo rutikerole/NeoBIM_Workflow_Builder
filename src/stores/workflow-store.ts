@@ -363,7 +363,8 @@ export const useWorkflowStore = create<WorkflowState>()(
           isDirty: false,
         });
       } catch (err) {
-        console.error("Load failed:", err);
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.warn("[loadWorkflow] Failed to load workflow:", message);
       }
     },
 
