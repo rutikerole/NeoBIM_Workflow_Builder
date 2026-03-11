@@ -879,6 +879,76 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
       ],
     },
   },
+  {
+    id: "wf-17",
+    name: "2D Floor Plan → Interactive 3D Model",
+    description:
+      "Upload a 2D floor plan → GPT-4o extracts precise wall/door/window geometry → Three.js builds an interactive 3D model you can orbit, walk through, and inspect. Every wall and room matches the plan exactly.",
+    tags: ["floor-plan", "3d", "interactive", "viewer", "three-js", "walkthrough"],
+    category: "3D Modeling",
+    complexity: "simple",
+    estimatedRunTime: "~15 seconds",
+    requiredInputs: ["2D floor plan image (scan, screenshot, or export)"],
+    expectedOutputs: [
+      "Floor plan analysis with room-by-room breakdown",
+      "Interactive 3D model (orbit, walk, top-down view)",
+      "Downloadable HTML file",
+    ],
+    thumbnail: "https://picsum.photos/seed/wf17/600/400",
+    tileGraph: {
+      nodes: [
+        {
+          id: "n1",
+          type: "workflowNode",
+          position: { x: X1, y: Y },
+          data: {
+            catalogueId: "IN-003",
+            label: "Image Upload",
+            category: "input",
+            status: "idle",
+            inputs: [],
+            outputs: [{ id: "image-out", label: "Image", type: "image" }],
+            icon: "Image",
+          },
+        },
+        {
+          id: "n2",
+          type: "workflowNode",
+          position: { x: X2, y: Y },
+          data: {
+            catalogueId: "TR-004",
+            label: "Floor Plan Analyzer (GPT-4o)",
+            category: "transform",
+            status: "idle",
+            inputs: [{ id: "image-in", label: "Image", type: "image" }],
+            outputs: [
+              { id: "text-out", label: "Analysis", type: "text" },
+              { id: "feat-out", label: "Geometry JSON", type: "json" },
+            ],
+            icon: "Eye",
+          },
+        },
+        {
+          id: "n3",
+          type: "workflowNode",
+          position: { x: X3, y: Y },
+          data: {
+            catalogueId: "GN-011",
+            label: "Interactive 3D Viewer",
+            category: "generate",
+            status: "idle",
+            inputs: [{ id: "json-in", label: "Floor Plan Geometry", type: "json" }],
+            outputs: [{ id: "html-out", label: "3D Viewer (HTML)", type: "binary" }],
+            icon: "Box",
+          },
+        },
+      ],
+      edges: [
+        { id: "e1-2", source: "n1", sourceHandle: "image-out", target: "n2", targetHandle: "image-in", type: "animatedEdge" },
+        { id: "e2-3", source: "n2", sourceHandle: "feat-out", target: "n3", targetHandle: "json-in", type: "animatedEdge" },
+      ],
+    },
+  },
 ];
 
 export const PREBUILT_WORKFLOWS_MAP = new Map(

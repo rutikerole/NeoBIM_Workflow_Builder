@@ -432,6 +432,24 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
     executionTime: "3-8 min",
   },
 
+  {
+    id: "GN-011",
+    name: "Interactive 3D Viewer",
+    description:
+      "Generates an explorable 3D model directly from floor plan analysis — every wall, door, window, and room in the correct position. Orbit, walk through, and inspect the model in your browser.",
+    category: "generate",
+    icon: "Box",
+    inputs: [
+      { id: "json-in", label: "Floor Plan Geometry", type: "json" },
+    ],
+    outputs: [
+      { id: "html-out", label: "3D Viewer (HTML)", type: "binary" },
+    ],
+    apiEngine: "Three.js r128 (client-side, no AI)",
+    tags: ["3d", "viewer", "interactive", "floor-plan", "three-js", "model", "walkthrough"],
+    executionTime: "< 5s",
+  },
+
   // ============================================================
   // EXPORT / OUTPUT NODES (Amber)
   // ============================================================

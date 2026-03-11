@@ -66,7 +66,7 @@ function detectRegionFromText(text: string): string | null {
 }
 
 // Node IDs that have real implementations
-const REAL_NODE_IDS = new Set(["TR-001", "TR-003", "TR-004", "TR-005", "TR-012", "GN-003", "GN-004", "GN-007", "GN-008", "GN-009", "GN-010", "TR-007", "TR-008", "EX-002", "EX-003"]);
+const REAL_NODE_IDS = new Set(["TR-001", "TR-003", "TR-004", "TR-005", "TR-012", "GN-003", "GN-004", "GN-007", "GN-008", "GN-009", "GN-010", "GN-011", "TR-007", "TR-008", "EX-002", "EX-003"]);
 
 // Nodes that require OpenAI API calls
 const OPENAI_NODES = new Set(["TR-003", "TR-004", "TR-005", "TR-012", "GN-003", "GN-004", "GN-008"]);
@@ -460,6 +460,8 @@ ${analysis.features.map(f => `• ${f}`).join("\n")}`;
           ...(analysis.circulation && { circulation: analysis.circulation }),
           ...(analysis.exteriorPrompt && { exteriorPrompt: analysis.exteriorPrompt }),
           ...(analysis.interiorPrompt && { interiorPrompt: analysis.interiorPrompt }),
+          // Geometric data for GN-011 Interactive 3D Viewer
+          ...(analysis.geometry && { geometry: analysis.geometry }),
         },
         metadata: { model: analysis.isFloorPlan ? "gpt-4o" : "gpt-4o-mini", real: true },
         createdAt: new Date(),
@@ -1965,6 +1967,138 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         metadata: { engine: "meshy-v4", real: true, jobId: result.taskId },
         createdAt: new Date(),
       };
+
+    } else if (catalogueId === "GN-011") {
+      // ── Interactive 3D Viewer ────────────────────────────────────────────
+      // Generates a self-contained Three.js HTML file from floor plan geometry.
+      // No AI calls — purely programmatic 3D construction.
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const geometryData = (inputData?.geometry ?? (inputData?._raw as Record<string, unknown>)?.geometry ?? null) as Record<string, unknown> | null;
+
+      if (!geometryData || !Array.isArray(geometryData.walls) || !Array.isArray(geometryData.rooms)) {
+        // Fallback: construct basic geometry from rooms + footprint if available
+        const rooms = (inputData?.richRooms ?? inputData?.rooms ?? []) as Array<Record<string, unknown>>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fp = (inputData?.footprint ?? (inputData?._raw as Record<string, unknown>)?.footprint) as Record<string, unknown> | undefined;
+
+        if (!rooms.length) {
+          return NextResponse.json(
+            formatErrorResponse({
+              title: "No floor plan geometry",
+              message: "GN-011 requires floor plan geometry data from TR-004 (Floor Plan Analyzer). Make sure to connect a TR-004 node upstream and upload a 2D floor plan image.",
+              code: "NODE_001",
+            }),
+            { status: 400 }
+          );
+        }
+
+        // Build minimal geometry from rooms data
+        const fallbackRooms = rooms.map((r) => ({
+          name: String(r.name ?? "Room"),
+          center: Array.isArray(r.center) ? r.center as [number, number] : [0, 0] as [number, number],
+          width: Number(r.width ?? 3),
+          depth: Number(r.depth ?? 3),
+          type: String(r.type ?? "other") as import("@/types/floor-plan").FloorPlanRoomType,
+        }));
+
+        const fpW = Number(fp?.width ?? fp?.depth ?? 14);
+        const fpD = Number(fp?.depth ?? fp?.width ?? 9);
+
+        const fallbackGeometry = {
+          footprint: { width: fpW, depth: fpD },
+          wallHeight: 3.0,
+          walls: [
+            { start: [0, 0] as [number, number], end: [fpW, 0] as [number, number], thickness: 0.2, type: "exterior" as const },
+            { start: [fpW, 0] as [number, number], end: [fpW, fpD] as [number, number], thickness: 0.2, type: "exterior" as const },
+            { start: [fpW, fpD] as [number, number], end: [0, fpD] as [number, number], thickness: 0.2, type: "exterior" as const },
+            { start: [0, fpD] as [number, number], end: [0, 0] as [number, number], thickness: 0.2, type: "exterior" as const },
+          ],
+          doors: [] as Array<{ position: [number, number]; width: number; wallId: number; type: "single" }>,
+          windows: [] as Array<{ position: [number, number]; width: number; height: number; sillHeight: number }>,
+          rooms: fallbackRooms,
+        };
+
+        const { buildFloorPlan3D } = await import("@/services/threejs-builder");
+        const html = buildFloorPlan3D(fallbackGeometry);
+
+        let viewerUrl = "";
+        try {
+          const { isR2Configured } = await import("@/lib/r2");
+          if (isR2Configured()) {
+            const r2Result = await uploadBase64ToR2(
+              Buffer.from(html, "utf-8").toString("base64"),
+              `3d-viewer-${generateId()}.html`,
+              "text/html"
+            );
+            if (r2Result && r2Result.startsWith("http")) viewerUrl = r2Result;
+          }
+        } catch (r2Err) {
+          console.warn("[GN-011] R2 upload failed:", r2Err);
+        }
+
+        artifact = {
+          id: generateId(),
+          executionId: executionId ?? "local",
+          tileInstanceId,
+          type: "file",
+          data: {
+            content: html,
+            url: viewerUrl,
+            downloadUrl: viewerUrl,
+            fileName: `floorplan-3d-${generateId()}.html`,
+            label: "Interactive 3D Floor Plan (fallback geometry)",
+            mimeType: "text/html",
+            viewerType: "html-iframe",
+            roomCount: fallbackRooms.length,
+          },
+          metadata: { engine: "threejs-r128", real: true, fallback: true },
+          createdAt: new Date(),
+        };
+      } else {
+        // Full geometry available from GPT-4o
+        const { buildFloorPlan3D } = await import("@/services/threejs-builder");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const html = buildFloorPlan3D(geometryData as any);
+
+        let viewerUrl = "";
+        try {
+          const { isR2Configured } = await import("@/lib/r2");
+          if (isR2Configured()) {
+            const r2Result = await uploadBase64ToR2(
+              Buffer.from(html, "utf-8").toString("base64"),
+              `3d-viewer-${generateId()}.html`,
+              "text/html"
+            );
+            if (r2Result && r2Result.startsWith("http")) viewerUrl = r2Result;
+          }
+        } catch (r2Err) {
+          console.warn("[GN-011] R2 upload failed:", r2Err);
+        }
+
+        const roomCount = Array.isArray(geometryData.rooms) ? geometryData.rooms.length : 0;
+        const wallCount = Array.isArray(geometryData.walls) ? geometryData.walls.length : 0;
+
+        artifact = {
+          id: generateId(),
+          executionId: executionId ?? "local",
+          tileInstanceId,
+          type: "file",
+          data: {
+            content: html,
+            url: viewerUrl,
+            downloadUrl: viewerUrl,
+            fileName: `floorplan-3d-${generateId()}.html`,
+            label: `Interactive 3D Floor Plan — ${roomCount} rooms, ${wallCount} walls`,
+            mimeType: "text/html",
+            viewerType: "html-iframe",
+            roomCount,
+            wallCount,
+          },
+          metadata: { engine: "threejs-r128", real: true },
+          createdAt: new Date(),
+        };
+      }
 
     } else {
       return NextResponse.json(

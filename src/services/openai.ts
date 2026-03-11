@@ -742,6 +742,15 @@ export interface ImageAnalysis {
   exteriorPrompt?: string;
   /** DALL-E optimized interior description (best room) */
   interiorPrompt?: string;
+  /** Precise geometric data for 3D reconstruction (GN-011) */
+  geometry?: {
+    footprint: { width: number; depth: number };
+    wallHeight: number;
+    walls: Array<{ start: [number, number]; end: [number, number]; thickness: number; type: "exterior" | "interior" }>;
+    doors: Array<{ position: [number, number]; width: number; wallId: number; type: "single" | "double" | "sliding" }>;
+    windows: Array<{ position: [number, number]; width: number; height: number; sillHeight: number }>;
+    rooms: Array<{ name: string; center: [number, number]; width: number; depth: number; type: string }>;
+  };
 }
 
 export async function analyzeImage(
@@ -815,11 +824,46 @@ Output JSON with ALL of these fields:
   "interiorPrompt": "Ultra-photorealistic interior architectural render of: [describe the most impressive room — dimensions, flooring, walls, furniture, lighting, windows]. Wide-angle lens, eye-level perspective from the doorway looking in. Natural daylight, warm color temperature, V-Ray global illumination quality, Dezeen magazine photography style. No people."
 }
 
+ALSO extract precise geometric data for 3D reconstruction in a "geometry" field:
+{
+  "geometry": {
+    "footprint": { "width": 14.0, "depth": 9.0 },
+    "wallHeight": 3.0,
+    "walls": [
+      { "start": [0, 0], "end": [14, 0], "thickness": 0.2, "type": "exterior" },
+      { "start": [6.4, 0], "end": [6.4, 5.4], "thickness": 0.15, "type": "interior" }
+    ],
+    "doors": [
+      { "position": [3.2, 5.4], "width": 0.9, "wallId": 5, "type": "single" }
+    ],
+    "windows": [
+      { "position": [7, 0], "width": 1.5, "height": 1.2, "sillHeight": 0.9 }
+    ],
+    "rooms": [
+      { "name": "Living Room", "center": [1.6, 1.8], "width": 3.2, "depth": 3.6, "type": "living" }
+    ]
+  }
+}
+
+GEOMETRY RULES:
+- Use a coordinate system with origin at the TOP-LEFT corner of the floor plan
+- X axis goes LEFT to RIGHT (meters), Y axis goes TOP to BOTTOM (meters)
+- Read ALL dimension labels from the plan to determine actual measurements
+- If dimensions aren't labeled, estimate proportionally from the overall footprint
+- Trace ALL exterior walls as line segments forming the perimeter
+- Trace ALL interior partition walls as separate segments
+- Exterior wall thickness: 0.2m, interior: 0.15m
+- Doors: position is the center of the door on its wall, wallId is the index in the walls array
+- Windows: position is the center, default height 1.2m, default sillHeight 0.9m
+- Rooms: center is the geometric center [x, y], type is one of: living, bedroom, kitchen, dining, bathroom, veranda, hallway, storage, office, other
+- wallHeight defaults to 3.0m unless the plan indicates otherwise
+
 CRITICAL RULES:
 - Extract EVERY room with exact dimensions from labels
 - For richRooms, analyze position (upper-left, center, etc.), door/window locations, and infer appropriate furniture
 - The exteriorPrompt must describe a complete building exterior that matches the floor plan footprint
 - The interiorPrompt must describe the largest/most impressive living space from the plan
+- The geometry field must have accurate wall coordinates that form a closed perimeter
 - Be specific about materials, proportions, and spatial relationships`
       : `You are a senior architect analyzing an image. Describe what you see in precise architectural terms. Output JSON with these fields:
 {
@@ -883,6 +927,7 @@ Be specific about dimensions, proportions, materials, and spatial relationships.
       circulation: result.circulation ?? undefined,
       exteriorPrompt: result.exteriorPrompt ?? undefined,
       interiorPrompt: result.interiorPrompt ?? undefined,
+      geometry: result.geometry ?? undefined,
     };
   });
 }
