@@ -256,6 +256,7 @@ async function pollSingleVideoGeneration(
   clearVideoProgressFn: (nodeId: string) => void,
   currentArtifactData: Record<string, unknown>,
   executionId: string,
+  useOmniPolling = false,
 ): Promise<void> {
   const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
 
@@ -268,9 +269,8 @@ async function pollSingleVideoGeneration(
     await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
 
     try {
-      const useOmni = currentArtifactData.usedOmni === true;
-      console.log("[POLL] Checking single video status...", useOmni ? "(Omni v3)" : "(v2.x)");
-      const res = await fetch(`/api/video-status?taskId=${encodeURIComponent(taskId)}${useOmni ? "&omni=true" : ""}`);
+      console.log("[POLL] Checking single video status...", useOmniPolling ? "(Omni v3)" : "(v2.x)");
+      const res = await fetch(`/api/video-status?taskId=${encodeURIComponent(taskId)}${useOmniPolling ? "&omni=true" : ""}`);
 
       if (!res.ok) {
         console.error("[POLL] HTTP error:", res.status);
@@ -961,6 +961,8 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
               duration: 5000,
             });
 
+            const omniFlag = artData.usedOmni === true;
+            console.log("[POLL] Starting single video poll — usedOmni:", artData.usedOmni, "omniFlag:", omniFlag);
             pollSingleVideoGeneration(
               node.id,
               artData.taskId as string,
@@ -969,6 +971,7 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
               clearVideoGenProgress,
               artData,
               executionId,
+              omniFlag,
             ).catch(err => {
               console.error("[Video Poll] Unhandled error:", err);
             });
