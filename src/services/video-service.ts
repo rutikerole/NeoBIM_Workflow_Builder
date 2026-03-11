@@ -6,10 +6,10 @@
  *   POST /v1/videos/image2video — create task
  *   GET  /v1/videos/image2video/{task_id} — poll status
  *
- * Supported model_name: kling-v1-6, kling-v2-1, kling-v2-1-master, kling-v2-6
- * Supported duration: "5" or "10"
- * Supported mode: "std" (720p) or "pro" (1080p)
- * cfg_scale: 0-1 (only on v1.x models)
+ * Supported model_name: kling-v3-0 (3-15s), kling-v2-6, kling-v2-1, kling-v2-1-master, kling-v1-6
+ * Supported duration: V3: 3-15s flexible | V2/V1: "5" or "10"
+ * Supported mode: "std" (720p) or "pro" (1080p, 1920×1080 on V3)
+ * cfg_scale: 0-1 on all models (0=creative, 0.5=default, 1=strict adherence)
  *
  * Strategy: Generate TWO 10s videos (exterior + interior) for 20s total,
  * or a single 10s cinematic walkthrough for speed.
@@ -26,9 +26,9 @@ const REQUEST_TIMEOUT_MS = 600_000; // 10 minutes
 const POLL_INTERVAL_MS = 8_000;     // 8 seconds between status checks
 const JWT_EXPIRY_SECONDS = 1800;
 
-// Model names in priority order — try best first, fall back
-// kling-v3-0 / kling-v3-0-omni may be available on newer API versions (Kling 3.0 Omni)
-const MODELS = ["kling-v3-0", "kling-v3-0-omni", "kling-v2-6", "kling-v2-1-master", "kling-v2-1", "kling-v1-6"] as const;
+// Model names in priority order — try best first, fall back.
+// kling-v3-0 confirmed on official API (3-15s, cfg_scale, no aspect_ratio needed).
+const MODELS = ["kling-v3-0", "kling-v2-6", "kling-v2-1-master", "kling-v2-1", "kling-v1-6"] as const;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -224,6 +224,9 @@ async function pollTask(taskId: string): Promise<KlingTaskResponse> {
 /**
  * Create a Kling image-to-video task, trying model names in priority order.
  * Returns as soon as one model accepts the task.
+ *
+ * @param cfgScale — 0 (creative) to 1 (strict adherence). Default 0.5.
+ *                   Use 0.7+ for floor plans to follow input image strictly.
  */
 async function createTask(
   imageUrl: string,
@@ -232,20 +235,21 @@ async function createTask(
   duration: "5" | "10",
   aspectRatio: string,
   mode: string,
+  cfgScale?: number,
 ): Promise<KlingTaskResponse> {
   const errors: string[] = [];
 
-  console.log("========== createTask START ==========");
-  console.log("[CREATE] image type:", imageUrl?.startsWith("http") ? "URL" : "base64");
-  console.log("[CREATE] image length:", imageUrl?.length);
-  console.log("[CREATE] prompt (FULL):", prompt);
-  console.log("[CREATE] duration:", duration);
-  console.log("[CREATE] mode:", mode);
-  console.log("[CREATE] aspectRatio:", aspectRatio);
+  console.log("[KLING] === createTask START ===");
+  console.log("[KLING] image:", imageUrl?.startsWith("http") ? `URL (${imageUrl.slice(0, 80)})` : `base64 (${imageUrl?.length} chars)`);
+  console.log("[KLING] duration:", duration, "| mode:", mode, "| aspect:", aspectRatio, "| cfg_scale:", cfgScale ?? "default");
+  console.log("[KLING] prompt:", prompt.slice(0, 200));
 
   for (const modelName of MODELS) {
     try {
-      console.log(`[CREATE] Trying model: ${modelName}`);
+      const isV3 = modelName.includes("v3");
+
+      // V3 supports 3-15s flexible duration; V2/V1 only "5" or "10"
+      const effectiveDuration = isV3 ? "10" : duration;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const body: Record<string, any> = {
@@ -253,65 +257,35 @@ async function createTask(
         image: imageUrl,
         prompt: prompt.slice(0, 2500), // API max 2500 chars
         negative_prompt: negativePrompt.slice(0, 2500),
-        aspect_ratio: aspectRatio,
         mode,
-        duration,
+        duration: effectiveDuration,
       };
 
-      // cfg_scale only supported on v1.x models
-      if (modelName.startsWith("kling-v1")) {
-        body.cfg_scale = 0.7;
+      // V3 derives aspect_ratio from input image — don't send it.
+      // V2/V1 require it explicitly.
+      if (!isV3) {
+        body.aspect_ratio = aspectRatio;
       }
 
-      // ===== IMAGE DEBUG =====
-      console.log("===== IMAGE DEBUG =====");
-      console.log("[IMAGE] Type:", typeof imageUrl);
-      console.log("[IMAGE] Starts with http:", imageUrl?.startsWith("http"));
-      console.log("[IMAGE] Starts with data:", imageUrl?.startsWith("data:"));
-      console.log("[IMAGE] Starts with /9j/:", imageUrl?.startsWith("/9j/")); // JPEG base64 signature
-      console.log("[IMAGE] Starts with iVBOR:", imageUrl?.startsWith("iVBOR")); // PNG base64 signature
-      console.log("[IMAGE] First 100 chars:", imageUrl?.slice(0, 100));
-      console.log("[IMAGE] Total length:", imageUrl?.length);
-
-      // Check if it's valid base64
-      if (!imageUrl?.startsWith("http")) {
-        try {
-          const cleanBase64 = imageUrl.replace(/^data:image\/\w+;base64,/, "");
-          const buffer = Buffer.from(cleanBase64, "base64");
-          console.log("[IMAGE] Decoded buffer size:", buffer.length, "bytes");
-          console.log("[IMAGE] Decoded size in KB:", Math.round(buffer.length / 1024), "KB");
-          // Check magic bytes
-          console.log("[IMAGE] Magic bytes:", buffer[0]?.toString(16), buffer[1]?.toString(16));
-          console.log("[IMAGE] Is JPEG:", buffer[0] === 0xFF && buffer[1] === 0xD8);
-          console.log("[IMAGE] Is PNG:", buffer[0] === 0x89 && buffer[1] === 0x50);
-        } catch (e) {
-          console.log("[IMAGE] ❌ FAILED TO DECODE BASE64:", e);
-        }
+      // cfg_scale: 0-1, supported on ALL models.
+      // Higher = stricter adherence to prompt + input image.
+      if (cfgScale !== undefined) {
+        body.cfg_scale = cfgScale;
       }
 
-      // Log the EXACT image field being sent to Kling
-      console.log("[IMAGE] Kling 'image' field first 80 chars:", body.image?.slice(0, 80));
-      console.log("[IMAGE] Kling 'image' field length:", body.image?.length);
-      console.log("========================");
-
-      console.log("[CREATE] EXACT Kling API request body:", JSON.stringify({
-        ...body,
-        image: body.image?.length > 100 ? body.image?.slice(0, 50) + "...[truncated, total=" + body.image.length + "]" : body.image,
-      }));
+      console.log(`[KLING] Trying ${modelName} | duration=${effectiveDuration} | cfg_scale=${body.cfg_scale ?? "none"}`);
 
       const result = await klingFetch(KLING_IMAGE2VIDEO_PATH, {
         method: "POST",
         body,
       });
 
-      console.log(`[KLING] ✅ Task created with MODEL: ${modelName}, taskId=${result.data.task_id}`);
-      console.log("[CREATE] Full API response:", JSON.stringify(result));
-      console.log("========== createTask END ==========");
+      console.log(`[KLING] ✅✅✅ SUCCESS with model: ${modelName}, taskId=${result.data.task_id}`);
       return result;
     } catch (err) {
       const msg = (err as Error).message;
       errors.push(`${modelName}: ${msg}`);
-      console.warn(`[Video] ${modelName} failed: ${msg}`);
+      console.warn(`[KLING] ${modelName} failed: ${msg}`);
     }
   }
 
@@ -947,21 +921,23 @@ export interface SubmittedSingleVideoTask {
  * Submit a SINGLE 10s video task to Kling API and return immediately.
  * Used for floor plans where a continuous shot (exterior + interior) is needed
  * to maintain building consistency.
+ *
+ * @param cfgScale — 0-1, higher = stricter adherence to input image. Use 0.7 for floor plans.
  */
 export async function submitSingleWalkthrough(
   imageUrl: string,
   prompt: string,
   mode: "std" | "pro" = "pro",
+  cfgScale?: number,
 ): Promise<SubmittedSingleVideoTask> {
   const negativePrompt = "blur, distortion, low quality, noise, artifacts, cartoon, sketch, watermark";
 
-  console.log("[GN-009] submitSingleWalkthrough: Submitting SINGLE 10s walkthrough");
-  console.log("[GN-009] Image type:", imageUrl?.startsWith("http") ? "URL" : "base64", "length:", imageUrl?.length);
-  console.log("[GN-009] Prompt:", prompt);
+  console.log("[GN-009] submitSingleWalkthrough: SINGLE 10s walkthrough");
+  console.log("[GN-009] Image:", imageUrl?.startsWith("http") ? "URL" : "base64", "| length:", imageUrl?.length, "| cfg_scale:", cfgScale ?? "default");
 
-  const result = await createTask(imageUrl, prompt, negativePrompt, "10", "16:9", mode);
+  const result = await createTask(imageUrl, prompt, negativePrompt, "10", "16:9", mode, cfgScale);
 
-  console.log("[GN-009] Single task submitted! taskId:", result.data.task_id);
+  console.log("[GN-009] Task submitted! taskId:", result.data.task_id);
   return { taskId: result.data.task_id, submittedAt: Date.now() };
 }
 

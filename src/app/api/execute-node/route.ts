@@ -1734,7 +1734,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             const combinedPrompt = buildFloorPlanCombinedPrompt(buildingDesc, roomInfo);
             console.log("[GN-009] FINAL PROMPT SENT TO KLING:", combinedPrompt?.slice(0, 1500));
 
-            const submitted = await submitSingleWalkthrough(renderImageUrl, combinedPrompt, "pro");
+            const submitted = await submitSingleWalkthrough(renderImageUrl, combinedPrompt, "pro", 0.7);
 
             console.log("[GN-009] Single task submitted! taskId:", submitted.taskId);
 
