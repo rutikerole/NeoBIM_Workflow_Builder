@@ -51,7 +51,7 @@ const MODE_ICONS: Record<CreationMode, React.ReactNode> = {
 
 function Sep() {
   return (
-    <div style={{ width: 1, height: 18, background: "rgba(184,115,51,0.18)", margin: "0 6px", flexShrink: 0 }} />
+    <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.08)", margin: "0 8px", flexShrink: 0 }} />
   );
 }
 
@@ -73,37 +73,25 @@ function TBBtn({ onClick, icon, title, disabled }: TBBtnProps) {
         width: 32, height: 32, borderRadius: 8,
         display: "flex", alignItems: "center", justifyContent: "center",
         background: "transparent", border: "none",
-        color: "rgba(255,255,255,0.65)", cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
+        color: "rgba(255,255,255,0.55)", cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.35 : 1,
         transition: "all 150ms ease",
       }}
       onMouseEnter={e => {
         if (!disabled) {
-          e.currentTarget.style.background = "rgba(255,191,0,0.10)";
-          e.currentTarget.style.color = "#FFBF00";
+          e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+          e.currentTarget.style.color = "rgba(255,255,255,0.9)";
         }
       }}
       onMouseLeave={e => {
         e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.color = "rgba(255,255,255,0.65)";
+        e.currentTarget.style.color = "rgba(255,255,255,0.55)";
       }}
     >
       {icon}
     </button>
   );
 }
-
-// ─── Pulse animation keyframes ────────────────────────────────────────────────
-const pulseKeyframes = `
-@keyframes runButtonPulse {
-  0%, 100% {
-    box-shadow: 0 2px 12px rgba(0, 245, 255, 0.25);
-  }
-  50% {
-    box-shadow: 0 2px 20px rgba(0, 245, 255, 0.45);
-  }
-}
-`;
 
 // ─── Main toolbar ─────────────────────────────────────────────────────────────
 
@@ -191,17 +179,6 @@ export function CanvasToolbar({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Inject pulse animation styles
-  useEffect(() => {
-    const styleId = "run-button-pulse-animation";
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement("style");
-      style.id = styleId;
-      style.textContent = pulseKeyframes;
-      document.head.appendChild(style);
-    }
-  }, []);
-
   const commitName = useCallback(() => {
     setIsEditingName(false);
     const trimmed = nameValue.trim() || workflowName;
@@ -210,32 +187,34 @@ export function CanvasToolbar({
 
   const currentMode = MODE_CONFIG[creationMode];
 
-  // Check if workflow is ready to run (has nodes)
-  // In real implementation, you'd check from Zustand store
   const { nodes } = useWorkflowStore();
   const isWorkflowReady = nodes.length > 0 && !isExecuting;
+
+  // Save button state
+  const canSave = isDirty || isUntitled;
+  const saveDisabled = (!canSave && !savedFlash) || isSaving;
 
   return (
     <>
       {/* Desktop toolbar - floating pill at top */}
       <div
-        className="flex"
+        className="hidden md:flex"
         style={{
           position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)",
           zIndex: 1000,
-          height: 48,
-          alignItems: "center", justifyContent: "space-between",
-          padding: "0 14px",
-          border: "1px solid rgba(184,115,51,0.35)",
-          borderRadius: 4,
-          background: "rgba(10, 12, 15, 0.92)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(184,115,51,0.06)",
-          gap: 4,
+          height: 44,
+          alignItems: "center",
+          padding: "0 6px",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 14,
+          background: "rgba(10, 12, 16, 0.88)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.03) inset",
+          gap: 2,
         }}
       >
-        {/* ── Left group ──────────────────────────────────────────────────── */}
+        {/* ── Left group: Library + Mode + Undo/Redo ──────────────────────── */}
         <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
 
           {/* Library toggle */}
@@ -245,23 +224,23 @@ export function CanvasToolbar({
             aria-label={t('canvas.toggleNodeLibrary')}
             aria-pressed={isNodeLibraryOpen}
             style={{
-              width: 30, height: 30, borderRadius: 7,
+              width: 32, height: 32, borderRadius: 8,
               display: "flex", alignItems: "center", justifyContent: "center",
-              background: isNodeLibraryOpen ? "rgba(0,245,255,0.1)" : "transparent",
-              border: `1px solid ${isNodeLibraryOpen ? "rgba(0,245,255,0.3)" : "transparent"}`,
-              color: isNodeLibraryOpen ? "#00F5FF" : "rgba(255,255,255,0.65)",
+              background: isNodeLibraryOpen ? "rgba(0,245,255,0.10)" : "transparent",
+              border: isNodeLibraryOpen ? "1px solid rgba(0,245,255,0.25)" : "1px solid transparent",
+              color: isNodeLibraryOpen ? "#00F5FF" : "rgba(255,255,255,0.55)",
               cursor: "pointer", transition: "all 0.15s ease",
             }}
             onMouseEnter={e => {
               if (!isNodeLibraryOpen) {
-                e.currentTarget.style.background = "rgba(255,191,0,0.10)";
-                e.currentTarget.style.color = "#FFBF00";
+                e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                e.currentTarget.style.color = "rgba(255,255,255,0.9)";
               }
             }}
             onMouseLeave={e => {
               if (!isNodeLibraryOpen) {
                 e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "rgba(255,255,255,0.65)";
+                e.currentTarget.style.color = "rgba(255,255,255,0.55)";
               }
             }}
           >
@@ -279,18 +258,18 @@ export function CanvasToolbar({
               aria-haspopup="menu"
               style={{
                 display: "flex", alignItems: "center", gap: 5,
-                height: 30, padding: "0 9px", borderRadius: 7,
-                background: showModeMenu ? "#1A1A26" : "transparent",
-                border: `1px solid ${showModeMenu ? "#3A3A4E" : "transparent"}`,
+                height: 30, padding: "0 10px", borderRadius: 7,
+                background: showModeMenu ? "rgba(255,255,255,0.06)" : "transparent",
+                border: showModeMenu ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent",
                 color: "#F0F0F5", cursor: "pointer",
                 transition: "all 0.15s ease",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1A1A26"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
               onMouseLeave={e => { if (!showModeMenu) e.currentTarget.style.background = "transparent"; }}
             >
               <span style={{ color: "#00F5FF", display: "flex" }}>{currentMode.icon}</span>
               <span style={{ fontSize: 12, fontWeight: 500 }}>{currentMode.label}</span>
-              <ChevronDown size={9} style={{ color: "#7A7A90" }} />
+              <ChevronDown size={9} style={{ color: "rgba(255,255,255,0.35)" }} />
             </button>
 
             <AnimatePresence>
@@ -301,46 +280,48 @@ export function CanvasToolbar({
                   exit={{ opacity: 0, y: -4, scale: 0.97 }}
                   transition={{ duration: 0.12 }}
                   style={{
-                    position: "absolute", top: "calc(100% + 4px)", left: 0,
-                    width: 188, borderRadius: 10, overflow: "hidden",
-                    background: "rgba(7,8,9,0.97)", border: "1px solid rgba(184,115,51,0.2)",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.5)", zIndex: 50,
+                    position: "absolute", top: "calc(100% + 6px)", left: 0,
+                    width: 200, borderRadius: 12, overflow: "hidden",
+                    background: "rgba(12,13,16,0.98)", border: "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: "0 12px 40px rgba(0,0,0,0.5)", zIndex: 50,
                   }}
                 >
-                  {(Object.entries(MODE_CONFIG) as [CreationMode, typeof MODE_CONFIG[CreationMode]][]).map(([value, cfg]) => {
-                    const active = creationMode === value;
-                    return (
-                      <button
-                        key={value}
-                        onClick={() => {
-                          onModeChange(value);
-                          setShowModeMenu(false);
-                          if (value === "prompt") onPromptMode();
-                        }}
-                        style={{
-                          width: "100%", display: "flex", alignItems: "flex-start", gap: 10,
-                          padding: "9px 12px",
-                          background: active ? "rgba(184,115,51,0.1)" : "transparent",
-                          border: "none", cursor: "pointer", textAlign: "left",
-                          transition: "background 0.1s",
-                        }}
-                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = "rgba(184,115,51,0.08)"; }}
-                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
-                      >
-                        <span style={{ color: active ? "#00F5FF" : "#55556A", marginTop: 1, display: "flex" }}>
-                          {cfg.icon}
-                        </span>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 500, color: active ? "#00F5FF" : "#F0F0F5" }}>
-                            {cfg.label}
+                  <div style={{ padding: 4 }}>
+                    {(Object.entries(MODE_CONFIG) as [CreationMode, typeof MODE_CONFIG[CreationMode]][]).map(([value, cfg]) => {
+                      const active = creationMode === value;
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => {
+                            onModeChange(value);
+                            setShowModeMenu(false);
+                            if (value === "prompt") onPromptMode();
+                          }}
+                          style={{
+                            width: "100%", display: "flex", alignItems: "flex-start", gap: 10,
+                            padding: "8px 10px", borderRadius: 8,
+                            background: active ? "rgba(0,245,255,0.06)" : "transparent",
+                            border: "none", cursor: "pointer", textAlign: "left",
+                            transition: "background 0.1s",
+                          }}
+                          onMouseEnter={e => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                          onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                        >
+                          <span style={{ color: active ? "#00F5FF" : "rgba(255,255,255,0.35)", marginTop: 1, display: "flex" }}>
+                            {cfg.icon}
+                          </span>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: active ? "#00F5FF" : "#F0F0F5" }}>
+                              {cfg.label}
+                            </div>
+                            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
+                              {cfg.description}
+                            </div>
                           </div>
-                          <div style={{ fontSize: 10, color: "#55556A", marginTop: 1 }}>
-                            {cfg.description}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -349,14 +330,14 @@ export function CanvasToolbar({
           <Sep />
 
           {/* Undo / Redo */}
-          <TBBtn onClick={onUndo} icon={<Undo2 size={13} />} title={`${t('canvas.undo')} (⌘Z)`} />
-          <TBBtn onClick={onRedo} icon={<Redo2 size={13} />} title={`${t('canvas.redo')} (⌘⇧Z)`} />
+          <TBBtn onClick={onUndo} icon={<Undo2 size={14} />} title={`${t('canvas.undo')} (⌘Z)`} />
+          <TBBtn onClick={onRedo} icon={<Redo2 size={14} />} title={`${t('canvas.redo')} (⌘⇧Z)`} />
         </div>
 
         <Sep />
 
         {/* ── Center — inline-editable name ───────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
           {isEditingName ? (
             <input
               ref={nameInputRef}
@@ -372,10 +353,10 @@ export function CanvasToolbar({
               style={{
                 background: "transparent",
                 borderTop: "none", borderLeft: "none", borderRight: "none",
-                borderBottom: "1px solid #B87333",
+                borderBottom: "1px solid rgba(0,245,255,0.4)",
                 color: "#F0F0F5", fontSize: 12, fontWeight: 500,
                 outline: "none", textAlign: "center",
-                minWidth: 80, maxWidth: 180, padding: "1px 2px",
+                minWidth: 80, maxWidth: 200, padding: "2px 4px",
               }}
             />
           ) : (
@@ -387,22 +368,22 @@ export function CanvasToolbar({
               }}
               title={t('canvas.clickToRename')}
               style={{
-                display: "flex", alignItems: "center", gap: 4,
+                display: "flex", alignItems: "center", gap: 5,
                 background: "transparent", border: "none", cursor: "text",
-                padding: "3px 6px", borderRadius: 5,
-                maxWidth: 180, transition: "background 0.1s ease",
+                padding: "4px 8px", borderRadius: 6,
+                maxWidth: 200, transition: "background 0.1s ease",
               }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
             >
               <span style={{
-                fontSize: 12, fontWeight: 500, color: "#9898B0",
+                fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.5)",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                maxWidth: 140,
+                maxWidth: 160,
               }}>
                 {workflowName}
               </span>
-              <Pencil size={9} style={{ color: "#55556A", flexShrink: 0 }} />
+              <Pencil size={9} style={{ color: "rgba(255,255,255,0.25)", flexShrink: 0 }} />
               {isDirty && (
                 <div
                   title={t('canvas.unsavedChanges')}
@@ -415,32 +396,35 @@ export function CanvasToolbar({
 
         <Sep />
 
-        {/* ── Right group ─────────────────────────────────────────────────── */}
+        {/* ── Right group: Zoom + AI + Share + Save + Run ─────────────── */}
         <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
 
-          {/* Zoom */}
-          <TBBtn onClick={onZoomOut} icon={<ZoomOut size={13} />} title={t('canvas.zoomOut')} />
-          <TBBtn onClick={onZoomIn} icon={<ZoomIn size={13} />} title={t('canvas.zoomIn')} />
-          <TBBtn onClick={onFitView} icon={<Maximize2 size={13} />} title={t('canvas.fitToScreen')} />
+          {/* Zoom controls */}
+          <TBBtn onClick={onZoomOut} icon={<ZoomOut size={14} />} title={t('canvas.zoomOut')} />
+          <TBBtn onClick={onZoomIn} icon={<ZoomIn size={14} />} title={t('canvas.zoomIn')} />
+          <TBBtn onClick={onFitView} icon={<Maximize2 size={14} />} title={t('canvas.fitToScreen')} />
 
           <Sep />
 
           {/* AI Prompt */}
           <button
             onClick={onPromptMode}
+            title={t('canvas.ai')}
             style={{
               display: "flex", alignItems: "center", gap: 5,
-              height: 36, padding: "0 16px", borderRadius: 8,
-              background: "rgba(0,245,255,0.05)",
-              border: "1px solid rgba(0,245,255,0.2)",
-              color: "#00F5FF", fontSize: 14, fontWeight: 500,
+              height: 30, padding: "0 12px", borderRadius: 7,
+              background: "rgba(0,245,255,0.06)",
+              border: "1px solid rgba(0,245,255,0.15)",
+              color: "#00F5FF", fontSize: 12, fontWeight: 500,
               cursor: "pointer", transition: "all 150ms ease",
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = "rgba(0,245,255,0.1)";
+              e.currentTarget.style.background = "rgba(0,245,255,0.12)";
+              e.currentTarget.style.borderColor = "rgba(0,245,255,0.3)";
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = "rgba(0,245,255,0.05)";
+              e.currentTarget.style.background = "rgba(0,245,255,0.06)";
+              e.currentTarget.style.borderColor = "rgba(0,245,255,0.15)";
             }}
           >
             <Sparkles size={11} />
@@ -451,7 +435,7 @@ export function CanvasToolbar({
           <div style={{ position: "relative" }} ref={shareMenuRef}>
             <TBBtn
               onClick={() => setShowShareMenu(v => !v)}
-              icon={<Share2 size={13} />}
+              icon={<Share2 size={14} />}
               title={t('canvas.share')}
             />
             <AnimatePresence>
@@ -462,32 +446,34 @@ export function CanvasToolbar({
                   exit={{ opacity: 0, y: -4, scale: 0.97 }}
                   transition={{ duration: 0.12 }}
                   style={{
-                    position: "absolute", top: "calc(100% + 4px)", right: 0,
-                    width: 180, borderRadius: 10, overflow: "hidden",
-                    background: "#12121A", border: "1px solid #2A2A3E",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.5)", zIndex: 50,
+                    position: "absolute", top: "calc(100% + 6px)", right: 0,
+                    width: 180, borderRadius: 12, overflow: "hidden",
+                    background: "rgba(12,13,16,0.98)", border: "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: "0 12px 40px rgba(0,0,0,0.5)", zIndex: 50,
                   }}
                 >
-                  {[
-                    { label: "Share on X", action: () => shareWorkflowToTwitter(workflowName) },
-                    { label: "Copy Link", action: () => copyShareLink() },
-                  ].map(item => (
-                    <button
-                      key={item.label}
-                      onClick={() => { item.action(); setShowShareMenu(false); }}
-                      style={{
-                        width: "100%", display: "flex", alignItems: "center", gap: 8,
-                        padding: "9px 12px", background: "transparent",
-                        border: "none", cursor: "pointer", textAlign: "left",
-                        fontSize: 12, fontWeight: 500, color: "#F0F0F5",
-                        transition: "background 0.1s",
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "#1A1A26"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
+                  <div style={{ padding: 4 }}>
+                    {[
+                      { label: "Share on X", action: () => shareWorkflowToTwitter(workflowName) },
+                      { label: "Copy Link", action: () => copyShareLink() },
+                    ].map(item => (
+                      <button
+                        key={item.label}
+                        onClick={() => { item.action(); setShowShareMenu(false); }}
+                        style={{
+                          width: "100%", display: "flex", alignItems: "center", gap: 8,
+                          padding: "8px 10px", borderRadius: 8, background: "transparent",
+                          border: "none", cursor: "pointer", textAlign: "left",
+                          fontSize: 12, fontWeight: 500, color: "#F0F0F5",
+                          transition: "background 0.1s",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -496,34 +482,41 @@ export function CanvasToolbar({
           {/* Save */}
           <button
             onClick={handleSave}
-            disabled={(!isDirty && !savedFlash && !isUntitled) || isSaving}
+            disabled={saveDisabled}
             title={isUntitled ? t('canvas.nameToSave') : `${t('canvas.save')} (⌘S)`}
             style={{
               display: "flex", alignItems: "center", gap: 5,
-              height: 36, padding: "0 16px", borderRadius: 8,
-              background: "transparent",
+              height: 30, padding: "0 12px", borderRadius: 7,
+              background: savedFlash
+                ? "rgba(16,185,129,0.10)"
+                : canSave
+                  ? "rgba(255,255,255,0.04)"
+                  : "transparent",
               border: savedFlash
-                ? "1px solid rgba(52,211,153,0.4)"
-                : isUntitled && isDirty
-                  ? "1px solid rgba(184,115,51,0.3)"
-                  : isDirty ? "1px solid rgba(184,115,51,0.3)" : "1px solid transparent",
-              color: savedFlash ? "#10B981" : isUntitled && isDirty ? "#B87333" : isDirty ? "#B87333" : "#3A3A4E",
-              fontSize: 13, fontWeight: 500,
-              cursor: isDirty || savedFlash || isUntitled ? "pointer" : "default",
+                ? "1px solid rgba(16,185,129,0.3)"
+                : canSave
+                  ? "1px solid rgba(255,255,255,0.1)"
+                  : "1px solid transparent",
+              color: savedFlash
+                ? "#34D399"
+                : canSave
+                  ? "rgba(255,255,255,0.85)"
+                  : "rgba(255,255,255,0.25)",
+              fontSize: 12, fontWeight: 500,
+              cursor: saveDisabled ? "default" : "pointer",
               transition: "all 150ms ease",
-              opacity: !isDirty && !savedFlash && !isSaving && !isUntitled ? 0.5 : 1,
-              boxShadow: isUntitled && isDirty ? "0 0 12px rgba(184,115,51,0.15)" : "none",
+              opacity: saveDisabled && !isSaving ? 0.5 : 1,
             }}
             onMouseEnter={e => {
-              if (isDirty && !savedFlash) {
-                e.currentTarget.style.background = "rgba(184,115,51,0.08)";
-                e.currentTarget.style.color = "#F0F0F5";
+              if (!saveDisabled) {
+                e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                e.currentTarget.style.color = "#fff";
               }
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = "transparent";
-              if (!savedFlash) {
-                e.currentTarget.style.color = isDirty ? "#9898B0" : "#3A3A4E";
+              if (!saveDisabled) {
+                e.currentTarget.style.background = canSave ? "rgba(255,255,255,0.04)" : "transparent";
+                e.currentTarget.style.color = canSave ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.25)";
               }
             }}
           >
@@ -557,16 +550,19 @@ export function CanvasToolbar({
               title={`${t('canvas.stopExecution')} (Esc)`}
               style={{
                 display: "flex", alignItems: "center", gap: 7,
-                height: 36, padding: "0 20px", borderRadius: 10,
-                background: "#EF4444", border: "none",
-                color: "#fff", fontSize: 13, fontWeight: 600,
-                cursor: "pointer", transition: "background 0.15s ease",
-                boxShadow: "0 2px 16px rgba(239, 68, 68, 0.3)",
+                height: 32, padding: "0 16px", borderRadius: 8,
+                background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)",
+                color: "#EF4444", fontSize: 12, fontWeight: 600,
+                cursor: "pointer", transition: "all 0.15s ease",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#DC2626"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#EF4444"; }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = "rgba(239,68,68,0.2)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "rgba(239,68,68,0.12)";
+              }}
             >
-              <Square size={14} fill="white" />
+              <Square size={12} fill="currentColor" />
               {t('canvas.stop')}
             </button>
           ) : (
@@ -576,37 +572,36 @@ export function CanvasToolbar({
                 title={`${t('canvas.runWorkflow')} (⌘↵)`}
                 disabled={!isWorkflowReady}
                 style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  height: 36, paddingLeft: 20, paddingRight: 16,
-                  borderRadius: "12px 0 0 12px",
+                  display: "flex", alignItems: "center", gap: 6,
+                  height: 32, paddingLeft: 14, paddingRight: 10,
+                  borderRadius: "8px 0 0 8px",
                   background: isWorkflowReady
-                    ? "transparent"
+                    ? "rgba(0,245,255,0.08)"
                     : "transparent",
                   border: isWorkflowReady
-                    ? "1px solid rgba(0,245,255,0.4)"
-                    : "1px solid rgba(255,255,255,0.1)",
-                  color: isWorkflowReady ? "#00F5FF" : "rgba(255,255,255,0.3)",
-                  fontSize: 10, fontWeight: 600,
-                  fontFamily: "'Space Mono', monospace",
-                  letterSpacing: "0.15em",
+                    ? "1px solid rgba(0,245,255,0.3)"
+                    : "1px solid rgba(255,255,255,0.08)",
+                  borderRight: "none",
+                  color: isWorkflowReady ? "#00F5FF" : "rgba(255,255,255,0.25)",
+                  fontSize: 11, fontWeight: 600,
+                  letterSpacing: "0.04em",
                   textTransform: "uppercase" as const,
                   cursor: isWorkflowReady ? "pointer" : "not-allowed",
-                  transition: "all 200ms ease",
-                  boxShadow: "none",
+                  transition: "all 180ms ease",
                   opacity: isWorkflowReady ? 1 : 0.5,
                 }}
                 onMouseEnter={e => {
                   if (isWorkflowReady) {
-                    e.currentTarget.style.background = "rgba(0,245,255,0.1)";
-                    e.currentTarget.style.boxShadow = "0 0 20px rgba(0,245,255,0.1)";
+                    e.currentTarget.style.background = "rgba(0,245,255,0.15)";
                   }
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.boxShadow = "none";
+                  if (isWorkflowReady) {
+                    e.currentTarget.style.background = "rgba(0,245,255,0.08)";
+                  }
                 }}
               >
-                <Play size={16} fill="currentColor" />
+                <Play size={13} fill="currentColor" />
                 {t('canvas.runWorkflow')}
               </button>
 
@@ -618,28 +613,30 @@ export function CanvasToolbar({
                 disabled={!isWorkflowReady}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 30, height: 36, padding: 0,
-                  borderRadius: "0 10px 10px 0",
-                  background: isWorkflowReady ? "transparent" : "transparent",
+                  width: 28, height: 32, padding: 0,
+                  borderRadius: "0 8px 8px 0",
+                  background: isWorkflowReady ? "rgba(0,245,255,0.08)" : "transparent",
                   borderTop: isWorkflowReady
-                    ? "1px solid rgba(0,245,255,0.4)"
-                    : "1px solid rgba(255,255,255,0.1)",
+                    ? "1px solid rgba(0,245,255,0.3)"
+                    : "1px solid rgba(255,255,255,0.08)",
                   borderRight: isWorkflowReady
-                    ? "1px solid rgba(0,245,255,0.4)"
-                    : "1px solid rgba(255,255,255,0.1)",
+                    ? "1px solid rgba(0,245,255,0.3)"
+                    : "1px solid rgba(255,255,255,0.08)",
                   borderBottom: isWorkflowReady
-                    ? "1px solid rgba(0,245,255,0.4)"
-                    : "1px solid rgba(255,255,255,0.1)",
-                  borderLeft: "1px solid rgba(0,245,255,0.2)",
-                  color: isWorkflowReady ? "#00F5FF" : "rgba(255,255,255,0.3)",
+                    ? "1px solid rgba(0,245,255,0.3)"
+                    : "1px solid rgba(255,255,255,0.08)",
+                  borderLeft: isWorkflowReady
+                    ? "1px solid rgba(0,245,255,0.15)"
+                    : "1px solid rgba(255,255,255,0.05)",
+                  color: isWorkflowReady ? "#00F5FF" : "rgba(255,255,255,0.25)",
                   cursor: isWorkflowReady ? "pointer" : "not-allowed",
-                  transition: "background 0.15s ease",
-                  opacity: isWorkflowReady ? 1 : 0.6,
+                  transition: "all 180ms ease",
+                  opacity: isWorkflowReady ? 1 : 0.5,
                 }}
-                onMouseEnter={e => { if (isWorkflowReady) e.currentTarget.style.background = "rgba(0,245,255,0.1)"; }}
-                onMouseLeave={e => { if (isWorkflowReady) e.currentTarget.style.background = "transparent"; }}
+                onMouseEnter={e => { if (isWorkflowReady) e.currentTarget.style.background = "rgba(0,245,255,0.15)"; }}
+                onMouseLeave={e => { if (isWorkflowReady) e.currentTarget.style.background = "rgba(0,245,255,0.08)"; }}
               >
-                <ChevronDown size={12} />
+                <ChevronDown size={11} />
               </button>
 
               {/* Run dropdown */}
@@ -651,33 +648,35 @@ export function CanvasToolbar({
                     exit={{ opacity: 0, y: -4, scale: 0.97 }}
                     transition={{ duration: 0.12 }}
                     style={{
-                      position: "absolute", top: "calc(100% + 4px)", right: 0,
-                      width: 190, borderRadius: 10, overflow: "hidden",
-                      background: "rgba(7,8,9,0.97)", border: "1px solid rgba(184,115,51,0.2)",
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)", zIndex: 50,
+                      position: "absolute", top: "calc(100% + 6px)", right: 0,
+                      width: 200, borderRadius: 12, overflow: "hidden",
+                      background: "rgba(12,13,16,0.98)", border: "1px solid rgba(255,255,255,0.08)",
+                      boxShadow: "0 12px 40px rgba(0,0,0,0.5)", zIndex: 50,
                     }}
                   >
-                    {[
-                      { label: t('canvas.runAllNodes'),       sub: t('canvas.executeFullWorkflow')  },
-                      { label: t('canvas.runFromSelection'),  sub: t('canvas.startFromSelected')    },
-                      { label: t('canvas.stepThrough'),       sub: t('canvas.executeOneNode')       },
-                    ].map(item => (
-                      <button
-                        key={item.label}
-                        onClick={() => { onRun(); setShowRunMenu(false); }}
-                        style={{
-                          width: "100%", display: "flex", flexDirection: "column", gap: 1,
-                          padding: "8px 12px", background: "transparent",
-                          border: "none", cursor: "pointer", textAlign: "left",
-                          transition: "background 0.1s",
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(184,115,51,0.08)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                      >
-                        <span style={{ fontSize: 12, fontWeight: 500, color: "#F0F0F5" }}>{item.label}</span>
-                        <span style={{ fontSize: 10, color: "#55556A" }}>{item.sub}</span>
-                      </button>
-                    ))}
+                    <div style={{ padding: 4 }}>
+                      {[
+                        { label: t('canvas.runAllNodes'),       sub: t('canvas.executeFullWorkflow')  },
+                        { label: t('canvas.runFromSelection'),  sub: t('canvas.startFromSelected')    },
+                        { label: t('canvas.stepThrough'),       sub: t('canvas.executeOneNode')       },
+                      ].map(item => (
+                        <button
+                          key={item.label}
+                          onClick={() => { onRun(); setShowRunMenu(false); }}
+                          style={{
+                            width: "100%", display: "flex", flexDirection: "column", gap: 1,
+                            padding: "8px 10px", borderRadius: 8, background: "transparent",
+                            border: "none", cursor: "pointer", textAlign: "left",
+                            transition: "background 0.1s",
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                        >
+                          <span style={{ fontSize: 12, fontWeight: 500, color: "#F0F0F5" }}>{item.label}</span>
+                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{item.sub}</span>
+                        </button>
+                      ))}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -686,7 +685,7 @@ export function CanvasToolbar({
         </div>
       </div>
 
-      {/* Mobile sticky bottom bar - ALWAYS VISIBLE */}
+      {/* Mobile sticky bottom bar */}
       <motion.div
         className="md:hidden"
         initial={{ y: 100 }}
@@ -702,7 +701,7 @@ export function CanvasToolbar({
           background: "rgba(7, 8, 9, 0.95)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderTop: "1px solid rgba(184,115,51,0.15)",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
           boxShadow: "0 -4px 24px rgba(0,0,0,0.3)",
         }}
       >
@@ -712,23 +711,22 @@ export function CanvasToolbar({
             onClick={onStop}
             style={{
               width: "100%",
-              height: 60,
+              height: 52,
               borderRadius: 12,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              background: "#EF4444",
-              border: "none",
-              color: "#fff",
-              fontSize: 16,
+              background: "rgba(239,68,68,0.12)",
+              border: "1px solid rgba(239,68,68,0.35)",
+              color: "#EF4444",
+              fontSize: 15,
               fontWeight: 600,
               cursor: "pointer",
               transition: "background 0.15s ease",
-              boxShadow: "0 0 24px rgba(239, 68, 68, 0.4)",
             }}
           >
-            <Square size={16} fill="white" />
+            <Square size={16} fill="currentColor" />
             {t('canvas.stopExecution')}
           </button>
         ) : (
@@ -737,38 +735,28 @@ export function CanvasToolbar({
             disabled={!isWorkflowReady}
             style={{
               width: "100%",
-              height: 60,
+              height: 52,
               borderRadius: 12,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
               background: isWorkflowReady
-                ? "transparent"
+                ? "rgba(0,245,255,0.08)"
                 : "transparent",
               border: isWorkflowReady
-                ? "1px solid rgba(0,245,255,0.4)"
-                : "1px solid rgba(255,255,255,0.1)",
-              color: isWorkflowReady ? "#00F5FF" : "rgba(255,255,255,0.3)",
-              fontSize: 16,
+                ? "1px solid rgba(0,245,255,0.3)"
+                : "1px solid rgba(255,255,255,0.08)",
+              color: isWorkflowReady ? "#00F5FF" : "rgba(255,255,255,0.25)",
+              fontSize: 15,
               fontWeight: 600,
               cursor: isWorkflowReady ? "pointer" : "not-allowed",
-              
-              opacity: isWorkflowReady ? 1 : 0.6,
+              opacity: isWorkflowReady ? 1 : 0.5,
               transition: "all 0.15s ease",
             }}
           >
-            {isExecuting ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                {t('canvas.running')}
-              </>
-            ) : (
-              <>
-                <Play size={18} fill="white" />
-                {t('canvas.runWorkflow')}
-              </>
-            )}
+            <Play size={18} fill="currentColor" />
+            {t('canvas.runWorkflow')}
           </button>
         )}
 
@@ -777,8 +765,8 @@ export function CanvasToolbar({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginTop: 12,
-          paddingTop: 12,
+          marginTop: 10,
+          paddingTop: 10,
           borderTop: "1px solid rgba(255,255,255,0.06)",
         }}>
           <button
@@ -789,9 +777,9 @@ export function CanvasToolbar({
               gap: 4,
               padding: "6px 12px",
               borderRadius: 8,
-              background: isNodeLibraryOpen ? "rgba(0,245,255,0.1)" : "transparent",
-              border: `1px solid ${isNodeLibraryOpen ? "rgba(0,245,255,0.3)" : "rgba(255,255,255,0.08)"}`,
-              color: isNodeLibraryOpen ? "#00F5FF" : "#F0F0F5",
+              background: isNodeLibraryOpen ? "rgba(0,245,255,0.10)" : "transparent",
+              border: `1px solid ${isNodeLibraryOpen ? "rgba(0,245,255,0.25)" : "rgba(255,255,255,0.08)"}`,
+              color: isNodeLibraryOpen ? "#00F5FF" : "rgba(255,255,255,0.7)",
               fontSize: 12,
               fontWeight: 500,
               cursor: "pointer",
@@ -803,7 +791,7 @@ export function CanvasToolbar({
 
           <button
             onClick={handleSave}
-            disabled={(!isDirty && !savedFlash && !isUntitled) || isSaving}
+            disabled={saveDisabled}
             style={{
               display: "flex",
               alignItems: "center",
@@ -812,15 +800,15 @@ export function CanvasToolbar({
               borderRadius: 8,
               background: "transparent",
               border: savedFlash
-                ? "1px solid rgba(52,211,153,0.4)"
-                : isUntitled && isDirty
-                  ? "1px solid rgba(184,115,51,0.3)"
-                  : isDirty ? "1px solid rgba(184,115,51,0.3)" : "1px solid transparent",
-              color: savedFlash ? "#10B981" : isUntitled && isDirty ? "#B87333" : isDirty ? "#B87333" : "#3A3A4E",
+                ? "1px solid rgba(16,185,129,0.3)"
+                : canSave
+                  ? "1px solid rgba(255,255,255,0.1)"
+                  : "1px solid transparent",
+              color: savedFlash ? "#34D399" : canSave ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)",
               fontSize: 12,
               fontWeight: 500,
-              cursor: isDirty || savedFlash || isUntitled ? "pointer" : "default",
-              opacity: !isDirty && !savedFlash && !isSaving && !isUntitled ? 0.5 : 1,
+              cursor: saveDisabled ? "default" : "pointer",
+              opacity: saveDisabled && !isSaving ? 0.5 : 1,
             }}
           >
             {isSaving ? <Loader2 size={14} className="animate-spin" /> : savedFlash ? <CheckCircle2 size={14} /> : <Save size={14} />}
@@ -835,8 +823,8 @@ export function CanvasToolbar({
               gap: 4,
               padding: "6px 12px",
               borderRadius: 8,
-              background: "rgba(0,245,255,0.05)",
-              border: "1px solid rgba(0,245,255,0.2)",
+              background: "rgba(0,245,255,0.06)",
+              border: "1px solid rgba(0,245,255,0.15)",
               color: "#00F5FF",
               fontSize: 12,
               fontWeight: 500,

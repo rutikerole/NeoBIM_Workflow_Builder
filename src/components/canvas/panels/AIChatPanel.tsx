@@ -332,7 +332,7 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
             exit={{ opacity: 0, y: 20 }}
             onClick={onToggle}
             style={{
-              position: "absolute", right: 20, bottom: 20,
+              position: "absolute", right: 62, bottom: 20,
               zIndex: 25, padding: "10px 16px",
               background: "rgba(7,8,9,0.92)", border: "1px solid rgba(0,245,255,0.2)",
               borderRadius: 4,
@@ -363,7 +363,7 @@ export function AIChatPanel({ messages, onAddMessage, onClear, isOpen, onToggle 
             style={{
               position: "fixed",
               bottom: 20,
-              right: 20,
+              right: 62,
               width: 380,
               height: minimized ? "auto" : 500,
               zIndex: 55,

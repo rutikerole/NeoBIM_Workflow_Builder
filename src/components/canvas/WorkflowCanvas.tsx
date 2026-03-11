@@ -803,37 +803,40 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
         onDrop={onDrop}
         onDragOver={onDragOver}
       >
-        <CanvasToolbar
-          workflowName={workflowName}
-          creationMode={creationMode}
-          isExecuting={isExecuting}
-          isDirty={isDirty}
-          isSaving={isSaving}
-          isNodeLibraryOpen={isNodeLibraryOpen}
-          onRun={handleRun}
-          onStop={() => {}}
-          onSave={handleSave}
-          onUndo={undo}
-          onRedo={redo}
-          onZoomIn={() => zoomIn({ duration: 250 })}
-          onZoomOut={() => zoomOut({ duration: 250 })}
-          onFitView={() => fitView({ padding: 0.15, duration: 400 })}
-          onShare={handleShare}
-          onModeChange={setCreationMode}
-          onPromptMode={() => setPromptModeActive(true)}
-          onToggleLibrary={toggleNodeLibrary}
-          onNameChange={async (newName: string) => {
-            if (currentWorkflow) {
-              markDirty();
-              const id = await saveWorkflow(newName);
-              if (id) {
-                toast.success(`${tLocale('toast.renamedTo')} "${newName}"`, { duration: 2000 });
-              } else {
-                toast.error(tLocale('toast.saveFailed'));
+        {/* Hide toolbar when showcase overlay is active to avoid z-index clash */}
+        {!(showShowcase && !isExecuting && artifacts.size > 0) && (
+          <CanvasToolbar
+            workflowName={workflowName}
+            creationMode={creationMode}
+            isExecuting={isExecuting}
+            isDirty={isDirty}
+            isSaving={isSaving}
+            isNodeLibraryOpen={isNodeLibraryOpen}
+            onRun={handleRun}
+            onStop={() => {}}
+            onSave={handleSave}
+            onUndo={undo}
+            onRedo={redo}
+            onZoomIn={() => zoomIn({ duration: 250 })}
+            onZoomOut={() => zoomOut({ duration: 250 })}
+            onFitView={() => fitView({ padding: 0.15, duration: 400 })}
+            onShare={handleShare}
+            onModeChange={setCreationMode}
+            onPromptMode={() => setPromptModeActive(true)}
+            onToggleLibrary={toggleNodeLibrary}
+            onNameChange={async (newName: string) => {
+              if (currentWorkflow) {
+                markDirty();
+                const id = await saveWorkflow(newName);
+                if (id) {
+                  toast.success(`${tLocale('toast.renamedTo')} "${newName}"`, { duration: 2000 });
+                } else {
+                  toast.error(tLocale('toast.saveFailed'));
+                }
               }
-            }
-          }}
-        />
+            }}
+          />
+        )}
 
         {/* Execution progress bar */}
         <AnimatePresence>
@@ -927,6 +930,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
             onPaneContextMenu={onPaneContextMenu}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
+            proOptions={{ hideAttribution: true }}
             fitView
             fitViewOptions={{ padding: 0.3 }}
             defaultEdgeOptions={{
@@ -948,29 +952,31 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
             }}
           >
 
-            {/* Minimap — bottom-left, compact, low opacity */}
-            <MiniMap
-              position="bottom-left"
-              nodeStrokeWidth={0}
-              nodeColor={(n) => {
-                const d = n.data as WorkflowNodeData;
-                const cfg = CATEGORY_CONFIG[d?.category as NodeCategory];
-                return cfg?.color ?? "rgba(255,255,255,0.08)";
-              }}
-              maskColor="rgba(7,8,9,0.7)"
-              className="canvas-minimap"
-              style={{
-                width: 120,
-                height: 80,
-                backgroundColor: "rgba(10,12,14,0.85)",
-                border: "1px solid rgba(184,115,51,0.1)",
-                borderRadius: 8,
-                marginBottom: 16,
-                marginLeft: 16,
-                opacity: 0.5,
-                transition: "opacity 0.3s ease",
-              }}
-            />
+            {/* Minimap — bottom-left, compact, low opacity — hidden when canvas is empty */}
+            {nodes.length > 0 && (
+              <MiniMap
+                position="bottom-left"
+                nodeStrokeWidth={0}
+                nodeColor={(n) => {
+                  const d = n.data as WorkflowNodeData;
+                  const cfg = CATEGORY_CONFIG[d?.category as NodeCategory];
+                  return cfg?.color ?? "rgba(255,255,255,0.08)";
+                }}
+                maskColor="rgba(7,8,9,0.7)"
+                className="canvas-minimap"
+                style={{
+                  width: 120,
+                  height: 80,
+                  backgroundColor: "rgba(10,12,14,0.85)",
+                  border: "1px solid rgba(184,115,51,0.1)",
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  marginLeft: 16,
+                  opacity: 0.5,
+                  transition: "opacity 0.3s ease",
+                }}
+              />
+            )}
           </ReactFlow>
 
           {/* Context menu */}
@@ -1021,6 +1027,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
               <ExecutionLog
                 entries={logEntries}
                 isRunning={isExecuting}
+                autoExpand={isExecuting}
                 onClose={() => { setShowLog(false); setLogEntries([]); }}
               />
             )}
@@ -1090,52 +1097,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
             <FullscreenVideoPlayer />
           </ErrorBoundary>
 
-          {/* ── Architectural title block — bottom right ── */}
-          <div style={{
-            position: 'absolute',
-            bottom: 14,
-            right: 14,
-            zIndex: 2,
-            pointerEvents: 'none',
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: 8,
-          }}>
-            {/* North arrow */}
-            <svg width="16" height="24" viewBox="0 0 16 24" style={{ opacity: 0.25 }}>
-              <text x="8" y="6" textAnchor="middle" fill="#B87333" fontSize="6" fontWeight="600"
-                style={{ fontFamily: "'Space Mono', monospace" }}>N</text>
-              <path d="M8 8 L11 16 L8 13.5 L5 16 Z" fill="#B8733340" />
-              <line x1="8" y1="16" x2="8" y2="22" stroke="#B8733340" strokeWidth="0.5" />
-            </svg>
-            {/* Title block */}
-            <div style={{
-              padding: '3px 8px',
-              border: '1px solid rgba(184,115,51,0.15)',
-              borderRadius: 2,
-              background: 'rgba(7,8,9,0.6)',
-            }}>
-              <div style={{
-                fontSize: 7,
-                color: 'rgba(184,115,51,0.4)',
-                fontWeight: 500,
-                letterSpacing: '0.12em',
-                fontFamily: "'Space Mono', monospace",
-                textTransform: 'uppercase' as const,
-              }}>
-                DIGITAL ATELIER &nbsp;|&nbsp; {workflowName}
-              </div>
-              <div style={{
-                fontSize: 6,
-                color: 'rgba(184,115,51,0.25)',
-                letterSpacing: '0.08em',
-                marginTop: 1,
-                fontFamily: "'Space Mono', monospace",
-              }}>
-                SCALE: NTS
-              </div>
-            </div>
-          </div>
+          {/* Architectural title block — hidden (not needed in current UI) */}
         </div>
 
         {/* Post-execution 3D scene — overlays right 70% of canvas */}

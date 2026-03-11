@@ -957,7 +957,10 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
                   initial={{ opacity: 0, scale: 0.5 }}
                   animate={{ opacity: 1, scale: 1, x: [0, -2, 2, -1, 1, 0] }}
                   exit={{ opacity: 0, scale: 0.5 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  transition={{
+                    type: "spring", stiffness: 400, damping: 20,
+                    x: { type: "tween", duration: 0.4, ease: "easeInOut" },
+                  }}
                   style={{
                     color: "#EF4444", flexShrink: 0,
                     filter: "drop-shadow(0 0 6px rgba(239, 68, 68, 0.5))",
