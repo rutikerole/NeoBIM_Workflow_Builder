@@ -5,13 +5,16 @@
  * Uses imgbb for public image hosting, then submits to Omni and polls.
  *
  * Usage:
- *   npx tsx src/scripts/test-omni-poll.ts
+ *   npx tsx src/scripts/test-omni-poll.ts [path/to/image.jpg]
+ *
+ * Pass a floor plan image path as argument. If omitted, uses a generated 400x400 test image.
  *
  * Requires env vars: KLING_ACCESS_KEY, KLING_SECRET_KEY, IMGBB_API_KEY
  * (reads from .env.local automatically via dotenv)
  */
 
 import crypto from "crypto";
+import fs from "fs";
 import { config } from "dotenv";
 import { resolve } from "path";
 
@@ -23,14 +26,67 @@ const KLING_OMNI_PATH = "/v1/videos/omni-video";
 const POLL_INTERVAL_MS = 10_000; // 10s
 const MAX_POLL_DURATION_MS = 5 * 60_000; // 5 minutes
 
-// ─── Small 1x1 red JPEG as base64 (tiny test image) ───
-const TINY_TEST_IMAGE_BASE64 =
-  "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS" +
-  "Ew8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJ" +
-  "CQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy" +
-  "MjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAA" +
-  "AAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QA" +
-  "FBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AKwA//9k=";
+/** Load image from CLI arg or generate a 400x400 white PNG that meets Kling's min 300x300 */
+function getImageBase64(): string {
+  const imagePath = process.argv[2];
+
+  if (imagePath) {
+    const absPath = resolve(imagePath);
+    if (!fs.existsSync(absPath)) {
+      console.error(`File not found: ${absPath}`);
+      process.exit(1);
+    }
+    const bytes = fs.readFileSync(absPath);
+    console.log(`[image] Loaded ${absPath} (${(bytes.length / 1024).toFixed(1)} KB)`);
+    return bytes.toString("base64");
+  }
+
+  // Generate minimal valid PNG (400x400 white) — meets Kling's 300x300 minimum
+  console.log("[image] No file provided, generating 400x400 white PNG...");
+  // PNG signature + IHDR + single IDAT (zlib-compressed scanlines) + IEND
+  // This creates a valid 400x400 white PNG
+  const width = 400;
+  const height = 400;
+
+  // Build raw scanlines: filter byte (0) + width * 3 bytes (RGB white)
+  const rowSize = 1 + width * 3;
+  const raw = Buffer.alloc(rowSize * height, 0xff);
+  for (let y = 0; y < height; y++) raw[y * rowSize] = 0; // filter byte
+
+  const zlib = require("zlib");
+  const compressed = zlib.deflateSync(raw);
+
+  const png = Buffer.concat([
+    // PNG signature
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    // IHDR
+    pngChunk("IHDR", Buffer.concat([
+      uint32(width), uint32(height),
+      Buffer.from([8, 2, 0, 0, 0]), // 8-bit RGB
+    ])),
+    // IDAT
+    pngChunk("IDAT", compressed),
+    // IEND
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+
+  console.log(`[image] Generated PNG: ${(png.length / 1024).toFixed(1)} KB`);
+  return png.toString("base64");
+}
+
+function uint32(n: number): Buffer {
+  const b = Buffer.alloc(4);
+  b.writeUInt32BE(n);
+  return b;
+}
+
+function pngChunk(type: string, data: Buffer): Buffer {
+  const zlib = require("zlib");
+  const typeData = Buffer.concat([Buffer.from(type, "ascii"), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(zlib.crc32(typeData) >>> 0);
+  return Buffer.concat([uint32(data.length), typeData, crc]);
+}
 
 // ─── JWT ───
 function generateJwtToken(): string {
@@ -113,8 +169,9 @@ async function main() {
     }
   }
 
-  // Step 1: Upload test image to imgbb
-  const publicUrl = await uploadToImgbb(TINY_TEST_IMAGE_BASE64);
+  // Step 1: Load image and upload to imgbb
+  const imageBase64 = getImageBase64();
+  const publicUrl = await uploadToImgbb(imageBase64);
 
   // Step 2: Create Omni task
   console.log("\n[omni] Creating task with image URL:", publicUrl);
