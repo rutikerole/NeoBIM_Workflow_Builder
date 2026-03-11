@@ -937,12 +937,14 @@ async function createOmniTask(
 ): Promise<KlingTaskResponse> {
   console.log("[OMNI] createOmniTask: duration=%s mode=%s", duration, mode);
 
-  // Kling Omni requires a URL in image_list — base64 strings won't work.
-  // Convert raw base64 to a data URI so Kling can read it.
+  // Kling Omni requires a publicly accessible image URL.
+  // If we have a raw base64 string, store it in Redis and serve via /api/temp-image.
   let finalImageUrl = imageUrl;
-  if (!imageUrl.startsWith("http") && !imageUrl.startsWith("data:")) {
-    finalImageUrl = `data:image/jpeg;base64,${imageUrl}`;
-    console.log("[OMNI] Converted base64 to data URI (length: %d)", finalImageUrl.length);
+  if (!imageUrl.startsWith("http")) {
+    const { storeImage } = await import("@/lib/temp-image-store");
+    const imageId = await storeImage(imageUrl, "image/jpeg");
+    finalImageUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/temp-image/${imageId}`;
+    console.log("[OMNI] Stored image in Redis, public URL:", finalImageUrl);
   }
 
   const body = {
@@ -977,18 +979,24 @@ export async function submitFloorPlanWalkthrough(
 ): Promise<SubmittedSingleVideoTask & { usedOmni: boolean; durationSeconds: number }> {
   const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, watermark";
 
-  // ── Kling 3.0 Omni disabled — requires public image URL (not available on localhost) ──
-  // TODO: Re-enable after deploying to Vercel with temp-image URL approach
-  // try {
-  //   const result = await createOmniTask(imageUrl, prompt, negativePrompt, "12", "16:9", mode);
-  //   return { taskId: result.data.task_id, submittedAt: Date.now(), usedOmni: true, durationSeconds: 12 };
-  // } catch (err) {
-  //   const msg = (err as Error).message;
-  //   console.error("[KLING-MODEL] FAILED: omni-v3 (Kling 3.0)", "error:", msg.slice(0, 200));
-  //   console.warn("[GN-009] Omni failed, falling back to v2.6");
-  // }
+  // ── Attempt 1: Kling 3.0 Omni (12s) — only on deployed environments with public URLs ──
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const isLocalhost = appUrl.includes("localhost") || appUrl.includes("127.0.0.1") || !appUrl;
 
-  // ── Kling v2.6 via /v1/videos/image2video (10s) — proven working ──
+  if (isLocalhost) {
+    console.log("[OMNI] Skipping on localhost — Kling can't reach local URLs");
+  } else {
+    try {
+      const result = await createOmniTask(imageUrl, prompt, negativePrompt, "12", "16:9", mode);
+      return { taskId: result.data.task_id, submittedAt: Date.now(), usedOmni: true, durationSeconds: 12 };
+    } catch (err) {
+      const msg = (err as Error).message;
+      console.error("[KLING-MODEL] FAILED: omni-v3 (Kling 3.0)", "error:", msg.slice(0, 200));
+      console.warn("[GN-009] Omni failed, falling back to v2.6");
+    }
+  }
+
+  // ── Fallback: Kling v2.6 via /v1/videos/image2video (10s) — proven working ──
   const result = await createTask(imageUrl, prompt, negativePrompt, "10", "16:9", mode);
   return { taskId: result.data.task_id, submittedAt: Date.now(), usedOmni: false, durationSeconds: 10 };
 }
