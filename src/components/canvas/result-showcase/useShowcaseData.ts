@@ -272,15 +272,14 @@ export function useShowcaseData(): ShowcaseData {
       }
     }
 
-    // ── HTML Iframe Viewers (GN-011 Interactive 3D Viewer) ──
-    const fileArtifactsAll = findAllByType(artifacts, "file");
-    const htmlIframeArtifact = fileArtifactsAll.find(a => asRecord(a.data)?.viewerType === "html-iframe");
-    if (!model3dData && htmlIframeArtifact) {
-      const d = asRecord(htmlIframeArtifact.data);
+    // ── HTML Interactive Viewers (GN-011 type:"html") ──
+    const htmlArtifact = findByType(artifacts, "html");
+    if (!model3dData && htmlArtifact) {
+      const d = asRecord(htmlArtifact.data);
       model3dData = {
         kind: "html-iframe",
-        url: (d.url as string) ?? "",
-        content: (d.content as string) ?? "",
+        url: (d.downloadUrl as string) ?? "",
+        content: (d.html as string) ?? "",
         label: (d.label as string) ?? "Interactive 3D Viewer",
         roomCount: d.roomCount as number | undefined,
         wallCount: d.wallCount as number | undefined,
@@ -288,7 +287,7 @@ export function useShowcaseData(): ShowcaseData {
     }
 
     // ── Files ──
-    const fileArtifacts = fileArtifactsAll;
+    const fileArtifacts = findAllByType(artifacts, "file");
     const fileDownloads: FileDownload[] = fileArtifacts.map(a => {
       const d = asRecord(a.data);
       return {
@@ -298,6 +297,20 @@ export function useShowcaseData(): ShowcaseData {
         downloadUrl: (d.downloadUrl as string) ?? (d.url as string) ?? undefined,
       };
     });
+
+    // Also include html artifacts as downloadable files
+    if (htmlArtifact) {
+      const d = asRecord(htmlArtifact.data);
+      const dlUrl = d.downloadUrl as string | undefined;
+      if (dlUrl) {
+        fileDownloads.push({
+          name: (d.fileName as string) ?? "3d-model.html",
+          type: "Interactive 3D Model",
+          size: 0,
+          downloadUrl: dlUrl,
+        });
+      }
+    }
 
     // ── JSON ──
     const jsonArtifacts = findAllByType(artifacts, "json");

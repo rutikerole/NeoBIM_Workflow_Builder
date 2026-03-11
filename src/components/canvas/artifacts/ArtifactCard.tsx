@@ -51,6 +51,7 @@ const TYPE_COLOR: Record<ArtifactType, string> = {
   "3d":  "#FFBF00",
   svg:   "#00F5FF",
   video: "#00F5FF",
+  html:  "#00F5FF",
 };
 
 const TYPE_ICON: Record<ArtifactType, React.ReactNode> = {
@@ -63,6 +64,7 @@ const TYPE_ICON: Record<ArtifactType, React.ReactNode> = {
   "3d":  <Box size={9} />,
   svg:   <LayoutGrid size={9} />,
   video: <Video size={9} />,
+  html:  <Box size={9} />,
 };
 
 
@@ -99,6 +101,10 @@ function getQualityBadge(artifact: ExecutionArtifact): QualityBadge | null {
 
   if (artifact.type === "3d" || artifact.type === "svg") {
     return { label: "AI Generated · Concept", color: "#3B82F6", bg: "rgba(59,130,246,0.12)" };
+  }
+
+  if (artifact.type === "html") {
+    return { label: "Interactive · Three.js", color: "#00F5FF", bg: "rgba(0,245,255,0.12)" };
   }
 
   if (artifact.type === "video") {
@@ -274,6 +280,7 @@ export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss, onR
               {artifact.type === "svg"   && <SvgBody   data={artifact.data as SvgArtifactData}   />}
               {artifact.type === "3d"    && <Massing3dBody data={artifact.data as Massing3dData} />}
               {artifact.type === "video" && <VideoBody data={artifact.data as VideoArtifactData} nodeId={artifact.tileInstanceId} />}
+              {artifact.type === "html"  && <HtmlBody  data={artifact.data as HtmlArtifactData} />}
             </ArtifactErrorBoundary>
           </motion.div>
         )}
@@ -744,6 +751,76 @@ function Massing3dBody({ data }: { data: Massing3dData }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// HTML iframe data shape from GN-011 Interactive 3D Viewer
+interface HtmlArtifactData {
+  html: string;
+  width?: string;
+  height?: string;
+  label?: string;
+  fileName?: string;
+  downloadUrl?: string;
+  mimeType?: string;
+  roomCount?: number;
+  wallCount?: number;
+}
+
+function HtmlBody({ data }: { data: HtmlArtifactData }) {
+  const { t } = useLocale();
+  const htmlString = data?.html ?? "";
+  const downloadUrl = data?.downloadUrl;
+  const fileName = data?.fileName ?? "3d-model.html";
+
+  return (
+    <div style={{ padding: "0 8px 10px 10px" }}>
+      {htmlString ? (
+        <iframe
+          srcDoc={htmlString}
+          style={{
+            width: data?.width || "100%",
+            height: data?.height || "500px",
+            border: "none",
+            borderRadius: 8,
+            background: "#07070D",
+          }}
+          sandbox="allow-scripts allow-same-origin"
+          title={data?.label ?? "Interactive 3D Model"}
+        />
+      ) : (
+        <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "#5C5C78", fontSize: 11 }}>
+          No HTML content available
+        </div>
+      )}
+      {/* Download link */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+        <div style={{ fontSize: 10, color: "#5C5C78" }}>
+          {data?.roomCount ? `${data.roomCount} rooms` : ""}
+          {data?.wallCount ? ` · ${data.wallCount} walls` : ""}
+          {!data?.roomCount && !data?.wallCount ? "Interactive 3D Model" : ""}
+        </div>
+        {downloadUrl && (
+          <a
+            href={downloadUrl}
+            download={fileName}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "5px 10px", borderRadius: 6,
+              background: "rgba(0,245,255,0.08)",
+              border: "1px solid rgba(0,245,255,0.2)",
+              fontSize: 10, fontWeight: 500, color: "#00F5FF",
+              textDecoration: "none", flexShrink: 0,
+            }}
+          >
+            <Download size={10} />
+            {t('artifact.download')} .html
+          </a>
+        )}
+      </div>
     </div>
   );
 }

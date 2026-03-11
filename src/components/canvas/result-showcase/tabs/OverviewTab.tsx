@@ -33,6 +33,7 @@ const ARTIFACT_ICONS: Record<string, React.ReactNode> = {
   image: <ImageIcon size={16} />,
   video: <Video size={16} />,
   "3d": <Box size={16} />,
+  html: <Box size={16} />,
   kpi: <BarChart3 size={16} />,
   table: <Table2 size={16} />,
   json: <Code2 size={16} />,
@@ -45,6 +46,7 @@ const ARTIFACT_COLORS: Record<string, string> = {
   image: "#10B981",
   video: "#00F5FF",
   "3d": "#FFBF00",
+  html: "#00F5FF",
   kpi: "#F59E0B",
   table: "#6366F1",
   json: "#EC4899",
@@ -57,6 +59,7 @@ const ARTIFACT_LABEL_KEYS: Record<string, TranslationKey> = {
   image: "showcase.typeRender",
   video: "showcase.typeWalkthrough",
   "3d": "showcase.type3dModel",
+  html: "showcase.type3dModel",
   kpi: "showcase.typeMetrics",
   table: "showcase.typeDataTable",
   json: "showcase.typeStructuredData",
@@ -226,13 +229,10 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab, onRetryVideo }
           gap: 10,
         }}>
           {artifactBreakdown.map((item, i) => {
-            // Check if this is an interactive 3D viewer (html-iframe file)
-            const isInteractive3D = item.type === "file" && data.model3dData?.kind === "html-iframe" &&
-              item.label.toLowerCase().includes("3d");
-
-            const color = isInteractive3D ? "#00F5FF" : (ARTIFACT_COLORS[item.type] ?? COLORS.TEXT_MUTED);
-            const icon = isInteractive3D ? <Box size={16} /> : (ARTIFACT_ICONS[item.type] ?? <File size={16} />);
-            const typeLabel = isInteractive3D ? "3D Model" : (ARTIFACT_LABEL_KEYS[item.type] ? t(ARTIFACT_LABEL_KEYS[item.type]) : item.type);
+            const color = ARTIFACT_COLORS[item.type] ?? COLORS.TEXT_MUTED;
+            const icon = ARTIFACT_ICONS[item.type] ?? <File size={16} />;
+            const labelKey = ARTIFACT_LABEL_KEYS[item.type];
+            const typeLabel = labelKey ? t(labelKey) : item.type;
 
             // Map artifact types to their corresponding tabs
             const tabMapping: Record<string, TabId> = {
@@ -244,9 +244,10 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab, onRetryVideo }
               table: "data",
               json: "data",
               "3d": "model",
+              html: "model",
               file: "export",
             };
-            const targetTab = isInteractive3D ? "model" as TabId : (tabMapping[item.type] ?? "export");
+            const targetTab = tabMapping[item.type] ?? "export";
 
             return (
               <motion.button

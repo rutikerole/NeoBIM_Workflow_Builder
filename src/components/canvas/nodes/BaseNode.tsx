@@ -4,7 +4,7 @@ import React, { memo, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as LucideIcons from "lucide-react";
-import { CheckCircle2, AlertCircle, Download, Maximize2, Play } from "lucide-react";
+import { CheckCircle2, AlertCircle, Download, Maximize2, Play, Box } from "lucide-react";
 import type { WorkflowNodeData, NodeCategory, NodeStatus } from "@/types/nodes";
 import { InputNodeContent } from "./InputNode";
 import { ViewTypeSelect } from "./GenerateNodeContent";
@@ -593,6 +593,38 @@ function InlineResult({ artifact, nodeId }: { artifact: ExecutionArtifact; nodeI
           <span style={{ fontSize: 9, color: "#3A3A50", flexShrink: 0 }}>
             {size ? `${(size / 1024).toFixed(0)}KB` : ""}
           </span>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (artifact.type === "html") {
+    const roomCount = d?.roomCount as number | undefined;
+    return (
+      <div style={{
+        padding: "8px 0 2px",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        marginTop: 8,
+      }}>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            useUIStore.getState().setArtifactViewerNodeId(nodeId);
+          }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            background: "rgba(0,245,255,0.06)",
+            border: "1px solid rgba(0,245,255,0.15)",
+            borderRadius: 6, padding: "8px",
+            fontSize: 10, fontWeight: 500, color: "#00F5FF",
+            cursor: "pointer",
+          }}
+        >
+          <Box size={11} />
+          Explore 3D Model{roomCount ? ` (${roomCount} rooms)` : ""}
         </motion.div>
       </div>
     );

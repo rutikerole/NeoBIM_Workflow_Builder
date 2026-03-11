@@ -735,14 +735,13 @@ export async function executeNode(
       const mockRoomCount = Array.isArray(rooms011) ? rooms011.length : 6;
       const mockHtml = `<!DOCTYPE html><html><head><title>3D Floor Plan Viewer (Mock)</title><style>body{margin:0;background:#07070D;color:#fff;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column}h2{color:#4F8AFF}p{color:#888;max-width:400px;text-align:center}</style></head><body><h2>Interactive 3D Viewer</h2><p>Mock mode — ${mockRoomCount} rooms detected. Connect to a real TR-004 node with a floor plan image to see the full interactive 3D model with walk mode, room highlighting, and furniture.</p><p style="color:#4F8AFF;margin-top:2rem">Rooms: ${Array.isArray(rooms011) ? rooms011.map((r: Record<string, unknown>) => r.name).join(", ") : "Living Room, Kitchen, Bedroom 1, Bedroom 2, Bathroom, Hallway"}</p></body></html>`;
 
-      return mockArtifact(executionId, tileInstanceId, "file", {
-        content: mockHtml,
-        url: "",
-        downloadUrl: "",
-        fileName: `floorplan-3d-mock-${Date.now()}.html`,
+      return mockArtifact(executionId, tileInstanceId, "html", {
+        html: mockHtml,
         label: `Interactive 3D Floor Plan (Mock — ${mockRoomCount} rooms)`,
+        width: "100%",
+        height: "600px",
+        fileName: `floorplan-3d-mock-${Date.now()}.html`,
         mimeType: "text/html",
-        viewerType: "html-iframe",
         roomCount: mockRoomCount,
         hasGeometry: !!geoData,
         footprint: fp011 ? `${fp011.width ?? 12}m x ${fp011.depth ?? 8}m` : "12m x 8m",
