@@ -724,6 +724,24 @@ export interface ImageAnalysis {
   rooms?: { name: string; dimensions: string }[];
   /** Spatial layout description for floor plans */
   layoutDescription?: string;
+  /** Rich room data for render pipeline (GPT-4o floor plan analysis) */
+  richRooms?: Array<{
+    name: string;
+    dimensions: string;
+    position: string;
+    connections: string[];
+    doors: string[];
+    windows: string[];
+    furniture: string[];
+  }>;
+  /** Overall footprint shape and dimensions */
+  footprint?: { shape: string; width: string; depth: string };
+  /** Circulation path description */
+  circulation?: string;
+  /** DALL-E optimized exterior description */
+  exteriorPrompt?: string;
+  /** DALL-E optimized interior description (best room) */
+  interiorPrompt?: string;
 }
 
 export async function analyzeImage(
@@ -733,16 +751,79 @@ export async function analyzeImage(
 ): Promise<ImageAnalysis> {
   return handleOpenAICall(async () => {
     const client = getClient(userApiKey);
+    const imageDataUrl = `data:${mimeType};base64,${imageBase64}`;
 
-    const completion = await client.chat.completions.create({
+    // ── Phase 1: Quick classification with GPT-4o-mini ──
+    const quickCheck = await client.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: `You are a senior architect analyzing an image. Describe what you see in precise architectural terms. Output JSON with these fields:
+          content: `Classify this image. Return JSON: {"isFloorPlan": true/false, "buildingType": "short description"}. Set isFloorPlan=true if the image is a 2D architectural floor plan, blueprint, or layout drawing.`,
+        },
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: imageDataUrl } },
+            { type: "text", text: "Is this a 2D floor plan?" },
+          ],
+        },
+      ],
+      max_tokens: 100,
+    });
+
+    const checkContent = quickCheck.choices[0]?.message?.content;
+    const isFloorPlan = checkContent ? (JSON.parse(checkContent) as { isFloorPlan?: boolean }).isFloorPlan === true : false;
+
+    // ── Phase 2: Deep analysis ──
+    // Floor plans get GPT-4o for rich room-by-room extraction + render prompts.
+    // Non-floor-plans use GPT-4o-mini (cheaper, sufficient for building photos).
+    const model = isFloorPlan ? "gpt-4o" : "gpt-4o-mini";
+    const maxTokens = isFloorPlan ? 3000 : 1500;
+
+    const systemPrompt = isFloorPlan
+      ? `You are an expert architectural analyst. Analyze this 2D floor plan image and extract a detailed room-by-room description.
+
+Output JSON with ALL of these fields:
 {
-  "buildingType": "Mixed-Use Tower|Residential Block|2D Floor Plan|...",
+  "buildingType": "e.g. 2-Bedroom Apartment, 3BHK Residential Unit",
+  "floors": 1,
+  "style": "e.g. Modern Minimalist",
+  "features": ["feature1", "feature2"],
+  "description": "Comprehensive architectural description of the layout",
+  "facade": "Infer facade from plan context (modern, traditional, etc.)",
+  "massing": "Overall footprint shape and approximate total area",
+  "siteRelationship": "Orientation and context if visible",
+  "isFloorPlan": true,
+  "rooms": [{"name": "Living Room", "dimensions": "3.6m x 4.2m"}, ...],
+  "layoutDescription": "Spatial relationships, adjacencies, circulation path",
+  "richRooms": [
+    {
+      "name": "Living Room",
+      "dimensions": "3.2m x 3.6m",
+      "position": "upper-left",
+      "connections": ["Veranda", "Dining", "Hallway"],
+      "doors": ["south wall to hallway", "west wall to veranda"],
+      "windows": ["north wall"],
+      "furniture": ["L-shaped sofa", "coffee table", "rug"]
+    }
+  ],
+  "footprint": { "shape": "L-shaped", "width": "14m", "depth": "9m" },
+  "circulation": "Central hallway connects upper wing to lower wing...",
+  "exteriorPrompt": "Ultra-photorealistic architectural exterior render of: [describe the complete building exterior inferred from the floor plan — shape, facade materials, roof type, entrance, landscaping]. Shot from a 30-degree elevated angle showing the full building. Golden hour lighting, soft shadows, V-Ray render quality, 8K resolution, architectural photography. No people, no cars.",
+  "interiorPrompt": "Ultra-photorealistic interior architectural render of: [describe the most impressive room — dimensions, flooring, walls, furniture, lighting, windows]. Wide-angle lens, eye-level perspective from the doorway looking in. Natural daylight, warm color temperature, V-Ray global illumination quality, Dezeen magazine photography style. No people."
+}
+
+CRITICAL RULES:
+- Extract EVERY room with exact dimensions from labels
+- For richRooms, analyze position (upper-left, center, etc.), door/window locations, and infer appropriate furniture
+- The exteriorPrompt must describe a complete building exterior that matches the floor plan footprint
+- The interiorPrompt must describe the largest/most impressive living space from the plan
+- Be specific about materials, proportions, and spatial relationships`
+      : `You are a senior architect analyzing an image. Describe what you see in precise architectural terms. Output JSON with these fields:
+{
+  "buildingType": "Mixed-Use Tower|Residential Block|...",
   "floors": <number>,
   "style": "Contemporary Nordic|...",
   "features": ["feature1", "feature2"],
@@ -750,47 +831,40 @@ export async function analyzeImage(
   "facade": "Description of facade treatment, materials, openings...",
   "massing": "Description of building massing, setbacks, volumes...",
   "siteRelationship": "How the building relates to its context...",
-  "isFloorPlan": true/false,
-  "rooms": [{"name": "Living Room", "dimensions": "3.6m x 4.2m"}, ...],
-  "layoutDescription": "Spatial relationships between rooms..."
+  "isFloorPlan": false,
+  "rooms": [],
+  "layoutDescription": ""
 }
 
-IMPORTANT — If the image is a 2D architectural floor plan, blueprint, or layout drawing:
-- Set "isFloorPlan" to true
-- Set "buildingType" to describe the building type shown in the plan (e.g. "2-Bedroom Apartment", "3BHK Residential Unit")
-- Extract EVERY room name and its dimensions exactly as labeled in the plan into the "rooms" array
-- In "layoutDescription", describe: which rooms are adjacent/connected, where the main entrance is, overall building shape, wall/door/window positions
-- In "description", provide a comprehensive architectural description of the floor plan layout
-- In "massing", describe the overall footprint shape and approximate total area
+Be specific about dimensions, proportions, materials, and spatial relationships. If the image is not architectural, set buildingType to "Not Architectural" and describe what you see.`;
 
-If the image is NOT a floor plan (e.g. a building photo, render, or 3D view):
-- Set "isFloorPlan" to false
-- Set "rooms" to an empty array []
-- Set "layoutDescription" to ""
-
-Be specific about dimensions, proportions, materials, and spatial relationships. If the image is not architectural, set buildingType to "Not Architectural" and describe what you see.`,
-        },
+    const completion = await client.chat.completions.create({
+      model,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
         {
           role: "user",
           content: [
-            {
-              type: "image_url",
-              image_url: { url: `data:${mimeType};base64,${imageBase64}` },
-            },
+            { type: "image_url", image_url: { url: imageDataUrl } },
             {
               type: "text",
-              text: "Analyze this image in architectural terms. Describe the building, its style, materials, and spatial qualities.",
+              text: isFloorPlan
+                ? "Analyze this floor plan. Extract every room, generate exterior and interior render prompts."
+                : "Analyze this image in architectural terms. Describe the building, its style, materials, and spatial qualities.",
             },
           ],
         },
       ],
-      max_tokens: 1500,
+      max_tokens: maxTokens,
     });
 
     const content = completion.choices[0]?.message?.content;
     if (!content) throw new Error("OpenAI returned empty response for image analysis");
 
     const result = JSON.parse(content) as ImageAnalysis;
+
+    console.log(`[analyzeImage] Model: ${model}, isFloorPlan: ${isFloorPlan}, rooms: ${result.rooms?.length ?? 0}, richRooms: ${result.richRooms?.length ?? 0}`);
 
     return {
       buildingType: result.buildingType || "Unknown",
@@ -801,9 +875,14 @@ Be specific about dimensions, proportions, materials, and spatial relationships.
       facade: result.facade || "",
       massing: result.massing || "",
       siteRelationship: result.siteRelationship || "",
-      isFloorPlan: result.isFloorPlan ?? false,
+      isFloorPlan: result.isFloorPlan ?? isFloorPlan,
       rooms: result.rooms ?? [],
       layoutDescription: result.layoutDescription ?? "",
+      richRooms: result.richRooms ?? undefined,
+      footprint: result.footprint ?? undefined,
+      circulation: result.circulation ?? undefined,
+      exteriorPrompt: result.exteriorPrompt ?? undefined,
+      interiorPrompt: result.interiorPrompt ?? undefined,
     };
   });
 }

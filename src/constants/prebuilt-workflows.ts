@@ -764,6 +764,121 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
       ],
     },
   },
+  {
+    id: "wf-16",
+    name: "2D Floor Plan → Photorealistic Render + Video",
+    description:
+      "Upload a 2D floor plan → GPT-4o reads every room → DALL-E 3 renders photorealistic exterior & interior → Kling animates the render into a cinematic video. Each AI does what it's best at.",
+    tags: ["floor-plan", "render", "video", "photorealistic", "pipeline", "dall-e", "kling"],
+    category: "Visualization",
+    complexity: "intermediate",
+    estimatedRunTime: "~4 minutes",
+    requiredInputs: ["2D floor plan image (scan, screenshot, or export)"],
+    expectedOutputs: [
+      "Floor plan analysis with room-by-room breakdown",
+      "Photorealistic exterior architectural render",
+      "Photorealistic interior architectural render",
+      "Cinematic 10s MP4 video walkthrough",
+    ],
+    thumbnail: "https://picsum.photos/seed/wf16/600/400",
+    tileGraph: {
+      nodes: [
+        {
+          id: "n1",
+          type: "workflowNode",
+          position: { x: X1, y: 250 },
+          data: {
+            catalogueId: "IN-003",
+            label: "Image Upload",
+            category: "input",
+            status: "idle",
+            inputs: [],
+            outputs: [{ id: "image-out", label: "Image", type: "image" }],
+            icon: "Image",
+          },
+        },
+        {
+          id: "n2",
+          type: "workflowNode",
+          position: { x: X2, y: 250 },
+          data: {
+            catalogueId: "TR-004",
+            label: "Floor Plan Analyzer (GPT-4o)",
+            category: "transform",
+            status: "idle",
+            inputs: [{ id: "image-in", label: "Image", type: "image" }],
+            outputs: [
+              { id: "text-out", label: "Analysis", type: "text" },
+              { id: "feat-out", label: "Extracted Features", type: "json" },
+            ],
+            icon: "Eye",
+          },
+        },
+        {
+          id: "n3",
+          type: "workflowNode",
+          position: { x: X3, y: 100 },
+          data: {
+            catalogueId: "GN-003",
+            label: "Exterior Render (DALL-E 3)",
+            category: "generate",
+            status: "idle",
+            inputs: [
+              { id: "ctrl-in", label: "Control Image", type: "image" },
+              { id: "prompt-in", label: "Style Prompt", type: "text" },
+            ],
+            outputs: [{ id: "images-out", label: "Exterior Render", type: "image" }],
+            icon: "Palette",
+          },
+        },
+        {
+          id: "n4",
+          type: "workflowNode",
+          position: { x: X3, y: 400 },
+          data: {
+            catalogueId: "GN-003",
+            label: "Interior Render (DALL-E 3)",
+            category: "generate",
+            status: "idle",
+            inputs: [
+              { id: "ctrl-in", label: "Control Image", type: "image" },
+              { id: "prompt-in", label: "Style Prompt", type: "text" },
+            ],
+            outputs: [{ id: "images-out", label: "Interior Render", type: "image" }],
+            icon: "Palette",
+          },
+        },
+        {
+          id: "n5",
+          type: "workflowNode",
+          position: { x: X4, y: 100 },
+          data: {
+            catalogueId: "GN-009",
+            label: "Video Walkthrough (Kling 3.0)",
+            category: "generate",
+            status: "idle",
+            inputs: [
+              { id: "image-in", label: "Source Image", type: "image" },
+              { id: "geo-in", label: "3D Model / Renders", type: "geometry" },
+              { id: "style-in", label: "Style & Camera", type: "json" },
+            ],
+            outputs: [{ id: "video-out", label: "MP4 Video", type: "binary" }],
+            icon: "Video",
+          },
+        },
+      ],
+      edges: [
+        // IN-003 → TR-004 (floor plan image → GPT-4o analysis)
+        { id: "e1-2", source: "n1", sourceHandle: "image-out", target: "n2", targetHandle: "image-in", type: "animatedEdge" },
+        // TR-004 → GN-003 exterior (analysis text contains exteriorPrompt)
+        { id: "e2-3", source: "n2", sourceHandle: "text-out", target: "n3", targetHandle: "prompt-in", type: "animatedEdge" },
+        // TR-004 → GN-003 interior (analysis text contains interiorPrompt)
+        { id: "e2-4", source: "n2", sourceHandle: "feat-out", target: "n4", targetHandle: "prompt-in", type: "animatedEdge" },
+        // GN-003 exterior render → GN-009 video (Kling animates the correct image)
+        { id: "e3-5", source: "n3", sourceHandle: "images-out", target: "n5", targetHandle: "image-in", type: "animatedEdge" },
+      ],
+    },
+  },
 ];
 
 export const PREBUILT_WORKFLOWS_MAP = new Map(

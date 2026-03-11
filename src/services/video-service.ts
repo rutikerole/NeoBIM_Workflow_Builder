@@ -615,10 +615,10 @@ export function buildCombinedWalkthroughPrompt(buildingDescription: string): str
  * Same philosophy: don't describe the building, just describe camera movement.
  */
 export function buildFloorPlanCombinedPrompt(_buildingDescription: string, _roomInfo?: string): string {
-  // EXACT prompt that produces great results on OpenArt with Kling 3.0.
-  // The image itself carries all floor plan information — Kling reads it visually.
+  // V3 "Anchor then Transform" prompt — keeps camera on floor plan for first 50%
+  // so Kling builds the 3D from the actual lines, then descends into the model.
   // Do NOT append roomInfo, buildingDescription, or any dynamic data.
-  return "Transform this 2D architectural floor plan into a hyper-realistic 3D interior walkthrough. Begin with a top-down bird's eye view of the floor plan, then smoothly descend as the walls rise up to full height and the rooms materialize with realistic furniture, lighting, and materials. The camera glides at eye level through the living room, past the dining area, into the kitchen, then follows the hallway through each bedroom. Photorealistic rendering, warm natural daylight streaming through windows, wooden floors, clean modern interior design, smooth cinematic steadicam movement, architectural visualization quality, 10 seconds.";
+  return "This 2D architectural floor plan slowly transforms into a photorealistic 3D model. The flat lines and walls gradually extrude upward, gaining height, depth, and realistic materials — white plastered walls, polished concrete floors, large glass windows filling every opening. The camera holds a top-down isometric view as the entire floor plan becomes a detailed architectural scale model with furniture appearing in each room — sofa in the living room, dining table, kitchen cabinets, beds in each bedroom, bathroom fixtures. Every wall, door, and room stays exactly where shown in the plan. Then the camera slowly descends and pushes into the model at eye level, gliding through the interior spaces. Ultra-photorealistic, V-Ray quality, natural daylight, modern minimalist design, architectural visualization, 10 seconds.";
 }
 
 /**

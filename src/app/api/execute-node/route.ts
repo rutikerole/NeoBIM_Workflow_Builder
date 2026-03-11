@@ -454,8 +454,14 @@ ${analysis.features.map(f => `• ${f}`).join("\n")}`;
           // Pass the original image through so downstream nodes can use it
           ...(sourceImageUrl && { imageUrl: sourceImageUrl, url: sourceImageUrl }),
           ...(typeof mimeType === "string" && { mimeType }),
+          // Rich floor plan data for render pipeline (GPT-4o analysis)
+          ...(analysis.richRooms && { richRooms: analysis.richRooms }),
+          ...(analysis.footprint && { footprint: analysis.footprint }),
+          ...(analysis.circulation && { circulation: analysis.circulation }),
+          ...(analysis.exteriorPrompt && { exteriorPrompt: analysis.exteriorPrompt }),
+          ...(analysis.interiorPrompt && { interiorPrompt: analysis.interiorPrompt }),
         },
-        metadata: { model: "gpt-4o-mini", real: true },
+        metadata: { model: analysis.isFloorPlan ? "gpt-4o" : "gpt-4o-mini", real: true },
         createdAt: new Date(),
       };
 
@@ -573,8 +579,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const viewType = ((inputData?.viewType as string) ?? "exterior") as "exterior" | "floor_plan" | "site_plan" | "interior";
       const style = (inputData?.style as string) ?? "photorealistic architectural render";
 
-      // If upstream TR-005 already enhanced the prompt, use it directly
-      const enhancedPrompt = inputData?.enhancedPrompt as string | undefined;
+      // If upstream TR-005 already enhanced the prompt, use it directly.
+      // Also check for render prompts from TR-004 floor plan pipeline (GPT-4o generated).
+      const enhancedPrompt = (inputData?.enhancedPrompt as string | undefined)
+        ?? (inputData?.exteriorPrompt as string | undefined)
+        ?? (inputData?.interiorPrompt as string | undefined);
 
       let url: string;
       let revisedPrompt: string;
