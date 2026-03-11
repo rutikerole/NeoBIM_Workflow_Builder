@@ -794,37 +794,40 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
         onDrop={onDrop}
         onDragOver={onDragOver}
       >
-        <CanvasToolbar
-          workflowName={workflowName}
-          creationMode={creationMode}
-          isExecuting={isExecuting}
-          isDirty={isDirty}
-          isSaving={isSaving}
-          isNodeLibraryOpen={isNodeLibraryOpen}
-          onRun={handleRun}
-          onStop={() => {}}
-          onSave={handleSave}
-          onUndo={undo}
-          onRedo={redo}
-          onZoomIn={() => zoomIn({ duration: 250 })}
-          onZoomOut={() => zoomOut({ duration: 250 })}
-          onFitView={() => fitView({ padding: 0.15, duration: 400 })}
-          onShare={handleShare}
-          onModeChange={setCreationMode}
-          onPromptMode={() => setPromptModeActive(true)}
-          onToggleLibrary={toggleNodeLibrary}
-          onNameChange={async (newName: string) => {
-            if (currentWorkflow) {
-              markDirty();
-              const id = await saveWorkflow(newName);
-              if (id) {
-                toast.success(`${tLocale('toast.renamedTo')} "${newName}"`, { duration: 2000 });
-              } else {
-                toast.error(tLocale('toast.saveFailed'));
+        {/* Hide toolbar when showcase overlay is active to avoid z-index clash */}
+        {!(showShowcase && !isExecuting && artifacts.size > 0) && (
+          <CanvasToolbar
+            workflowName={workflowName}
+            creationMode={creationMode}
+            isExecuting={isExecuting}
+            isDirty={isDirty}
+            isSaving={isSaving}
+            isNodeLibraryOpen={isNodeLibraryOpen}
+            onRun={handleRun}
+            onStop={() => {}}
+            onSave={handleSave}
+            onUndo={undo}
+            onRedo={redo}
+            onZoomIn={() => zoomIn({ duration: 250 })}
+            onZoomOut={() => zoomOut({ duration: 250 })}
+            onFitView={() => fitView({ padding: 0.15, duration: 400 })}
+            onShare={handleShare}
+            onModeChange={setCreationMode}
+            onPromptMode={() => setPromptModeActive(true)}
+            onToggleLibrary={toggleNodeLibrary}
+            onNameChange={async (newName: string) => {
+              if (currentWorkflow) {
+                markDirty();
+                const id = await saveWorkflow(newName);
+                if (id) {
+                  toast.success(`${tLocale('toast.renamedTo')} "${newName}"`, { duration: 2000 });
+                } else {
+                  toast.error(tLocale('toast.saveFailed'));
+                }
               }
-            }
-          }}
-        />
+            }}
+          />
+        )}
 
         {/* Execution progress bar */}
         <AnimatePresence>
