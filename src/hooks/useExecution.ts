@@ -247,9 +247,6 @@ async function persistVideoToR2(
 const VIDEO_POLL_INTERVAL_MS = 6_000; // Poll every 6 seconds
 const VIDEO_POLL_TIMEOUT_MS = 600_000; // 10 minute timeout
 
-/** Track which task IDs were created via the Omni endpoint — bypasses artifact data serialization */
-const omniTaskIds = new Set<string>();
-
 /** Poll /api/video-status for a SINGLE video task (floor plans) */
 async function pollSingleVideoGeneration(
   nodeId: string,
@@ -259,7 +256,6 @@ async function pollSingleVideoGeneration(
   clearVideoProgressFn: (nodeId: string) => void,
   currentArtifactData: Record<string, unknown>,
   executionId: string,
-  useOmniPolling = false,
 ): Promise<void> {
   const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
 
@@ -272,10 +268,7 @@ async function pollSingleVideoGeneration(
     await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
 
     try {
-      // Check both the explicit param AND the module-level Set
-      const isOmni = useOmniPolling || omniTaskIds.has(taskId);
-      console.log("[POLL] Checking single video status — omniParam:", useOmniPolling, "inSet:", omniTaskIds.has(taskId), "final:", isOmni);
-      const res = await fetch(`/api/video-status?taskId=${encodeURIComponent(taskId)}&omni=${isOmni}`);
+      const res = await fetch(`/api/video-status?taskId=${encodeURIComponent(taskId)}`);
 
       if (!res.ok) {
         console.error("[POLL] HTTP error:", res.status);
@@ -966,11 +959,8 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
               duration: 5000,
             });
 
-            // Register Omni tasks in module-level Set (survives any serialization issues)
             const taskIdStr = artData.taskId as string;
-            const omniFlag = !!(artData.usedOmni);
-            if (omniFlag) omniTaskIds.add(taskIdStr);
-            console.error("[POLL] Starting single video poll — taskId:", taskIdStr, "usedOmni:", artData.usedOmni, "omniFlag:", omniFlag, "inSet:", omniTaskIds.has(taskIdStr));
+            console.log("[POLL] Starting single video poll — taskId:", taskIdStr);
             pollSingleVideoGeneration(
               node.id,
               taskIdStr,
@@ -979,7 +969,6 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
               clearVideoGenProgress,
               artData,
               executionId,
-              omniFlag,
             ).catch(err => {
               console.error("[Video Poll] Unhandled error:", err);
             });
