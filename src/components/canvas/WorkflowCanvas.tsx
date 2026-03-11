@@ -1014,6 +1014,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
               <ExecutionLog
                 entries={logEntries}
                 isRunning={isExecuting}
+                autoExpand={isExecuting}
                 onClose={() => { setShowLog(false); setLogEntries([]); }}
               />
             )}

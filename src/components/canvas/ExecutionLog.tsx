@@ -16,6 +16,8 @@ interface ExecutionLogProps {
   entries: LogEntry[];
   isRunning: boolean;
   onClose: () => void;
+  /** When true, force the log body open (used to auto-expand on execution start) */
+  autoExpand?: boolean;
 }
 
 const TYPE_COLOR: Record<LogEntry["type"], string> = {
@@ -38,10 +40,25 @@ function fmt(d: Date) {
   return d.toTimeString().slice(0, 8);
 }
 
-export function ExecutionLog({ entries, isRunning, onClose }: ExecutionLogProps) {
+export function ExecutionLog({ entries, isRunning, onClose, autoExpand }: ExecutionLogProps) {
   const { t } = useLocale();
-  const [expanded, setExpanded] = useState(false);
+  // Initialize expanded from autoExpand so it's open on first mount during execution
+  const [expanded, setExpanded] = useState(!!autoExpand);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-expand whenever autoExpand flips to true (covers re-runs)
+  useEffect(() => {
+    if (autoExpand) setExpanded(true);
+  }, [autoExpand]);
+
+  // Auto-collapse when execution finishes (isRunning goes true → false)
+  const wasRunningRef = useRef(isRunning);
+  useEffect(() => {
+    if (wasRunningRef.current && !isRunning) {
+      setExpanded(false);
+    }
+    wasRunningRef.current = isRunning;
+  }, [isRunning]);
 
   useEffect(() => {
     if (expanded) {
