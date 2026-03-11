@@ -28,7 +28,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
   const isVideoGenerating = videoGenProgress && (videoGenProgress.status === "rendering" || videoGenProgress.status === "processing" || videoGenProgress.status === "submitting");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 28, maxWidth: "100%" }}>
       {/* Video Generation Progress */}
       {isVideoGenerating && !data.videoData?.videoUrl && (
         <section>
@@ -134,7 +134,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
               src={data.videoData.videoUrl}
               style={{
                 width: "100%",
-                maxHeight: 500,
+                maxHeight: "calc(100vh - 260px)",
                 display: "block",
               }}
             />
@@ -197,7 +197,7 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
       {/* Image Gallery */}
       {data.allImageUrls.length > 0 && (
         <section>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <SectionTitle>{t('showcase.imagesRenders')}</SectionTitle>
             <span style={{ fontSize: 10, color: COLORS.TEXT_MUTED }}>
               {data.allImageUrls.length} {data.allImageUrls.length > 1 ? t('showcase.conceptRenders') : t('showcase.conceptRender')}
@@ -207,102 +207,121 @@ export function MediaTab({ data, onExpandVideo }: MediaTabProps) {
             display: "grid",
             gridTemplateColumns: data.allImageUrls.length === 1
               ? "1fr"
-              : "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 12,
+              : data.allImageUrls.length === 2
+                ? "repeat(2, 1fr)"
+                : "repeat(auto-fill, minmax(320px, 1fr))",
+            gap: 16,
           }}>
-            {data.allImageUrls.map((url, i) => (
-              <motion.div
-                key={url}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.05 * i }}
-                style={{
-                  borderRadius: 10,
-                  overflow: "hidden",
-                  position: "relative",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                }}
-                whileHover={{ scale: 1.01, boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={url}
-                  alt={`Render ${i + 1}`}
-                  onClick={() => setLightboxUrl(url)}
+            {data.allImageUrls.map((url, i) => {
+              const isSingle = data.allImageUrls.length === 1;
+              return (
+                <motion.div
+                  key={url}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * i, duration: 0.3 }}
                   style={{
-                    width: "100%",
-                    height: data.allImageUrls.length === 1 ? 400 : 220,
-                    objectFit: "cover",
-                    display: "block",
-                    cursor: "pointer",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    position: "relative",
+                    boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
+                    border: "1px solid rgba(255,255,255,0.06)",
                   }}
-                />
-                {/* Action overlay */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    right: 0,
-                    padding: 8,
-                    display: "flex",
-                    gap: 4,
-                    opacity: 0,
-                    transition: "opacity 0.2s ease",
-                  }}
-                  className="media-actions"
-                  onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
                 >
-                  <a
-                    href={url}
-                    download={`render_${i + 1}.png`}
-                    onClick={e => e.stopPropagation()}
-                    style={{ textDecoration: "none" }}
-                  >
-                    <MediaButton icon={<Download size={10} />} label={t('showcase.downloadImage')} />
-                  </a>
-                  <MediaButton
-                    icon={<ExternalLink size={10} />}
-                    label={t('showcase.fullscreen')}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`Render ${i + 1}`}
                     onClick={() => setLightboxUrl(url)}
-                  />
-                </div>
-                {/* Bottom gradient with label */}
-                <div style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  padding: "20px 12px 8px",
-                  background: "linear-gradient(transparent, rgba(0,0,0,0.7))",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>
-                    {t('showcase.conceptRenderTitle')} {data.allImageUrls.length > 1 ? i + 1 : ""}
-                  </span>
-                  <a
-                    href={url}
-                    download={`concept_render_${i + 1}.png`}
-                    onClick={e => e.stopPropagation()}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      color: COLORS.CYAN,
-                      fontSize: 9,
-                      fontWeight: 600,
-                      textDecoration: "none",
+                      width: "100%",
+                      height: isSingle ? "calc(100vh - 280px)" : 300,
+                      minHeight: isSingle ? 400 : 200,
+                      objectFit: "cover",
+                      display: "block",
                       cursor: "pointer",
+                      transition: "transform 0.3s ease",
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+                  />
+
+                  {/* Top-right action buttons */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 12,
+                      right: 12,
+                      display: "flex",
+                      gap: 6,
+                      opacity: 0,
+                      transition: "opacity 0.2s ease",
+                    }}
+                    className="media-actions"
                   >
-                    <Download size={10} />
-                    Download
-                  </a>
-                </div>
-              </motion.div>
-            ))}
+                    <a
+                      href={url}
+                      download={`render_${i + 1}.png`}
+                      onClick={e => e.stopPropagation()}
+                      style={{ textDecoration: "none" }}
+                    >
+                      <MediaButton icon={<Download size={10} />} label={t('showcase.downloadImage')} />
+                    </a>
+                    <MediaButton
+                      icon={<ExternalLink size={10} />}
+                      label={t('showcase.fullscreen')}
+                      onClick={() => setLightboxUrl(url)}
+                    />
+                  </div>
+
+                  {/* Bottom gradient with label + download */}
+                  <div style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: isSingle ? "40px 20px 14px" : "24px 12px 10px",
+                    background: "linear-gradient(transparent, rgba(0,0,0,0.75))",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}>
+                    <span style={{ fontSize: isSingle ? 13 : 10, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>
+                      {t('showcase.conceptRenderTitle')} {data.allImageUrls.length > 1 ? i + 1 : ""}
+                    </span>
+                    <a
+                      href={url}
+                      download={`concept_render_${i + 1}.png`}
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        color: COLORS.CYAN,
+                        fontSize: isSingle ? 11 : 9,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        cursor: "pointer",
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        background: "rgba(0,0,0,0.4)",
+                        border: "1px solid rgba(0,245,255,0.2)",
+                        transition: "all 0.15s ease",
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = "rgba(0,245,255,0.1)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "rgba(0,0,0,0.4)";
+                      }}
+                    >
+                      <Download size={isSingle ? 12 : 10} />
+                      Download
+                    </a>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
 
           {/* Hover reveal CSS */}

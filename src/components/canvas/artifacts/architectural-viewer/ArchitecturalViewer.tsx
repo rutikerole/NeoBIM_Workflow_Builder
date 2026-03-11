@@ -701,8 +701,12 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
           borderRadius: isFullscreen ? 0 : 12,
         }}>
           <div style={{
-            width: 36, height: 36, border: "3px solid rgba(79,138,255,0.2)",
-            borderTopColor: "#4F8AFF", borderRadius: "50%",
+            width: 36, height: 36,
+            borderTop: "3px solid #4F8AFF",
+            borderRight: "3px solid rgba(79,138,255,0.2)",
+            borderBottom: "3px solid rgba(79,138,255,0.2)",
+            borderLeft: "3px solid rgba(79,138,255,0.2)",
+            borderRadius: "50%",
             animation: "viewer-spin 0.8s linear infinite",
           }} />
           <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em" }}>
