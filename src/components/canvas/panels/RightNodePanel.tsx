@@ -1,16 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, Layers3 } from "lucide-react";
 import { NodeLibrarySidebar } from "./NodeLibrarySidebar";
 
 /**
  * Right-side collapsible panel that houses the Node Library on the canvas page.
- * Collapsed: 40px tab with vertical "NODE LIBRARY" label.
+ * Collapsed: visible tab with vertical "NODE LIBRARY" label and accent stripe.
  * Expanded: 280px panel with full search/filter/node list.
  */
 export function RightNodePanel() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const tabActive = isOpen || isHovered;
 
   return (
     <div
@@ -19,9 +22,9 @@ export function RightNodePanel() {
         top: 0,
         right: 0,
         bottom: 0,
-        width: isOpen ? 300 : 40,
+        width: isOpen ? 300 : 44,
         zIndex: 50,
-        transition: "width 300ms ease",
+        transition: "width 300ms cubic-bezier(0.4, 0, 0.2, 1)",
         pointerEvents: "none",
         display: "flex",
         flexDirection: "row",
@@ -30,52 +33,57 @@ export function RightNodePanel() {
       {/* Toggle tab — always visible on the left edge of the panel */}
       <button
         onClick={() => setIsOpen((o) => !o)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         title={isOpen ? "Collapse Node Library" : "Expand Node Library"}
         style={{
-          width: 40,
+          width: 44,
           height: "100%",
           flexShrink: 0,
           pointerEvents: "auto",
-          background: "rgba(7, 8, 9, 0.85)",
+          background: tabActive
+            ? "rgba(0, 245, 255, 0.04)"
+            : "rgba(10, 12, 16, 0.85)",
           borderTop: "none",
           borderBottom: "none",
-          borderLeft: "1px solid rgba(184,115,51,0.15)",
-          borderRight: isOpen ? "1px solid rgba(184,115,51,0.1)" : "none",
+          borderLeft: tabActive
+            ? "2px solid rgba(0, 245, 255, 0.5)"
+            : "1px solid rgba(255,255,255,0.08)",
+          borderRight: isOpen ? "1px solid rgba(255,255,255,0.06)" : "none",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: 8,
+          gap: 10,
           cursor: "pointer",
-          color: isOpen ? "#00F5FF" : "rgba(255,255,255,0.35)",
-          transition: "color 200ms ease, background 200ms ease",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
+          color: tabActive ? "#00F5FF" : "rgba(255,255,255,0.5)",
+          transition: "all 200ms ease",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
           padding: 0,
         }}
       >
         {/* Arrow icon */}
         {isOpen ? (
-          <ChevronRight size={14} style={{ flexShrink: 0 }} />
+          <ChevronRight size={14} style={{ flexShrink: 0, opacity: 0.8 }} />
         ) : (
-          <ChevronLeft size={14} style={{ flexShrink: 0 }} />
+          <ChevronLeft size={14} style={{ flexShrink: 0, opacity: 0.8 }} />
         )}
 
-        {/* Package icon */}
-        <Package size={14} style={{ flexShrink: 0, opacity: 0.7 }} />
+        {/* Node library icon */}
+        <Layers3 size={16} style={{ flexShrink: 0 }} />
 
         {/* Vertical label */}
         <span
           style={{
             writingMode: "vertical-rl",
             textOrientation: "mixed",
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: "0.15em",
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.14em",
             fontFamily: "var(--font-jetbrains), monospace",
             textTransform: "uppercase",
             whiteSpace: "nowrap",
-            opacity: 0.6,
           }}
         >
           NODE LIBRARY
@@ -91,10 +99,10 @@ export function RightNodePanel() {
           opacity: isOpen ? 1 : 0,
           transition: "opacity 250ms ease",
           pointerEvents: isOpen ? "auto" : "none",
-          background: "rgba(7, 8, 9, 0.92)",
+          background: "rgba(10, 12, 16, 0.92)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
-          borderLeft: "1px solid rgba(184,115,51,0.1)",
+          borderLeft: "1px solid rgba(255,255,255,0.06)",
           display: "flex",
           flexDirection: "column",
         }}

@@ -921,6 +921,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
             onPaneContextMenu={onPaneContextMenu}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
+            proOptions={{ hideAttribution: true }}
             fitView
             fitViewOptions={{ padding: 0.3 }}
             defaultEdgeOptions={{
@@ -1087,52 +1088,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
             <FullscreenVideoPlayer />
           </ErrorBoundary>
 
-          {/* ── Architectural title block — bottom right, offset for NODE LIBRARY panel ── */}
-          <div style={{
-            position: 'absolute',
-            bottom: 14,
-            right: 56,
-            zIndex: 2,
-            pointerEvents: 'none',
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: 8,
-          }}>
-            {/* North arrow */}
-            <svg width="16" height="24" viewBox="0 0 16 24" style={{ opacity: 0.25 }}>
-              <text x="8" y="6" textAnchor="middle" fill="#B87333" fontSize="6" fontWeight="600"
-                style={{ fontFamily: "'Space Mono', monospace" }}>N</text>
-              <path d="M8 8 L11 16 L8 13.5 L5 16 Z" fill="#B8733340" />
-              <line x1="8" y1="16" x2="8" y2="22" stroke="#B8733340" strokeWidth="0.5" />
-            </svg>
-            {/* Title block */}
-            <div style={{
-              padding: '3px 8px',
-              border: '1px solid rgba(184,115,51,0.15)',
-              borderRadius: 2,
-              background: 'rgba(7,8,9,0.6)',
-            }}>
-              <div style={{
-                fontSize: 7,
-                color: 'rgba(184,115,51,0.4)',
-                fontWeight: 500,
-                letterSpacing: '0.12em',
-                fontFamily: "'Space Mono', monospace",
-                textTransform: 'uppercase' as const,
-              }}>
-                DIGITAL ATELIER &nbsp;|&nbsp; {workflowName}
-              </div>
-              <div style={{
-                fontSize: 6,
-                color: 'rgba(184,115,51,0.25)',
-                letterSpacing: '0.08em',
-                marginTop: 1,
-                fontFamily: "'Space Mono', monospace",
-              }}>
-                SCALE: NTS
-              </div>
-            </div>
-          </div>
+          {/* Architectural title block — hidden (not needed in current UI) */}
         </div>
 
         {/* Post-execution 3D scene — overlays right 70% of canvas */}
