@@ -413,10 +413,38 @@ ${parsed.keyRequirements?.length ? `KEY REQUIREMENTS:\n${parsed.keyRequirements.
         );
       }
 
-      // ── Floor Plan Analysis Pipeline ──
-      // Step 1: Quick classify with GPT-4o-mini (cheap)
-      // Step 2: If floor plan → Potrace pixel tracing + GPT-4o room labeling (primary)
-      // Step 3: If Potrace fails → fall back to Sharp pixel detection + GPT-4o labeling
+      // ═══ STEP 1: Get walls from CubiCasa5K ML service (non-blocking) ═══
+      interface MLWall { start: [number, number]; end: [number, number]; thickness: number; type: string }
+      interface MLDoor { type: string; center: [number, number]; width: number }
+      interface MLWindow { type: string; center: [number, number]; width: number }
+      let mlWalls: MLWall[] = [];
+      let mlDoors: MLDoor[] = [];
+      let mlWindows: MLWindow[] = [];
+      try {
+        console.log("[TR-004] Step 1: Getting walls from CubiCasa5K ML...");
+        const mlResponse = await fetch("http://localhost:5001/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: base64Data }),
+          signal: AbortSignal.timeout(30000),
+        });
+        if (mlResponse.ok) {
+          const mlResult = await mlResponse.json();
+          mlWalls = mlResult.walls ?? [];
+          mlDoors = mlResult.doors ?? [];
+          mlWindows = mlResult.windows ?? [];
+          console.log(`[TR-004] ML walls: ${mlWalls.length} segments, ${mlDoors.length} doors, ${mlWindows.length} windows (${mlResult.inferenceTime}s)`);
+        } else {
+          console.log(`[TR-004] ML service returned ${mlResponse.status}`);
+        }
+      } catch (mlError: unknown) {
+        const msg = mlError instanceof Error ? mlError.message : "connection refused";
+        console.log(`[TR-004] ML service unavailable: ${msg}`);
+      }
+
+      // ═══ STEP 2: GPT-4o analysis (rooms, layout, descriptions) ═══
+      // analyzeImage already produces row-based geometry that GN-011 uses
+      console.log("[TR-004] Step 2: Getting rooms from GPT-4o...");
       let analysis = await analyzeImage(base64Data, mimeType, apiKey);
 
       if (analysis.isFloorPlan && base64Data) {
@@ -594,6 +622,42 @@ ${parsed.keyRequirements?.length ? `KEY REQUIREMENTS:\n${parsed.keyRequirements.
         }
       }
 
+      // ═══ STEP 3: Merge ML walls into GPT-4o geometry (hybrid) ═══
+      if (mlWalls.length > 0 && analysis.geometry) {
+        const existingWalls = (analysis.geometry as Record<string, unknown>).walls as MLWall[] | undefined;
+        // Use ML walls if we got meaningful data (>3 segments), otherwise keep existing
+        if (mlWalls.length > 3 || !existingWalls || existingWalls.length === 0) {
+          (analysis.geometry as Record<string, unknown>).walls = mlWalls;
+          console.log(`[TR-004] ✓ Injected ${mlWalls.length} ML walls into geometry (replacing ${existingWalls?.length ?? 0} existing)`);
+        }
+        if (mlDoors.length > 0) {
+          (analysis.geometry as Record<string, unknown>).doors = mlDoors;
+          console.log(`[TR-004] ✓ Injected ${mlDoors.length} ML doors`);
+        }
+        if (mlWindows.length > 0) {
+          (analysis.geometry as Record<string, unknown>).windows = mlWindows;
+          console.log(`[TR-004] ✓ Injected ${mlWindows.length} ML windows`);
+        }
+      } else if (mlWalls.length > 0 && !analysis.geometry) {
+        // GPT-4o didn't produce geometry but ML has walls — create minimal geometry
+        analysis.geometry = {
+          buildingWidth: parseFloat(String(analysis.footprint?.width ?? "12")),
+          buildingDepth: parseFloat(String(analysis.footprint?.depth ?? "8")),
+          walls: mlWalls as unknown as NonNullable<typeof analysis.geometry>["walls"],
+          rooms: [],
+        };
+        console.log(`[TR-004] ✓ Created geometry with ${mlWalls.length} ML walls (GPT-4o had no geometry)`);
+      }
+
+      const roomCount = analysis.geometry
+        ? ((analysis.geometry as Record<string, unknown>).rows as unknown[])?.flat()?.length
+          ?? ((analysis.geometry as Record<string, unknown>).rooms as unknown[])?.length
+          ?? 0
+        : 0;
+      const wallCount = mlWalls.length;
+      const method = mlWalls.length > 3 ? "hybrid (ML walls + GPT-4o rooms)" : "GPT-4o";
+      console.log(`[TR-004] ✓ Final: ${roomCount} rooms, ${wallCount} walls — ${method}`);
+
       const roomsText = analysis.rooms?.length
         ? `\nROOMS:\n${analysis.rooms.map(r => `• ${r.name} (${r.dimensions})`).join("\n")}`
         : "";
@@ -667,7 +731,12 @@ ${analysis.features.map(f => `• ${f}`).join("\n")}`;
           // Geometric data for GN-011 Interactive 3D Viewer
           ...(analysis.geometry && { geometry: analysis.geometry }),
         },
-        metadata: { model: analysis.isFloorPlan ? (process.env.ANTHROPIC_API_KEY ? "claude-sonnet" : "gpt-4o") : "gpt-4o-mini", real: true },
+        metadata: {
+          model: analysis.isFloorPlan
+            ? (mlWalls.length > 3 ? "hybrid-cubicasa5k-gpt4o" : (process.env.ANTHROPIC_API_KEY ? "claude-sonnet" : "gpt-4o"))
+            : "gpt-4o-mini",
+          real: true,
+        },
         createdAt: new Date(),
       };
 
@@ -2447,6 +2516,28 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         console.warn("[GN-011] R2 upload failed:", r2Err);
       }
 
+      // ── DALL-E 3 Photorealistic Render (non-blocking) ──
+      let aiRenderUrl = "";
+      try {
+        const { generateFloorPlanRender } = await import("@/services/openai");
+        const renderRooms = fpRooms.map((r: { name: string; type: string; width: number; depth: number }) => ({
+          name: r.name, type: r.type, width: r.width, depth: r.depth,
+        }));
+        console.log(`[GN-011] Generating DALL-E 3 photorealistic render for ${renderRooms.length} rooms...`);
+        console.log(`[GN-011] API key present: ${!!apiKey}, key prefix: ${apiKey ? apiKey.substring(0, 8) + "..." : "NONE"}`);
+        const renderResult = await generateFloorPlanRender(
+          renderRooms,
+          { width: fpGeometry.footprint.width, depth: fpGeometry.footprint.depth },
+          { userApiKey: apiKey },
+        );
+        aiRenderUrl = renderResult.imageUrl;
+        console.log(`[GN-011] DALL-E render ready: ${aiRenderUrl ? aiRenderUrl.substring(0, 60) + "..." : "EMPTY"} (${(aiRenderUrl.length / 1024).toFixed(0)}KB)`);
+      } catch (renderErr: unknown) {
+        const errMsg = renderErr instanceof Error ? renderErr.message : String(renderErr);
+        console.warn(`[GN-011] DALL-E render failed (non-critical): ${errMsg}`);
+      }
+      console.log(`[GN-011] Final aiRenderUrl: ${aiRenderUrl ? "YES (" + aiRenderUrl.length + " chars)" : "NONE"}`);
+
       artifact = {
         id: generateId(),
         executionId: executionId ?? "local",
@@ -2464,6 +2555,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           wallCount: fpWalls.length,
           floorPlanGeometry: fpGeometry,
           sourceImageUrl: inputData?.imageUrl ?? inputData?.url ?? undefined,
+          aiRenderUrl: aiRenderUrl || undefined,
         },
         metadata: { engine: "threejs-r128", real: true },
         createdAt: new Date(),

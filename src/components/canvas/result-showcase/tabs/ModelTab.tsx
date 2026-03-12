@@ -73,6 +73,11 @@ export function ModelTab({ data }: ModelTabProps) {
   const totalArea = rooms.reduce((sum, r) => sum + (r.area ?? (r.width * r.depth)), 0);
   const roomCount = (model && "roomCount" in model ? model.roomCount : undefined) ?? rooms.length;
   const wallCount = (model && "wallCount" in model ? model.wallCount : undefined) ?? walls.length;
+  const aiRenderUrl = (model && "aiRenderUrl" in model ? model.aiRenderUrl : undefined) as string | undefined;
+  // Debug: log AI render URL status
+  if (model) {
+    console.log("[ModelTab] model.kind:", model.kind, "| aiRenderUrl:", aiRenderUrl ? `YES (${aiRenderUrl.length} chars)` : "NONE");
+  }
 
   if (!model && !data.svgContent) {
     return (
@@ -94,6 +99,7 @@ export function ModelTab({ data }: ModelTabProps) {
         rooms={rooms} bw={bw} bd={bd} totalArea={totalArea}
         roomCount={roomCount} wallCount={wallCount}
         iframeRef={iframeRef}
+        aiRenderUrl={aiRenderUrl}
         extra={[{ label: "Mode", value: viewMode === "editor" ? "2D Editor" : "Interactive 3D" }]}
       >
         {viewMode === "editor" ? (
@@ -140,6 +146,7 @@ export function ModelTab({ data }: ModelTabProps) {
         rooms={rooms} bw={bw} bd={bd} totalArea={totalArea}
         roomCount={roomCount} wallCount={wallCount}
         iframeRef={iframeRef}
+        aiRenderUrl={aiRenderUrl}
       >
         <HtmlIframeViewer model={model} iframeRef={iframeRef} />
       </FloorPlanLayout>
@@ -220,15 +227,17 @@ interface FloorPlanLayoutProps {
   wallCount: number;
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
   extra?: Array<{ label: string; value: string }>;
+  aiRenderUrl?: string;
 }
 
 function FloorPlanLayout({
   children, rooms, bw, bd, totalArea, roomCount, wallCount,
-  iframeRef, extra,
+  iframeRef, extra, aiRenderUrl,
 }: FloorPlanLayoutProps) {
   const [activeView, setActiveView] = useState("top");
   const [showLabels, setShowLabels] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [showAiRender, setShowAiRender] = useState(false);
   const iframeReadyRef = useRef(false);
 
   // ── sendCommand: direct contentWindow.buildflowControls calls ──
@@ -303,9 +312,38 @@ function FloorPlanLayout({
       {/* ═══ MAIN CANVAS AREA ═══ */}
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         {/* Layer 1: Three.js iframe fills this entirely */}
-        <div style={{ position: "absolute", inset: 0, zIndex: 1, background: "#0A0A14" }}>
+        <div style={{ position: "absolute", inset: 0, zIndex: 1, background: "#0A0A14", opacity: showAiRender ? 0 : 1, transition: "opacity 0.4s ease" }}>
           {children}
         </div>
+
+        {/* Layer 1b: AI Render overlay */}
+        {aiRenderUrl && showAiRender && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 2, background: "#0A0A14",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={aiRenderUrl}
+              alt="AI Photorealistic Render"
+              style={{
+                width: "100%", height: "100%",
+                objectFit: "contain",
+              }}
+            />
+            {/* Caption */}
+            <div style={{
+              position: "absolute", bottom: 60, left: "50%", transform: "translateX(-50%)",
+              background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)",
+              padding: "6px 16px", borderRadius: 8,
+              fontSize: 11, color: "#D8B4FE", fontWeight: 500,
+              border: "1px solid rgba(139,92,246,0.3)",
+              pointerEvents: "none",
+            }}>
+              DALL-E 3 HD Photorealistic Render
+            </div>
+          </div>
+        )}
 
         {/* Layer 2: UI overlay — pointer-events: none so clicks pass through
             to the iframe for orbit/pan/zoom. Only child elements with
@@ -367,54 +405,71 @@ function FloorPlanLayout({
             border: "1px solid rgba(255,255,255,0.08)",
             boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
           }}>
-            {[
-              { id: "orbit", label: "Orbit", active: activeView === "perspective" },
-              { id: "top", label: "Top", active: activeView === "top" },
-              { id: "labels", label: "Labels", active: showLabels },
-              { id: "reset", label: "Reset", active: false },
-            ].map(btn => (
+            {([
+              { id: "orbit", label: "Orbit", active: activeView === "perspective" && !showAiRender, disabled: false },
+              { id: "top", label: "Top", active: activeView === "top" && !showAiRender, disabled: false },
+              { id: "labels", label: "Labels", active: showLabels, disabled: false },
+              { id: "reset", label: "Reset", active: false, disabled: false },
+              { id: "airender", label: aiRenderUrl ? "AI Render" : "AI Render...", active: showAiRender, disabled: !aiRenderUrl },
+            ] as Array<{ id: string; label: string; active: boolean; disabled: boolean }>).map(btn => (
               <button
                 key={btn.id}
+                disabled={btn.disabled}
                 onClick={() => {
-                  if (btn.id === "orbit") {
+                  if (btn.disabled) return;
+                  if (btn.id === "airender") {
+                    setShowAiRender(v => !v);
+                  } else if (btn.id === "orbit") {
+                    setShowAiRender(false);
                     setActiveView("perspective");
                     sendCommand("setPerspective");
                   } else if (btn.id === "top") {
+                    setShowAiRender(false);
                     setActiveView("top");
                     sendCommand("setTopView");
                   } else if (btn.id === "labels") {
                     setShowLabels(v => !v);
                     sendCommand("toggleLabels");
                   } else if (btn.id === "reset") {
+                    setShowAiRender(false);
                     setActiveView("perspective");
                     sendCommand("reset");
                   }
                 }}
                 style={{
-                  background: btn.active
-                    ? "rgba(79,138,255,0.25)"
-                    : "rgba(255,255,255,0.04)",
-                  border: btn.active
-                    ? "1px solid rgba(79,138,255,0.5)"
-                    : "1px solid rgba(255,255,255,0.06)",
+                  background: btn.disabled
+                    ? "rgba(255,255,255,0.02)"
+                    : btn.id === "airender"
+                      ? (btn.active ? "linear-gradient(135deg, rgba(139,92,246,0.3), rgba(236,72,153,0.3))" : "rgba(139,92,246,0.08)")
+                      : (btn.active ? "rgba(79,138,255,0.25)" : "rgba(255,255,255,0.04)"),
+                  border: btn.disabled
+                    ? "1px solid rgba(255,255,255,0.04)"
+                    : btn.id === "airender"
+                      ? (btn.active ? "1px solid rgba(139,92,246,0.6)" : "1px solid rgba(139,92,246,0.2)")
+                      : (btn.active ? "1px solid rgba(79,138,255,0.5)" : "1px solid rgba(255,255,255,0.06)"),
                   borderRadius: 10, padding: "8px 18px",
-                  color: btn.active ? "#6CB4FF" : "#7A7A90",
+                  color: btn.disabled
+                    ? "#3A3A4A"
+                    : btn.id === "airender"
+                      ? (btn.active ? "#D8B4FE" : "#A78BFA")
+                      : (btn.active ? "#6CB4FF" : "#7A7A90"),
                   fontSize: 12, fontWeight: btn.active ? 600 : 500,
-                  cursor: "pointer",
+                  cursor: btn.disabled ? "not-allowed" : "pointer",
+                  opacity: btn.disabled ? 0.5 : 1,
                   transition: "all 0.15s ease",
                   fontFamily: "Inter, system-ui, sans-serif",
                   letterSpacing: "0.01em",
                   pointerEvents: "auto",
                 }}
                 onMouseEnter={e => {
-                  if (!btn.active) {
+                  if (!btn.active && !btn.disabled) {
                     e.currentTarget.style.color = "#C0C0D0";
                     e.currentTarget.style.background = "rgba(255,255,255,0.08)";
                     e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
                   }
                 }}
                 onMouseLeave={e => {
-                  if (!btn.active) {
+                  if (!btn.active && !btn.disabled) {
                     e.currentTarget.style.color = "#7A7A90";
                     e.currentTarget.style.background = "rgba(255,255,255,0.04)";
                     e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";

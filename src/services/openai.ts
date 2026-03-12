@@ -937,6 +937,7 @@ Be specific about dimensions, proportions, materials, and spatial relationships.
 
     const completion = await client.chat.completions.create({
       model,
+      temperature: isFloorPlan ? 0 : 0.3,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
@@ -1040,7 +1041,7 @@ If you cannot determine a room's name from the image, use a reasonable guess bas
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       max_tokens: 800,
-      temperature: 0.1,
+      temperature: 0,
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -1101,6 +1102,7 @@ export async function analyzeFloorPlanSVG(
   const response = await client.chat.completions.create({
     model: "gpt-4o",
     max_tokens: 8000,
+    temperature: 0,
     messages: [
       {
         role: "user",
@@ -1243,6 +1245,7 @@ export async function labelFloorPlanRooms(
   const response = await client.chat.completions.create({
     model: "gpt-4o",
     max_tokens: 2000,
+    temperature: 0,
     response_format: { type: "json_object" },
     messages: [
       {
@@ -1294,4 +1297,67 @@ JSON response:
     console.error("[labelFloorPlanRooms] Failed to parse JSON:", text.substring(0, 200));
     return { buildingWidthMeters: 10, buildingDepthMeters: 8, rooms: [] };
   }
+}
+
+// ─── DALL-E 3 Photorealistic Floor Plan Render ──────────────────────────────
+
+/**
+ * Generates a photorealistic aerial render of a floor plan using DALL-E 3.
+ * Takes room descriptions and building info → creates an architectural visualization.
+ * Returns the image as a base64 data URL.
+ */
+export async function generateFloorPlanRender(
+  rooms: Array<{ name: string; type: string; width: number; depth: number }>,
+  buildingDimensions: { width: number; depth: number },
+  options?: {
+    style?: "modern" | "scandinavian" | "industrial" | "luxury" | "minimal";
+    userApiKey?: string;
+  },
+): Promise<{ imageUrl: string; revisedPrompt: string }> {
+  const client = getClient(options?.userApiKey);
+  const style = options?.style ?? "modern";
+
+  const roomList = rooms
+    .map(r => `${r.name} (${r.type}, ${r.width.toFixed(1)}m x ${r.depth.toFixed(1)}m)`)
+    .join(", ");
+
+  const styleDescriptions: Record<string, string> = {
+    modern: "clean contemporary design with warm wood floors, white walls, designer furniture, indoor plants, and natural light streaming through large windows",
+    scandinavian: "Scandinavian hygge style with light oak floors, white and soft gray palette, cozy textiles, minimalist furniture, candles, and warm ambient lighting",
+    industrial: "industrial loft style with polished concrete floors, exposed brick walls, metal fixtures, Edison bulbs, and reclaimed wood furniture",
+    luxury: "luxury high-end interior with marble floors, gold accents, velvet furniture, crystal chandelier, floor-to-ceiling windows, and designer artwork",
+    minimal: "Japanese-inspired minimalist design with tatami mats, shoji screens, low furniture, neutral earth tones, and zen garden elements",
+  };
+
+  const prompt = `Photorealistic architectural visualization, bird's-eye cutaway view looking down at 45 degrees into a ${buildingDimensions.width.toFixed(0)}m x ${buildingDimensions.depth.toFixed(0)}m residential floor plan with the roof removed. The interior is fully furnished and decorated in ${styleDescriptions[style]}. Rooms: ${roomList}. Each room has appropriate furniture, rugs, lighting, and decor. Walls are clearly visible separating rooms. Warm golden-hour sunlight casts soft shadows across the interior. Ultra-high detail, 8K quality, architectural photography style, depth of field. No text, no labels, no annotations.`;
+
+  console.log(`[DALL-E 3] Generating floor plan render (${style})...`);
+
+  return handleOpenAICall(async () => {
+    const response = await client.images.generate({
+      model: "dall-e-3",
+      prompt,
+      n: 1,
+      size: "1792x1024",
+      quality: "hd",
+      style: "natural",
+    });
+
+    const imageUrl = response.data?.[0]?.url;
+    const revisedPrompt = response.data?.[0]?.revised_prompt ?? "";
+
+    if (!imageUrl) throw new Error("DALL-E 3 returned no image");
+
+    console.log(`[DALL-E 3] Render generated successfully`);
+
+    // Fetch the image and convert to base64 data URL for persistence
+    const imgResponse = await fetch(imageUrl);
+    const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+    const base64 = imgBuffer.toString("base64");
+    const dataUrl = `data:image/png;base64,${base64}`;
+
+    console.log(`[DALL-E 3] Image fetched: ${(imgBuffer.length / 1024).toFixed(0)}KB`);
+
+    return { imageUrl: dataUrl, revisedPrompt };
+  });
 }

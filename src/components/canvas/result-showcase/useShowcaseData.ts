@@ -75,6 +75,7 @@ export interface HtmlIframeModelData {
   roomCount?: number;
   wallCount?: number;
   geometry?: import("@/types/floor-plan").FloorPlanGeometry;
+  aiRenderUrl?: string;
 }
 
 export interface FloorPlanEditorData {
@@ -86,6 +87,7 @@ export interface FloorPlanEditorData {
   label: string;
   roomCount?: number;
   wallCount?: number;
+  aiRenderUrl?: string;
 }
 
 export type Model3DData = ProceduralModelData | GlbModelData | HtmlIframeModelData | FloorPlanEditorData;
@@ -290,6 +292,9 @@ export function useShowcaseData(): ShowcaseData {
     const htmlArtifact = findByType(artifacts, "html");
     if (!model3dData && htmlArtifact) {
       const d = asRecord(htmlArtifact.data);
+      // Debug: log all keys present in the html artifact data
+      console.log("[useShowcaseData] HTML artifact data keys:", Object.keys(d));
+      console.log("[useShowcaseData] aiRenderUrl present:", typeof d.aiRenderUrl, d.aiRenderUrl ? `(${String(d.aiRenderUrl).length} chars)` : "NONE");
       const hasEditorData = d.floorPlanGeometry && d.sourceImageUrl;
 
       if (hasEditorData) {
@@ -303,6 +308,7 @@ export function useShowcaseData(): ShowcaseData {
           label: (d.label as string) ?? "Floor Plan Editor",
           roomCount: d.roomCount as number | undefined,
           wallCount: d.wallCount as number | undefined,
+          aiRenderUrl: (typeof d.aiRenderUrl === "string" && d.aiRenderUrl.length > 10) ? d.aiRenderUrl : undefined,
         };
       } else {
         model3dData = {
@@ -313,6 +319,7 @@ export function useShowcaseData(): ShowcaseData {
           roomCount: d.roomCount as number | undefined,
           wallCount: d.wallCount as number | undefined,
           geometry: d.floorPlanGeometry as import("@/types/floor-plan").FloorPlanGeometry | undefined,
+          aiRenderUrl: (typeof d.aiRenderUrl === "string" && d.aiRenderUrl.length > 10) ? d.aiRenderUrl : undefined,
         };
       }
     }
