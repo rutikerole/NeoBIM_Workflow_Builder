@@ -412,22 +412,15 @@ function albedoToNormal(albedoCanvas,str){
 // ─── Floor Material Factory ────────────────────────────────────────────────
 function makePBRFloor(type,hex,rw,rd){
   if(type==='wood'){
-    // Wood: VERTICAL planks with dedicated normal map from plank edges
-    var wRes=makeWoodFloorPBR(hex);
-    wRes.diffuse.repeat.set(rw/2,rd/2);
-    wRes.normal.repeat.set(rw/2,rd/2);
-    return new THREE.MeshStandardMaterial({map:wRes.diffuse,normalMap:wRes.normal,normalScale:new THREE.Vector2(0.4,0.4),roughness:0.55,metalness:0.0,envMapIntensity:0.3});
+    // Wood: flat warm solid color — no texture, no planks, no stripes
+    return new THREE.MeshStandardMaterial({color:hex,roughness:0.55,metalness:0.0,envMapIntensity:0.3});
   }
   if(type==='tile'){
-    var tRes=makeTileFloorPBR(hex);
-    tRes.diffuse.repeat.set(rw/1.8,rd/1.8);
-    tRes.normal.repeat.set(rw/1.8,rd/1.8);
-    return new THREE.MeshStandardMaterial({map:tRes.diffuse,normalMap:tRes.normal,normalScale:new THREE.Vector2(0.3,0.3),roughness:0.3,metalness:0.02,envMapIntensity:0.4});
+    // Tile: flat solid color — clean look
+    return new THREE.MeshStandardMaterial({color:hex,roughness:0.3,metalness:0.02,envMapIntensity:0.4});
   }
-  // Stone / concrete fallback
-  var diffuse=makeStoneFloorTex(hex);
-  diffuse.repeat.set(rw/2.5,rd/2.5);
-  return new THREE.MeshStandardMaterial({map:diffuse,roughness:0.75,metalness:0.02,envMapIntensity:0.2});
+  // Stone / concrete: flat solid color
+  return new THREE.MeshStandardMaterial({color:hex,roughness:0.75,metalness:0.02,envMapIntensity:0.2});
 }
 
 // ─── VERTICAL-PLANK WOOD FLOOR (diffuse + normal) ─────────────────────────
