@@ -1619,6 +1619,99 @@ addEventListener("resize",function(){
   renderer.setSize(w2,h2);composer.setSize(w2,h2);
   if(fxaaPass)fxaaPass.uniforms['resolution'].value.set(1/w2,1/h2);
 });
+
+// ─── DIRECT GLTF DIAGNOSTIC TEST ─────────────────────────────────────────────
+// Bypasses all room mapping. Loads ONE sofa model directly into the scene center.
+setTimeout(function(){
+  console.log('[GLTF-TEST] ====== DIRECT GLTF DIAGNOSTIC ======');
+  console.log('[GLTF-TEST] THREE version: '+(typeof THREE!=='undefined'?THREE.REVISION:'NOT LOADED'));
+  console.log('[GLTF-TEST] GLTFLoader exists: '+(typeof THREE!=='undefined'&&typeof THREE.GLTFLoader!=='undefined'));
+  console.log('[GLTF-TEST] gltfLoader instance: '+(gltfLoader?'YES':'NULL'));
+  console.log('[GLTF-TEST] MODEL_CDN: '+MODEL_CDN);
+  console.log('[GLTF-TEST] __parentOrigin: '+__parentOrigin);
+  console.log('[GLTF-TEST] window.location.origin: '+window.location.origin);
+  console.log('[GLTF-TEST] window.location.href: '+window.location.href.substring(0,80));
+
+  if(!gltfLoader){
+    console.error('[GLTF-TEST] ABORT: No GLTFLoader. Trying to create one...');
+    if(typeof THREE!=='undefined'&&typeof THREE.GLTFLoader!=='undefined'){
+      gltfLoader=new THREE.GLTFLoader();
+      console.log('[GLTF-TEST] Created new GLTFLoader instance');
+    }else{
+      console.error('[GLTF-TEST] ABORT: THREE.GLTFLoader class not available');
+      return;
+    }
+  }
+
+  var proxyUrl=MODEL_CDN+'/sofa.glb';
+  var directUrl='https://pub-27d9a7371b6d47ff94fee1a3228f1720.r2.dev/models/sofa.glb';
+  console.log('[GLTF-TEST] Proxy URL: '+proxyUrl);
+  console.log('[GLTF-TEST] Direct URL: '+directUrl);
+
+  // First try: fetch() to test if URL is reachable before GLTFLoader
+  console.log('[GLTF-TEST] Step 1: Testing fetch() to proxy URL...');
+  fetch(proxyUrl,{method:'GET'}).then(function(resp){
+    console.log('[GLTF-TEST] fetch proxy: status='+resp.status+' ok='+resp.ok+' type='+resp.type+' contentType='+resp.headers.get('content-type'));
+    return resp.arrayBuffer();
+  }).then(function(buf){
+    console.log('[GLTF-TEST] fetch proxy: received '+buf.byteLength+' bytes ('+Math.round(buf.byteLength/1024)+'KB)');
+  }).catch(function(err){
+    console.error('[GLTF-TEST] fetch proxy FAILED: '+err.message);
+    console.log('[GLTF-TEST] Trying fetch() to direct R2 URL...');
+    return fetch(directUrl,{method:'GET'}).then(function(resp){
+      console.log('[GLTF-TEST] fetch direct: status='+resp.status+' ok='+resp.ok);
+      return resp.arrayBuffer();
+    }).then(function(buf){
+      console.log('[GLTF-TEST] fetch direct: received '+buf.byteLength+' bytes');
+    }).catch(function(err2){
+      console.error('[GLTF-TEST] fetch direct also FAILED: '+err2.message);
+    });
+  });
+
+  // Second try: actual GLTFLoader from proxy URL
+  console.log('[GLTF-TEST] Step 2: Loading via GLTFLoader from proxy...');
+  gltfLoader.load(proxyUrl,function(gltf){
+    console.log('[GLTF-TEST] GLTFLoader SUCCESS from proxy!');
+    var m=gltf.scene;
+    var bbox=new THREE.Box3().setFromObject(m);
+    var sz=bbox.getSize(new THREE.Vector3());
+    console.log('[GLTF-TEST] Model size: '+sz.x.toFixed(2)+'x'+sz.y.toFixed(2)+'x'+sz.z.toFixed(2));
+    // Place at scene center, scaled to 1m tall
+    var s=1.0/Math.max(sz.y,0.01);
+    m.scale.set(s,s,s);
+    m.position.set(CX,0,CZ);
+    m.traverse(function(ch){if(ch.isMesh){ch.castShadow=true;ch.receiveShadow=true}});
+    scene.add(m);
+    console.log('[GLTF-TEST] Model added to scene at center ('+CX+',0,'+CZ+') scale='+s.toFixed(4));
+    console.log('[GLTF-TEST] Scene children count: '+scene.children.length);
+  },function(p){
+    if(p.total>0)console.log('[GLTF-TEST] proxy progress: '+Math.round(p.loaded/p.total*100)+'%');
+    else console.log('[GLTF-TEST] proxy progress: '+p.loaded+' bytes loaded (total unknown)');
+  },function(err){
+    console.error('[GLTF-TEST] GLTFLoader PROXY FAILED: '+(err&&err.message?err.message:String(err)));
+    // Fallback: try direct R2 URL
+    console.log('[GLTF-TEST] Step 3: Trying GLTFLoader from direct R2 URL...');
+    gltfLoader.load(directUrl,function(gltf){
+      console.log('[GLTF-TEST] GLTFLoader SUCCESS from direct R2!');
+      var m=gltf.scene;
+      var bbox=new THREE.Box3().setFromObject(m);
+      var sz=bbox.getSize(new THREE.Vector3());
+      console.log('[GLTF-TEST] Model size: '+sz.x.toFixed(2)+'x'+sz.y.toFixed(2)+'x'+sz.z.toFixed(2));
+      var s=1.0/Math.max(sz.y,0.01);
+      m.scale.set(s,s,s);
+      m.position.set(CX,0,CZ);
+      m.traverse(function(ch){if(ch.isMesh){ch.castShadow=true;ch.receiveShadow=true}});
+      scene.add(m);
+      console.log('[GLTF-TEST] Model added from direct URL. Scene children: '+scene.children.length);
+    },function(p){
+      if(p.total>0)console.log('[GLTF-TEST] direct progress: '+Math.round(p.loaded/p.total*100)+'%');
+    },function(err2){
+      console.error('[GLTF-TEST] GLTFLoader DIRECT ALSO FAILED: '+(err2&&err2.message?err2.message:String(err2)));
+      console.error('[GLTF-TEST] ====== ALL METHODS FAILED ======');
+    });
+  });
+  console.log('[GLTF-TEST] ====== TEST DISPATCHED ======');
+},3000);
 <\/script>
 </body>
 </html>`;
