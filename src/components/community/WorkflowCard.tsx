@@ -266,8 +266,12 @@ export function WorkflowCard({
         {/* Title */}
         <h3 style={{
           fontSize: 14, fontWeight: 650, color: "#F0F0F5",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical" as const,
+          overflow: "hidden",
           marginBottom: 6, letterSpacing: "-0.01em",
+          lineHeight: 1.4,
         }}>
           {workflow.name}
         </h3>

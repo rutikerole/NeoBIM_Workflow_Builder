@@ -952,7 +952,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
   },
   {
     id: "wf-18",
-    name: "Text Prompt → IFC Export",
+    name: "Text Prompt → Conceptual Building → IFC Exporter",
     description:
       "Enter a building idea in plain text → AI generates a building description → 3D massing geometry is computed → downloadable IFC4 file is exported with walls, slabs, and storeys.",
     tags: ["ifc", "bim", "export", "text-to-ifc", "massing"],
