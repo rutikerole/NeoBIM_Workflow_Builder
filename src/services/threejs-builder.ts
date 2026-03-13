@@ -201,12 +201,21 @@ function loadPBRTex(mat,name,rx,ry,normalStr){
     tex.repeat.set(rx,ry);
     tex.anisotropy=maxAniso;
     tex.encoding=THREE.sRGBEncoding;
-    mat.map=tex;mat.color.set(0xFFFFFF);mat.needsUpdate=true;
+    // Disable mipmaps — prevents texture fading to white at steep angles
+    tex.generateMipmaps=false;
+    tex.minFilter=THREE.LinearFilter;
+    tex.magFilter=THREE.LinearFilter;
+    mat.map=tex;
+    // DO NOT set color to white — keep original hex so angles blend to wood, not white
+    mat.needsUpdate=true;
     console.log('[TEX] Loaded '+name+'-color.jpg');
   },null,function(){console.warn('[TEX] Failed: '+name+'-color.jpg — using solid color fallback')});
   texLoader.load(TEXTURE_CDN+'/'+name+'-normal.jpg',function(tex){
     tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
     tex.repeat.set(rx,ry);
+    tex.generateMipmaps=false;
+    tex.minFilter=THREE.LinearFilter;
+    tex.magFilter=THREE.LinearFilter;
     mat.normalMap=tex;mat.normalScale=new THREE.Vector2(normalStr,normalStr);
     mat.needsUpdate=true;
     console.log('[TEX] Loaded '+name+'-normal.jpg');
