@@ -206,7 +206,7 @@ function loadPBRTex(mat,name,rx,ry,normalStr){
     tex.minFilter=THREE.LinearFilter;
     tex.magFilter=THREE.LinearFilter;
     mat.map=tex;
-    // DO NOT set color to white — keep original hex so angles blend to wood, not white
+    mat.color.set(0xFFFFFF); // Reset to white so texture shows true colors (no tinting)
     mat.needsUpdate=true;
     console.log('[TEX] Loaded '+name+'-color.jpg');
   },null,function(){console.warn('[TEX] Failed: '+name+'-color.jpg — using solid color fallback')});
@@ -345,7 +345,7 @@ function makePBRFloor(type,hex,rw,rd){
   var rx=Math.max(1,rw/2),ry=Math.max(1,rd/2);
   // All rooms get wood texture — consistent, professional look
   var rough=type==='tile'?0.4:type==='stone'?0.6:0.55;
-  var mat=new THREE.MeshStandardMaterial({color:hex,roughness:rough,metalness:0.0,envMapIntensity:0.3});
+  var mat=new THREE.MeshStandardMaterial({color:hex,roughness:rough,metalness:0.0,envMapIntensity:0.3,side:THREE.DoubleSide});
   loadPBRTex(mat,'wood',rx,ry,0.8);
   return mat;
 }
@@ -828,16 +828,14 @@ gnd.rotation.x=-Math.PI/2;gnd.position.set(CX,-.16,CZ);gnd.receiveShadow=true;sc
   scene.add(shPlane);
 })();
 
-// ─── Building floor / image texture ─────────────────────────────────────────
+// ─── Building slab + wood floor base ─────────────────────────────────────────
+// Slab edge boxes REMOVED — they z-fought with floor planes causing white at angles
 if(HAS_IMG){
 var imgLoader=new THREE.TextureLoader();imgLoader.load(IMG_SRC,function(tex){tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;
 var imgFloor=new THREE.Mesh(new THREE.PlaneGeometry(BW,BD),new THREE.MeshStandardMaterial({map:tex,roughness:.5}));
 imgFloor.rotation.x=-Math.PI/2;imgFloor.position.set(CX,.01,CZ);imgFloor.receiveShadow=true;scene.add(imgFloor);});
 var slab=box(BW+.2,.12,BD+.2,new THREE.MeshStandardMaterial({color:0xD0C8B8,roughness:.7,metalness:.02}));
 slab.position.set(CX,-.06,CZ);slab.receiveShadow=true;scene.add(slab);
-// Slab edge bevel strip
-var slabEdge=box(BW+.3,.02,BD+.3,new THREE.MeshStandardMaterial({color:0xC8C0B0,roughness:.4,metalness:.05}));
-slabEdge.position.set(CX,.005,CZ);scene.add(slabEdge);
 } else if(isNonRect){
 var slabShape=new THREE.Shape();
 var ol=D.buildingOutline;
@@ -848,21 +846,19 @@ var slabGeo=new THREE.ShapeGeometry(slabShape);
 var slabM=new THREE.Mesh(slabGeo,new THREE.MeshStandardMaterial({color:0xD0C8B8,roughness:.8}));
 slabM.rotation.x=-Math.PI/2;slabM.position.y=-.075;slabM.receiveShadow=true;scene.add(slabM);
 // Full-building wood floor for non-rect buildings
-var nrFillMat=new THREE.MeshStandardMaterial({color:0xB89B6A,roughness:0.55,metalness:0.0,envMapIntensity:0.3});
+var nrFillMat=new THREE.MeshStandardMaterial({color:0xB89B6A,roughness:0.55,metalness:0.0,envMapIntensity:0.3,side:THREE.DoubleSide});
 loadPBRTex(nrFillMat,'wood',Math.max(1,BW/2),Math.max(1,BD/2),0.8);
 var nrFillGeo=new THREE.ShapeGeometry(slabShape);
 var nrFill=new THREE.Mesh(nrFillGeo,nrFillMat);
-nrFill.rotation.x=-Math.PI/2;nrFill.position.y=.003;nrFill.receiveShadow=true;scene.add(nrFill);
+nrFill.rotation.x=-Math.PI/2;nrFill.position.y=.002;nrFill.receiveShadow=true;scene.add(nrFill);
 } else {
-var slab=box(BW+.2,.15,BD+.2,new THREE.MeshStandardMaterial({color:0xD0C8B8,roughness:.7,metalness:.02}));
-slab.position.set(CX,-.075,CZ);slab.receiveShadow=true;scene.add(slab);
-var slabEdge2=box(BW+.3,.02,BD+.3,new THREE.MeshStandardMaterial({color:0xC8C0B0,roughness:.4,metalness:.05}));
-slabEdge2.position.set(CX,.005,CZ);scene.add(slabEdge2);
+var slab=box(BW+.2,.10,BD+.2,new THREE.MeshStandardMaterial({color:0xB89B6A,roughness:.7,metalness:.02}));
+slab.position.set(CX,-.05,CZ);slab.receiveShadow=true;scene.add(slab);
 // Full-building wood floor plane to cover gaps between rooms
-var gapFillMat=new THREE.MeshStandardMaterial({color:0xB89B6A,roughness:0.55,metalness:0.0,envMapIntensity:0.3});
+var gapFillMat=new THREE.MeshStandardMaterial({color:0xB89B6A,roughness:0.55,metalness:0.0,envMapIntensity:0.3,side:THREE.DoubleSide});
 loadPBRTex(gapFillMat,'wood',Math.max(1,BW/2),Math.max(1,BD/2),0.8);
 var gapFill=new THREE.Mesh(new THREE.PlaneGeometry(BW,BD),gapFillMat);
-gapFill.rotation.x=-Math.PI/2;gapFill.position.set(CX,.003,CZ);gapFill.receiveShadow=true;scene.add(gapFill);
+gapFill.rotation.x=-Math.PI/2;gapFill.position.set(CX,.002,CZ);gapFill.receiveShadow=true;scene.add(gapFill);
 }
 
 // ─── Floor plan image overlay (subtle ghost of original plan) ────────────────
