@@ -2254,25 +2254,36 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
       type LayoutRoom = { name: string; type: string; width: number; depth: number; x: number; y: number; adjacentRooms?: string[]; polygon?: [number, number][]; area?: number };
 
-      // Guess room type from name
+      // Guess room type from name — comprehensive fuzzy matching for any floor plan
       function guessType(name: string): string {
         const n = name.toLowerCase();
-        if (n.includes("living") || n.includes("lounge") || n.includes("drawing")) return "living";
-        if (n.includes("bed") || n.includes("master")) return "bedroom";
-        if (n.includes("kitchen") || n.includes("pantry")) return "kitchen";
-        if (n.includes("dining") || n.includes("nook")) return "dining";
-        if (n.includes("bath") || n.includes("toilet") || n.includes("wc") || n.includes("powder")) return "bathroom";
+        if (n.includes("living") || n.includes("lounge") || n.includes("drawing") || n.includes("sitting") || n.includes("family room") || n.includes("movie") || n.includes("cinema") || n.includes("theater") || n.includes("theatre") || n.includes("media")) return "living";
+        if (n.includes("bed") || n.includes("master") || n.includes("guest bed") || n.includes("nursery")) return "bedroom";
+        if (n.includes("kitchen") || n.includes("pantry") || n.includes("kitchenette")) return "kitchen";
+        if (n.includes("dining") || n.includes("nook") || n.includes("dinette") || n.includes("breakfast")) return "dining";
+        if (n.includes("bath") || n.includes("toilet") || n.includes("wc") || n.includes("powder") || n.includes("lavatory") || n.includes("washroom") || n.includes("restroom") || n.includes("shower") || /t\s*&\s*b/i.test(n) || /\bc\.?\s*b\b/i.test(n)) return "bathroom";
         if (n.includes("verand") || n.includes("porch")) return "veranda";
         if (n.includes("balcon")) return "balcony";
         if (n.includes("hall") || n.includes("corridor") || n.includes("lobby")) return "hallway";
         if (n.includes("passage") || n.includes("foyer")) return "passage";
-        if (n.includes("office") || n.includes("study") || n.includes("den")) return "office";
-        if (n.includes("store") || n.includes("storage")) return "storage";
-        if (n.includes("closet") || n.includes("wardrobe")) return "closet";
-        if (n.includes("utility") || n.includes("laundry")) return "utility";
-        if (n.includes("patio") || n.includes("terrace") || n.includes("deck")) return "patio";
-        if (n.includes("entrance") || n.includes("entry")) return "entrance";
+        if (n.includes("office") || n.includes("study") || n.includes("den") || n.includes("workspace")) return "office";
+        if (n.includes("store") || n.includes("storage") || n.includes("cellar") || n.includes("garage") || n.includes("shed") || n.includes("carport")) return "storage";
+        if (n.includes("closet") || n.includes("wardrobe") || n.includes("dressing") || n.includes("hanging")) return "closet";
+        if (n.includes("utility") || n.includes("laundry") || n.includes("mechanical")) return "utility";
+        if (n.includes("patio") || n.includes("terrace") || n.includes("deck") || n.includes("courtyard")) return "patio";
+        if (n.includes("entrance") || n.includes("entry") || /\bentr\b/.test(n)) return "entrance";
         if (n.includes("stair") || n.includes("steps")) return "staircase";
+        if (n.includes("studio")) return "studio";
+        if (n.includes("gym") || n.includes("spa") || n.includes("sauna") || n.includes("workout")) return "living";
+        if (n.includes("light well") || n.includes("shaft") || n.includes("void")) return "other";
+        // Compound names (Kitchen/Living → try each part)
+        const parts = n.split(/[\/,&+]/);
+        if (parts.length > 1) {
+          for (const part of parts) {
+            const sub = guessType(part.trim());
+            if (sub !== "other") return sub;
+          }
+        }
         return "other";
       }
 

@@ -54,7 +54,35 @@ const VALID_TYPES: FloorPlanRoomType[] = [
 
 function safeType(t: string): FloorPlanRoomType {
   const lower = t.toLowerCase().trim();
-  return VALID_TYPES.includes(lower as FloorPlanRoomType) ? (lower as FloorPlanRoomType) : "other";
+  // Exact match first
+  if (VALID_TYPES.includes(lower as FloorPlanRoomType)) return lower as FloorPlanRoomType;
+  // Fuzzy substring matching for real-world labels (M. Bed Room, T&B, CB, etc.)
+  if (/\bbed\b|bedroom|master\b|guest\s*bed/i.test(lower)) return "bedroom";
+  if (/\bliving\b|lounge|drawing|sitting|family\s*room|movie|cinema|theater|theatre|media/i.test(lower)) return "living";
+  if (/\bkitchen\b|pantry|kitchenette/i.test(lower)) return "kitchen";
+  if (/\bdining\b|dinette|breakfast\s*nook/i.test(lower)) return "dining";
+  if (/\bbath\b|toilet|wc\b|powder|lavatory|t\s*&\s*b|t\.?\s*b\b|\bc\.?\s*b\b|washroom|restroom|shower/i.test(lower)) return "bathroom";
+  if (/\bverand|porch/i.test(lower)) return "veranda";
+  if (/\bbalcon/i.test(lower)) return "balcony";
+  if (/\bhall\b|hallway|corridor|lobby|glazed\s*hall/i.test(lower)) return "hallway";
+  if (/\bpassage|foyer/i.test(lower)) return "passage";
+  if (/\boffice\b|study\b|den\b|workspace/i.test(lower)) return "office";
+  if (/\bstor|cellar|wine|garage|shed|carport/i.test(lower)) return "storage";
+  if (/\bcloset|wardrobe|dressing|hanging\s*space/i.test(lower)) return "closet";
+  if (/\butility|laundry|mechanical/i.test(lower)) return "utility";
+  if (/\bpatio|terrace|deck\b|courtyard/i.test(lower)) return "patio";
+  if (/\bentrance|entry|entr\b/i.test(lower)) return "entrance";
+  if (/\bstair|steps/i.test(lower)) return "staircase";
+  if (/\bstudio\b/i.test(lower)) return "studio";
+  // Compound names: pick the first recognized type (Kitchen/Living → kitchen)
+  const parts = lower.split(/[\/,&+]/);
+  if (parts.length > 1) {
+    for (const part of parts) {
+      const sub = safeType(part.trim());
+      if (sub !== "other") return sub;
+    }
+  }
+  return "other";
 }
 
 // ─── Main Entry Point ────────────────────────────────────────────────────────
