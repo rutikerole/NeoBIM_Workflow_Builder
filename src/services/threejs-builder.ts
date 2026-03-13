@@ -411,14 +411,14 @@ function albedoToNormal(albedoCanvas,str){
 }
 // Create a PBR-like floor material: diffuse + normal from existing makeFloorTex
 function makePBRFloor(type,hex,rw,rd){
-  var diffuse=makeFloorTex(type,hex);
+  var diffuse=makeFloorTexV2(type,hex);
   diffuse.repeat.set(rw/2.5,rd/2.5);
-  var nCanvas=albedoToNormal(diffuse.image,type==='wood'?3.0:type==='tile'?2.5:1.8);
+  var nCanvas=albedoToNormal(diffuse.image,type==='wood'?0.4:type==='tile'?0.6:0.3);
   var nTex=new THREE.CanvasTexture(nCanvas);
   nTex.wrapS=nTex.wrapT=THREE.RepeatWrapping;
   nTex.repeat.copy(diffuse.repeat);nTex.anisotropy=maxAniso;
   var rough=type==='wood'?0.65:type==='tile'?0.35:type==='mosaic'?0.3:0.75;
-  return new THREE.MeshStandardMaterial({map:diffuse,normalMap:nTex,normalScale:new THREE.Vector2(0.7,0.7),roughness:rough,metalness:0.02,envMapIntensity:0.3});
+  return new THREE.MeshStandardMaterial({map:diffuse,normalMap:nTex,normalScale:new THREE.Vector2(0.3,0.3),roughness:rough,metalness:0.02,envMapIntensity:0.3});
 }
 // Create PBR wall material: plaster diffuse + normal
 function makePBRWall(isExt){
@@ -430,9 +430,70 @@ function makePBRWall(isExt){
   return new THREE.MeshStandardMaterial({map:diff,normalMap:nTex,normalScale:new THREE.Vector2(0.35,0.35),color:isExt?0xF0E8DC:0xF5F0E8,roughness:isExt?0.78:0.82,metalness:0.01,envMapIntensity:0.15});
 }
 
+// ─── Clean Floor Texture (V2 — accumulated position, no stripe artifacts) ────
+function makeFloorTexV2(type,hex){
+  var S=1024,c=document.createElement("canvas");c.width=S;c.height=S;
+  var g=c.getContext("2d");
+  var R=(hex>>16)&0xff,G=(hex>>8)&0xff,B=hex&0xff;
+  g.fillStyle="rgb("+R+","+G+","+B+")";g.fillRect(0,0,S,S);
+  if(type==="wood"){
+    var yP=0,rw=0;
+    while(yP<S){
+      var pH=70+Math.floor(Math.random()*35);
+      if(yP+pH>S)pH=S-yP;
+      var rv=Math.floor(Math.random()*18-9);
+      var cR=Math.max(0,Math.min(255,R+rv)),cG=Math.max(0,Math.min(255,G+Math.floor(rv*0.7))),cB=Math.max(0,Math.min(255,B+Math.floor(rv*0.5)));
+      var stg=(rw%3)*(S*0.22)+Math.random()*S*0.06;
+      var pW=S*0.38+Math.random()*S*0.28;
+      for(var px=-pW+stg;px<S+pW;px+=pW){
+        var sv=Math.floor(Math.random()*10-5);
+        var sR=Math.max(0,Math.min(255,cR+sv)),sG=Math.max(0,Math.min(255,cG+Math.floor(sv*0.8))),sB=Math.max(0,Math.min(255,cB+Math.floor(sv*0.6)));
+        var pg=g.createLinearGradient(px,0,px+pW,0);
+        pg.addColorStop(0,'rgb('+sR+','+sG+','+sB+')');
+        pg.addColorStop(0.5,'rgb('+Math.min(255,sR+5)+','+Math.min(255,sG+3)+','+Math.min(255,sB+2)+')');
+        pg.addColorStop(1,'rgb('+sR+','+sG+','+sB+')');
+        g.fillStyle=pg;g.fillRect(px,yP,pW,pH);
+        g.fillStyle='rgba(0,0,0,0.03)';g.fillRect(px,yP,1,pH);
+      }
+      g.fillStyle='rgba(0,0,0,0.045)';g.fillRect(0,yP,S,1);
+      for(var gi=0;gi<6;gi++){
+        var gy=yP+5+Math.random()*(pH-10);
+        g.strokeStyle='rgba(0,0,0,0.012)';g.lineWidth=0.3;
+        g.beginPath();g.moveTo(0,gy);
+        for(var gx=0;gx<S;gx+=30){g.lineTo(gx,gy+Math.sin(gx*0.02+rw*1.5)*0.8)}
+        g.stroke();
+      }
+      if(Math.random()<0.08){
+        var kx=60+Math.random()*(S-120),ky=yP+pH*0.3+Math.random()*pH*0.4,kr=3+Math.random()*5;
+        var kg=g.createRadialGradient(kx,ky,0,kx,ky,kr);
+        kg.addColorStop(0,'rgba(60,35,15,0.15)');kg.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=kg;g.beginPath();g.arc(kx,ky,kr,0,Math.PI*2);g.fill();
+      }
+      yP+=pH;rw++;
+    }
+  }else if(type==="tile"){
+    var ts=Math.floor(S/8);
+    for(var tx=0;tx<S;tx+=ts)for(var ty=0;ty<S;ty+=ts){
+      var tv=Math.random()*8-4;
+      g.fillStyle='rgb('+Math.max(0,Math.min(255,R+tv))+','+Math.max(0,Math.min(255,G+tv))+','+Math.max(0,Math.min(255,B+tv))+')';
+      g.fillRect(tx+1,ty+1,ts-2,ts-2);
+    }
+    g.strokeStyle='rgba(0,0,0,0.05)';g.lineWidth=1;
+    for(var tlx=0;tlx<=S;tlx+=ts){g.beginPath();g.moveTo(tlx,0);g.lineTo(tlx,S);g.stroke()}
+    for(var tly=0;tly<=S;tly+=ts){g.beginPath();g.moveTo(0,tly);g.lineTo(S,tly);g.stroke()}
+  }else if(type==="stone"){
+    for(var si=0;si<30;si++){var sx2=Math.random()*(S-60),sy2=Math.random()*(S-40),sw2=40+Math.random()*60,sh2=30+Math.random()*40;
+      var sV=Math.random()*14-7;g.fillStyle='rgb('+Math.max(0,Math.min(255,R+sV))+','+Math.max(0,Math.min(255,G+sV))+','+Math.max(0,Math.min(255,B+sV))+')';
+      g.fillRect(sx2,sy2,sw2,sh2);g.strokeStyle='rgba(0,0,0,0.03)';g.lineWidth=0.5;g.strokeRect(sx2,sy2,sw2,sh2);}
+  }else{
+    for(var cnx=0;cnx<S;cnx+=4)for(var cny=0;cny<S;cny+=4){g.fillStyle='rgba(0,0,0,'+(Math.random()*0.02)+')';g.fillRect(cnx,cny,4,4)}
+  }
+  var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;t.anisotropy=maxAniso;return t;
+}
+
 // ─── Color / texture maps ────────────────────────────────────────────────────
-var TT={living:"wood",dining:"wood",bedroom:"wood",office:"wood",studio:"wood",kitchen:"tile",bathroom:"tile",veranda:"stone",balcony:"stone",patio:"stone",hallway:"wood",entrance:"wood",passage:"wood",staircase:"stone",utility:"concrete",storage:"concrete",closet:"concrete",other:"concrete"};
-var FC={living:0xA08458,dining:0x9A7E52,kitchen:0xD4CCC0,bedroom:0xA08458,bathroom:0xCCC8BE,veranda:0x8A806E,balcony:0x8A806E,patio:0x8A806E,hallway:0x9A8E78,entrance:0x9A8E78,passage:0x9A8E78,staircase:0x8A7E68,utility:0x7A7468,storage:0x7A7468,closet:0x7A7468,office:0xA08458,studio:0x9A7E52,other:0x8A8070};
+var TT={living:"wood",dining:"wood",bedroom:"wood",office:"wood",studio:"wood",kitchen:"wood",bathroom:"tile",veranda:"stone",balcony:"stone",patio:"stone",hallway:"wood",entrance:"wood",passage:"wood",staircase:"wood",utility:"wood",storage:"wood",closet:"wood",other:"wood"};
+var FC={living:0xA08458,dining:0xA08458,kitchen:0xA08458,bedroom:0xA08458,bathroom:0xD0CBC0,veranda:0x8A806E,balcony:0x8A806E,patio:0x8A806E,hallway:0xA08458,entrance:0xA08458,passage:0xA08458,staircase:0xA08458,utility:0xA08458,storage:0xA08458,closet:0xA08458,office:0xA08458,studio:0xA08458,other:0xA08458};
 var LC={living:"#4F8AFF",dining:"#4F8AFF",studio:"#4F8AFF",bedroom:"#8B5CF6",office:"#8B5CF6",kitchen:"#10B981",bathroom:"#3B82F6",veranda:"#10B981",balcony:"#10B981",patio:"#10B981",hallway:"#F59E0B",entrance:"#F59E0B",passage:"#F59E0B",staircase:"#F59E0B",utility:"#707080",storage:"#707080",closet:"#707080",other:"#8888A0"};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
