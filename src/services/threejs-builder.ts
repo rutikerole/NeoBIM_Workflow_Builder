@@ -1,13 +1,16 @@
 /**
- * Three.js Floor Plan 3D Builder — High-Quality Edition
+ * Three.js Floor Plan 3D Builder — Ultra-Realistic Edition
  *
  * Self-contained HTML with embedded Three.js scene.
  * Rooms use absolute x,y positions (meters from building top-left).
  * Walls are computed from shared edges — not per-room boxes.
- * Features: 512x512 procedural floor textures, plaster walls, door openings,
- * frosted-glass labels with color-coded borders (toggle-able), area watermarks,
- * smooth 800ms camera transitions, click-to-focus, grid helper,
- * furniture with rugs, BuildFlow-themed UI.
+ * Features: 1024x1024 procedural floor textures (12-plank wood, ceramic tile, mosaic),
+ * warm plaster walls with stucco texture, door frames with ajar panels + handles,
+ * mullioned windows with glass + sill, per-room ceilings with recessed lights,
+ * warm point lighting per room, abstract wall paintings, framed bathroom mirrors,
+ * frosted-glass labels (toggle-able), smooth 800ms camera transitions,
+ * click-to-focus, first-person walkthrough, GLTF furniture from R2 CDN,
+ * post-processing (bloom, color grading, FXAA, vignette).
  */
 
 import type { FloorPlanGeometry } from "@/types/floor-plan";
@@ -35,7 +38,7 @@ canvas{display:block}
 </style>
 </head>
 <body>
-<div id="bf-dbg" style="position:fixed;top:4px;left:4px;z-index:9999;background:rgba(79,138,255,0.85);color:#fff;padding:3px 8px;font-size:9px;border-radius:4px;pointer-events:none;font-family:monospace;letter-spacing:.5px">BUILDER v3.1</div>
+<div id="bf-dbg" style="position:fixed;top:4px;left:4px;z-index:9999;background:rgba(79,138,255,0.85);color:#fff;padding:3px 8px;font-size:9px;border-radius:4px;pointer-events:none;font-family:monospace;letter-spacing:.5px">BUILDER v4.0</div>
 <div id="tip"><div class="tn" id="tN"></div><div class="td" id="tD"></div></div>
 <script>
 // Early message queue — captures commands while Three.js CDN loads
@@ -171,18 +174,18 @@ controls.target.set(CX,0,CZ);
   console.log('[BUILDER] Procedural HDR environment map applied');
 })();
 
-// ─── Lights (warm key + cool fill + sky hemisphere) ──────────────────────────
-scene.add(new THREE.AmbientLight(0xFFF5E8,.6));
-var sun=new THREE.DirectionalLight(0xFFECCC,2.5);
-sun.position.set(BW+6,22,-4);sun.castShadow=true;
+// ─── Lights (warm golden-hour key + cool fill + sky hemisphere) ──────────────
+scene.add(new THREE.AmbientLight(0xFFF5E8,.2));
+var sun=new THREE.DirectionalLight(0xFFF4E0,2.8);
+sun.position.set(BW*0.7,18,-BD*0.3);sun.castShadow=true;
 sun.shadow.mapSize.set(4096,4096);
-var sc=sun.shadow.camera;sc.left=-35;sc.right=35;sc.top=35;sc.bottom=-35;sc.near=1;sc.far=70;
-sun.shadow.bias=-.0002;sun.shadow.normalBias=.02;scene.add(sun);
-var fill=new THREE.DirectionalLight(0xC0D8F0,.8);
-fill.position.set(-10,15,BD+6);scene.add(fill);
-var rim=new THREE.DirectionalLight(0xE0C8F0,.25);
+var sc=sun.shadow.camera;sc.left=-BW-4;sc.right=BW+4;sc.top=BD+4;sc.bottom=-BD-4;sc.near=1;sc.far=60;
+sun.shadow.bias=-.0001;sun.shadow.normalBias=.015;scene.add(sun);
+var fill=new THREE.DirectionalLight(0xC8DDFF,.5);
+fill.position.set(-BW*0.5,12,BD*0.5);scene.add(fill);
+var rim=new THREE.DirectionalLight(0xE0C8F0,.15);
 rim.position.set(CX,-2,CZ-MXD);scene.add(rim);
-scene.add(new THREE.HemisphereLight(0xC0D8F0,0x8A7A60,.7));
+scene.add(new THREE.HemisphereLight(0xF0EDE8,0x8A7A60,.7));
 
 // ─── Anisotropic Filtering ───────────────────────────────────────────────────
 var maxAniso=renderer.capabilities.getMaxAnisotropy();
@@ -203,11 +206,12 @@ function makeFloorTex(type,hex){
   g.fillStyle="rgb("+R+","+G+","+B+")";g.fillRect(0,0,S,S);
 
   if(type==="wood"){
-    var plankH=Math.floor(S/6);
-    var baseColors=[[R,G,B],[R+12,G+8,B+4],[R-10,G-8,B-6],[R+5,G-2,B-4],[R-5,G+5,B+2]];
-    for(var row=0;row<6;row++){
-      var stagger=(row%2)*(S*0.35);
-      var pw=S*0.5+Math.random()*S*0.3;
+    var plankH=Math.floor(S/12);
+    var baseColors=[[R,G,B],[R+12,G+8,B+4],[R-10,G-8,B-6],[R+5,G-2,B-4],[R-5,G+5,B+2],[R+8,G+10,B+6],[R-6,G+3,B-2]];
+    for(var row=0;row<12;row++){
+      plankH=Math.floor(S/12)+Math.floor(Math.random()*18-9);
+      var stagger=(row%3)*(S*0.22)+Math.random()*S*0.08;
+      var pw=S*0.35+Math.random()*S*0.3;
       for(var px=-pw;px<S+pw;px+=pw){
         var bc=baseColors[Math.floor(Math.random()*baseColors.length)];
         var pGrad=g.createLinearGradient(px+stagger,0,px+stagger+pw,0);
@@ -221,9 +225,11 @@ function makeFloorTex(type,hex){
         g.fillStyle='rgba(25,12,4,0.12)';
         g.fillRect(px+stagger,row*plankH,1,plankH);
       }
-      // Horizontal plank gap (subtle)
-      g.fillStyle='rgba(20,8,2,0.18)';
+      // Horizontal plank gap (beveled edge — dark then light highlight)
+      g.fillStyle='rgba(20,8,2,0.12)';
       g.fillRect(0,row*plankH,S,1);
+      g.fillStyle='rgba(255,240,220,0.03)';
+      g.fillRect(0,row*plankH+1,S,1);
       // Wavy grain lines (very subtle)
       for(var gi=0;gi<20;gi++){
         var gy=row*plankH+3+Math.random()*(plankH-6);
@@ -304,22 +310,30 @@ function makeFloorTex(type,hex){
 function makePlasterTex(){
   var S=512,c=document.createElement("canvas");c.width=S;c.height=S;
   var g=c.getContext("2d");
-  g.fillStyle="#F0E8DC";g.fillRect(0,0,S,S);
-  // Plaster micro-texture — varied warm tones
-  for(var i=0;i<3000;i++){
-    var v=230+Math.floor(Math.random()*20-10);
-    g.fillStyle='rgb('+v+','+(v-3)+','+(v-8)+')';
-    g.fillRect(Math.random()*S,Math.random()*S,1+Math.random()*2.5,1+Math.random()*2);
+  g.fillStyle="#F5F0E8";g.fillRect(0,0,S,S);
+  // Plaster micro-texture — warm stucco feel with varied stippling
+  for(var i=0;i<5000;i++){
+    var v=228+Math.floor(Math.random()*22-11);
+    var warm=Math.random()>0.5?3:0;
+    g.fillStyle='rgb('+(v+warm)+','+(v-2)+','+(v-7)+')';
+    g.fillRect(Math.random()*S,Math.random()*S,1+Math.random()*2,1+Math.random()*1.5);
   }
-  // Subtle trowel marks
-  for(var tm=0;tm<8;tm++){
-    g.strokeStyle='rgba(0,0,0,'+(0.01+Math.random()*0.02)+')';
-    g.lineWidth=0.8+Math.random()*1.5;
+  // Subtle trowel/brush marks (more of them, lighter)
+  for(var tm=0;tm<14;tm++){
+    g.strokeStyle='rgba(0,0,0,'+(0.008+Math.random()*0.015)+')';
+    g.lineWidth=0.6+Math.random()*1.2;
     g.beginPath();
     var tmx=Math.random()*S,tmy=Math.random()*S;
     g.moveTo(tmx,tmy);
-    for(var ts=0;ts<6;ts++){tmx+=Math.random()*80-40;tmy+=Math.random()*60-20;g.lineTo(tmx,tmy)}
+    for(var ts=0;ts<8;ts++){tmx+=Math.random()*60-30;tmy+=Math.random()*50-15;g.lineTo(tmx,tmy)}
     g.stroke();
+  }
+  // Very subtle warm patches (simulates paint unevenness)
+  for(var wp=0;wp<4;wp++){
+    var wpx=Math.random()*S,wpy=Math.random()*S;
+    var wpGrad=g.createRadialGradient(wpx,wpy,0,wpx,wpy,40+Math.random()*60);
+    wpGrad.addColorStop(0,'rgba(245,235,215,0.08)');wpGrad.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=wpGrad;g.fillRect(wpx-80,wpy-80,160,160);
   }
   var t=new THREE.CanvasTexture(c);
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
@@ -896,6 +910,20 @@ D.rooms.forEach(function(r){
   }
   fl.userData={room:r,area:area,cx:cx,cz:cz};rmM.push(fl);scene.add(fl);
 
+  // ─── Ceiling (off-white plaster, visible in walkthrough) ────────────────────
+  if(!HAS_IMG){
+    var ceilMat=new THREE.MeshStandardMaterial({color:0xF2EDE4,roughness:0.92,metalness:0.0,side:THREE.DoubleSide});
+    var ceilPlane=new THREE.Mesh(new THREE.PlaneGeometry(w-0.04,d-0.04),ceilMat);
+    ceilPlane.rotation.x=Math.PI/2;ceilPlane.position.set(cx,WH-0.01,cz);ceilPlane.receiveShadow=true;
+    scene.add(ceilPlane);
+    // Recessed ceiling light (warm disc)
+    var cLightDisc=new THREE.Mesh(new THREE.CircleGeometry(0.08,16),new THREE.MeshBasicMaterial({color:0xFFF8E8}));
+    cLightDisc.rotation.x=Math.PI/2;cLightDisc.position.set(cx,WH-0.015,cz);scene.add(cLightDisc);
+  }
+  // Per-room warm point light (simulates ceiling lamp)
+  var roomLight=new THREE.PointLight(0xFFF0D0,0.4,Math.max(w,d)*2);
+  roomLight.position.set(cx,WH-0.1,cz);scene.add(roomLight);
+
   if(!HAS_IMG){
   // Area watermark on floor
   var ac=document.createElement("canvas");ac.width=256;ac.height=128;
@@ -981,6 +1009,8 @@ D.rooms.forEach(function(r){
       var leaves=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8),MAT.plantGreen);
       leaves.position.set(cx+w*.35,.32,cz-d*.35);leaves.castShadow=true;procAdd(leaves);
     }
+    // Wall painting
+    if(d>2.0)addPainting(cx,1.75,ry+0.06,0.7,0.5,0);
   }
   if(r.type==="bedroom"){
     var bedW=Math.min(1.5,w*.45),bedD=Math.min(1.9,d*.5);
@@ -994,10 +1024,8 @@ D.rooms.forEach(function(r){
     }
     var bRug=createRug(Math.min(w*.5,1.8),Math.min(d*.3,1.0),"minimal");
     bRug.position.set(cx,.007,cz+bedD/2+.2);procAdd(bRug);
-    var artFrame=box(.5,.4,.02,new THREE.MeshStandardMaterial({color:0x1A1A1A,roughness:.3}));
-    artFrame.position.set(cx,1.6,cz-bedD/2+.02);procAdd(artFrame);
-    var artCanvas=box(.44,.34,.01,new THREE.MeshStandardMaterial({color:0x3498DB,roughness:.85}));
-    artCanvas.position.set(cx,1.6,cz-bedD/2+.035);procAdd(artCanvas);
+    // Bedroom painting above headboard
+    addPainting(cx,1.65,cz-bedD/2+0.04,0.55,0.4,0);
   }
   if(r.type==="dining"){
     var tW2=Math.min(1.2,w*.4),tD2=Math.min(.8,d*.3);
@@ -1008,6 +1036,8 @@ D.rooms.forEach(function(r){
     var c2=createChair(0);procAddGrp(c2,cx+tW2*.35,0,cz-tD2/2-chairOff);
     var c3=createChair(Math.PI);procAddGrp(c3,cx-tW2*.35,0,cz+tD2/2+chairOff);
     var c4=createChair(Math.PI);procAddGrp(c4,cx+tW2*.35,0,cz+tD2/2+chairOff);
+    // Wall painting for dining room
+    if(w>2.0)addPainting(rx+w-0.06,1.7,cz,0.65,0.5,Math.PI/2);
   }
   if(r.type==="kitchen"){
     var kW=Math.min(w*.6,2.2),kD=.52;
@@ -1024,7 +1054,10 @@ D.rooms.forEach(function(r){
     var vanity=createVanity(Math.min(.55,w*.3));
     procAddGrp(vanity,cx-w*.15,0,cz+d*.2);
     if(d>1.8){
-      procAddAt(box(Math.min(.55,w*.3),.45,.02,MAT.mirror),cx-w*.15,1.35,cz+d*.35);
+      // Mirror with frame above vanity
+      var mirW=Math.min(.55,w*.3),mirH=0.6;
+      procAddAt(box(mirW+0.06,mirH+0.06,0.02,new THREE.MeshStandardMaterial({color:0x2A2A2A,roughness:0.4,metalness:0.2})),cx-w*.15,1.4,cz+d*.35);
+      procAddAt(box(mirW,mirH,0.015,MAT.mirror),cx-w*.15,1.4,cz+d*.35+0.01);
     }
   }
   if(r.type==="veranda"||r.type==="balcony"||r.type==="patio"){
@@ -1075,6 +1108,47 @@ D.rooms.forEach(function(r){
   scene.add(procGrp);
 });
 
+// ─── Wall Painting (abstract art on canvas with frame) ──────────────────────
+function addPainting(px,py,pz,pw,ph,rotY){
+  var fCol=Math.random()>0.5?0x2A1A0E:0x1A1A28;
+  var fr=box(pw+0.06,ph+0.06,0.025,new THREE.MeshStandardMaterial({color:fCol,roughness:0.4,metalness:0.05}));
+  fr.position.set(px,py,pz);fr.rotation.y=rotY||0;scene.add(fr);
+  var ac2=document.createElement('canvas');ac2.width=160;ac2.height=120;
+  var actx=ac2.getContext('2d');
+  var pals=[['#4A6741','#8B6B4A','#5B7A8C','#C49A6C'],['#2C4A6B','#8B4A4A','#4A7B5B','#9B7A4A'],['#6B5030','#4A6B5A','#7B5A4A','#3A5A7B']];
+  var pal=pals[Math.floor(Math.random()*pals.length)];
+  actx.fillStyle=pal[0];actx.fillRect(0,0,160,120);
+  for(var ai2=0;ai2<7;ai2++){actx.fillStyle=pal[Math.floor(Math.random()*pal.length)];actx.globalAlpha=0.3+Math.random()*0.4;actx.fillRect(Math.random()*100,Math.random()*70,25+Math.random()*70,20+Math.random()*50)}
+  actx.globalAlpha=1;
+  var artP=new THREE.Mesh(new THREE.PlaneGeometry(pw,ph),new THREE.MeshStandardMaterial({map:new THREE.CanvasTexture(ac2),roughness:0.8}));
+  artP.position.set(px,py,pz);artP.rotation.y=rotY||0;artP.translateZ(0.014);scene.add(artP);
+}
+
+// ─── Door Frame + Panel ─────────────────────────────────────────────────────
+var dfMat=new THREE.MeshStandardMaterial({color:0x5C3D2E,roughness:0.5,metalness:0.05});
+var dpMat=new THREE.MeshStandardMaterial({color:0x8B6F4E,roughness:0.4,metalness:0.03});
+var dhMat=new THREE.MeshStandardMaterial({color:0xC0C0C0,roughness:0.15,metalness:0.85});
+function addDoorFrame(dx,dz,isVert){
+  var dw=0.85,dh=2.1,ft=0.055,fd=0.13;
+  if(isVert){
+    addAt(box(fd,dh,ft,dfMat),dx,dh/2,dz-dw/2);
+    addAt(box(fd,dh,ft,dfMat),dx,dh/2,dz+dw/2);
+    addAt(box(fd,ft,dw+ft*2,dfMat),dx,dh+ft/2,dz);
+    var dp=box(0.035,dh-0.05,dw-0.06,dpMat);
+    dp.geometry.translate(0,0,dw/2-0.03);
+    dp.position.set(dx,dh/2,dz-dw/2+0.03);dp.rotation.y=0.3;dp.castShadow=true;scene.add(dp);
+    var dhl=cyl(0.012,0.012,0.1,8,dhMat);dhl.rotation.z=Math.PI/2;dhl.position.set(dx+0.04,1.0,dz+dw*0.15);scene.add(dhl);
+  }else{
+    addAt(box(ft,dh,fd,dfMat),dx-dw/2,dh/2,dz);
+    addAt(box(ft,dh,fd,dfMat),dx+dw/2,dh/2,dz);
+    addAt(box(dw+ft*2,ft,fd,dfMat),dx,dh+ft/2,dz);
+    var dp2=box(dw-0.06,dh-0.05,0.035,dpMat);
+    dp2.geometry.translate(dw/2-0.03,0,0);
+    dp2.position.set(dx-dw/2+0.03,dh/2,dz);dp2.rotation.y=0.3;dp2.castShadow=true;scene.add(dp2);
+    var dhl2=cyl(0.012,0.012,0.1,8,dhMat);dhl2.rotation.x=Math.PI/2;dhl2.position.set(dx+dw*0.15,1.0,dz+0.04);scene.add(dhl2);
+  }
+}
+
 // ─── WALLS ──────────────────────────────────────────────────────────────────
 if(HAS_SVG_WALLS){
 // Render wall segments from SVG parsing
@@ -1117,8 +1191,8 @@ if(rl2>=2){var wm3=box(cW*1.5,WH,rl2*cD,wMat);wm3.position.set(wx2*cW,WH/2,(rs2+
 rs2=-1;}}}
 };wallImg2.src=IMG_SRC;
 } else {
-var extMat=new THREE.MeshStandardMaterial({map:pTex,color:0xE8E0D4,roughness:.85,metalness:.01});
-var intMat=new THREE.MeshStandardMaterial({map:pTex,color:0xEDE6DA,roughness:.88,metalness:.01});
+var extMat=new THREE.MeshStandardMaterial({map:pTex,color:0xF0E8DC,roughness:.82,metalness:.01});
+var intMat=new THREE.MeshStandardMaterial({map:pTex,color:0xF5F0E6,roughness:.85,metalness:.01});
 var EWT=0.18,IWT=0.1,DGap=0.85,DHt=2.1;
 
 function addWall(x,y2,z,w,h,d,mat){var m=box(w,h,d,mat);m.position.set(x,y2,z);scene.add(m)}
@@ -1174,6 +1248,7 @@ for(var i=0;i<D.rooms.length;i++){
                 addWall(wallX,WH/2,oBot-halfLen/2,IWT,WH,halfLen,intMat);
                 var linH=WH-DHt;
                 if(linH>0.05)addWall(wallX,DHt+linH/2,wMid,IWT,linH,DGap,intMat);
+                addDoorFrame(wallX,wMid,true);
               }
             }else{
               addWall(wallX,WH/2,wMid,IWT,WH,wLen,intMat);
@@ -1203,6 +1278,7 @@ for(var i=0;i<D.rooms.length;i++){
                 addWall(oRight-halfLen2/2,WH/2,wallZ,halfLen2,WH,IWT,intMat);
                 var linH2=WH-DHt;
                 if(linH2>0.05)addWall(wMid2,DHt+linH2/2,wallZ,DGap,linH2,IWT,intMat);
+                addDoorFrame(wMid2,wallZ,false);
               }
             }else{
               addWall(wMid2,WH/2,wallZ,wLen2,WH,IWT,intMat);
@@ -1286,10 +1362,16 @@ function addWindow(wx,wz,rot){
   var glass=new THREE.Mesh(new THREE.PlaneGeometry(winW,winH),winMat);
   glass.position.set(wx,winBottom+winH/2,wz);
   glass.rotation.y=rot;scene.add(glass);
-  // Frame (4 thin bars)
-  var fT=0.02;
+  // Frame (4 outer bars)
+  var fT=0.025;
   var fTop=box(winW+fT*2,fT,fT,winFrameMat);fTop.position.set(wx,winBottom+winH,wz);fTop.rotation.y=rot;scene.add(fTop);
   var fBot=box(winW+fT*2,fT,fT,winFrameMat);fBot.position.set(wx,winBottom,wz);fBot.rotation.y=rot;scene.add(fBot);
+  var fLeft=box(fT,winH,fT,winFrameMat);fLeft.position.set(wx,winBottom+winH/2,wz);fLeft.rotation.y=rot;fLeft.translateX(-winW/2);scene.add(fLeft);
+  var fRight=box(fT,winH,fT,winFrameMat);fRight.position.set(wx,winBottom+winH/2,wz);fRight.rotation.y=rot;fRight.translateX(winW/2);scene.add(fRight);
+  // Center mullion (vertical divider)
+  var mulV=box(fT,winH-.02,fT,winFrameMat);mulV.position.set(wx,winBottom+winH/2,wz);mulV.rotation.y=rot;scene.add(mulV);
+  // Horizontal transom bar
+  var mulH=box(winW,fT,fT,winFrameMat);mulH.position.set(wx,winBottom+winH*0.55,wz);mulH.rotation.y=rot;scene.add(mulH);
   // Sill (slightly protruding ledge)
   var sill=box(winW+.08,.025,.06,winFrameMat);sill.position.set(wx,winBottom-.01,wz);sill.rotation.y=rot;scene.add(sill);
 }

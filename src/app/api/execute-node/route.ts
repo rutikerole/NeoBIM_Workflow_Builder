@@ -2603,7 +2603,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         console.log(`[GN-011] DALL-E render ready: ${aiRenderUrl ? aiRenderUrl.substring(0, 60) + "..." : "EMPTY"} (${(aiRenderUrl.length / 1024).toFixed(0)}KB)`);
       } catch (renderErr: unknown) {
         const errMsg = renderErr instanceof Error ? renderErr.message : String(renderErr);
+        const stack = renderErr instanceof Error ? renderErr.stack : "";
         console.warn(`[GN-011] DALL-E render failed (non-critical): ${errMsg}`);
+        if (stack) console.warn(`[GN-011] Stack: ${stack}`);
       }
       console.log(`[GN-011] Final aiRenderUrl: ${aiRenderUrl ? "YES (" + aiRenderUrl.length + " chars)" : "NONE"}`);
 
