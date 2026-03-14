@@ -253,7 +253,7 @@ export default function ContactPage() {
           style={{
             maxWidth: 800,
             margin: "0 auto",
-            padding: "0 48px",
+            padding: "0 max(16px, min(48px, 4vw))",
             position: "relative",
             zIndex: 1,
             textAlign: "center",
@@ -329,7 +329,7 @@ export default function ContactPage() {
       </motion.section>
 
       {/* ── Contact Channels ───────────────────────────────── */}
-      <section style={{ padding: "0 48px 48px", maxWidth: 1100, margin: "0 auto" }}>
+      <section className="contact-channels-section" style={{ padding: "0 48px 48px", maxWidth: 1100, margin: "0 auto" }}>
         <div
           style={{
             display: "grid",
@@ -414,6 +414,7 @@ export default function ContactPage() {
       {/* ── Contact Form + Info ─────────────────────────────── */}
       <section style={{ padding: "0 48px 80px", maxWidth: 1100, margin: "0 auto" }}>
         <div
+          className="contact-form-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 380px",
@@ -543,6 +544,7 @@ export default function ContactPage() {
               ) : (
                 <form onSubmit={handleSubmit}>
                   <div
+                    className="contact-name-email-grid"
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
@@ -964,14 +966,19 @@ export default function ContactPage() {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @media (max-width: 860px) {
+          .contact-form-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
         @media (max-width: 768px) {
           main { padding-left: 16px !important; padding-right: 16px !important; }
           section { padding-left: 16px !important; padding-right: 16px !important; }
           .landing-footer { flex-direction: column !important; gap: 16px !important; text-align: center !important; }
           .landing-footer-wrapper { padding: 24px 16px !important; }
         }
-        @media (max-width: 860px) {
-          section > div[style*="gridTemplateColumns: 1fr 380px"] {
+        @media (max-width: 480px) {
+          .contact-name-email-grid {
             grid-template-columns: 1fr !important;
           }
         }

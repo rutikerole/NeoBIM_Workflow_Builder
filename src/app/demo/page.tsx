@@ -80,143 +80,165 @@ export default function DemoPage() {
 function DemoBanner({ hasRun }: { hasRun: boolean }) {
   const { t } = useLocale();
   return (
-    <motion.div
-      initial={{ y: -60 }}
-      animate={{ y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 24px",
-        background:
-          "linear-gradient(90deg, rgba(79,138,255,0.08) 0%, rgba(139,92,246,0.05) 50%, rgba(79,138,255,0.04) 100%)",
-        borderBottom: "1px solid rgba(79,138,255,0.15)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        zIndex: 100,
-        flexShrink: 0,
-      }}
-    >
-      {/* Logo */}
-      <Link
-        href="/"
+    <>
+      <motion.div
+        className="demo-banner"
+        initial={{ y: -60 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 7,
-          textDecoration: "none",
-          marginRight: 8,
+          gap: 12,
+          padding: "10px 24px",
+          background:
+            "linear-gradient(90deg, rgba(79,138,255,0.08) 0%, rgba(139,92,246,0.05) 50%, rgba(79,138,255,0.04) 100%)",
+          borderBottom: "1px solid rgba(79,138,255,0.15)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          zIndex: 100,
+          flexShrink: 0,
+          flexWrap: "wrap",
         }}
       >
-        <div
+        {/* Logo */}
+        <Link
+          href="/"
           style={{
-            width: 30,
-            height: 30,
-            borderRadius: 8,
-            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            textDecoration: "none",
+            marginRight: 8,
             flexShrink: 0,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/buildflow_logo.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
+          <div
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/buildflow_logo.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+          <span
+            style={{ fontSize: 13, fontWeight: 700, color: "#F0F0F5" }}
+          >
+            BuildFlow
+          </span>
+        </Link>
+
+        {/* Demo label */}
         <span
-          style={{ fontSize: 13, fontWeight: 700, color: "#F0F0F5" }}
+          style={{
+            padding: "2px 8px",
+            borderRadius: 4,
+            background: "rgba(245,158,11,0.15)",
+            border: "1px solid rgba(245,158,11,0.3)",
+            fontSize: 10,
+            fontWeight: 700,
+            color: "#F59E0B",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            flexShrink: 0,
+          }}
         >
-          BuildFlow
+          {t('demo.liveDemo')}
         </span>
-      </Link>
 
-      {/* Demo label */}
-      <span
-        style={{
-          padding: "2px 8px",
-          borderRadius: 4,
-          background: "rgba(245,158,11,0.15)",
-          border: "1px solid rgba(245,158,11,0.3)",
-          fontSize: 10,
-          fontWeight: 700,
-          color: "#F59E0B",
-          textTransform: "uppercase",
-          letterSpacing: "0.5px",
-        }}
-      >
-        {t('demo.liveDemo')}
-      </span>
+        <span
+          className="demo-banner-subtitle"
+          style={{
+            fontSize: 12,
+            color: "#7C7C96",
+            flex: 1,
+            letterSpacing: "-0.005em",
+            minWidth: 0,
+          }}
+        >
+          {hasRun
+            ? t('demo.complete')
+            : t('demo.subtitle')}
+        </span>
 
-      <span
-        style={{
-          fontSize: 12,
-          color: "#7C7C96",
-          flex: 1,
-          letterSpacing: "-0.005em",
-        }}
-      >
-        {hasRun
-          ? t('demo.complete')
-          : t('demo.subtitle')}
-      </span>
-
-      {/* CTA */}
-      <AnimatePresence mode="wait">
-        {hasRun ? (
-          <motion.div
-            key="signup-cta"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ display: "flex", gap: 8 }}
-          >
-            <Link
-              href="/dashboard"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 16px",
-                borderRadius: 8,
-                background:
-                  "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
-                color: "white",
-                fontSize: 12,
-                fontWeight: 600,
-                textDecoration: "none",
-                boxShadow:
-                  "0 2px 10px rgba(79,138,255,0.25), inset 0 1px 0 rgba(255,255,255,0.1)",
-              }}
+        {/* CTA */}
+        <AnimatePresence mode="wait">
+          {hasRun ? (
+            <motion.div
+              key="signup-cta"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ display: "flex", gap: 8, flexShrink: 0 }}
             >
-              {t('demo.createFreeAccount')}
-              <ArrowRight size={12} />
-            </Link>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="run-hint"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "5px 12px",
-                borderRadius: 6,
-                background: "rgba(16,185,129,0.1)",
-                border: "1px solid rgba(16,185,129,0.2)",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#10B981",
-              }}
+              <Link
+                href="/dashboard"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 16px",
+                  borderRadius: 8,
+                  background:
+                    "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
+                  color: "white",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  boxShadow:
+                    "0 2px 10px rgba(79,138,255,0.25), inset 0 1px 0 rgba(255,255,255,0.1)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t('demo.createFreeAccount')}
+                <ArrowRight size={12} />
+              </Link>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="run-hint"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ flexShrink: 0 }}
             >
-              <Play size={10} fill="#10B981" />
-              {t('demo.hitRun')}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "5px 12px",
+                  borderRadius: 6,
+                  background: "rgba(16,185,129,0.1)",
+                  border: "1px solid rgba(16,185,129,0.2)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#10B981",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Play size={10} fill="#10B981" />
+                {t('demo.hitRun')}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+      <style>{`
+        @media (max-width: 640px) {
+          .demo-banner {
+            padding: 8px 12px !important;
+            gap: 8px !important;
+          }
+          .demo-banner-subtitle {
+            display: none !important;
+          }
+        }
+      `}</style>
+    </>
   );
 }
