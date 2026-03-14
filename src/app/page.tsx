@@ -151,29 +151,6 @@ function PromptCard({ labelText, quoteText }: { labelText?: string; quoteText?: 
   );
 }
 
-// ─── Features ────────────────────────────────────────────────────────────────
-
-const FEATURES = [
-  {
-    icon: <LayoutGrid size={22} />, color: "#3B82F6",
-    title: "Design Automation Canvas",
-    description: "Drag and drop 30+ design automation building blocks onto an infinite canvas. 7 live AI-powered steps, more added weekly — no coding required.",
-    bullets: ["Drag-and-drop canvas", "7 live AI nodes + 24 coming soon", "Real-time execution"],
-  },
-  {
-    icon: <Sparkles size={22} />, color: "#8B5CF6",
-    title: "AI-Powered Design Workflows",
-    description: "Describe your project in plain English. Our AI understands architectural programs, building types, and spatial requirements — then builds the design pipeline for you.",
-    bullets: ["Natural language input", "Instant workflow generation", "Perfect for schematic design phase"],
-  },
-  {
-    icon: <Users size={22} />, color: "#10B981",
-    title: "Shared Workflows",
-    description: "Browse and clone proven design workflows. A complement to Revit and Rhino, not a replacement.",
-    bullets: ["Browse verified workflows", "One-click cloning", "No coding or CAD experience required"],
-  },
-];
-
 // ─── Animated Number (count-up on scroll) ───────────────────────────────────
 
 function AnimatedNumber({ value, decimals = 0, suffix = '', prefix = '', color }: { value: number; decimals?: number; suffix?: string; prefix?: string; color: string }) {
@@ -663,12 +640,6 @@ export default function LandingPage() {
     setRequestSubmitted(true);
     setTimeout(() => setRequestSubmitted(false), 4000);
   };
-
-  const features = [
-    { icon: <LayoutGrid size={22} />, color: "#3B82F6", title: t('landing.visualBuilder'), description: t('landing.visualBuilderDesc'), bullets: [t('landing.visualBullet1'), t('landing.visualBullet2'), t('landing.visualBullet3')] },
-    { icon: <Sparkles size={22} />, color: "#8B5CF6", title: t('landing.aiPowered'), description: t('landing.aiPoweredDesc'), bullets: [t('landing.aiBullet1'), t('landing.aiBullet2'), t('landing.aiBullet3')] },
-    { icon: <Users size={22} />, color: "#10B981", title: t('landing.communityMarketplace'), description: t('landing.communityDesc'), bullets: [t('landing.communityBullet1'), t('landing.communityBullet2'), t('landing.communityBullet3')] },
-  ];
 
   const useCases = [t('landing.archStudios'), t('landing.engTeams'), t('landing.bimConsultants'), t('landing.designAgencies'), t('landing.constructionTech')];
 
@@ -1705,121 +1676,6 @@ export default function LandingPage() {
                 );
               })}
             </motion.div>
-          </div>
-        </section>
-
-        {/* ── Features — Interactive Node Graph ────────────────────── */}
-        <section id="features" className="landing-section" style={{ padding: "120px 48px", position: "relative", overflow: "hidden" }}>
-          {/* Background: blueprint + construction SVG */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-            <div className="blueprint-grid" style={{ opacity: 0.25 }} />
-            {/* Construction wireframe background */}
-            <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.3 }} viewBox="0 0 1440 800" fill="none" preserveAspectRatio="xMidYMid slice">
-              {/* Building wireframe */}
-              <rect x="100" y="300" width="200" height="400" stroke="rgba(79,138,255,0.06)" strokeWidth="0.5" fill="none" strokeDasharray="4 4" />
-              <rect x="120" y="320" width="60" height="80" stroke="rgba(79,138,255,0.04)" strokeWidth="0.5" fill="none" />
-              <rect x="200" y="320" width="60" height="80" stroke="rgba(79,138,255,0.04)" strokeWidth="0.5" fill="none" />
-              <rect x="120" y="420" width="60" height="80" stroke="rgba(79,138,255,0.04)" strokeWidth="0.5" fill="none" />
-              <rect x="200" y="420" width="60" height="80" stroke="rgba(79,138,255,0.04)" strokeWidth="0.5" fill="none" />
-              {/* Second building */}
-              <rect x="1140" y="250" width="180" height="450" stroke="rgba(139,92,246,0.06)" strokeWidth="0.5" fill="none" strokeDasharray="4 4" />
-              <rect x="1160" y="270" width="50" height="70" stroke="rgba(139,92,246,0.04)" strokeWidth="0.5" fill="none" />
-              <rect x="1230" y="270" width="50" height="70" stroke="rgba(139,92,246,0.04)" strokeWidth="0.5" fill="none" />
-              {/* Crane */}
-              <line x1="400" y1="100" x2="400" y2="700" stroke="rgba(79,138,255,0.04)" strokeWidth="1" />
-              <line x1="350" y1="100" x2="600" y2="100" stroke="rgba(79,138,255,0.05)" strokeWidth="1" />
-              <line x1="400" y1="100" x2="350" y2="150" stroke="rgba(79,138,255,0.04)" strokeWidth="0.5" />
-              <line x1="580" y1="100" x2="560" y2="280" stroke="rgba(79,138,255,0.03)" strokeWidth="0.5" strokeDasharray="3 3" />
-            </svg>
-            <div className="orb-drift-2" style={{ position: "absolute", bottom: "10%", left: "5%", width: 450, height: 450, borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)", filter: "blur(30px)" }} />
-            <div className="orb-drift-3" style={{ position: "absolute", top: "10%", right: "5%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)", filter: "blur(25px)" }} />
-          </div>
-
-          <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
-            <motion.div
-              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}
-              variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }}
-              style={{ textAlign: "center", marginBottom: 80 }}
-            >
-              <span className="blueprint-annotation" style={{ marginBottom: 16, display: "block" }}>
-                {t('landing.platform')}
-              </span>
-              <div className="accent-line" style={{ background: "linear-gradient(90deg, #8B5CF6, #4F8AFF)" }} />
-              <h2 style={{ fontSize: "clamp(2.2rem, 4.5vw, 3.5rem)", fontWeight: 900, color: "#F0F0F5", letterSpacing: "-0.04em", lineHeight: 1.05, marginBottom: 20 }}>
-                {t('landing.everythingYouNeed')}<br />
-                <span style={{ background: "linear-gradient(135deg, #4F8AFF, #A78BFA)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{t('landing.automateAec')}</span>
-              </h2>
-              <p style={{ fontSize: 16, color: "#7C7C96", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
-                {t('landing.purposeBuilt')}
-              </p>
-            </motion.div>
-
-            {/* Feature cards as connected nodes */}
-            <div style={{ position: "relative" }}>
-              {/* SVG connecting all 3 feature nodes */}
-              <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} viewBox="0 0 1200 450" preserveAspectRatio="xMidYMid meet">
-                {/* Vertical pipeline trunk */}
-                <path d="M600 0 L600 450" stroke="rgba(79,138,255,0.06)" strokeWidth="1" />
-                {/* Branch to left card */}
-                <path d="M600 150 Q500 150 400 150" stroke="rgba(59,130,246,0.12)" strokeWidth="1.5" className="wire-animate" />
-                {/* Branch to center */}
-                <path d="M600 225 Q600 225 600 225" stroke="rgba(139,92,246,0.12)" strokeWidth="1.5" />
-                {/* Branch to right card */}
-                <path d="M600 300 Q700 300 800 300" stroke="rgba(16,185,129,0.12)" strokeWidth="1.5" className="wire-animate" style={{ animationDelay: "1s" }} />
-              </svg>
-
-              <motion.div
-                initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
-                variants={stagger}
-                className="landing-grid-3"
-                style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, position: "relative", zIndex: 1 }}
-              >
-                {features.map((f, idx) => {
-                  const rgb = hexToRgb(f.color);
-                  return (
-                    <motion.div key={f.title} variants={fadeUp} transition={{ duration: 0.5, delay: idx * 0.12, ease: smoothEase }}
-                      className="node-card"
-                      style={{ '--node-port-color': f.color } as React.CSSProperties}
-                    >
-                      {/* Node header */}
-                      <div className="node-header" style={{
-                        background: `linear-gradient(135deg, rgba(${rgb}, 0.12), rgba(${rgb}, 0.04))`,
-                        borderBottom: `1px solid rgba(${rgb}, 0.12)`,
-                        borderRadius: "16px 16px 0 0",
-                      }}>
-                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: f.color, boxShadow: `0 0 8px ${f.color}` }} />
-                        <span style={{ color: f.color }}>{["INPUT", "TRANSFORM", "GENERATE"][idx]}</span>
-                        <span style={{ marginLeft: "auto", fontSize: 9, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>v{idx + 1}.0</span>
-                      </div>
-
-                      <div style={{ padding: "28px 24px 32px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-                          <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, rgba(${rgb}, 0.2), rgba(${rgb}, 0.06))`, border: `1px solid rgba(${rgb}, 0.2)`, display: "flex", alignItems: "center", justifyContent: "center", color: f.color }}>
-                            {f.icon}
-                          </div>
-                          <div>
-                            <h3 style={{ fontSize: 19, fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.02em" }}>{f.title}</h3>
-                          </div>
-                        </div>
-                        <p style={{ fontSize: 14, color: "#9898B0", lineHeight: 1.7, marginBottom: 24 }}>{f.description}</p>
-
-                        {/* Bullets styled as node outputs */}
-                        <div style={{ borderTop: `1px solid rgba(${rgb}, 0.1)`, paddingTop: 16 }}>
-                          {f.bullets.map((b, bi) => (
-                            <div key={b} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#9898B0", marginBottom: 10 }}>
-                              <div style={{ width: 18, height: 18, borderRadius: 4, background: `rgba(${rgb}, 0.08)`, border: `1px solid rgba(${rgb}, 0.15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                <div style={{ width: 4, height: 4, borderRadius: "50%", background: f.color }} />
-                              </div>
-                              {b}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            </div>
           </div>
         </section>
 
