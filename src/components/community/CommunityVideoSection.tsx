@@ -498,14 +498,26 @@ function UploadModal({
       const { uploadUrl, publicUrl } = await urlRes.json();
 
       // Step 2: Upload file directly to R2 via presigned URL (bypasses Vercel body limit)
-      const putRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "video/mp4" },
-        body: file,
-      });
+      const abortCtrl = new AbortController();
+      const uploadTimeout = setTimeout(() => abortCtrl.abort(), 5 * 60 * 1000); // 5 min timeout
 
-      if (!putRes.ok) {
-        throw new Error(`Direct upload failed (${putRes.status})`);
+      try {
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "video/mp4" },
+          body: file,
+          signal: abortCtrl.signal,
+        });
+
+        if (!putRes.ok) {
+          const status = putRes.status;
+          if (status === 403) {
+            throw new Error("Upload rejected — presigned URL expired or invalid. Please try again.");
+          }
+          throw new Error(`Direct upload failed (${status})`);
+        }
+      } finally {
+        clearTimeout(uploadTimeout);
       }
 
       // Step 3: Create DB record with the public URL
@@ -534,8 +546,11 @@ function UploadModal({
       }, 1200);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      if (msg === "Failed to fetch" || msg.includes("NetworkError") || msg.includes("network")) {
-        setErrorMsg("Network error — check your connection and try again. Large files may timeout on mobile.");
+      const isAbort = err instanceof DOMException && err.name === "AbortError";
+      if (isAbort) {
+        setErrorMsg("Upload timed out — file may be too large for your connection. Try a shorter video.");
+      } else if (msg === "Failed to fetch" || msg.includes("NetworkError") || msg.includes("network")) {
+        setErrorMsg("Network error — check your connection and try again.");
       } else {
         setErrorMsg(msg);
       }

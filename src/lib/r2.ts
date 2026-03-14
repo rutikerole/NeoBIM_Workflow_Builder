@@ -187,11 +187,12 @@ export async function createPresignedUploadUrl(
   const key = `videos/${datePath}/${uniqueId}-${filename}`;
 
   try {
+    // NOTE: Do NOT include Metadata here — presigned URLs sign x-amz-meta-*
+    // headers, and the browser client can't send them, causing signature mismatch.
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
       ContentType: contentType,
-      Metadata: { "uploaded-at": now.toISOString() },
     });
 
     const uploadUrl = await getSignedUrl(client, command, { expiresIn });
