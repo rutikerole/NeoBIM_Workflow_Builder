@@ -1269,9 +1269,12 @@ export default function CommunityVideoSection() {
       .catch(() => {});
   }, []);
 
-  const fetchVideos = useCallback(() => {
+  const fetchVideos = useCallback((bustCache = false) => {
     setLoading(true);
-    fetch("/api/community-videos")
+    const url = bustCache
+      ? `/api/community-videos?t=${Date.now()}`
+      : "/api/community-videos";
+    fetch(url, bustCache ? { cache: "no-store" } : undefined)
       .then(r => r.json())
       .then(data => {
         setVideos(data.videos || []);
@@ -1613,7 +1616,7 @@ export default function CommunityVideoSection() {
         {showUpload && (
           <UploadModal
             onClose={() => setShowUpload(false)}
-            onUploaded={fetchVideos}
+            onUploaded={() => fetchVideos(true)}
           />
         )}
       </AnimatePresence>
