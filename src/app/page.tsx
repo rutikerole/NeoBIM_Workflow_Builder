@@ -208,19 +208,343 @@ const PARTNER_LOGO_KEYS = ['landing.builtForAecBadge', 'landing.complementBadge'
 // ─── Community Social Proof Data ────────────────────────────────────────────
 
 const COMMUNITY_WORKFLOWS = [
-  { name: "MEP Coordination Clash Review", builder: "Sarah M.", role: "MEP Lead", firm: "Arup", discipline: "MEP", phase: "RIBA Stage 4", uses: 342, duplicated: 89, color: "#3B82F6", lastRun: 1 },
-  { name: "Pre-Commencement Condition Discharge", builder: "James T.", role: "Project Manager", firm: "Mace Group", discipline: "Planning", phase: "Stage 5", uses: 218, duplicated: 56, color: "#8B5CF6", lastRun: 3 },
-  { name: "RIBA Stage 4 Drawing Issue Workflow", builder: "Priya K.", role: "BIM Manager", firm: "Foster + Partners", discipline: "Architecture", phase: "RIBA Stage 4", uses: 567, duplicated: 134, color: "#10B981", lastRun: 0 },
-  { name: "Structural Steel Takeoff & BOQ", builder: "Marcus W.", role: "QS Engineer", firm: "Turner & Townsend", discipline: "Structures", phase: "Stage 3–4", uses: 421, duplicated: 97, color: "#F59E0B", lastRun: 2 },
-  { name: "Façade Panel Schedule Generator", builder: "Lena H.", role: "Façade Engineer", firm: "Schüco", discipline: "Envelope", phase: "Detail Design", uses: 189, duplicated: 43, color: "#EF4444", lastRun: 5 },
-  { name: "Site Logistics & Crane Reach Analysis", builder: "David C.", role: "Site Manager", firm: "Laing O'Rourke", discipline: "Construction", phase: "Pre-Construction", uses: 305, duplicated: 71, color: "#06B6D4", lastRun: 1 },
-  { name: "Embodied Carbon Reporting Pipeline", builder: "Amara O.", role: "Sustainability Lead", firm: "BDP", discipline: "Sustainability", phase: "RIBA Stage 2–3", uses: 478, duplicated: 112, color: "#22C55E", lastRun: 0 },
-  { name: "Automated Clash Detection & Resolution", builder: "Tom R.", role: "BIM Coordinator", firm: "Multiplex", discipline: "BIM Coordination", phase: "Stage 4", uses: 623, duplicated: 158, color: "#A855F7", lastRun: 0 },
-  { name: "Client Presentation Deck Generator", builder: "Nina S.", role: "Design Director", firm: "Zaha Hadid Architects", discipline: "Design Management", phase: "RIBA Stage 2", uses: 284, duplicated: 67, color: "#EC4899", lastRun: 4 },
-  { name: "NBS Specification Writer & Mapper", builder: "George L.", role: "Specification Manager", firm: "Gleeds", discipline: "Specifications", phase: "Stage 3–4", uses: 196, duplicated: 51, color: "#14B8A6", lastRun: 6 },
-  { name: "Construction Phasing Sequence Planner", builder: "Rachel K.", role: "Planning Manager", firm: "Balfour Beatty", discipline: "Construction Planning", phase: "Pre-Construction", uses: 347, duplicated: 82, color: "#F97316", lastRun: 2 },
-  { name: "As-Built vs Design Comparison", builder: "Ahmed B.", role: "QA Lead", firm: "WSP", discipline: "Quality Assurance", phase: "Stage 5–6", uses: 259, duplicated: 63, color: "#0EA5E9", lastRun: 3 },
+  { name: "MEP Coordination Clash Review", builder: "Sarah M.", role: "MEP Lead", firm: "Arup", discipline: "MEP", phase: "RIBA Stage 4", uses: 342, duplicated: 89, color: "#3B82F6", lastRun: 1, preview: "mep" as const },
+  { name: "Pre-Commencement Condition Discharge", builder: "James T.", role: "Project Manager", firm: "Mace Group", discipline: "Planning", phase: "Stage 5", uses: 218, duplicated: 56, color: "#8B5CF6", lastRun: 3, preview: "planning" as const },
+  { name: "RIBA Stage 4 Drawing Issue Workflow", builder: "Priya K.", role: "BIM Manager", firm: "Foster + Partners", discipline: "Architecture", phase: "RIBA Stage 4", uses: 567, duplicated: 134, color: "#10B981", lastRun: 0, preview: "architecture" as const },
+  { name: "Structural Steel Takeoff & BOQ", builder: "Marcus W.", role: "QS Engineer", firm: "Turner & Townsend", discipline: "Structures", phase: "Stage 3–4", uses: 421, duplicated: 97, color: "#F59E0B", lastRun: 2, preview: "structural" as const },
+  { name: "Façade Panel Schedule Generator", builder: "Lena H.", role: "Façade Engineer", firm: "Schüco", discipline: "Envelope", phase: "Detail Design", uses: 189, duplicated: 43, color: "#EF4444", lastRun: 5, preview: "facade" as const },
+  { name: "Site Logistics & Crane Reach Analysis", builder: "David C.", role: "Site Manager", firm: "Laing O'Rourke", discipline: "Construction", phase: "Pre-Construction", uses: 305, duplicated: 71, color: "#06B6D4", lastRun: 1, preview: "construction" as const },
+  { name: "Embodied Carbon Reporting Pipeline", builder: "Amara O.", role: "Sustainability Lead", firm: "BDP", discipline: "Sustainability", phase: "RIBA Stage 2–3", uses: 478, duplicated: 112, color: "#22C55E", lastRun: 0, preview: "sustainability" as const },
+  { name: "Automated Clash Detection & Resolution", builder: "Tom R.", role: "BIM Coordinator", firm: "Multiplex", discipline: "BIM Coordination", phase: "Stage 4", uses: 623, duplicated: 158, color: "#A855F7", lastRun: 0, preview: "bim" as const },
+  { name: "Client Presentation Deck Generator", builder: "Nina S.", role: "Design Director", firm: "Zaha Hadid Architects", discipline: "Design Management", phase: "RIBA Stage 2", uses: 284, duplicated: 67, color: "#EC4899", lastRun: 4, preview: "design" as const },
+  { name: "NBS Specification Writer & Mapper", builder: "George L.", role: "Specification Manager", firm: "Gleeds", discipline: "Specifications", phase: "Stage 3–4", uses: 196, duplicated: 51, color: "#14B8A6", lastRun: 6, preview: "specs" as const },
+  { name: "Construction Phasing Sequence Planner", builder: "Rachel K.", role: "Planning Manager", firm: "Balfour Beatty", discipline: "Construction Planning", phase: "Pre-Construction", uses: 347, duplicated: 82, color: "#F97316", lastRun: 2, preview: "phasing" as const },
+  { name: "As-Built vs Design Comparison", builder: "Ahmed B.", role: "QA Lead", firm: "WSP", discipline: "Quality Assurance", phase: "Stage 5–6", uses: 259, duplicated: 63, color: "#0EA5E9", lastRun: 3, preview: "qa" as const },
 ];
+
+/* ── Procedural SVG preview for each workflow type ──────────────────────── */
+function WorkflowPreviewSVG({ type, color, rgb }: { type: string; color: string; rgb: string }) {
+  const w = 320, h = 140;
+  const shared = { width: w, height: h, viewBox: `0 0 ${w} ${h}`, fill: "none", xmlns: "http://www.w3.org/2000/svg" };
+
+  switch (type) {
+    case "mep": return (
+      <svg {...shared}>
+        <defs><linearGradient id="mep-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.15)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#mep-g)"/>
+        {/* Horizontal ducts */}
+        <rect x="20" y="30" width="120" height="8" rx="2" fill={`rgba(${rgb},0.25)`}/>
+        <rect x="20" y="62" width="180" height="8" rx="2" fill={`rgba(${rgb},0.18)`}/>
+        <rect x="20" y="94" width="100" height="8" rx="2" fill={`rgba(${rgb},0.12)`}/>
+        {/* Vertical pipes */}
+        <rect x="140" y="10" width="6" height="50" rx="2" fill={`rgba(${rgb},0.3)`}/>
+        <rect x="200" y="40" width="6" height="70" rx="2" fill={`rgba(${rgb},0.2)`}/>
+        <rect x="250" y="20" width="6" height="90" rx="2" fill={`rgba(${rgb},0.15)`}/>
+        {/* Clash markers */}
+        <circle cx="142" cy="34" r="10" fill="rgba(239,68,68,0.25)" stroke="#EF4444" strokeWidth="1.5"/>
+        <text x="142" y="38" textAnchor="middle" fontSize="10" fill="#EF4444" fontWeight="700">!</text>
+        <circle cx="202" cy="66" r="10" fill="rgba(239,68,68,0.25)" stroke="#EF4444" strokeWidth="1.5"/>
+        <text x="202" y="70" textAnchor="middle" fontSize="10" fill="#EF4444" fontWeight="700">!</text>
+        {/* Labels */}
+        <text x="280" y="28" fontSize="7" fill={`rgba(${rgb},0.5)`} fontFamily="monospace">HVAC-01</text>
+        <text x="280" y="60" fontSize="7" fill={`rgba(${rgb},0.5)`} fontFamily="monospace">PIPE-03</text>
+        <text x="280" y="92" fontSize="7" fill={`rgba(${rgb},0.5)`} fontFamily="monospace">ELEC-02</text>
+        <text x="260" y="128" fontSize="8" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">2 clashes found</text>
+      </svg>
+    );
+    case "planning": return (
+      <svg {...shared}>
+        <defs><linearGradient id="plan-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.12)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#plan-g)"/>
+        {/* Document stack */}
+        <rect x="30" y="16" width="140" height="108" rx="6" fill="rgba(255,255,255,0.03)" stroke={`rgba(${rgb},0.15)`} strokeWidth="1"/>
+        <rect x="36" y="12" width="140" height="108" rx="6" fill="rgba(255,255,255,0.04)" stroke={`rgba(${rgb},0.2)`} strokeWidth="1"/>
+        {/* Checklist */}
+        {[30, 50, 70, 88].map((y, i) => (
+          <g key={i}>
+            <rect x="50" y={y} width="10" height="10" rx="2" fill={i < 3 ? `rgba(${rgb},0.2)` : "rgba(255,255,255,0.05)"} stroke={`rgba(${rgb},0.3)`} strokeWidth="1"/>
+            {i < 3 && <path d={`M53 ${y+5}l2 2 4-4`} stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>}
+            <rect x="68" y={y+2} width={70 - i*10} height="5" rx="2" fill={`rgba(${rgb},${i<3?0.15:0.06})`}/>
+          </g>
+        ))}
+        {/* Status badge */}
+        <rect x="200" y="24" width="90" height="22" rx="6" fill={`rgba(${rgb},0.1)`} stroke={`rgba(${rgb},0.2)`} strokeWidth="1"/>
+        <text x="245" y="39" textAnchor="middle" fontSize="8" fill={color} fontWeight="600">3/4 COMPLETE</text>
+        {/* Progress arc */}
+        <circle cx="245" cy="85" r="28" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4"/>
+        <circle cx="245" cy="85" r="28" fill="none" stroke={color} strokeWidth="4" strokeDasharray="132" strokeDashoffset="33" strokeLinecap="round" opacity="0.6" transform="rotate(-90 245 85)"/>
+        <text x="245" y="89" textAnchor="middle" fontSize="12" fill={color} fontWeight="700">75%</text>
+      </svg>
+    );
+    case "architecture": return (
+      <svg {...shared}>
+        <defs><linearGradient id="arch-g" x1="0" y1={h} x2={w} y2="0" gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.12)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#arch-g)"/>
+        {/* Building elevation */}
+        <rect x="60" y="28" width="80" height="95" rx="2" fill="none" stroke={`rgba(${rgb},0.3)`} strokeWidth="1" strokeDasharray="3 2"/>
+        <rect x="160" y="48" width="60" height="75" rx="2" fill="none" stroke={`rgba(${rgb},0.25)`} strokeWidth="1" strokeDasharray="3 2"/>
+        {/* Windows */}
+        {[40, 58, 76, 94].map(y => [72, 92, 112].map(x => (
+          <rect key={`${x}-${y}`} x={x} y={y} width="10" height="8" rx="1" fill={`rgba(${rgb},0.12)`} stroke={`rgba(${rgb},0.2)`} strokeWidth="0.5"/>
+        )))}
+        {[58, 76, 94].map(y => [172, 192].map(x => (
+          <rect key={`${x}-${y}`} x={x} y={y} width="10" height="8" rx="1" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.15)`} strokeWidth="0.5"/>
+        )))}
+        {/* Ground line */}
+        <line x1="30" y1="123" x2="250" y2="123" stroke={`rgba(${rgb},0.2)`} strokeWidth="1"/>
+        {/* Dimensions */}
+        <line x1="60" y1="18" x2="140" y2="18" stroke={`rgba(${rgb},0.2)`} strokeWidth="0.5"/>
+        <text x="100" y="15" textAnchor="middle" fontSize="7" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">24.0m</text>
+        <line x1="240" y1="48" x2="240" y2="123" stroke={`rgba(${rgb},0.2)`} strokeWidth="0.5"/>
+        <text x="255" y="88" fontSize="7" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">22.5m</text>
+        {/* Floor labels */}
+        <text x="46" y="48" fontSize="6" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">L4</text>
+        <text x="46" y="66" fontSize="6" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">L3</text>
+        <text x="46" y="84" fontSize="6" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">L2</text>
+        <text x="46" y="102" fontSize="6" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">L1</text>
+      </svg>
+    );
+    case "structural": return (
+      <svg {...shared}>
+        <defs><linearGradient id="str-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.1)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#str-g)"/>
+        {/* Steel frame grid */}
+        {[40, 80, 120].map(y => (
+          <line key={`h${y}`} x1="30" y1={y} x2="260" y2={y} stroke={`rgba(${rgb},0.2)`} strokeWidth="2"/>
+        ))}
+        {[60, 120, 180, 240].map(x => (
+          <line key={`v${x}`} x1={x} y1="20" x2={x} y2="130" stroke={`rgba(${rgb},0.25)`} strokeWidth="3"/>
+        ))}
+        {/* Connection nodes */}
+        {[40, 80, 120].map(y => [60, 120, 180, 240].map(x => (
+          <circle key={`n${x}-${y}`} cx={x} cy={y} r="3" fill={`rgba(${rgb},0.3)`} stroke={color} strokeWidth="0.5"/>
+        )))}
+        {/* BOQ table mini */}
+        <rect x="268" y="20" width="44" height="50" rx="3" fill="rgba(255,255,255,0.03)" stroke={`rgba(${rgb},0.15)`} strokeWidth="0.5"/>
+        <text x="275" y="32" fontSize="5" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">UC 305</text>
+        <text x="275" y="42" fontSize="5" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">UB 457</text>
+        <text x="275" y="52" fontSize="5" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">SHS 200</text>
+        <text x="275" y="62" fontSize="5" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">PFC 150</text>
+        {/* Weight label */}
+        <rect x="268" y="80" width="44" height="18" rx="3" fill={`rgba(${rgb},0.1)`}/>
+        <text x="290" y="93" textAnchor="middle" fontSize="7" fill={color} fontWeight="600">847t</text>
+      </svg>
+    );
+    case "facade": return (
+      <svg {...shared}>
+        <defs><linearGradient id="fac-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.1)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#fac-g)"/>
+        {/* Panel grid */}
+        {[0,1,2,3,4,5,6].map(col => [0,1,2,3].map(row => {
+          const x = 25 + col * 36, y = 12 + row * 30;
+          const isHighlighted = (col === 2 && row === 1) || (col === 4 && row === 2);
+          return (
+            <g key={`p${col}-${row}`}>
+              <rect x={x} y={y} width="30" height="24" rx="2"
+                fill={isHighlighted ? `rgba(${rgb},0.15)` : "rgba(255,255,255,0.02)"}
+                stroke={isHighlighted ? color : `rgba(${rgb},0.12)`}
+                strokeWidth={isHighlighted ? "1.5" : "0.5"}
+              />
+              <text x={x+15} y={y+14} textAnchor="middle" fontSize="5" fill={`rgba(${rgb},${isHighlighted?0.6:0.2})`} fontFamily="monospace">
+                {String.fromCharCode(65+col)}{row+1}
+              </text>
+            </g>
+          );
+        }))}
+        {/* Schedule legend */}
+        <text x="280" y="26" fontSize="6" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">28 panels</text>
+        <text x="280" y="38" fontSize="6" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">CW system</text>
+        <rect x="278" y="48" width="8" height="8" rx="1" fill={`rgba(${rgb},0.15)`} stroke={color} strokeWidth="1"/>
+        <text x="290" y="55" fontSize="5" fill={`rgba(${rgb},0.4)`}>Review</text>
+      </svg>
+    );
+    case "construction": return (
+      <svg {...shared}>
+        <defs><linearGradient id="con-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.1)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#con-g)"/>
+        {/* Site boundary */}
+        <rect x="20" y="15" width="200" height="110" rx="4" fill="none" stroke={`rgba(${rgb},0.2)`} strokeWidth="1" strokeDasharray="4 3"/>
+        {/* Buildings */}
+        <rect x="40" y="35" width="50" height="40" rx="2" fill={`rgba(${rgb},0.1)`} stroke={`rgba(${rgb},0.25)`} strokeWidth="1"/>
+        <rect x="110" y="50" width="35" height="55" rx="2" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.2)`} strokeWidth="1"/>
+        {/* Crane arc */}
+        <circle cx="155" cy="45" r="55" fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="3 4" opacity="0.3"/>
+        <circle cx="155" cy="45" r="35" fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="3 4" opacity="0.2"/>
+        {/* Crane */}
+        <line x1="155" y1="15" x2="155" y2="90" stroke={color} strokeWidth="1.5" opacity="0.4"/>
+        <line x1="155" y1="25" x2="200" y2="25" stroke={color} strokeWidth="1" opacity="0.4"/>
+        {/* Access routes */}
+        <path d="M20 100 L40 85 L80 90 L130 80" fill="none" stroke={`rgba(${rgb},0.3)`} strokeWidth="1.5" strokeDasharray="3 2"/>
+        {/* Legend */}
+        <rect x="238" y="20" width="70" height="60" rx="4" fill="rgba(255,255,255,0.02)" stroke={`rgba(${rgb},0.1)`} strokeWidth="0.5"/>
+        <text x="248" y="35" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">Tower Crane</text>
+        <text x="248" y="47" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">Reach: 55m</text>
+        <text x="248" y="59" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">Capacity: 12t</text>
+        <text x="248" y="71" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">Coverage: 94%</text>
+      </svg>
+    );
+    case "sustainability": return (
+      <svg {...shared}>
+        <defs><linearGradient id="sus-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.1)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#sus-g)"/>
+        {/* Bar chart */}
+        {[
+          { x: 40, h: 70, label: "A1–A3", opacity: 0.35 },
+          { x: 75, h: 45, label: "A4", opacity: 0.25 },
+          { x: 110, h: 30, label: "A5", opacity: 0.2 },
+          { x: 145, h: 55, label: "B1–B5", opacity: 0.3 },
+          { x: 180, h: 20, label: "C1–C4", opacity: 0.15 },
+          { x: 215, h: 15, label: "D", opacity: 0.12 },
+        ].map(bar => (
+          <g key={bar.label}>
+            <rect x={bar.x} y={120-bar.h} width="25" height={bar.h} rx="3" fill={`rgba(${rgb},${bar.opacity})`} stroke={`rgba(${rgb},0.2)`} strokeWidth="0.5"/>
+            <text x={bar.x+12} y="132" textAnchor="middle" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">{bar.label}</text>
+          </g>
+        ))}
+        {/* CO2 total */}
+        <text x="272" y="50" fontSize="18" fill={color} fontWeight="800" opacity="0.7" fontFamily="monospace">482</text>
+        <text x="272" y="64" fontSize="7" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">kgCO₂e/m²</text>
+        {/* Trend indicator */}
+        <path d="M275 80 L290 72 L305 76" fill="none" stroke={color} strokeWidth="1.5" opacity="0.4"/>
+        <text x="272" y="100" fontSize="6" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">↓ 12% vs baseline</text>
+      </svg>
+    );
+    case "bim": return (
+      <svg {...shared}>
+        <defs><linearGradient id="bim-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.12)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#bim-g)"/>
+        {/* 3D wireframe box */}
+        <path d="M60 90 L60 40 L120 20 L180 40 L180 90 L120 110 Z" fill={`rgba(${rgb},0.05)`} stroke={`rgba(${rgb},0.25)`} strokeWidth="1"/>
+        <line x1="120" y1="20" x2="120" y2="70" stroke={`rgba(${rgb},0.15)`} strokeWidth="1"/>
+        <line x1="60" y1="40" x2="120" y2="70" stroke={`rgba(${rgb},0.15)`} strokeWidth="1" strokeDasharray="2 2"/>
+        <line x1="180" y1="40" x2="120" y2="70" stroke={`rgba(${rgb},0.15)`} strokeWidth="1" strokeDasharray="2 2"/>
+        {/* Clash indicators */}
+        <circle cx="100" cy="55" r="12" fill="rgba(239,68,68,0.2)" stroke="#EF4444" strokeWidth="1"/>
+        <text x="100" y="59" textAnchor="middle" fontSize="10" fill="#EF4444" fontWeight="700">✕</text>
+        <circle cx="150" cy="75" r="8" fill="rgba(245,158,11,0.2)" stroke="#F59E0B" strokeWidth="1"/>
+        <text x="150" y="79" textAnchor="middle" fontSize="8" fill="#F59E0B" fontWeight="700">!</text>
+        {/* Stats */}
+        <rect x="210" y="20" width="90" height="95" rx="6" fill="rgba(255,255,255,0.02)" stroke={`rgba(${rgb},0.1)`} strokeWidth="0.5"/>
+        <text x="220" y="38" fontSize="7" fill="#EF4444" fontFamily="monospace">● 3 Critical</text>
+        <text x="220" y="52" fontSize="7" fill="#F59E0B" fontFamily="monospace">● 7 Warning</text>
+        <text x="220" y="66" fontSize="7" fill="#10B981" fontFamily="monospace">● 42 Passed</text>
+        <line x1="218" y1="76" x2="292" y2="76" stroke={`rgba(${rgb},0.1)`} strokeWidth="0.5"/>
+        <text x="220" y="90" fontSize="8" fill={color} fontWeight="600">96.2%</text>
+        <text x="220" y="102" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">Pass Rate</text>
+      </svg>
+    );
+    case "design": return (
+      <svg {...shared}>
+        <defs><linearGradient id="des-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.1)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#des-g)"/>
+        {/* Presentation slides */}
+        <rect x="20" y="15" width="110" height="70" rx="4" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.2)`} strokeWidth="1"/>
+        <rect x="30" y="25" width="40" height="25" rx="2" fill={`rgba(${rgb},0.12)`}/>
+        <rect x="30" y="56" width="90" height="4" rx="1" fill={`rgba(${rgb},0.1)`}/>
+        <rect x="30" y="64" width="60" height="4" rx="1" fill={`rgba(${rgb},0.06)`}/>
+        <rect x="80" y="28" width="40" height="18" rx="2" fill={`rgba(${rgb},0.06)`}/>
+        {/* Slide 2 (offset) */}
+        <rect x="145" y="20" width="90" height="58" rx="4" fill={`rgba(${rgb},0.05)`} stroke={`rgba(${rgb},0.15)`} strokeWidth="1"/>
+        <rect x="155" y="30" width="70" height="4" rx="1" fill={`rgba(${rgb},0.08)`}/>
+        <rect x="155" y="40" width="30" height="20" rx="2" fill={`rgba(${rgb},0.1)`}/>
+        <rect x="190" y="40" width="30" height="20" rx="2" fill={`rgba(${rgb},0.07)`}/>
+        {/* Slide 3 */}
+        <rect x="250" y="25" width="55" height="36" rx="3" fill={`rgba(${rgb},0.04)`} stroke={`rgba(${rgb},0.1)`} strokeWidth="0.5"/>
+        {/* Page indicator */}
+        <text x="160" y="110" textAnchor="middle" fontSize="8" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">12 slides · 3 renders · PDF ready</text>
+        {/* Dots */}
+        {[0,1,2,3,4].map(i => (
+          <circle key={i} cx={140+i*10} cy="122" r="2.5" fill={i===0?color:`rgba(${rgb},0.15)`}/>
+        ))}
+      </svg>
+    );
+    case "specs": return (
+      <svg {...shared}>
+        <defs><linearGradient id="spc-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.1)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#spc-g)"/>
+        {/* Document */}
+        <rect x="30" y="10" width="160" height="120" rx="4" fill="rgba(255,255,255,0.02)" stroke={`rgba(${rgb},0.15)`} strokeWidth="1"/>
+        {/* NBS header */}
+        <rect x="38" y="18" width="50" height="12" rx="2" fill={`rgba(${rgb},0.15)`}/>
+        <text x="63" y="27" textAnchor="middle" fontSize="7" fill={color} fontWeight="600">NBS</text>
+        {/* Spec lines */}
+        {[38, 50, 62, 74, 86, 98, 110].map((y, i) => (
+          <g key={i}>
+            <text x="38" y={y} fontSize="6" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">{`${30+i*5}`}</text>
+            <rect x="54" y={y-5} width={80+Math.sin(i)*30} height="4" rx="1" fill={`rgba(${rgb},${0.06+i*0.01})`}/>
+          </g>
+        ))}
+        {/* Mapping arrows */}
+        <path d="M200 40 L230 30 M200 60 L230 50 M200 80 L230 70" stroke={`rgba(${rgb},0.2)`} strokeWidth="0.8" fill="none" markerEnd="url(#arrow)"/>
+        {/* Mapped items */}
+        <rect x="232" y="20" width="70" height="18" rx="3" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.15)`} strokeWidth="0.5"/>
+        <text x="242" y="32" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">Uniclass Ss_25</text>
+        <rect x="232" y="44" width="70" height="18" rx="3" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.15)`} strokeWidth="0.5"/>
+        <text x="242" y="56" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">Uniclass Pr_40</text>
+        <rect x="232" y="68" width="70" height="18" rx="3" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.15)`} strokeWidth="0.5"/>
+        <text x="242" y="80" fontSize="6" fill={`rgba(${rgb},0.4)`} fontFamily="monospace">IFC IfcWall</text>
+        <text x="255" y="110" fontSize="7" fill={`rgba(${rgb},0.3)`} fontFamily="monospace">3 mapped</text>
+      </svg>
+    );
+    case "phasing": return (
+      <svg {...shared}>
+        <defs><linearGradient id="pha-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.1)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#pha-g)"/>
+        {/* Gantt chart */}
+        {[
+          { y: 20, x: 30, w: 80, label: "Excavation", opacity: 0.25 },
+          { y: 40, x: 70, w: 100, label: "Substructure", opacity: 0.3 },
+          { y: 60, x: 120, w: 90, label: "Superstructure", opacity: 0.2 },
+          { y: 80, x: 170, w: 70, label: "Envelope", opacity: 0.15 },
+          { y: 100, x: 200, w: 80, label: "Fit-out", opacity: 0.12 },
+        ].map(bar => (
+          <g key={bar.label}>
+            <rect x={bar.x} y={bar.y} width={bar.w} height="14" rx="3" fill={`rgba(${rgb},${bar.opacity})`} stroke={`rgba(${rgb},0.15)`} strokeWidth="0.5"/>
+            <text x={bar.x+4} y={bar.y+10} fontSize="6" fill={`rgba(${rgb},0.5)`} fontFamily="monospace">{bar.label}</text>
+          </g>
+        ))}
+        {/* Timeline markers */}
+        {["Wk 1", "Wk 8", "Wk 16", "Wk 24", "Wk 32"].map((label, i) => (
+          <text key={i} x={30+i*60} y={130} fontSize="5" fill={`rgba(${rgb},0.2)`} fontFamily="monospace">{label}</text>
+        ))}
+        {/* Today marker */}
+        <line x1="150" y1="12" x2="150" y2="120" stroke={color} strokeWidth="1" strokeDasharray="3 2" opacity="0.4"/>
+        <text x="150" y="10" textAnchor="middle" fontSize="6" fill={color} fontWeight="600">TODAY</text>
+      </svg>
+    );
+    case "qa": return (
+      <svg {...shared}>
+        <defs><linearGradient id="qa-g" x1="0" y1="0" x2={w} y2={h} gradientUnits="userSpaceOnUse"><stop stopColor={`rgba(${rgb},0.1)`}/><stop offset="1" stopColor="rgba(0,0,0,0)"/></linearGradient></defs>
+        <rect width={w} height={h} fill="url(#qa-g)"/>
+        {/* Design overlay */}
+        <rect x="20" y="15" width="120" height="80" rx="4" fill={`rgba(${rgb},0.06)`} stroke={`rgba(${rgb},0.15)`} strokeWidth="1"/>
+        <text x="80" y="10" textAnchor="middle" fontSize="7" fill={`rgba(${rgb},0.3)`} fontWeight="600">DESIGN</text>
+        <rect x="30" y="28" width="40" height="30" rx="2" fill={`rgba(${rgb},0.1)`}/>
+        <rect x="78" y="28" width="50" height="20" rx="2" fill={`rgba(${rgb},0.08)`}/>
+        {/* As-built overlay */}
+        <rect x="160" y="15" width="120" height="80" rx="4" fill="rgba(16,185,129,0.04)" stroke="rgba(16,185,129,0.15)" strokeWidth="1"/>
+        <text x="220" y="10" textAnchor="middle" fontSize="7" fill="rgba(16,185,129,0.3)" fontWeight="600">AS-BUILT</text>
+        <rect x="170" y="28" width="42" height="32" rx="2" fill="rgba(16,185,129,0.08)"/>
+        <rect x="220" y="28" width="48" height="20" rx="2" fill="rgba(16,185,129,0.06)"/>
+        {/* Comparison arrows */}
+        <path d="M145 55 L155 55" stroke={`rgba(${rgb},0.3)`} strokeWidth="1.5" markerEnd="url(#arrow)"/>
+        {/* Deviation markers */}
+        <circle cx="190" cy="45" r="6" fill="rgba(245,158,11,0.2)" stroke="#F59E0B" strokeWidth="1"/>
+        <text x="190" y="48" textAnchor="middle" fontSize="6" fill="#F59E0B">Δ</text>
+        {/* Result */}
+        <rect x="60" y="105" width="180" height="24" rx="6" fill={`rgba(${rgb},0.06)`} stroke={`rgba(${rgb},0.12)`} strokeWidth="0.5"/>
+        <text x="80" y="120" fontSize="8" fill={color} fontWeight="600">97.3% Match</text>
+        <text x="200" y="120" fontSize="7" fill="rgba(245,158,11,0.5)" fontFamily="monospace">2 deviations</text>
+      </svg>
+    );
+    default: return (
+      <svg {...shared}>
+        <rect width={w} height={h} fill={`rgba(${rgb},0.05)`}/>
+        <text x={w/2} y={h/2} textAnchor="middle" fontSize="12" fill={`rgba(${rgb},0.3)`}>Preview</text>
+      </svg>
+    );
+  }
+}
 
 // ─── Workflow Request Seed Data ─────────────────────────────────────────────
 
@@ -1923,72 +2247,119 @@ export default function LandingPage() {
                       const rgb = hexToRgb(wf.color);
                       return (
                         <motion.div key={wf.name} variants={fadeUp} transition={{ duration: 0.5, delay: i * 0.06, ease: smoothEase }}
-                          className="node-card"
-                          style={{ '--node-port-color': wf.color } as React.CSSProperties}
+                          style={{
+                            borderRadius: 16, overflow: "hidden", cursor: "pointer",
+                            background: "rgba(14,14,24,0.85)",
+                            border: `1px solid rgba(${rgb}, 0.12)`,
+                            transition: "all 0.4s cubic-bezier(0.25,0.4,0.25,1)",
+                            position: "relative" as const,
+                          }}
+                          whileHover={{
+                            y: -6,
+                            boxShadow: `0 20px 60px rgba(${rgb}, 0.15), 0 0 0 1px rgba(${rgb}, 0.25)`,
+                          }}
                         >
-                          <div className="node-header" style={{
-                            background: `linear-gradient(135deg, rgba(${rgb}, 0.12), rgba(${rgb}, 0.04))`,
-                            borderBottom: `1px solid rgba(${rgb}, 0.12)`,
-                            borderRadius: "16px 16px 0 0",
+                          {/* ── Preview Area ── */}
+                          <div style={{
+                            position: "relative", overflow: "hidden", height: 140,
+                            background: `radial-gradient(ellipse at 30% 20%, rgba(${rgb}, 0.08), transparent 60%), linear-gradient(180deg, rgba(${rgb}, 0.04), rgba(0,0,0,0.3))`,
+                            borderBottom: `1px solid rgba(${rgb}, 0.1)`,
                           }}>
-                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: wf.color, boxShadow: `0 0 8px ${wf.color}` }} />
-                            <span style={{ color: wf.color }}>{wf.discipline.toUpperCase()}</span>
-                            <span style={{ marginLeft: "auto", fontSize: 8, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>{wf.phase}</span>
+                            {/* SVG Visualization */}
+                            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <WorkflowPreviewSVG type={wf.preview} color={wf.color} rgb={rgb} />
+                            </div>
+                            {/* Discipline badge (top left) */}
+                            <div style={{
+                              position: "absolute", top: 10, left: 10,
+                              display: "flex", alignItems: "center", gap: 6,
+                              padding: "4px 10px", borderRadius: 8,
+                              background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+                              border: `1px solid rgba(${rgb}, 0.2)`,
+                            }}>
+                              <div style={{ width: 6, height: 6, borderRadius: "50%", background: wf.color, boxShadow: `0 0 6px ${wf.color}` }} />
+                              <span style={{ fontSize: 9, fontWeight: 700, color: wf.color, letterSpacing: "0.08em", textTransform: "uppercase" }}>{wf.discipline}</span>
+                            </div>
+                            {/* Phase badge (top right) */}
+                            <div style={{
+                              position: "absolute", top: 10, right: 10,
+                              padding: "4px 8px", borderRadius: 6,
+                              background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)",
+                            }}>
+                              <span style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", fontFamily: "monospace", letterSpacing: "0.06em" }}>{wf.phase}</span>
+                            </div>
+                            {/* Active indicator (bottom right) */}
+                            {wf.lastRun === 0 && (
+                              <div style={{
+                                position: "absolute", bottom: 10, right: 10,
+                                display: "flex", alignItems: "center", gap: 4,
+                                padding: "3px 8px", borderRadius: 6,
+                                background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.25)",
+                              }}>
+                                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#10B981", boxShadow: "0 0 6px #10B981" }} />
+                                <span style={{ fontSize: 8, fontWeight: 600, color: "#10B981" }}>Live</span>
+                              </div>
+                            )}
+                            {/* Gradient overlay at bottom */}
+                            <div style={{
+                              position: "absolute", bottom: 0, left: 0, right: 0, height: 40,
+                              background: "linear-gradient(transparent, rgba(14,14,24,0.9))",
+                            }} />
                           </div>
 
-                          <div style={{ padding: "20px 20px 16px" }}>
-                            <h4 style={{ fontSize: 15, fontWeight: 700, color: "#F0F0F5", margin: "0 0 12px", lineHeight: 1.3 }}>{wf.name}</h4>
+                          {/* ── Card Content ── */}
+                          <div style={{ padding: "16px 18px 14px" }}>
+                            <h4 style={{ fontSize: 14, fontWeight: 700, color: "#F0F0F5", margin: "0 0 12px", lineHeight: 1.35, letterSpacing: "-0.01em" }}>{wf.name}</h4>
 
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                            {/* Builder row */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                               <div style={{
                                 width: 28, height: 28, borderRadius: 8,
-                                background: `linear-gradient(135deg, rgba(${rgb}, 0.2), rgba(${rgb}, 0.08))`,
-                                border: `1px solid rgba(${rgb}, 0.2)`,
+                                background: `linear-gradient(135deg, rgba(${rgb}, 0.2), rgba(${rgb}, 0.06))`,
+                                border: `1px solid rgba(${rgb}, 0.18)`,
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 color: wf.color, flexShrink: 0,
                               }}>
-                                <Building2 size={13} />
+                                <Building2 size={12} />
                               </div>
-                              <div>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "#F0F0F5" }}>{wf.builder}</div>
-                                <div style={{ fontSize: 10, color: "#5C5C78" }}>{wf.role} · {wf.firm}</div>
-                              </div>
-                            </div>
-
-                            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 12 }} />
-
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <Star size={12} style={{ color: wf.color }} />
-                                  <span style={{ fontSize: 12, fontWeight: 700, color: "#F0F0F5", fontFamily: "monospace" }}>{wf.uses.toLocaleString()}</span>
-                                  <span style={{ fontSize: 9, color: "#5C5C78" }}>runs</span>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <Copy size={11} style={{ color: "#5C5C78" }} />
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", fontFamily: "monospace" }}>{wf.duplicated}</span>
-                                  <span style={{ fontSize: 9, color: "#5C5C78" }}>cloned</span>
-                                </div>
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                <div style={{
-                                  width: 6, height: 6, borderRadius: "50%",
-                                  background: wf.lastRun === 0 ? "#10B981" : wf.lastRun <= 2 ? "#F59E0B" : "#5C5C78",
-                                  boxShadow: wf.lastRun === 0 ? "0 0 6px #10B981" : "none",
-                                }} />
-                                <span style={{ fontSize: 9, color: wf.lastRun === 0 ? "#10B981" : "#5C5C78", fontFamily: "monospace" }}>
-                                  {wf.lastRun === 0 ? "Active today" : `${wf.lastRun}d ago`}
-                                </span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "#E0E0EC" }}>{wf.builder}</div>
+                                <div style={{ fontSize: 9, color: "#5C5C78", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{wf.role} · {wf.firm}</div>
                               </div>
                             </div>
 
-                            <div style={{ marginTop: 10, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                            {/* Stats bar */}
+                            <div style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              padding: "8px 10px", borderRadius: 8,
+                              background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)",
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                  <Star size={10} style={{ color: wf.color }} />
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: "#F0F0F5", fontFamily: "monospace" }}>{wf.uses.toLocaleString()}</span>
+                                  <span style={{ fontSize: 8, color: "#5C5C78" }}>runs</span>
+                                </div>
+                                <div style={{ width: 1, height: 12, background: "rgba(255,255,255,0.06)" }} />
+                                <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                  <Copy size={9} style={{ color: "#5C5C78" }} />
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: "#9898B0", fontFamily: "monospace" }}>{wf.duplicated}</span>
+                                  <span style={{ fontSize: 8, color: "#5C5C78" }}>cloned</span>
+                                </div>
+                              </div>
+                              {wf.lastRun > 0 && (
+                                <span style={{ fontSize: 8, color: "#5C5C78", fontFamily: "monospace" }}>{wf.lastRun}d ago</span>
+                              )}
+                            </div>
+
+                            {/* Usage bar */}
+                            <div style={{ marginTop: 8, height: 2, borderRadius: 2, background: "rgba(255,255,255,0.03)", overflow: "hidden" }}>
                               <motion.div
                                 initial={{ width: 0 }}
                                 whileInView={{ width: `${Math.min((wf.uses / 700) * 100, 100)}%` }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 1.2, ease: smoothEase, delay: 0.3 + i * 0.1 }}
-                                style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${wf.color}, rgba(${rgb}, 0.3))` }}
+                                style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${wf.color}, rgba(${rgb}, 0.2))` }}
                               />
                             </div>
                           </div>
