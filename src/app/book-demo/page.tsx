@@ -320,8 +320,9 @@ export default function BookDemoPage() {
         style={{
           position: "relative", zIndex: 10,
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "16px 32px",
+          padding: "12px max(12px, min(32px, 3vw))",
           borderBottom: "1px solid rgba(255,255,255,0.04)",
+          gap: 8,
         }}
       >
         <Link href="/" style={{
@@ -352,25 +353,27 @@ export default function BookDemoPage() {
           </span>
         </Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/demo" style={{
+        <div className="book-demo-nav-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Link href="/demo" className="book-demo-nav-btn" style={{
             display: "flex", alignItems: "center", gap: 6,
-            padding: "8px 16px", borderRadius: 8,
+            padding: "8px 14px", borderRadius: 8,
             border: "1px solid rgba(0,245,255,0.15)",
             background: "rgba(0,245,255,0.04)",
             color: COLORS.cyan, fontSize: 13, fontWeight: 600,
             textDecoration: "none", transition: "all 0.15s",
+            whiteSpace: "nowrap",
           }}>
             <Play size={13} />
             {t('bookDemo.tryDemo')}
           </Link>
-          <Link href="/dashboard" style={{
+          <Link href="/dashboard" className="book-demo-nav-btn" style={{
             display: "flex", alignItems: "center", gap: 6,
-            padding: "8px 16px", borderRadius: 8,
+            padding: "8px 14px", borderRadius: 8,
             background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
             color: "#fff", fontSize: 13, fontWeight: 600,
             textDecoration: "none", transition: "all 0.15s",
             boxShadow: "0 0 12px rgba(79,138,255,0.15)",
+            whiteSpace: "nowrap",
           }}>
             {t('bookDemo.getStarted')}
           </Link>
@@ -378,7 +381,7 @@ export default function BookDemoPage() {
       </motion.nav>
 
       {/* ── Main Content ───────────────────────────────────────────── */}
-      <main style={{ position: "relative", zIndex: 1, padding: "40px 32px 80px", maxWidth: 1280, margin: "0 auto" }}>
+      <main className="book-demo-main" style={{ position: "relative", zIndex: 1, padding: "40px 32px 80px", maxWidth: 1280, margin: "0 auto" }}>
         {/* Back link */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -414,8 +417,8 @@ export default function BookDemoPage() {
             </span>
           </div>
 
-          <h1 style={{
-            fontSize: 42, fontWeight: 800, color: COLORS.text,
+          <h1 className="book-demo-heading" style={{
+            fontSize: "clamp(28px, 5vw, 42px)", fontWeight: 800, color: COLORS.text,
             letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: 12,
           }}>
             {t('bookDemo.seeInActionPrefix')}{" "}
@@ -501,7 +504,7 @@ export default function BookDemoPage() {
                 {t('bookDemo.whatYouSee')}
               </p>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div className="book-demo-features-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {features.map((feat, i) => (
                   <motion.div
                     key={feat.label}
@@ -626,7 +629,7 @@ export default function BookDemoPage() {
                     style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }}
                   >
                     {/* Name + Email row */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div className="book-demo-form-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <FormField
                         icon={User} label={t('bookDemo.fullName')} name="name"
                         placeholder="Jane Doe" value={formData.name}
@@ -640,7 +643,7 @@ export default function BookDemoPage() {
                     </div>
 
                     {/* Phone + Company row */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div className="book-demo-form-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <FormField
                         icon={Phone} label={t('bookDemo.phone')} name="phone" type="tel"
                         required={false} placeholder="+1 (555) 000-0000"
@@ -732,9 +735,9 @@ export default function BookDemoPage() {
                     </motion.button>
 
                     {/* Trust signals */}
-                    <div style={{
+                    <div className="book-demo-trust" style={{
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 16,
-                      paddingTop: 8,
+                      paddingTop: 8, flexWrap: "wrap",
                     }}>
                       {trustSignals.map(signal => (
                         <div key={signal} style={{
@@ -760,8 +763,29 @@ export default function BookDemoPage() {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
-        @media (max-width: 768px) {
+        @media (max-width: 860px) {
           .book-demo-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .book-demo-main {
+            padding: 24px 16px 60px !important;
+          }
+          .book-demo-nav-btn {
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .book-demo-form-row {
+            grid-template-columns: 1fr !important;
+          }
+          .book-demo-trust {
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          .book-demo-features-grid {
             grid-template-columns: 1fr !important;
           }
         }
