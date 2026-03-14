@@ -691,6 +691,9 @@ export default function LandingPage() {
                 {l.label}
               </a>
             ))}
+          </div>
+
+          <div className="landing-nav-cta" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Link href="/workflows" className="landing-demos-link" style={{
               fontSize: 13, fontWeight: 700, textDecoration: "none",
               color: "#00F5FF",
@@ -709,9 +712,6 @@ export default function LandingPage() {
               }} />
               Watch Demos
             </Link>
-          </div>
-
-          <div className="landing-nav-cta" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <LanguageSwitcher />
             <Link href="/login" className="landing-login-link" style={{
               fontSize: 14, fontWeight: 600, color: "#F0F0F5",
