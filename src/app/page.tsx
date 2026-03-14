@@ -657,6 +657,24 @@ export default function LandingPage() {
                 {l.label}
               </a>
             ))}
+            <Link href="/workflows" className="landing-demos-link" style={{
+              fontSize: 13, fontWeight: 700, textDecoration: "none",
+              color: "#00F5FF",
+              padding: "5px 14px", borderRadius: 8,
+              background: "rgba(0,245,255,0.06)",
+              border: "1px solid rgba(0,245,255,0.15)",
+              display: "flex", alignItems: "center", gap: 6,
+              transition: "all 0.2s",
+              letterSpacing: "0.3px",
+            }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: "#00F5FF",
+                boxShadow: "0 0 8px #00F5FF",
+                animation: "glow-pulse 2s infinite",
+              }} />
+              Watch Demos
+            </Link>
           </div>
 
           <div className="landing-nav-cta" style={{ display: "flex", alignItems: "center", gap: 12 }}>
