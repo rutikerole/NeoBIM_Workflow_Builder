@@ -20,6 +20,7 @@ const en = {
   'nav.expandSidebar': 'Expand sidebar',
   'nav.userFallback': 'User',
   'nav.searchPlaceholder': 'Search workflows, templates...',
+  'nav.feedback': 'Feedback',
 
   // ===== AUTH =====
   'auth.welcomeBack': 'Welcome back',
@@ -1220,6 +1221,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'nav.expandSidebar': 'Seitenleiste ausklappen',
   'nav.userFallback': 'Benutzer',
   'nav.searchPlaceholder': 'Workflows, Vorlagen suchen...',
+  'nav.feedback': 'Feedback',
 
   // ===== AUTH =====
   'auth.welcomeBack': 'Willkommen zurück',
