@@ -147,4 +147,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, { silent: true, disableLogger: true });
+// Only wrap with Sentry when DSN is configured — otherwise it instruments
+// routes at build time and can crash at runtime when no DSN is present.
+export default process.env.NEXT_PUBLIC_SENTRY_DSN
+  ? withSentryConfig(nextConfig, { silent: true, disableLogger: true })
+  : nextConfig;
