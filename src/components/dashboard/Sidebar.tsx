@@ -24,6 +24,7 @@ import {
   Sparkles,
   Crown,
   FlaskConical,
+  MessageSquareHeart,
 } from "lucide-react";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 import { useLocale } from "@/hooks/useLocale";
@@ -48,6 +49,7 @@ export function Sidebar() {
 
   const SECONDARY_NAV = [
     { href: "/dashboard/community", label: t("nav.community"), icon: Globe, badge: "Beta" },
+    { href: "/dashboard/feedback",  label: t("nav.feedback"),  icon: MessageSquareHeart, badge: "New" },
     { href: "/dashboard/billing",   label: t("nav.billing"),   icon: CreditCard },
     { href: "/dashboard/settings",  label: t("nav.settings"),  icon: Settings },
     ...(process.env.NODE_ENV === "development"
