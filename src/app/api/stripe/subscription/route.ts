@@ -39,7 +39,8 @@ export async function GET() {
         const subscription = await stripe.subscriptions.retrieve(
           user.stripeSubscriptionId
         );
-        const periodEnd = subscription.items.data[0]?.current_period_end;
+        const periodEnd = subscription.items?.data?.[0]?.current_period_end
+          ?? (subscription as unknown as { current_period_end?: number }).current_period_end;
         subscriptionStatus = {
           status: subscription.status,
           cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
@@ -118,8 +119,9 @@ export async function POST() {
         if (sub.status === 'active' || sub.status === 'trialing') {
           activeSubscription = {
             id: sub.id,
-            priceId: sub.items.data[0]?.price.id,
-            currentPeriodEnd: sub.items.data[0]?.current_period_end
+            priceId: sub.items?.data?.[0]?.price?.id,
+            currentPeriodEnd: sub.items?.data?.[0]?.current_period_end
+              ?? (sub as unknown as { current_period_end?: number }).current_period_end
               ?? Math.floor(Date.now() / 1000),
           };
         }
@@ -148,8 +150,9 @@ export async function POST() {
         if (sub) {
           activeSubscription = {
             id: sub.id,
-            priceId: sub.items.data[0]?.price.id,
-            currentPeriodEnd: sub.items.data[0]?.current_period_end
+            priceId: sub.items?.data?.[0]?.price?.id,
+            currentPeriodEnd: sub.items?.data?.[0]?.current_period_end
+              ?? (sub as unknown as { current_period_end?: number }).current_period_end
               ?? Math.floor(Date.now() / 1000),
           };
         }

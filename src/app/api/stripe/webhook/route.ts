@@ -169,24 +169,36 @@ async function updateUserSubscription(
     return;
   }
 
-  const priceId = subscription.items.data[0]?.price.id;
+  // Webhook payloads may not include items fully — retrieve from API if needed
+  let sub = subscription;
+  if (!sub.items?.data?.length) {
+    console.info('[STRIPE_WEBHOOK] Items not in payload, retrieving subscription:', sub.id);
+    sub = await stripe.subscriptions.retrieve(sub.id);
+  }
+
+  const firstItem = sub.items?.data?.[0];
+  const priceId = firstItem?.price?.id ?? null;
   const plan = getPlanByPriceId(priceId);
-  const currentPeriodEnd = subscription.items.data[0]?.current_period_end
+
+  // current_period_end: prefer item-level, fall back to sub-level, then now
+  const currentPeriodEnd = firstItem?.current_period_end
+    ?? (sub as unknown as { current_period_end?: number }).current_period_end
     ?? Math.floor(Date.now() / 1000);
 
   console.info('[STRIPE_WEBHOOK] Attempting role update:', {
     userId: user.id,
     priceId,
     resolvedPlan: plan,
-    subscriptionId: subscription.id,
-    subscriptionStatus: subscription.status,
+    subscriptionId: sub.id,
+    subscriptionStatus: sub.status,
+    hasItems: !!firstItem,
   });
 
   try {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        stripeSubscriptionId: subscription.id,
+        stripeSubscriptionId: sub.id,
         stripePriceId: priceId,
         stripeCurrentPeriodEnd: new Date(currentPeriodEnd * 1000),
         role: plan,
@@ -196,7 +208,7 @@ async function updateUserSubscription(
     console.info('[STRIPE_WEBHOOK] Successfully updated user subscription:', {
       userId: user.id,
       plan,
-      subscriptionId: subscription.id,
+      subscriptionId: sub.id,
     });
   } catch (dbError) {
     console.error('[STRIPE_WEBHOOK] CRITICAL: DB update failed! User paid but role not updated.', {
