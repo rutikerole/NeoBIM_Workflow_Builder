@@ -3,6 +3,12 @@ import { stripe, getPlanByPriceId } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import Stripe from 'stripe';
 import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
+import {
+  sendWelcomeEmail,
+  sendPaymentFailedEmail,
+  sendSubscriptionCanceledEmail,
+  sendPlanChangedEmail,
+} from '@/services/email';
 
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -55,6 +61,15 @@ export async function POST(req: NextRequest) {
             : session.customer.id;
 
           await updateUserSubscription(customerId, subscription);
+
+          // Send welcome email (fire-and-forget)
+          const checkoutUser = await prisma.user.findFirst({
+            where: { stripeCustomerId: customerId },
+            select: { email: true, name: true, role: true },
+          });
+          if (checkoutUser?.email) {
+            sendWelcomeEmail(checkoutUser.email, checkoutUser.name, checkoutUser.role).catch(() => {});
+          }
         }
         break;
       }
@@ -89,8 +104,20 @@ export async function POST(req: NextRequest) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         console.error('[STRIPE_WEBHOOK] Payment failed for invoice:', invoice.id);
-        
-        // Optionally notify user about payment failure
+
+        // Send payment failed email
+        const failedCustomerId = typeof invoice.customer === 'string'
+          ? invoice.customer
+          : invoice.customer?.id;
+        if (failedCustomerId) {
+          const failedUser = await prisma.user.findFirst({
+            where: { stripeCustomerId: failedCustomerId },
+            select: { email: true, name: true },
+          });
+          if (failedUser?.email) {
+            sendPaymentFailedEmail(failedUser.email, failedUser.name).catch(() => {});
+          }
+        }
         break;
       }
 
@@ -162,12 +189,15 @@ async function updateUserSubscription(
 
   const user = await prisma.user.findFirst({
     where: { stripeCustomerId },
+    select: { id: true, email: true, name: true, role: true },
   });
 
   if (!user) {
     console.error('[STRIPE_WEBHOOK] User not found for customer:', stripeCustomerId);
     return;
   }
+
+  const previousRole = user.role;
 
   // Webhook payloads may not include items fully — retrieve from API if needed
   let sub = subscription;
@@ -210,6 +240,13 @@ async function updateUserSubscription(
       plan,
       subscriptionId: sub.id,
     });
+
+    // Send plan changed email if role actually changed (fire-and-forget)
+    if (previousRole !== plan && user.email) {
+      const TIER_ORDER = ['FREE', 'MINI', 'STARTER', 'PRO', 'TEAM_ADMIN'];
+      const type = TIER_ORDER.indexOf(plan) > TIER_ORDER.indexOf(previousRole) ? 'upgrade' : 'downgrade';
+      sendPlanChangedEmail(user.email, user.name, previousRole, plan, type).catch(() => {});
+    }
   } catch (dbError) {
     console.error('[STRIPE_WEBHOOK] CRITICAL: DB update failed! User paid but role not updated.', {
       userId: user.id,
@@ -224,12 +261,15 @@ async function updateUserSubscription(
 async function cancelUserSubscription(stripeCustomerId: string) {
   const user = await prisma.user.findFirst({
     where: { stripeCustomerId },
+    select: { id: true, email: true, name: true, role: true },
   });
 
   if (!user) {
     console.error('[STRIPE_WEBHOOK] User not found for customer:', stripeCustomerId);
     return;
   }
+
+  const previousRole = user.role;
 
   await prisma.user.update({
     where: { id: user.id },
@@ -242,4 +282,9 @@ async function cancelUserSubscription(stripeCustomerId: string) {
   });
 
   console.info('[STRIPE_WEBHOOK] Canceled user subscription:', user.id);
+
+  // Send cancellation email (fire-and-forget)
+  if (user.email) {
+    sendSubscriptionCanceledEmail(user.email, user.name, previousRole).catch(() => {});
+  }
 }
