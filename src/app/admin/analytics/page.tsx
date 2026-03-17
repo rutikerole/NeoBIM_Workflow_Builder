@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Download,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -865,6 +866,27 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportingType, setExportingType] = useState<string | null>(null);
+
+  async function downloadExport(type: string) {
+    if (exportingType) return;
+    setExportingType(type);
+    try {
+      const res = await fetch(`/api/admin/export?type=${type}`);
+      if (!res.ok) throw new Error(`Export failed`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${type}-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(`Failed to export ${type}:`, err);
+    } finally {
+      setExportingType(null);
+    }
+  }
 
   useEffect(() => {
     async function fetchStats() {
@@ -934,56 +956,146 @@ export default function AdminAnalyticsPage() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: smoothEase }}
-        style={{ marginBottom: 28 }}
+        style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 4,
-          }}
-        >
-          <BarChart3
-            size={14}
-            style={{ color: COLORS.cyan, opacity: 0.8 }}
-          />
-          <span
+        <div>
+          <div
             style={{
-              fontSize: 9,
-              color: COLORS.cyan,
-              fontWeight: 600,
-              letterSpacing: "1.5px",
-              textTransform: "uppercase",
-              fontFamily: FONTS.mono,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 4,
             }}
           >
-            Platform Analytics
-          </span>
+            <BarChart3
+              size={14}
+              style={{ color: COLORS.cyan, opacity: 0.8 }}
+            />
+            <span
+              style={{
+                fontSize: 9,
+                color: COLORS.cyan,
+                fontWeight: 600,
+                letterSpacing: "1.5px",
+                textTransform: "uppercase",
+                fontFamily: FONTS.mono,
+              }}
+            >
+              Platform Analytics
+            </span>
+          </div>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: COLORS.textPrimary,
+              margin: 0,
+              fontFamily: FONTS.heading,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Analytics & Reports
+          </h1>
+          <p
+            style={{
+              fontSize: 13,
+              color: COLORS.textMuted,
+              margin: "4px 0 0",
+              fontFamily: FONTS.heading,
+            }}
+          >
+            Real-time platform metrics, user growth, execution trends, and
+            feedback overview
+          </p>
         </div>
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 700,
-            color: COLORS.textPrimary,
-            margin: 0,
-            fontFamily: FONTS.heading,
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Analytics & Reports
-        </h1>
-        <p
-          style={{
-            fontSize: 13,
-            color: COLORS.textMuted,
-            margin: "4px 0 0",
-            fontFamily: FONTS.heading,
-          }}
-        >
-          Real-time platform metrics, user growth, execution trends, and
-          feedback overview
-        </p>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 4 }}>
+          <button
+            onClick={() => downloadExport("users")}
+            disabled={!!exportingType}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid rgba(0,245,255,0.2)",
+              background: "rgba(0,245,255,0.06)",
+              color: "#00F5FF",
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: FONTS.mono,
+              cursor: exportingType ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              opacity: exportingType && exportingType !== "users" ? 0.5 : 1,
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              if (!exportingType) (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,245,255,0.12)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,245,255,0.06)";
+            }}
+          >
+            {exportingType === "users" ? (
+              <span
+                style={{
+                  width: 13,
+                  height: 13,
+                  border: "2px solid rgba(0,245,255,0.3)",
+                  borderTopColor: "#00F5FF",
+                  borderRadius: "50%",
+                  animation: "csvSpinner 0.6s linear infinite",
+                  display: "inline-block",
+                }}
+              />
+            ) : (
+              <Download size={13} />
+            )}
+            Export Users CSV
+          </button>
+          <button
+            onClick={() => downloadExport("executions")}
+            disabled={!!exportingType}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid rgba(0,245,255,0.2)",
+              background: "rgba(0,245,255,0.06)",
+              color: "#00F5FF",
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: FONTS.mono,
+              cursor: exportingType ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              opacity: exportingType && exportingType !== "executions" ? 0.5 : 1,
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              if (!exportingType) (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,245,255,0.12)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,245,255,0.06)";
+            }}
+          >
+            {exportingType === "executions" ? (
+              <span
+                style={{
+                  width: 13,
+                  height: 13,
+                  border: "2px solid rgba(0,245,255,0.3)",
+                  borderTopColor: "#00F5FF",
+                  borderRadius: "50%",
+                  animation: "csvSpinner 0.6s linear infinite",
+                  display: "inline-block",
+                }}
+              />
+            ) : (
+              <Download size={13} />
+            )}
+            Export Executions CSV
+          </button>
+        </div>
       </motion.div>
 
       {/* ── KPI Row ──────────────────────────────────────────────────── */}
@@ -1171,6 +1283,9 @@ export default function AdminAnalyticsPage() {
 
       {/* ── Responsive Styles ────────────────────────────────────────── */}
       <style>{`
+        @keyframes csvSpinner {
+          to { transform: rotate(360deg); }
+        }
         @media (max-width: 1024px) {
           .analytics-kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
           .analytics-bottom-grid { grid-template-columns: 1fr !important; }

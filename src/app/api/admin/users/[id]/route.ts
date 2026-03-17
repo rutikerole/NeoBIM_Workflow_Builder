@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { isAdminRequest, unauthorizedResponse } from "@/lib/admin-server";
+import { getAdminSession, unauthorizedResponse, logAudit } from "@/lib/admin-server";
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdminRequest())) return unauthorizedResponse();
+  const session = await getAdminSession();
+  if (!session) return unauthorizedResponse();
 
   const { id } = await params;
   const body = await req.json();
+
+  // Get current user for audit log
+  const currentUser = await prisma.user.findUnique({
+    where: { id },
+    select: { role: true, email: true },
+  });
 
   const allowedUpdates: Record<string, unknown> = {};
   if (body.role && ["FREE", "PRO", "TEAM_ADMIN", "PLATFORM_ADMIN"].includes(body.role)) {
@@ -26,6 +33,12 @@ export async function PATCH(
     select: { id: true, name: true, email: true, role: true },
   });
 
+  await logAudit(session.id, "USER_ROLE_CHANGED", "user", id, {
+    email: currentUser?.email,
+    oldRole: currentUser?.role,
+    newRole: body.role,
+  });
+
   return NextResponse.json({ success: true, user });
 }
 
@@ -33,11 +46,24 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdminRequest())) return unauthorizedResponse();
+  const session = await getAdminSession();
+  if (!session) return unauthorizedResponse();
 
   const { id } = await params;
 
+  // Get user info before deletion for audit log
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { email: true, name: true, role: true },
+  });
+
   await prisma.user.delete({ where: { id } });
+
+  await logAudit(session.id, "USER_DELETED", "user", id, {
+    email: user?.email,
+    name: user?.name,
+    role: user?.role,
+  });
 
   return NextResponse.json({ success: true });
 }
