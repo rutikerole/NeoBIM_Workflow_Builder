@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     ];
   }
 
-  if (role && ["FREE", "PRO", "TEAM_ADMIN", "PLATFORM_ADMIN"].includes(role)) {
+  if (role && ["FREE", "MINI", "STARTER", "PRO", "TEAM_ADMIN", "PLATFORM_ADMIN"].includes(role)) {
     where.role = role;
   }
 

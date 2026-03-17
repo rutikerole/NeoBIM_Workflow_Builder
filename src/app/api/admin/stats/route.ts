@@ -26,7 +26,7 @@ export async function GET() {
     recentActivity,
     feedbackCounts,
     feedbackByType,
-    proUsersCount,
+    paidUsersCount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.groupBy({ by: ["role"], _count: true }),
@@ -69,7 +69,10 @@ export async function GET() {
     }),
     prisma.feedback.groupBy({ by: ["status"], _count: true }),
     prisma.feedback.groupBy({ by: ["type"], _count: true }),
-    prisma.user.count({ where: { role: "PRO" } }),
+    prisma.user.findMany({
+      where: { role: { in: ["MINI", "STARTER", "PRO", "TEAM_ADMIN"] } },
+      select: { role: true },
+    }),
   ]);
 
   // Group signups by day
@@ -98,9 +101,9 @@ export async function GET() {
   const successCount = executionsByStatus.find((s) => s.status === "SUCCESS")?._count ?? 0;
   const successRate = totalExecutions > 0 ? successCount / totalExecutions : 0;
 
-  // Estimate MRR: $29/mo per PRO user
-  const PRO_PRICE = 29;
-  const mrr = proUsersCount * PRO_PRICE;
+  // Calculate MRR from all paid tiers (INR prices)
+  const PLAN_PRICES: Record<string, number> = { MINI: 99, STARTER: 799, PRO: 1999, TEAM_ADMIN: 4999 };
+  const mrr = paidUsersCount.reduce((sum, u) => sum + (PLAN_PRICES[u.role] || 0), 0);
 
   const roles: Record<string, number> = {};
   roleDistribution.forEach((r) => { roles[r.role] = r._count; });

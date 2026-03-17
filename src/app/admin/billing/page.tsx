@@ -16,7 +16,7 @@ import dynamic from "next/dynamic";
 import { useLocale } from "@/hooks/useLocale";
 
 const smoothEase: [number, number, number, number] = [0.25, 0.4, 0.25, 1];
-const PRO_PRICE = 29;
+const PLAN_PRICES: Record<string, number> = { MINI: 99, STARTER: 799, PRO: 1999, TEAM_ADMIN: 4999 };
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -561,7 +561,7 @@ function formatDate(iso: string): string {
 }
 
 function formatCurrency(value: number): string {
-  return `$${value.toLocaleString()}`;
+  return `₹${value.toLocaleString()}`;
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -582,7 +582,7 @@ export default function AdminBillingPage() {
 
         const [statsRes, usersRes] = await Promise.all([
           fetch("/api/admin/stats"),
-          fetch("/api/admin/users?role=PRO&limit=100"),
+          fetch("/api/admin/users?limit=100&sort=role&order=asc"),
         ]);
 
         if (!statsRes.ok) throw new Error(`Stats fetch failed: ${statsRes.status}`);
@@ -637,9 +637,11 @@ export default function AdminBillingPage() {
 
   const planRoles: { label: string; key: string; color: string }[] = [
     { label: "FREE", key: "FREE", color: "#5C5C78" },
+    { label: "MINI", key: "MINI", color: "#F59E0B" },
+    { label: "STARTER", key: "STARTER", color: "#10B981" },
     { label: "PRO", key: "PRO", color: "#00F5FF" },
-    { label: "TEAM_ADMIN", key: "TEAM_ADMIN", color: "#FFBF00" },
-    { label: "PLATFORM_ADMIN", key: "PLATFORM_ADMIN", color: "#B87333" },
+    { label: "TEAM", key: "TEAM_ADMIN", color: "#FFBF00" },
+    { label: "ADMIN", key: "PLATFORM_ADMIN", color: "#B87333" },
   ];
 
   const planBarData = planRoles.map((p) => ({
@@ -719,24 +721,24 @@ export default function AdminBillingPage() {
           icon={<CircleDollarSign size={15} />}
           label={t('admin.billing.mrr')}
           value={mrr}
-          prefix="$"
+          prefix="₹"
           color="#B87333"
-          subtext={`${byRole["PRO"] ?? 0} PRO ${t('admin.billing.users')} x ${formatCurrency(PRO_PRICE)}/mo`}
+          subtext={`${(byRole["MINI"] ?? 0) + (byRole["STARTER"] ?? 0) + (byRole["PRO"] ?? 0) + (byRole["TEAM_ADMIN"] ?? 0)} paid ${t('admin.billing.users')}`}
           delay={0.05}
         />
         <KPICard
           icon={<DollarSign size={15} />}
           label={t('admin.billing.arr')}
           value={arr}
-          prefix="$"
+          prefix="₹"
           color="#FFBF00"
-          subtext={`${formatCurrency(mrr)} MRR x 12`}
+          subtext={`${formatCurrency(mrr)} MRR × 12`}
           delay={0.1}
         />
         <KPICard
           icon={<Users size={15} />}
-          label={t('admin.billing.proUsers')}
-          value={byRole["PRO"] ?? 0}
+          label={t('admin.billing.paidUsers')}
+          value={(byRole["MINI"] ?? 0) + (byRole["STARTER"] ?? 0) + (byRole["PRO"] ?? 0) + (byRole["TEAM_ADMIN"] ?? 0)}
           color="#00F5FF"
           subtext={`${totalUsers.toLocaleString()} ${t('admin.billing.users')}`}
           delay={0.15}
@@ -745,7 +747,7 @@ export default function AdminBillingPage() {
           icon={<BarChart3 size={15} />}
           label={t('admin.billing.arpu')}
           value={arpu}
-          prefix="$"
+          prefix="₹"
           decimals={2}
           color="#4F8AFF"
           subtext={`MRR / ${totalUsers.toLocaleString()} ${t('admin.billing.users')}`}
@@ -795,7 +797,7 @@ export default function AdminBillingPage() {
 
       {/* ── PRO Subscribers Table ─────────────────────────────────────────── */}
       <SectionCard
-        title={t('admin.billing.proSubscribers')}
+        title={t('admin.billing.allSubscribers')}
         subtitle={`${proTotal} ${t('admin.billing.users')}`}
         delay={0.5}
         accentColor="#B87333"
@@ -805,7 +807,7 @@ export default function AdminBillingPage() {
           className="billing-sub-header"
           style={{
             display: "grid",
-            gridTemplateColumns: "1.5fr 1.8fr 130px 90px 90px 120px",
+            gridTemplateColumns: "1.5fr 80px 1.8fr 130px 90px 90px 120px",
             gap: 8,
             padding: "8px 12px",
             borderRadius: 8,
@@ -815,6 +817,7 @@ export default function AdminBillingPage() {
         >
           {[
             { key: 'name', label: t('admin.billing.name') },
+            { key: 'plan', label: 'Plan' },
             { key: 'email', label: t('admin.billing.email') },
             { key: 'sub', label: t('admin.billing.subEnd') },
             { key: 'wf', label: t('admin.billing.workflows') },
@@ -867,7 +870,7 @@ export default function AdminBillingPage() {
               }}
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.5fr 1.8fr 130px 90px 90px 120px",
+                gridTemplateColumns: "1.5fr 80px 1.8fr 130px 90px 90px 120px",
                 gap: 8,
                 padding: "10px 12px",
                 borderBottom: "1px solid rgba(255,255,255,0.02)",
@@ -940,6 +943,31 @@ export default function AdminBillingPage() {
                   {user.name || t('admin.users.unnamed')}
                 </span>
               </div>
+
+              {/* Plan Badge */}
+              <span
+                className="billing-col-plan"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "3px 8px",
+                  borderRadius: 6,
+                  textAlign: "center",
+                  fontFamily: "var(--font-jetbrains), monospace",
+                  background: user.role === "PRO" ? "rgba(0,245,255,0.1)" :
+                    user.role === "MINI" ? "rgba(245,158,11,0.1)" :
+                    user.role === "STARTER" ? "rgba(16,185,129,0.1)" :
+                    user.role === "TEAM_ADMIN" ? "rgba(255,191,0,0.1)" :
+                    "rgba(92,92,120,0.1)",
+                  color: user.role === "PRO" ? "#00F5FF" :
+                    user.role === "MINI" ? "#F59E0B" :
+                    user.role === "STARTER" ? "#10B981" :
+                    user.role === "TEAM_ADMIN" ? "#FFBF00" :
+                    "#5C5C78",
+                }}
+              >
+                {user.role === "TEAM_ADMIN" ? "TEAM" : user.role}
+              </span>
 
               {/* Email */}
               <span
