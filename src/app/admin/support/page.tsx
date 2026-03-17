@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquare, ChevronDown, ChevronLeft, ChevronRight,
   Bug, Lightbulb, Sparkles, X, ExternalLink, Image as ImageIcon,
-  Loader2, Inbox, Clock, CheckCircle2,
+  Loader2, Inbox, Clock, CheckCircle2, Download,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -966,7 +966,28 @@ export default function AdminSupportPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [exportingType, setExportingType] = useState<string | null>(null);
   const limit = 20;
+
+  async function downloadExport(type: string) {
+    if (exportingType) return;
+    setExportingType(type);
+    try {
+      const res = await fetch(`/api/admin/export?type=${type}`);
+      if (!res.ok) throw new Error(`Export failed`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${type}-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(`Failed to export ${type}:`, err);
+    } finally {
+      setExportingType(null);
+    }
+  }
 
   useEffect(() => {
     const checkWidth = () => setIsMobile(window.innerWidth < 1024);
@@ -1038,49 +1059,95 @@ export default function AdminSupportPage() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: smoothEase }}
-        style={{ marginBottom: 24 }}
+        style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <MessageSquare size={14} style={{ color: "#00F5FF", opacity: 0.7 }} />
-          <span
-            style={{
-              fontSize: 9,
-              color: "#00F5FF",
-              fontWeight: 600,
-              letterSpacing: "1.5px",
-              textTransform: "uppercase",
-              fontFamily: "var(--font-jetbrains), monospace",
-            }}
-          >
-            Feedback Management
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-          <h1
-            style={{
-              fontSize: 24,
-              fontWeight: 700,
-              color: "#F0F0F5",
-              margin: 0,
-              fontFamily: "var(--font-syne), sans-serif",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Feedback & Support
-          </h1>
-          {!loading && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <MessageSquare size={14} style={{ color: "#00F5FF", opacity: 0.7 }} />
+            <span
               style={{
-                fontSize: 13,
-                color: "#5C5C78",
+                fontSize: 9,
+                color: "#00F5FF",
+                fontWeight: 600,
+                letterSpacing: "1.5px",
+                textTransform: "uppercase",
                 fontFamily: "var(--font-jetbrains), monospace",
               }}
             >
-              {totalCount} total
-            </motion.span>
-          )}
+              Feedback Management
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+            <h1
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                color: "#F0F0F5",
+                margin: 0,
+                fontFamily: "var(--font-syne), sans-serif",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Feedback & Support
+            </h1>
+            {!loading && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{
+                  fontSize: 13,
+                  color: "#5C5C78",
+                  fontFamily: "var(--font-jetbrains), monospace",
+                }}
+              >
+                {totalCount} total
+              </motion.span>
+            )}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, marginTop: 4 }}>
+          <button
+            onClick={() => downloadExport("feedback")}
+            disabled={!!exportingType}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid rgba(0,245,255,0.2)",
+              background: "rgba(0,245,255,0.06)",
+              color: "#00F5FF",
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: "var(--font-jetbrains), monospace",
+              cursor: exportingType ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              if (!exportingType) (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,245,255,0.12)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,245,255,0.06)";
+            }}
+          >
+            {exportingType === "feedback" ? (
+              <span
+                style={{
+                  width: 13,
+                  height: 13,
+                  border: "2px solid rgba(0,245,255,0.3)",
+                  borderTopColor: "#00F5FF",
+                  borderRadius: "50%",
+                  animation: "csvSpinner 0.6s linear infinite",
+                  display: "inline-block",
+                }}
+              />
+            ) : (
+              <Download size={13} />
+            )}
+            Export Feedback CSV
+          </button>
         </div>
       </motion.div>
 
@@ -1496,6 +1563,9 @@ export default function AdminSupportPage() {
       )}
 
       <style>{`
+        @keyframes csvSpinner {
+          to { transform: rotate(360deg); }
+        }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }

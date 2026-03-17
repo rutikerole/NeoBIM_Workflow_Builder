@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { isAdminRequest, unauthorizedResponse } from "@/lib/admin-server";
+import { getAdminSession, unauthorizedResponse, logAudit } from "@/lib/admin-server";
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdminRequest())) return unauthorizedResponse();
+  const session = await getAdminSession();
+  if (!session) return unauthorizedResponse();
 
   const { id } = await params;
   const body = await req.json();
 
-  const allowedUpdates: Record<string, unknown> = {};
+  // Get current feedback for audit log
+  const currentFeedback = await prisma.feedback.findUnique({
+    where: { id },
+    select: { status: true, title: true },
+  });
 
+  const allowedUpdates: Record<string, unknown> = {};
   if (body.status && ["NEW", "REVIEWING", "PLANNED", "IN_PROGRESS", "DONE", "DECLINED"].includes(body.status)) {
     allowedUpdates.status = body.status;
   }
@@ -27,6 +33,12 @@ export async function PATCH(
     include: {
       user: { select: { id: true, name: true, email: true, image: true } },
     },
+  });
+
+  await logAudit(session.id, "FEEDBACK_STATUS_CHANGED", "feedback", id, {
+    title: currentFeedback?.title,
+    oldStatus: currentFeedback?.status,
+    newStatus: body.status,
   });
 
   return NextResponse.json({ success: true, feedback });

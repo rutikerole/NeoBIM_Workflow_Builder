@@ -2,14 +2,14 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ADMIN_COOKIE_NAME, ADMIN_SESSION_TOKEN } from "@/lib/admin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-auth";
 
 export default function AdminRootPage() {
   const router = useRouter();
 
   useEffect(() => {
     const cookies = document.cookie;
-    if (cookies.includes(`${ADMIN_COOKIE_NAME}=${ADMIN_SESSION_TOKEN}`)) {
+    if (cookies.includes(`${ADMIN_COOKIE_NAME}=`)) {
       window.location.href = "/admin/dashboard";
     } else {
       window.location.href = "/login";

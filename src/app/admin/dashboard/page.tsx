@@ -6,6 +6,7 @@ import {
   Users, Zap,
   ArrowUpRight, DollarSign,
   CheckCircle2, XCircle, Clock, AlertTriangle,
+  RefreshCw, Download,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -875,13 +876,48 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── "X seconds ago" formatter ────────────────────────────────────────────────
+function formatSecondsAgo(date: Date | null): string {
+  if (!date) return "";
+  const diffMs = Date.now() - date.getTime();
+  const secs = Math.floor(diffMs / 1000);
+  if (secs < 5) return "just now";
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  return `${mins}m ago`;
+}
+
+// ─── Export download helper ──────────────────────────────────────────────────
+async function downloadExport(type: "users" | "executions") {
+  try {
+    const res = await fetch(`/api/admin/export?type=${type}`);
+    if (!res.ok) throw new Error(`Export failed: ${res.statusText}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${type}-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(`Failed to export ${type}:`, err);
+  }
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshInterval] = useState(30);
+  const [lastUpdatedLabel, setLastUpdatedLabel] = useState("");
 
-  const fetchStats = useCallback(async () => {
-    setLoading(true);
+  const fetchStats = useCallback(async (isPolling = false) => {
+    if (!isPolling) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const res = await fetch("/api/admin/stats");
@@ -890,6 +926,7 @@ export default function AdminDashboardPage() {
       }
       const data: AdminStats = await res.json();
       setStats(data);
+      setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -897,9 +934,28 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  // Initial fetch
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Auto-refresh polling
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchStats(true);
+    }, refreshInterval * 1000);
+    return () => clearInterval(id);
+  }, [fetchStats, refreshInterval]);
+
+  // Update the "Xs ago" label every second
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLastUpdatedLabel(formatSecondsAgo(lastUpdated));
+    }, 1000);
+    // set immediately
+    setLastUpdatedLabel(formatSecondsAgo(lastUpdated));
+    return () => clearInterval(id);
+  }, [lastUpdated]);
 
   if (loading) return <LoadingSkeleton />;
   if (error || !stats) return <ErrorState message={error || "No data available"} onRetry={fetchStats} />;
@@ -922,23 +978,148 @@ export default function AdminDashboardPage() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: smoothEase }}
-        style={{ marginBottom: 28 }}
+        style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}
       >
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 700,
-            color: COLORS.textPrimary,
-            margin: 0,
-            fontFamily: "var(--font-dm-sans), sans-serif",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Overview
-        </h1>
-        <p style={{ fontSize: 13, color: COLORS.textMuted, margin: "6px 0 0" }}>
-          {dateStr}
-        </p>
+        <div>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: COLORS.textPrimary,
+              margin: 0,
+              fontFamily: "var(--font-dm-sans), sans-serif",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Overview
+          </h1>
+          <p style={{ fontSize: 13, color: COLORS.textMuted, margin: "6px 0 0" }}>
+            {dateStr}
+          </p>
+        </div>
+
+        {/* Right side: live indicator, refresh, export */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          {/* Live pulse + last updated */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="admin-live-pulse" style={{
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: COLORS.success,
+              boxShadow: `0 0 6px ${COLORS.success}88`,
+              flexShrink: 0,
+            }} />
+            <span style={{
+              fontSize: 11,
+              color: COLORS.textMuted,
+              fontFamily: "var(--font-jetbrains), monospace",
+              whiteSpace: "nowrap",
+            }}>
+              {lastUpdatedLabel ? `Updated ${lastUpdatedLabel}` : "Loading..."}
+            </span>
+          </div>
+
+          {/* Manual refresh button */}
+          <button
+            onClick={() => fetchStats(true)}
+            title="Refresh now"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: `1px solid ${COLORS.cardBorder}`,
+              background: COLORS.cardBg,
+              backdropFilter: COLORS.cardBlur,
+              color: COLORS.textSecondary,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = COLORS.cardBorderHover;
+              e.currentTarget.style.color = COLORS.cyan;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = COLORS.cardBorder;
+              e.currentTarget.style.color = COLORS.textSecondary;
+            }}
+          >
+            <RefreshCw size={14} className={loading ? "admin-spin" : ""} />
+          </button>
+
+          {/* Export buttons */}
+          <button
+            onClick={() => downloadExport("users")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: `1px solid ${COLORS.cardBorder}`,
+              background: COLORS.cardBg,
+              backdropFilter: COLORS.cardBlur,
+              color: COLORS.textSecondary,
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "var(--font-jetbrains), monospace",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              whiteSpace: "nowrap",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = `${COLORS.cyan}44`;
+              e.currentTarget.style.color = COLORS.cyan;
+              e.currentTarget.style.background = `${COLORS.cyan}10`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = COLORS.cardBorder;
+              e.currentTarget.style.color = COLORS.textSecondary;
+              e.currentTarget.style.background = COLORS.cardBg;
+            }}
+          >
+            <Download size={12} />
+            Export Users
+          </button>
+          <button
+            onClick={() => downloadExport("executions")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: `1px solid ${COLORS.cardBorder}`,
+              background: COLORS.cardBg,
+              backdropFilter: COLORS.cardBlur,
+              color: COLORS.textSecondary,
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "var(--font-jetbrains), monospace",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              whiteSpace: "nowrap",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = `${COLORS.amber}44`;
+              e.currentTarget.style.color = COLORS.amber;
+              e.currentTarget.style.background = `${COLORS.amber}10`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = COLORS.cardBorder;
+              e.currentTarget.style.color = COLORS.textSecondary;
+              e.currentTarget.style.background = COLORS.cardBg;
+            }}
+          >
+            <Download size={12} />
+            Export Executions
+          </button>
+        </div>
       </motion.div>
 
       {/* ── KPI Cards ────────────────────────────────────────────────────── */}
@@ -1195,6 +1376,20 @@ export default function AdminDashboardPage() {
         @keyframes shimmer {
           0% { background-position: 200% 0; }
           100% { background-position: -200% 0; }
+        }
+        @keyframes admin-pulse-glow {
+          0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(52,211,153,0.53); }
+          50% { opacity: 0.5; box-shadow: 0 0 12px rgba(52,211,153,0.8); }
+        }
+        .admin-live-pulse {
+          animation: admin-pulse-glow 2s ease-in-out infinite;
+        }
+        @keyframes admin-spin-anim {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .admin-spin {
+          animation: admin-spin-anim 1s linear infinite;
         }
         @media (max-width: 1024px) {
           .admin-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }

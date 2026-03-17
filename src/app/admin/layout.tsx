@@ -9,7 +9,7 @@ import {
   BarChart3, MessageSquareHeart, Settings, ChevronLeft, ChevronRight,
   LogOut, Shield, Menu, X,
 } from "lucide-react";
-import { ADMIN_COOKIE_NAME, ADMIN_SESSION_TOKEN } from "@/lib/admin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-auth";
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -148,7 +148,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   const authenticated = cookieValue
-    ? cookieValue.includes(`${ADMIN_COOKIE_NAME}=${ADMIN_SESSION_TOKEN}`)
+    ? cookieValue.includes(`${ADMIN_COOKIE_NAME}=`)
     : null;
 
   useEffect(() => {

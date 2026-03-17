@@ -1,18 +1,85 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { ADMIN_COOKIE_NAME, ADMIN_SESSION_TOKEN } from "@/lib/admin-auth";
+import { prisma } from "@/lib/db";
+import { ADMIN_COOKIE_NAME, validateAdminSession } from "@/lib/admin-auth";
 
-/** Verify admin session from server-side cookie store. Returns true if valid. */
-export async function isAdminRequest(): Promise<boolean> {
+// ─── Admin Auth Middleware ────────────────────────────────────────────────────
+
+export interface AdminSession {
+  id: string;
+  username: string;
+  displayName: string;
+  role: string;
+}
+
+/** Verify admin session from server-side cookie store. Returns admin session or null. */
+export async function getAdminSession(): Promise<AdminSession | null> {
   const cookieStore = await cookies();
   const session = cookieStore.get(ADMIN_COOKIE_NAME);
-  return session?.value === ADMIN_SESSION_TOKEN;
+  if (!session?.value) return null;
+  return validateAdminSession(session.value);
+}
+
+/** Verify admin session. Returns true if valid. */
+export async function isAdminRequest(): Promise<boolean> {
+  const session = await getAdminSession();
+  return session !== null;
 }
 
 /** Standard 401 response for unauthenticated admin requests */
 export function unauthorizedResponse() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
+
+/** Standard 403 response for insufficient permissions */
+export function forbiddenResponse() {
+  return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+}
+
+// ─── Audit Logging ───────────────────────────────────────────────────────────
+
+export type AuditAction =
+  | "ADMIN_LOGIN"
+  | "ADMIN_LOGOUT"
+  | "ADMIN_CREATED"
+  | "ADMIN_UPDATED"
+  | "ADMIN_DELETED"
+  | "USER_ROLE_CHANGED"
+  | "USER_DELETED"
+  | "FEEDBACK_STATUS_CHANGED"
+  | "DATA_EXPORTED";
+
+/** Log an admin action to the audit trail */
+export async function logAudit(
+  adminId: string | null,
+  action: AuditAction,
+  targetType: string,
+  targetId?: string | null,
+  details?: Record<string, unknown>,
+): Promise<void> {
+  let ipAddress: string | null = null;
+  try {
+    const h = await headers();
+    ipAddress = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? null;
+  } catch {
+    // headers() may not be available in all contexts
+  }
+
+  await prisma.adminAuditLog.create({
+    data: {
+      adminId,
+      action,
+      targetType,
+      targetId: targetId ?? undefined,
+      details: details ? JSON.parse(JSON.stringify(details)) : {},
+      ipAddress,
+    },
+  }).catch(() => {
+    // Audit logging should never break the main operation
+  });
+}
+
+// ─── Node Catalogue Mapping ──────────────────────────────────────────────────
 
 /** Node catalogue ID → human name mapping */
 export const NODE_NAMES: Record<string, string> = {

@@ -1,26 +1,105 @@
-// ─── Admin Authentication (Hardcoded for Beta) ───────────────────────────
-// Simple cookie-based auth for admin dashboard
-// NOT production-grade — for internal use only during beta
+import { prisma } from "@/lib/db";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
-const ADMIN_CREDENTIALS = {
-  username: "buildflow_admin",
-  password: "Admin@123",
-} as const;
+// ─── Constants ───────────────────────────────────────────────────────────────
+export const ADMIN_COOKIE_NAME = "bf_admin_session";
+const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-const ADMIN_COOKIE_NAME = "bf_admin_session";
-const ADMIN_SESSION_TOKEN = "bf_admin_authenticated_2026";
+// Legacy fallback credentials (used only if no DB admin accounts exist)
+const LEGACY_USERNAME = "buildflow_admin";
+const LEGACY_PASSWORD = "Admin@123";
+// Keep for client-side layout auth check (useSyncExternalStore)
+export const ADMIN_SESSION_TOKEN = "bf_admin_authenticated_2026";
 
-export function validateAdminCredentials(username: string, password: string): boolean {
-  return username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password;
+// ─── DB-backed Admin Auth ────────────────────────────────────────────────────
+
+/** Ensure at least one admin account exists. Seeds default super admin if none found. */
+export async function ensureDefaultAdmin(): Promise<void> {
+  const count = await prisma.adminAccount.count();
+  if (count === 0) {
+    const hash = await bcrypt.hash(LEGACY_PASSWORD, 12);
+    await prisma.adminAccount.create({
+      data: {
+        username: LEGACY_USERNAME,
+        passwordHash: hash,
+        displayName: "Super Admin",
+        role: "SUPER_ADMIN",
+      },
+    });
+  }
 }
 
-export function getAdminSessionCookie(): string {
-  return `${ADMIN_COOKIE_NAME}=${ADMIN_SESSION_TOKEN}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=strict`;
+/** Validate admin credentials against DB. Returns admin account or null. */
+export async function validateAdminCredentials(
+  username: string,
+  password: string,
+): Promise<{ id: string; username: string; displayName: string; role: string } | null> {
+  await ensureDefaultAdmin();
+
+  const admin = await prisma.adminAccount.findUnique({
+    where: { username },
+    select: { id: true, username: true, displayName: true, role: true, passwordHash: true, isActive: true },
+  });
+
+  if (!admin || !admin.isActive) return null;
+
+  const valid = await bcrypt.compare(password, admin.passwordHash);
+  if (!valid) return null;
+
+  // Generate session token and store it
+  const sessionToken = crypto.randomUUID();
+  await prisma.adminAccount.update({
+    where: { id: admin.id },
+    data: { sessionToken, lastLoginAt: new Date() },
+  });
+
+  return { id: admin.id, username: admin.username, displayName: admin.displayName, role: admin.role };
 }
 
+/** Build Set-Cookie header value for admin session */
+export function getAdminSessionCookie(adminId: string, sessionToken: string): string {
+  const value = `${adminId}:${sessionToken}`;
+  return `${ADMIN_COOKIE_NAME}=${value}; path=/; max-age=${SESSION_MAX_AGE}; samesite=strict; httponly`;
+}
+
+/** Parse cookie value into adminId and sessionToken */
+export function parseAdminCookie(cookieValue: string): { adminId: string; sessionToken: string } | null {
+  const parts = cookieValue.split(":");
+  if (parts.length !== 2) return null;
+  return { adminId: parts[0], sessionToken: parts[1] };
+}
+
+/** Validate a session token against the DB */
+export async function validateAdminSession(
+  cookieValue: string,
+): Promise<{ id: string; username: string; displayName: string; role: string } | null> {
+  const parsed = parseAdminCookie(cookieValue);
+  if (!parsed) {
+    // Legacy token check for backward compatibility
+    if (cookieValue === ADMIN_SESSION_TOKEN) {
+      await ensureDefaultAdmin();
+      const admin = await prisma.adminAccount.findFirst({
+        where: { isActive: true },
+        select: { id: true, username: true, displayName: true, role: true },
+        orderBy: { createdAt: "asc" },
+      });
+      return admin;
+    }
+    return null;
+  }
+
+  const admin = await prisma.adminAccount.findUnique({
+    where: { id: parsed.adminId },
+    select: { id: true, username: true, displayName: true, role: true, sessionToken: true, isActive: true },
+  });
+
+  if (!admin || !admin.isActive || admin.sessionToken !== parsed.sessionToken) return null;
+  return { id: admin.id, username: admin.username, displayName: admin.displayName, role: admin.role };
+}
+
+/** Check if a cookie string contains an admin session (client-side check) */
 export function isAdminAuthenticated(cookieHeader: string | null): boolean {
   if (!cookieHeader) return false;
-  return cookieHeader.includes(`${ADMIN_COOKIE_NAME}=${ADMIN_SESSION_TOKEN}`);
+  return cookieHeader.includes(`${ADMIN_COOKIE_NAME}=`);
 }
-
-export { ADMIN_COOKIE_NAME, ADMIN_SESSION_TOKEN };
