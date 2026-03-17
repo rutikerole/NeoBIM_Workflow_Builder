@@ -20,6 +20,10 @@ model User {
   stripeSubscriptionId   String?       @unique
   stripePriceId          String?
   stripeCurrentPeriodEnd DateTime?
+  // Razorpay (Indian payment gateway — UPI, Google Pay, PhonePe)
+  razorpaySubscriptionId String?       @unique
+  razorpayPlanId         String?
+  paymentGateway         String?       // "stripe" | "razorpay"
   // Gamification
   xp            Int                    @default(0)
   level         Int                    @default(1)

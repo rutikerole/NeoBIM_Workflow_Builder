@@ -26,6 +26,8 @@ export async function GET() {
         stripeSubscriptionId: true,
         stripePriceId: true,
         stripeCurrentPeriodEnd: true,
+        razorpaySubscriptionId: true,
+        paymentGateway: true,
       },
     });
 
@@ -53,10 +55,15 @@ export async function GET() {
       }
     }
 
+    // Active subscription = has a real Stripe or Razorpay subscription ID with valid period
+    const hasStripe = !!user.stripeSubscriptionId && isSubscriptionActive(user.stripeCurrentPeriodEnd);
+    const hasRazorpay = !!user.razorpaySubscriptionId && isSubscriptionActive(user.stripeCurrentPeriodEnd);
+
     return NextResponse.json({
       role: user.role,
       subscription: subscriptionStatus,
-      hasActiveSubscription: !!user.stripeSubscriptionId && isSubscriptionActive(user.stripeCurrentPeriodEnd),
+      hasActiveSubscription: hasStripe || hasRazorpay,
+      paymentGateway: user.paymentGateway || (user.stripeSubscriptionId ? 'stripe' : null),
     });
   } catch (error: unknown) {
     console.error('[STRIPE_SUBSCRIPTION]', error);

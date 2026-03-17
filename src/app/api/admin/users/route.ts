@@ -43,6 +43,8 @@ export async function GET(req: Request) {
         level: true,
         stripeSubscriptionId: true,
         stripeCurrentPeriodEnd: true,
+        razorpaySubscriptionId: true,
+        paymentGateway: true,
         createdAt: true,
         _count: { select: { workflows: true, executions: true } },
       },

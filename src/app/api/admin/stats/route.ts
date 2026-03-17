@@ -72,7 +72,10 @@ export async function GET() {
     prisma.user.findMany({
       where: {
         role: { in: ["MINI", "STARTER", "PRO", "TEAM_ADMIN"] },
-        stripeSubscriptionId: { not: null },
+        OR: [
+          { stripeSubscriptionId: { not: null } },
+          { razorpaySubscriptionId: { not: null } },
+        ],
       },
       select: { role: true },
     }),

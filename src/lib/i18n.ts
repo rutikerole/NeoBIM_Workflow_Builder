@@ -366,6 +366,13 @@ const en = {
   'billing.planUpgraded': 'Plan upgraded successfully!',
   'billing.planDowngraded': 'Plan change scheduled. It will take effect at the end of your billing period.',
   'billing.planChangeFailed': 'Failed to change plan. Please try again.',
+  'billing.choosePaymentMethod': 'Choose Payment Method',
+  'billing.subscribeTo': 'Subscribe to',
+  'billing.recommended': 'RECOMMENDED',
+  'billing.razorpayDesc': 'Pay instantly with UPI, Google Pay, PhonePe, or net banking',
+  'billing.internationalCards': 'International Cards',
+  'billing.stripeDesc': 'Visa, Mastercard, Amex — powered by Stripe',
+  'billing.securePayment': 'All payments are encrypted and secure. Cancel anytime.',
 
   // ===== SETTINGS =====
   'settings.title': 'Settings',
@@ -2523,6 +2530,13 @@ const de: Record<keyof typeof en, string | string[]> = {
   'billing.planUpgraded': 'Plan erfolgreich aktualisiert!',
   'billing.planDowngraded': 'Planänderung geplant. Sie wird am Ende Ihres Abrechnungszeitraums wirksam.',
   'billing.planChangeFailed': 'Planänderung fehlgeschlagen. Bitte versuchen Sie es erneut.',
+  'billing.choosePaymentMethod': 'Zahlungsmethode wählen',
+  'billing.subscribeTo': 'Abonnieren:',
+  'billing.recommended': 'EMPFOHLEN',
+  'billing.razorpayDesc': 'Sofort bezahlen mit UPI, Google Pay, PhonePe oder Netbanking',
+  'billing.internationalCards': 'Internationale Karten',
+  'billing.stripeDesc': 'Visa, Mastercard, Amex — powered by Stripe',
+  'billing.securePayment': 'Alle Zahlungen sind verschlüsselt und sicher. Jederzeit kündbar.',
 
   // ===== SETTINGS =====
   'settings.title': 'Einstellungen',

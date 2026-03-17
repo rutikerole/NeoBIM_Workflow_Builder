@@ -47,6 +47,8 @@ interface ProUser {
   role: string;
   stripeSubscriptionId: string | null;
   stripeCurrentPeriodEnd: string | null;
+  razorpaySubscriptionId: string | null;
+  paymentGateway: string | null;
   createdAt: string;
   _count: { workflows: number; executions: number };
 }
@@ -987,7 +989,7 @@ export default function AdminBillingPage() {
                 {user.email || "--"}
               </span>
 
-              {/* Subscription End */}
+              {/* Subscription End + Gateway */}
               <div className="billing-col-sub" style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <Calendar size={11} style={{ color: "#5C5C78", flexShrink: 0 }} />
                 <span
@@ -1005,6 +1007,19 @@ export default function AdminBillingPage() {
                     ? formatDate(user.stripeCurrentPeriodEnd)
                     : "--"}
                 </span>
+                {(user.paymentGateway || user.stripeSubscriptionId || user.razorpaySubscriptionId) && (
+                  <span style={{
+                    fontSize: 9,
+                    padding: "1px 5px",
+                    borderRadius: 4,
+                    background: (user.paymentGateway === "razorpay" || user.razorpaySubscriptionId) ? "rgba(16,185,129,0.12)" : "rgba(99,102,241,0.12)",
+                    color: (user.paymentGateway === "razorpay" || user.razorpaySubscriptionId) ? "#10B981" : "#6366F1",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                  }}>
+                    {(user.paymentGateway === "razorpay" || user.razorpaySubscriptionId) ? "RZP" : "Stripe"}
+                  </span>
+                )}
               </div>
 
               {/* Workflows */}

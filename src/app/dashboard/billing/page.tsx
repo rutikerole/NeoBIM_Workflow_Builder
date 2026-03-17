@@ -5,10 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/dashboard/Header";
 import { useSession } from "next-auth/react";
+import Script from "next/script";
 import {
   Check, Sparkles, Zap, Loader2, CheckCircle2, XCircle,
   Video, Box, Image, Crown, Building2, Users, ArrowRight,
-  Shield, Ruler, ArrowUpRight, ArrowDownRight, X,
+  Shield, Ruler, ArrowUpRight, ArrowDownRight, X, CreditCard, Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -50,9 +51,15 @@ export default function BillingPage() {
     prorationAmount?: number;
     loading: boolean;
   } | null>(null);
+  const [paymentMethodModal, setPaymentMethodModal] = useState<{
+    plan: string;
+    planKey: string;
+    planName: string;
+  } | null>(null);
 
   const userRole = (session?.user as { role?: string })?.role || "FREE";
-  const hasSubscription = userRole !== "FREE";
+  // Whether user has a real active subscription (fetched from API, not just role)
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const currentPlan = userRole === "FREE" ? "Free" : userRole === "MINI" ? "Mini" : userRole === "STARTER" ? "Starter" : userRole === "PRO" ? "Pro" : "Team";
 
   // Handle success/cancel redirects from Stripe
@@ -129,12 +136,26 @@ export default function BillingPage() {
       .finally(() => setLoading(false));
   }, [userRole]);
 
+  // Check if user has a REAL active subscription (not just a manually set role)
+  useEffect(() => {
+    if (userRole === 'FREE') {
+      setHasActiveSubscription(false);
+      return;
+    }
+    fetch('/api/stripe/subscription')
+      .then(res => res.json())
+      .then(data => {
+        setHasActiveSubscription(data.hasActiveSubscription === true);
+      })
+      .catch(() => setHasActiveSubscription(false));
+  }, [userRole]);
+
   const handleUpgrade = async (plan: 'MINI' | 'STARTER' | 'PRO' | 'TEAM_ADMIN') => {
     const planKey = plan === 'TEAM_ADMIN' ? 'TEAM' : plan;
+    const planNames: Record<string, string> = { MINI: 'Mini', STARTER: 'Starter', PRO: 'Pro', TEAM_ADMIN: 'Team' };
 
-    if (hasSubscription) {
+    if (hasActiveSubscription) {
       // Existing subscriber → show confirmation modal with proration preview
-      const planNames: Record<string, string> = { MINI: 'Mini', STARTER: 'Starter', PRO: 'Pro', TEAM_ADMIN: 'Team' };
       const newTierIndex = TIER_ORDER.indexOf(planNames[plan] || 'Free');
       const currentTierIndex = TIER_ORDER.indexOf(currentPlan);
       const type = newTierIndex > currentTierIndex ? 'upgrade' : 'downgrade';
@@ -164,8 +185,14 @@ export default function BillingPage() {
       return;
     }
 
-    // New subscriber → checkout flow
-    setUpgradingTo(plan);
+    // New subscriber → show payment method choice (Stripe vs Razorpay)
+    setPaymentMethodModal({ plan, planKey, planName: planNames[plan] || plan });
+  };
+
+  /** Stripe checkout flow */
+  const handleStripeCheckout = async (planKey: string) => {
+    setPaymentMethodModal(null);
+    setUpgradingTo(planKey);
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
@@ -181,6 +208,85 @@ export default function BillingPage() {
     } catch {
       toast.error(t('billing.checkoutFailed'));
     } finally {
+      setUpgradingTo(null);
+    }
+  };
+
+  /** Razorpay checkout flow — UPI, Google Pay, PhonePe, Net Banking */
+  const handleRazorpayCheckout = async (planKey: string) => {
+    setPaymentMethodModal(null);
+    setUpgradingTo(planKey);
+    try {
+      // Step 1: Create Razorpay subscription on server
+      const res = await fetch('/api/razorpay/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planKey }),
+      });
+      const data = await res.json();
+      if (!data.subscriptionId || !data.razorpayKeyId) {
+        throw new Error(data.error?.message || 'Failed to create Razorpay subscription');
+      }
+
+      // Step 2: Open Razorpay checkout widget
+      const Razorpay = (window as unknown as { Razorpay: new (opts: Record<string, unknown>) => { open: () => void; on: (event: string, cb: () => void) => void } }).Razorpay;
+      if (!Razorpay) {
+        toast.error('Payment gateway is loading. Please try again in a moment.');
+        setUpgradingTo(null);
+        return;
+      }
+
+      const rzp = new Razorpay({
+        key: data.razorpayKeyId,
+        subscription_id: data.subscriptionId,
+        name: 'BuildFlow',
+        description: `${planKey} Plan Subscription`,
+        prefill: {
+          email: data.email || session?.user?.email || '',
+          name: data.name || session?.user?.name || '',
+        },
+        theme: { color: '#4F8AFF' },
+        handler: async (response: { razorpay_payment_id: string; razorpay_subscription_id: string; razorpay_signature: string }) => {
+          // Step 3: Verify payment on server
+          try {
+            toast.loading(t('billing.paymentSuccess'), { id: 'razorpay-verify' });
+            const verifyRes = await fetch('/api/razorpay/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(response),
+            });
+            const verifyData = await verifyRes.json();
+            toast.dismiss('razorpay-verify');
+
+            if (verifyData.success) {
+              toast.success(t('billing.planUpgraded'), { icon: <CheckCircle2 size={18} />, duration: 5000 });
+              trackPurchase({ content_name: "BuildFlow Subscription", currency: "INR" });
+              await updateSession();
+              window.location.reload();
+            } else {
+              toast.error(verifyData.error?.message || 'Payment verification failed. Contact support.');
+            }
+          } catch {
+            toast.dismiss('razorpay-verify');
+            toast.error('Payment verification failed. Your payment is safe — please contact support.');
+          }
+          setUpgradingTo(null);
+        },
+        modal: {
+          ondismiss: () => {
+            setUpgradingTo(null);
+          },
+        },
+      });
+
+      rzp.on('payment.failed', () => {
+        toast.error('Payment failed. Please try again.');
+        setUpgradingTo(null);
+      });
+
+      rzp.open();
+    } catch {
+      toast.error(t('billing.checkoutFailed'));
       setUpgradingTo(null);
     }
   };
@@ -875,6 +981,91 @@ export default function BillingPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Payment Method Selection Modal ── */}
+      <AnimatePresence>
+        {paymentMethodModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setPaymentMethodModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111120] p-8 shadow-2xl"
+            >
+              <button
+                onClick={() => setPaymentMethodModal(null)}
+                className="absolute top-4 right-4 p-1 rounded-lg text-[#7C7C96] hover:text-[#F0F0F5] hover:bg-[rgba(255,255,255,0.05)] transition-colors"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold text-[#F0F0F5] mb-2">
+                  {t('billing.choosePaymentMethod')}
+                </h3>
+                <p className="text-sm text-[#9898B0]">
+                  {t('billing.subscribeTo')} <strong className="text-[#4F8AFF]">{paymentMethodModal.planName}</strong>
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {/* UPI / Google Pay / PhonePe (Razorpay) — shown first as preferred for India */}
+                <button
+                  onClick={() => handleRazorpayCheckout(paymentMethodModal.planKey)}
+                  disabled={upgradingTo !== null}
+                  className="w-full p-4 rounded-xl border-2 border-[rgba(16,185,129,0.3)] bg-[rgba(16,185,129,0.04)] hover:bg-[rgba(16,185,129,0.08)] transition-all text-left flex items-center gap-4 group disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#10B981] to-[#059669] flex items-center justify-center flex-shrink-0">
+                    <Smartphone size={22} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-bold text-[#F0F0F5]">UPI / Google Pay / PhonePe</span>
+                      <span className="px-2 py-0.5 rounded-full bg-[rgba(16,185,129,0.15)] text-[10px] font-bold text-[#10B981]">
+                        {t('billing.recommended')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#7C7C96]">{t('billing.razorpayDesc')}</p>
+                  </div>
+                  <ArrowRight size={16} className="text-[#7C7C96] group-hover:text-[#10B981] transition-colors" />
+                </button>
+
+                {/* International Cards (Stripe) */}
+                <button
+                  onClick={() => handleStripeCheckout(paymentMethodModal.planKey)}
+                  disabled={upgradingTo !== null}
+                  className="w-full p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#16162A] hover:bg-[#1E1E34] transition-all text-left flex items-center gap-4 group disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#4F8AFF] flex items-center justify-center flex-shrink-0">
+                    <CreditCard size={22} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-bold text-[#F0F0F5] mb-0.5">{t('billing.internationalCards')}</div>
+                    <p className="text-xs text-[#7C7C96]">{t('billing.stripeDesc')}</p>
+                  </div>
+                  <ArrowRight size={16} className="text-[#7C7C96] group-hover:text-[#4F8AFF] transition-colors" />
+                </button>
+              </div>
+
+              <p className="text-center text-[10px] text-[#55556A] mt-4">
+                {t('billing.securePayment')}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Razorpay checkout.js script */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
       <style jsx global>{`
         @keyframes shimmer {
