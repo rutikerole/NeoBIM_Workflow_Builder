@@ -597,7 +597,7 @@ export default function BillingPage() {
                               }}
                             >
                               {credit.value === "0" ? "\u2014" : credit.value}
-                              {credit.value !== "0" && credit.value !== "\u221E" ? "/mo" : ""}
+                              {credit.value !== "0" && credit.value !== "\u221E" ? `/${t('billing.perMonthShort')}` : ""}
                             </span>
                           </div>
                         ))}
