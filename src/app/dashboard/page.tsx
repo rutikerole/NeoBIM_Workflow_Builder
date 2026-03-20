@@ -369,291 +369,252 @@ export default function DashboardPage() {
 
   const successRate = data.executionCount > 0
     ? Math.round((data.workflowCount / Math.max(data.executionCount, 1)) * 100)
-    : 0;
+    : 85;
+
+  const firstName = data.userName?.split(" ")[0] ?? "";
+  const hasWorkflows = (data.recentWorkflows ?? []).length > 0;
 
   return (
     <div className="dp-page-bg flex flex-col h-full overflow-hidden">
-      {/* ── Premium Background Layers ─────────────────────────── */}
       <PageBackground />
-
-      {/* Ambient node wave */}
       <AmbientNodeWave />
-
-      {/* Noise texture overlay */}
       <div className="dashboard-noise" />
 
       <main className="flex-1 overflow-y-auto relative" style={{ zIndex: 1 }}>
         <div className="dashboard-home-container" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
 
           {/* ════════════════════════════════════════════════════════════
-              HEADER — Welcome Hero
+              HERO — Full-width cinematic welcome
               ════════════════════════════════════════════════════════════ */}
           <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: smoothEase }}
+            style={{
+              position: "relative", overflow: "hidden",
+              borderRadius: 24, marginBottom: 40,
+              background: "linear-gradient(145deg, rgba(10,12,20,0.95) 0%, rgba(15,18,30,0.9) 100%)",
+              border: "1px solid rgba(79,138,255,0.1)",
+              minHeight: 320,
+            }}
           >
-            {/* Welcome banner */}
-            <motion.div
-              variants={fadeUp}
-              transition={{ duration: 0.6, ease: smoothEase }}
-              style={{
-                position: "relative", overflow: "hidden",
-                borderRadius: 20, marginBottom: 32,
-                background: "linear-gradient(135deg, rgba(79,138,255,0.06) 0%, rgba(139,92,246,0.04) 50%, rgba(16,185,129,0.03) 100%)",
-                border: "1px solid rgba(79,138,255,0.12)",
-                padding: "40px 44px",
-              }}
-            >
-              {/* Floating AEC elements */}
-              <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-                {/* Blueprint grid */}
-                <div style={{
-                  position: "absolute", inset: 0,
-                  backgroundImage: "linear-gradient(rgba(79,138,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(79,138,255,0.04) 1px, transparent 1px)",
-                  backgroundSize: "40px 40px",
-                }} />
-                {/* Floating building silhouette */}
-                <svg style={{ position: "absolute", right: 40, bottom: -10, opacity: 0.06 }} width="280" height="220" viewBox="0 0 280 220" fill="none">
-                  <rect x="20" y="60" width="60" height="160" rx="2" fill="#4F8AFF" />
-                  <rect x="90" y="20" width="50" height="200" rx="2" fill="#8B5CF6" />
-                  <rect x="150" y="80" width="55" height="140" rx="2" fill="#10B981" />
-                  <rect x="215" y="40" width="45" height="180" rx="2" fill="#F59E0B" />
-                  {/* Windows */}
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <React.Fragment key={`w-${i}`}>
-                      <rect x="30" y={75 + i * 18} width="12" height="8" rx="1" fill="rgba(255,255,255,0.3)" />
-                      <rect x="58" y={75 + i * 18} width="12" height="8" rx="1" fill="rgba(255,255,255,0.3)" />
-                      <rect x="100" y={35 + i * 22} width="10" height="10" rx="1" fill="rgba(255,255,255,0.3)" />
-                      <rect x="122" y={35 + i * 22} width="10" height="10" rx="1" fill="rgba(255,255,255,0.3)" />
-                    </React.Fragment>
-                  ))}
-                </svg>
-                {/* Floating node dots */}
-                {[
-                  { x: "15%", y: "20%", color: "#4F8AFF", size: 6, delay: 0 },
-                  { x: "75%", y: "15%", color: "#8B5CF6", size: 5, delay: 0.5 },
-                  { x: "85%", y: "70%", color: "#10B981", size: 7, delay: 1 },
-                  { x: "10%", y: "75%", color: "#F59E0B", size: 4, delay: 1.5 },
-                ].map((dot, i) => (
-                  <motion.div
-                    key={`dot-${i}`}
-                    animate={{
-                      y: [0, -8, 0],
-                      opacity: [0.3, 0.7, 0.3],
-                    }}
-                    transition={{
-                      duration: 3,
-                      delay: dot.delay,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                    style={{
-                      position: "absolute", left: dot.x, top: dot.y,
-                      width: dot.size, height: dot.size, borderRadius: "50%",
-                      background: dot.color,
-                      boxShadow: `0 0 12px ${dot.color}60`,
-                    }}
-                  />
-                ))}
-              </div>
+            {/* Animated blueprint grid */}
+            <div style={{
+              position: "absolute", inset: 0, pointerEvents: "none",
+              backgroundImage: "linear-gradient(rgba(79,138,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(79,138,255,0.03) 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+            }} />
 
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <motion.div
-                  variants={fadeUp}
-                  transition={{ duration: 0.5, ease: smoothEase }}
-                  className="blueprint-annotation"
-                  style={{
-                    fontSize: 10, fontWeight: 600, letterSpacing: "2.5px",
-                    textTransform: "uppercase" as const,
-                    color: "rgba(79,138,255,0.5)", marginBottom: 14,
-                  }}
-                >
+            {/* Cityscape silhouette */}
+            <svg style={{ position: "absolute", bottom: 0, right: 0, width: "55%", height: "100%", opacity: 0.04 }} viewBox="0 0 500 320" fill="none" preserveAspectRatio="xMaxYMax meet">
+              <rect x="30" y="100" width="50" height="220" rx="2" fill="#4F8AFF" />
+              <rect x="90" y="40" width="45" height="280" rx="2" fill="#8B5CF6" />
+              <rect x="145" y="120" width="55" height="200" rx="2" fill="#10B981" />
+              <rect x="210" y="60" width="40" height="260" rx="2" fill="#F59E0B" />
+              <rect x="260" y="140" width="60" height="180" rx="2" fill="#4F8AFF" />
+              <rect x="330" y="30" width="50" height="290" rx="2" fill="#8B5CF6" />
+              <rect x="390" y="90" width="45" height="230" rx="2" fill="#10B981" />
+              <rect x="445" y="50" width="55" height="270" rx="2" fill="#F59E0B" />
+              {Array.from({ length: 20 }).map((_, i) => (
+                <rect key={i} x={40 + (i % 4) * 70 + Math.floor(i / 4) * 10} y={80 + (i % 5) * 45} width="8" height="6" rx="1" fill="rgba(255,255,255,0.2)" />
+              ))}
+            </svg>
+
+            {/* Floating connected nodes animation */}
+            <svg style={{ position: "absolute", top: 0, right: 0, width: "50%", height: "100%", opacity: 0.08, pointerEvents: "none" }} viewBox="0 0 400 320">
+              {/* Edges */}
+              <motion.line x1="80" y1="60" x2="200" y2="120" stroke="#4F8AFF" strokeWidth="0.8" strokeDasharray="4 4"
+                initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 0.5 }} />
+              <motion.line x1="200" y1="120" x2="320" y2="80" stroke="#8B5CF6" strokeWidth="0.8" strokeDasharray="4 4"
+                initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 0.8 }} />
+              <motion.line x1="200" y1="120" x2="260" y2="240" stroke="#10B981" strokeWidth="0.8" strokeDasharray="4 4"
+                initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 1.1 }} />
+              {/* Nodes */}
+              {[
+                { cx: 80, cy: 60, color: "#4F8AFF", r: 6, delay: 0 },
+                { cx: 200, cy: 120, color: "#8B5CF6", r: 8, delay: 0.3 },
+                { cx: 320, cy: 80, color: "#10B981", r: 6, delay: 0.6 },
+                { cx: 260, cy: 240, color: "#F59E0B", r: 7, delay: 0.9 },
+              ].map((n, i) => (
+                <motion.circle key={i} cx={n.cx} cy={n.cy} r={n.r} fill={n.color}
+                  initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: n.delay + 0.5, duration: 0.5, ease: smoothEase }}>
+                  <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" begin={`${n.delay}s`} repeatCount="indefinite" />
+                </motion.circle>
+              ))}
+            </svg>
+
+            {/* Gradient overlays */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", background: "linear-gradient(transparent, rgba(10,12,20,0.8))", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "30%", background: "linear-gradient(90deg, transparent, rgba(10,12,20,0.4))", pointerEvents: "none" }} />
+
+            {/* Content */}
+            <div style={{ position: "relative", zIndex: 1, padding: "48px 48px 44px" }} className="dashboard-hero-content">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.5, ease: smoothEase }}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "5px 14px", borderRadius: 20, marginBottom: 20,
+                  background: "rgba(79,138,255,0.08)",
+                  border: "1px solid rgba(79,138,255,0.15)",
+                }}
+              >
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4F8AFF", boxShadow: "0 0 8px #4F8AFF" }} />
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#4F8AFF", letterSpacing: "0.1em", textTransform: "uppercase" }}>
                   {t('dash.workspaceHome')}
-                </motion.div>
+                </span>
+              </motion.div>
 
-                <motion.h1
-                  variants={fadeUp}
-                  transition={{ duration: 0.6, ease: smoothEase }}
-                  style={{
-                    fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800,
-                    letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 14,
-                  }}
-                >
-                  {data.userName ? (
-                    <>
-                      <span style={{ color: "#8898A8", fontSize: "0.65em", fontWeight: 500 }}>{t('dash.welcomeBack')}</span>
-                      <br />
-                      <span style={{ color: "#E2E8F0" }}>{data.userName.split(" ")[0]}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ color: "#E2E8F0" }}>{t('dash.designStudio')} </span>
-                      <span style={{
-                        background: "linear-gradient(135deg, #4F8AFF 0%, #8B5CF6 100%)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                        backgroundClip: "text",
-                      }}>
-                        {t('dash.studioHighlight')}
-                      </span>
-                    </>
-                  )}
-                </motion.h1>
+              <motion.h1
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6, ease: smoothEase }}
+                style={{
+                  fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800,
+                  letterSpacing: "-2px", lineHeight: 1.05, marginBottom: 16, maxWidth: 560,
+                }}
+              >
+                {firstName ? (
+                  <>
+                    <span style={{ color: "#6B7A8D", fontSize: "0.55em", fontWeight: 400, display: "block", marginBottom: 4, letterSpacing: "-0.5px" }}>
+                      {t('dash.welcomeBack')}
+                    </span>
+                    <span style={{ color: "#F0F0F5" }}>{firstName}</span>
+                    <span style={{ color: "#4F8AFF" }}>.</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ color: "#F0F0F5" }}>{t('dash.designStudio')} </span>
+                    <span style={{
+                      background: "linear-gradient(135deg, #4F8AFF, #8B5CF6)",
+                      WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+                    }}>{t('dash.studioHighlight')}</span>
+                  </>
+                )}
+              </motion.h1>
 
-                <motion.p
-                  variants={fadeUp}
-                  transition={{ duration: 0.5, ease: smoothEase }}
-                  style={{ fontSize: 15, color: "#8898A8", maxWidth: 480, lineHeight: 1.7 }}
-                >
-                  {t('dash.heroTagline')}
-                </motion.p>
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5, ease: smoothEase }}
+                style={{ fontSize: 16, color: "#6B7A8D", maxWidth: 440, lineHeight: 1.7, marginBottom: 28 }}
+              >
+                {t('dash.heroTagline')}
+              </motion.p>
 
-                {/* Stat pills inline */}
-                <motion.div
-                  variants={fadeUp}
-                  transition={{ duration: 0.5, ease: smoothEase }}
-                  className="dashboard-stat-pills"
-                  style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}
-                >
-                  {[
-                    { label: t('dash.workflows'), value: Math.max(data.workflowCount, 2), color: "#4F8AFF", icon: <Workflow size={12} /> },
-                    { label: t('dash.executions'), value: Math.max(data.executionCount, 2), color: "#8B5CF6", icon: <Activity size={12} /> },
-                    { label: t('dash.success'), value: Math.max(successRate, 85), color: "#10B981", icon: <CheckCircle2 size={12} />, suffix: "%" },
-                  ].map(stat => (
-                    <div key={stat.label} style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "8px 16px", borderRadius: 12,
-                      background: `rgba(${stat.color === "#4F8AFF" ? "79,138,255" : stat.color === "#8B5CF6" ? "139,92,246" : "16,185,129"}, 0.08)`,
-                      border: `1px solid rgba(${stat.color === "#4F8AFF" ? "79,138,255" : stat.color === "#8B5CF6" ? "139,92,246" : "16,185,129"}, 0.15)`,
-                    }}>
-                      <span style={{ color: stat.color, display: "flex" }}>{stat.icon}</span>
-                      <span style={{
-                        fontFamily: "var(--font-jetbrains), monospace",
-                        fontSize: 16, fontWeight: 700, color: stat.color,
-                      }}>
-                        {stat.value}{stat.suffix ?? ""}
-                      </span>
-                      <span style={{ fontSize: 10, color: "#556070", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                        {stat.label}
-                      </span>
-                    </div>
-                  ))}
-                </motion.div>
-              </div>
-            </motion.div>
+              {/* CTA Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5, ease: smoothEase }}
+                style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+              >
+                <Link href="/dashboard/workflows/new" style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "12px 28px", borderRadius: 12,
+                  background: "linear-gradient(135deg, #4F8AFF, #6366F1)",
+                  color: "#fff", fontSize: 14, fontWeight: 700,
+                  textDecoration: "none", transition: "all 0.25s",
+                  boxShadow: "0 4px 20px rgba(79,138,255,0.3)",
+                  letterSpacing: "-0.01em",
+                }}>
+                  <Plus size={16} />
+                  {t('dash.startBuilding')}
+                </Link>
+                <Link href="/dashboard/templates" style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "12px 24px", borderRadius: 12,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#B0B8C8", fontSize: 14, fontWeight: 600,
+                  textDecoration: "none", transition: "all 0.25s",
+                }}>
+                  <Grid3X3 size={15} />
+                  {t('dash.browseTemplates')}
+                </Link>
+              </motion.div>
+            </div>
           </motion.div>
 
           {/* ════════════════════════════════════════════════════════════
-              SECTION — What You Can Build (replaces old hero stats)
+              CAPABILITIES — What You Can Build
               ════════════════════════════════════════════════════════════ */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.25, duration: 0.5 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            style={{ marginBottom: 12 }}
           >
-            <SectionLabel number="00" title={t('dash.whatYouCanDo')} />
+            <SectionLabel number="01" title={t('dash.whatYouCanDo')} />
           </motion.div>
 
-          <div className="grid gap-5 mb-16 dashboard-capability-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+          <div className="grid gap-5 mb-14 dashboard-capability-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
             {[
-              {
-                icon: <Building2 size={24} />,
-                title: t('dash.textTo3d'),
-                desc: t('dash.textTo3dDesc'),
-                color: "#4F8AFF",
-                rgb: "79,138,255",
-                href: "/dashboard/workflows/new",
-                badge: t('dash.popular'),
-              },
-              {
-                icon: <Image size={24} />,
-                title: t('dash.floorplanTo3d'),
-                desc: t('dash.floorplanTo3dDesc'),
-                color: "#8B5CF6",
-                rgb: "139,92,246",
-                href: "/dashboard/workflows/new",
-                badge: null,
-              },
-              {
-                icon: <FileSpreadsheet size={24} />,
-                title: t('dash.ifcToBOQ'),
-                desc: t('dash.ifcToBOQDesc'),
-                color: "#10B981",
-                rgb: "16,185,129",
-                href: "/dashboard/workflows/new",
-                badge: null,
-              },
+              { icon: <Building2 size={22} />, title: t('dash.textTo3d'), desc: t('dash.textTo3dDesc'), color: "#4F8AFF", rgb: "79,138,255", badge: t('dash.popular') },
+              { icon: <Image size={22} />, title: t('dash.floorplanTo3d'), desc: t('dash.floorplanTo3dDesc'), color: "#8B5CF6", rgb: "139,92,246", badge: null },
+              { icon: <FileSpreadsheet size={22} />, title: t('dash.ifcToBOQ'), desc: t('dash.ifcToBOQDesc'), color: "#10B981", rgb: "16,185,129", badge: null },
             ].map((cap, i) => (
               <motion.div
                 key={cap.title}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.1, duration: 0.5, ease: smoothEase }}
+                transition={{ delay: 0.65 + i * 0.1, duration: 0.5, ease: smoothEase }}
               >
                 <Link
-                  href={cap.href}
-                  className="node-card dash-card-hover block"
+                  href="/dashboard/workflows/new"
+                  className="dash-card-hover block"
                   style={{
-                    "--node-port-color": cap.color,
-                    borderColor: `rgba(${cap.rgb}, 0.2)`,
-                    background: `linear-gradient(135deg, rgba(${cap.rgb}, 0.05), rgba(15,18,24,0.9))`,
-                    padding: "28px 24px",
-                    height: "100%",
+                    position: "relative", overflow: "hidden",
+                    background: "rgba(12,14,22,0.85)", backdropFilter: "blur(16px)",
+                    border: `1px solid rgba(${cap.rgb}, 0.12)`,
+                    borderRadius: 18, padding: "24px 22px",
+                    textDecoration: "none", height: "100%",
                     display: "flex", flexDirection: "column",
-                    textDecoration: "none",
                     transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
-                    position: "relative",
-                    overflow: "hidden",
-                  } as React.CSSProperties}
+                  }}
                 >
-                  {/* Floating grid pattern */}
+                  {/* Top gradient line */}
                   <div style={{
-                    position: "absolute", inset: 0, pointerEvents: "none",
-                    backgroundImage: `linear-gradient(rgba(${cap.rgb}, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(${cap.rgb}, 0.03) 1px, transparent 1px)`,
-                    backgroundSize: "24px 24px",
+                    position: "absolute", top: 0, left: 0, right: 0, height: 2,
+                    background: `linear-gradient(90deg, transparent, ${cap.color}, transparent)`,
+                    opacity: 0.4,
                   }} />
 
-                  <div style={{ position: "relative", zIndex: 1 }}>
-                    <div className="flex items-center justify-between mb-5">
-                      <div style={{
-                        width: 52, height: 52, borderRadius: 14,
-                        background: `linear-gradient(135deg, rgba(${cap.rgb}, 0.15), rgba(${cap.rgb}, 0.05))`,
-                        border: `1px solid rgba(${cap.rgb}, 0.25)`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        color: cap.color,
-                        boxShadow: `0 0 24px rgba(${cap.rgb}, 0.1)`,
-                      }}>
-                        {cap.icon}
-                      </div>
-                      {cap.badge && (
-                        <span style={{
-                          padding: "3px 10px", borderRadius: 20,
-                          background: `rgba(${cap.rgb}, 0.1)`,
-                          border: `1px solid rgba(${cap.rgb}, 0.25)`,
-                          fontSize: 9, fontWeight: 700, color: cap.color,
-                          fontFamily: "var(--font-jetbrains), monospace",
-                          letterSpacing: "0.1em",
-                        }}>
-                          {cap.badge}
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", marginBottom: 8 }}>
-                      {cap.title}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#8898A8", lineHeight: 1.6, flex: 1, marginBottom: 16 }}>
-                      {cap.desc}
-                    </div>
-
+                  <div className="flex items-center justify-between mb-4">
                     <div style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      fontSize: 12, fontWeight: 600, color: cap.color,
-                      fontFamily: "var(--font-jetbrains), monospace",
+                      width: 46, height: 46, borderRadius: 12,
+                      background: `rgba(${cap.rgb}, 0.1)`,
+                      border: `1px solid rgba(${cap.rgb}, 0.2)`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: cap.color,
                     }}>
-                      {t('dash.tryNow')} <ArrowRight size={13} />
+                      {cap.icon}
                     </div>
+                    {cap.badge && (
+                      <span style={{
+                        padding: "3px 10px", borderRadius: 20,
+                        background: `rgba(${cap.rgb}, 0.08)`, border: `1px solid rgba(${cap.rgb}, 0.2)`,
+                        fontSize: 8, fontWeight: 700, color: cap.color,
+                        fontFamily: "var(--font-jetbrains), monospace", letterSpacing: "0.12em",
+                      }}>{cap.badge}</span>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#E2E8F0", marginBottom: 6, letterSpacing: "-0.02em" }}>
+                    {cap.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#6B7A8D", lineHeight: 1.6, flex: 1, marginBottom: 14 }}>
+                    {cap.desc}
+                  </div>
+
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    fontSize: 11, fontWeight: 600, color: cap.color,
+                    fontFamily: "var(--font-jetbrains), monospace",
+                  }}>
+                    {t('dash.tryNow')} <ArrowRight size={12} />
                   </div>
                 </Link>
               </motion.div>
@@ -661,385 +622,106 @@ export default function DashboardPage() {
           </div>
 
           {/* ════════════════════════════════════════════════════════════
-              SECTION 01 — Quick Actions
+              QUICK START — Two-column action cards
               ════════════════════════════════════════════════════════════ */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
+            transition={{ delay: 0.85, duration: 0.5 }}
+            style={{ marginBottom: 12 }}
           >
-            <SectionLabel number="01" title={t('dash.quickActions')} />
+            <SectionLabel number="02" title={t('dash.quickActions')} />
           </motion.div>
 
-          <div className="flex items-stretch gap-0 mb-16 dashboard-quick-actions">
-            {/* Card A: New Workflow */}
+          <div className="grid gap-5 mb-14 dashboard-quick-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            {/* AI Generate */}
             <motion.div
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.5, ease: smoothEase }}
-              style={{ flex: 1 }}
+              transition={{ delay: 0.9, duration: 0.5, ease: smoothEase }}
             >
-              <Link
-                href="/dashboard/workflows/new"
-                className="node-card dash-card-hover block"
-                style={{
-                  "--node-port-color": "#B87333",
-                  borderStyle: "dashed",
-                  borderColor: "rgba(184,115,51,0.2)",
-                  padding: "28px 24px",
-                  height: "100%",
-                  display: "flex", flexDirection: "column",
-                  textDecoration: "none",
-                  transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
-                } as React.CSSProperties}
-              >
-                <div className="flex items-center justify-between mb-5">
-                  <div
-                    className="dash-plus"
-                    style={{
-                      width: 52, height: 52, borderRadius: 14,
-                      background: "linear-gradient(135deg, rgba(184,115,51,0.15), rgba(255,191,0,0.08))",
-                      border: "1px solid rgba(184,115,51,0.25)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "#B87333",
-                      boxShadow: "0 0 20px rgba(184,115,51,0.1)",
-                    }}
-                  >
-                    <Plus size={24} />
-                  </div>
-                  <ArrowRight size={16} style={{ color: "#556070" }} />
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", marginBottom: 6 }}>
-                  {t('dash.createWorkflow')}
-                </div>
-                <div style={{ fontSize: 12, color: "#8898A8", lineHeight: 1.55, flex: 1 }}>
-                  {t('dash.createWorkflowDesc')}
-                </div>
-              </Link>
-            </motion.div>
-
-            <WireConnector />
-
-            {/* Card B: AI Generate */}
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.43, duration: 0.5, ease: smoothEase }}
-              style={{ flex: 1 }}
-            >
-              <Link
-                href="/dashboard/workflows/new"
-                className="node-card block"
-                style={{
-                  "--node-port-color": "#4F8AFF",
-                  borderColor: "rgba(79,138,255,0.35)",
-                  background: "linear-gradient(135deg, rgba(79,138,255,0.06), rgba(0,212,255,0.03))",
-                  padding: "28px 24px",
-                  height: "100%",
-                  display: "flex", flexDirection: "column",
-                  textDecoration: "none",
-                  transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
-                } as React.CSSProperties}
-              >
-                <div className="flex items-center justify-between mb-5">
+              <Link href="/dashboard/workflows/new" className="dash-card-hover block" style={{
+                position: "relative", overflow: "hidden",
+                background: "linear-gradient(135deg, rgba(79,138,255,0.06), rgba(99,102,241,0.03))",
+                border: "1px solid rgba(79,138,255,0.15)",
+                borderRadius: 18, padding: "28px 26px",
+                textDecoration: "none",
+                transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
+              }}>
+                <div className="flex items-center gap-4 mb-3">
                   <div style={{
-                    width: 52, height: 52, borderRadius: 14,
-                    background: "linear-gradient(135deg, rgba(79,138,255,0.15), rgba(0,212,255,0.08))",
-                    border: "1px solid rgba(79,138,255,0.3)",
+                    width: 48, height: 48, borderRadius: 13,
+                    background: "linear-gradient(135deg, rgba(79,138,255,0.15), rgba(99,102,241,0.1))",
+                    border: "1px solid rgba(79,138,255,0.25)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#4F8AFF",
-                    boxShadow: "0 0 20px rgba(79,138,255,0.12)",
+                    color: "#4F8AFF", boxShadow: "0 0 20px rgba(79,138,255,0.1)",
                   }}>
                     <Sparkles size={22} />
                   </div>
-                  <span className="arch-ai-badge">{t('dash.aiPowered')}</span>
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", marginBottom: 6 }}>
-                  {t('dash.aiGenerate')}
-                </div>
-                <div style={{ fontSize: 12, color: "#8898A8", lineHeight: 1.55, flex: 1 }}>
-                  {t('dash.aiGenerateDesc')}
-                </div>
-              </Link>
-            </motion.div>
-
-            <WireConnector />
-
-            {/* Card C: Browse Templates */}
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.51, duration: 0.5, ease: smoothEase }}
-              style={{ flex: 1 }}
-            >
-              <Link
-                href="/dashboard/templates"
-                className="node-card block"
-                style={{
-                  "--node-port-color": "#F59E0B",
-                  borderColor: "rgba(245,158,11,0.25)",
-                  padding: "28px 24px",
-                  height: "100%",
-                  display: "flex", flexDirection: "column",
-                  textDecoration: "none",
-                  transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
-                } as React.CSSProperties}
-              >
-                <div className="flex items-center justify-between mb-5">
-                  <div style={{
-                    width: 52, height: 52, borderRadius: 14,
-                    background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(255,191,0,0.06))",
-                    border: "1px solid rgba(245,158,11,0.25)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#F59E0B",
-                    boxShadow: "0 0 20px rgba(245,158,11,0.08)",
-                  }}>
-                    <Grid3X3 size={22} />
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", letterSpacing: "-0.02em" }}>
+                      {t('dash.aiGenerate')}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#6B7A8D" }}>{t('dash.aiGenerateDesc')}</div>
                   </div>
-                  <span style={{
-                    padding: "3px 8px", borderRadius: 20,
-                    background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)",
-                    fontSize: 10, fontWeight: 700, color: "#F59E0B",
-                    fontFamily: "var(--font-jetbrains), monospace",
+                </div>
+                <span className="arch-ai-badge" style={{ marginTop: 8 }}>{t('dash.aiPowered')}</span>
+              </Link>
+            </motion.div>
+
+            {/* Create Blank */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.95, duration: 0.5, ease: smoothEase }}
+            >
+              <Link href="/dashboard/workflows/new" className="dash-card-hover block" style={{
+                position: "relative", overflow: "hidden",
+                background: "rgba(12,14,22,0.85)",
+                border: "1px dashed rgba(184,115,51,0.2)",
+                borderRadius: 18, padding: "28px 26px",
+                textDecoration: "none",
+                transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
+              }}>
+                <div className="flex items-center gap-4 mb-3">
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 13,
+                    background: "linear-gradient(135deg, rgba(184,115,51,0.12), rgba(255,191,0,0.06))",
+                    border: "1px solid rgba(184,115,51,0.2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#B87333",
                   }}>
-                    {PREBUILT_WORKFLOWS.length}
-                  </span>
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", marginBottom: 6 }}>
-                  {t('dash.browseTemplates')}
-                </div>
-                <div style={{ fontSize: 12, color: "#8898A8", lineHeight: 1.55, flex: 1 }}>
-                  {t('dash.browseTemplatesDesc')}
+                    <Plus size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", letterSpacing: "-0.02em" }}>
+                      {t('dash.createWorkflow')}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#6B7A8D" }}>{t('dash.createWorkflowDesc')}</div>
+                  </div>
                 </div>
               </Link>
             </motion.div>
           </div>
 
           {/* ════════════════════════════════════════════════════════════
-              SECTION 02 — Your Pipeline
+              RECENT WORKFLOWS
               ════════════════════════════════════════════════════════════ */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.55, duration: 0.5 }}
-          >
-            <SectionLabel number="02" title={t('dash.yourPipeline')} />
-          </motion.div>
-
-          <div className="flex items-stretch gap-0 mb-16 dashboard-pipeline-steps">
-            {(data.missions ?? []).map((mission, i) => {
-              const isCompleted = mission.status === "completed";
-              const isActive = mission.status === "in_progress";
-              const isLocked = mission.status === "locked";
-              const color = statusColor(mission.status);
-              const stepColors = ["#4F8AFF", "#8B5CF6", "#10B981", "#F59E0B"];
-              const stepColor = stepColors[i] ?? "#4F8AFF";
-              const stepNum = String(i + 1).padStart(2, "0");
-
-              return (
-                <React.Fragment key={mission.id}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + i * 0.08, duration: 0.5, ease: smoothEase }}
-                    style={{ flex: 1 }}
-                  >
-                    <Link
-                      href={isLocked ? "#" : mission.href}
-                      className={`block ${isActive ? "pipeline-step-active" : ""}`}
-                      style={{
-                        background: isActive ? "rgba(18,18,30,0.9)" : "rgba(15,18,24,0.85)",
-                        backdropFilter: "blur(16px) saturate(1.2)",
-                        WebkitBackdropFilter: "blur(16px) saturate(1.2)",
-                        borderRadius: 16, overflow: "hidden",
-                        border: isCompleted
-                          ? `1px solid ${stepColor}50`
-                          : isActive
-                            ? `1px solid rgba(184,115,51,0.35)`
-                            : "1px solid rgba(255,255,255,0.06)",
-                        opacity: isLocked ? 0.4 : 1,
-                        textDecoration: "none",
-                        height: "100%",
-                        display: "flex", flexDirection: "column" as const,
-                        position: "relative" as const,
-                        cursor: isLocked ? "not-allowed" : "pointer",
-                        transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
-                      }}
-                    >
-                      {/* Node header gradient bar */}
-                      <div
-                        className="node-header"
-                        style={{
-                          background: `linear-gradient(135deg, ${stepColor}20, ${stepColor}08)`,
-                          borderBottom: `1px solid ${stepColor}15`,
-                          display: "flex", alignItems: "center", gap: 8,
-                          padding: "10px 16px",
-                        }}
-                      >
-                        {/* Status dot */}
-                        <div style={{
-                          width: 8, height: 8, borderRadius: "50%",
-                          background: isCompleted ? "#34D399" : isActive ? "#B87333" : "#333",
-                          boxShadow: isCompleted
-                            ? "0 0 8px rgba(52,211,153,0.5)"
-                            : isActive
-                              ? "0 0 8px rgba(184,115,51,0.5)"
-                              : "none",
-                          animation: isActive ? "dashboard-pulse-dot 2s ease-in-out infinite" : "none",
-                        }} />
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, color: stepColor,
-                          letterSpacing: "1.5px", textTransform: "uppercase",
-                          fontFamily: "var(--font-jetbrains), monospace",
-                        }}>
-                          {t('dash.step')} {stepNum}
-                        </span>
-                        {isCompleted && <CheckCircle2 size={12} style={{ color: "#34D399", marginLeft: "auto" }} />}
-                      </div>
-
-                      {/* Content */}
-                      <div style={{ padding: "16px 16px 18px", flex: 1, display: "flex", flexDirection: "column" }}>
-                        <div className="flex items-start gap-3 mb-3">
-                          <div style={{
-                            width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            background: isCompleted
-                              ? "rgba(52,211,153,0.12)"
-                              : `${stepColor}12`,
-                            border: `1px solid ${isCompleted ? "rgba(52,211,153,0.2)" : `${stepColor}25`}`,
-                            color: isCompleted ? "#34D399" : color,
-                          }}>
-                            {isLocked ? <Lock size={15} /> : MISSION_ICONS[mission.icon]}
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 650, color: "#E2E8F0", marginBottom: 4 }}>
-                              {t(`dash.mission${i + 1}Title` as TranslationKey)}
-                            </div>
-                            <div style={{ fontSize: 11, color: "#8898A8", lineHeight: 1.5 }}>
-                              {t(`dash.mission${i + 1}Desc` as TranslationKey)}
-                            </div>
-                          </div>
-                        </div>
-
-                        {isActive && (
-                          <div style={{
-                            marginTop: "auto", paddingTop: 12,
-                            display: "flex", alignItems: "center", gap: 6,
-                            fontSize: 11, fontWeight: 600, color: "#B87333",
-                            fontFamily: "var(--font-jetbrains), monospace",
-                          }}>
-                            {t('dash.getStarted')} <ArrowRight size={12} />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Connection ports */}
-                      {i > 0 && (
-                        <div style={{
-                          position: "absolute", left: -6, top: "50%", transform: "translateY(-50%)",
-                          width: 10, height: 10, borderRadius: "50%",
-                          background: stepColor, border: "2px solid rgba(15,18,24,0.9)",
-                          boxShadow: `0 0 8px ${stepColor}`,
-                          zIndex: 2,
-                        }} />
-                      )}
-                      {i < 3 && (
-                        <div style={{
-                          position: "absolute", right: -6, top: "50%", transform: "translateY(-50%)",
-                          width: 10, height: 10, borderRadius: "50%",
-                          background: stepColor, border: "2px solid rgba(15,18,24,0.9)",
-                          boxShadow: `0 0 8px ${stepColor}`,
-                          zIndex: 2,
-                        }} />
-                      )}
-                    </Link>
-                  </motion.div>
-
-                  {/* Pipeline connector between steps */}
-                  {i < 3 && (
-                    <PipelineConnector
-                      fromColor={stepColors[i]}
-                      toColor={stepColors[i + 1]}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </div>
-
-          {/* ════════════════════════════════════════════════════════════
-              SECTION 03 — Design Templates
-              ════════════════════════════════════════════════════════════ */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
-          >
-            <SectionLabel
-              number="03"
-              title={t('dash.designTemplates')}
-              right={
-                <Link href="/dashboard/templates" className="dashboard-link-hover" style={{
-                  fontSize: 12, fontWeight: 600, color: "#B87333",
-                  textDecoration: "none", display: "flex", alignItems: "center", gap: 4,
-                  transition: "all 200ms ease",
-                }}>
-                  {t('dash.allTemplates')} <ChevronRight size={14} />
-                </Link>
-              }
-            />
-          </motion.div>
-
-          <div className="grid grid-cols-3 gap-5 mb-16">
-            {(data.blueprints ?? []).map((bp, i) => {
-              const workflow = PREBUILT_WORKFLOWS[bp.workflowIndex];
-              const name = workflow?.name ?? "Template";
-              const desc = workflow?.description ?? "";
-              const category = workflow?.category ?? "Concept Design";
-              const categoryColor = TEMPLATE_CATEGORY_COLORS[category] ?? "#3B82F6";
-              const diagramNodes = (workflow?.tileGraph?.nodes ?? []).map((n: { data: { label: string; category: string } }) => ({
-                label: n.data.label,
-                category: n.data.category,
-              }));
-
-              return (
-                <motion.div
-                  key={bp.workflowIndex}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.85 + i * 0.1, duration: 0.5, ease: smoothEase }}
-                >
-                  <TemplateCard
-                    unlocked={bp.unlocked}
-                    name={name}
-                    desc={desc}
-                    category={category}
-                    categoryColor={categoryColor}
-                    diagramNodes={diagramNodes}
-                  />
-                </motion.div>
-              );
-            })}
-          </div>
-
-          {/* ════════════════════════════════════════════════════════════
-              SECTION 04 — Recent Activity
-              ════════════════════════════════════════════════════════════ */}
-          {(data.recentWorkflows ?? []).length > 0 && (
+          {hasWorkflows && (
             <>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.0, duration: 0.5 }}
+                style={{ marginBottom: 12 }}
               >
                 <SectionLabel
-                  number="04"
+                  number="03"
                   title={t('dash.recentActivity')}
                   right={
                     <Link href="/dashboard/workflows" className="dashboard-link-hover" style={{
-                      fontSize: 12, fontWeight: 600, color: "#B87333",
+                      fontSize: 12, fontWeight: 600, color: "#4F8AFF",
                       textDecoration: "none", display: "flex", alignItems: "center", gap: 4,
-                      transition: "all 200ms ease",
                     }}>
                       {t('dash.allWorkflows')} <ChevronRight size={14} />
                     </Link>
@@ -1047,7 +729,7 @@ export default function DashboardPage() {
                 />
               </motion.div>
 
-              <div className="grid grid-cols-3 gap-4 mb-16">
+              <div className="grid grid-cols-3 gap-4 mb-14 dashboard-recent-grid">
                 {(data.recentWorkflows ?? []).map((wf, i) => (
                   <motion.div
                     key={wf.id}
@@ -1057,148 +739,53 @@ export default function DashboardPage() {
                   >
                     <Link
                       href={`/dashboard/canvas?id=${wf.id}`}
-                      className="block"
+                      className="dash-card-hover block"
                       style={{
-                        background: "rgba(15,18,24,0.85)",
-                        backdropFilter: "blur(16px)",
-                        WebkitBackdropFilter: "blur(16px)",
+                        background: "rgba(12,14,22,0.85)", backdropFilter: "blur(16px)",
                         border: "1px solid rgba(255,255,255,0.06)",
                         borderRadius: 16, overflow: "hidden",
                         textDecoration: "none",
                         transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
-                        position: "relative",
                       }}
                     >
-                      {/* Node header */}
                       <div style={{
-                        padding: "12px 18px",
-                        background: "linear-gradient(135deg, rgba(79,138,255,0.08), rgba(99,102,241,0.04))",
-                        borderBottom: "1px solid rgba(79,138,255,0.1)",
+                        padding: "14px 18px",
+                        background: "linear-gradient(135deg, rgba(79,138,255,0.06), rgba(99,102,241,0.03))",
+                        borderBottom: "1px solid rgba(79,138,255,0.08)",
                         display: "flex", alignItems: "center", gap: 10,
                       }}>
                         <div style={{
-                          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                          background: "rgba(79,138,255,0.12)",
-                          border: "1px solid rgba(79,138,255,0.2)",
+                          width: 32, height: 32, borderRadius: 8,
+                          background: "rgba(79,138,255,0.1)", border: "1px solid rgba(79,138,255,0.18)",
                           display: "flex", alignItems: "center", justifyContent: "center",
                         }}>
                           <FileText size={14} style={{ color: "#4F8AFF" }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 14, fontWeight: 600, color: "#E2E8F0",
-                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {wf.name}
                           </div>
-                          <div className="font-mono-data" style={{ fontSize: 10, color: "#556070" }}>
+                          <div style={{ fontSize: 10, color: "#556070", fontFamily: "var(--font-jetbrains), monospace" }}>
                             {timeAgo(wf.updatedAt, t)}
                           </div>
                         </div>
                       </div>
-
-                      {/* Content */}
-                      <div style={{ padding: "14px 18px 16px" }}>
-                        <div className="flex items-center gap-4 mb-2">
-                          <span className="font-mono-data" style={{ fontSize: 10, color: "#556070", display: "flex", alignItems: "center", gap: 4 }}>
-                            <Zap size={10} style={{ color: "#B87333" }} /> {wf.nodeCount} {t('dash.nodes')}
+                      <div style={{ padding: "12px 18px 14px" }}>
+                        <div className="flex items-center gap-4">
+                          <span style={{ fontSize: 10, color: "#556070", display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-jetbrains), monospace" }}>
+                            <Zap size={10} style={{ color: "#4F8AFF" }} /> {wf.nodeCount} {t('dash.nodes')}
                           </span>
-                          <span className="font-mono-data" style={{ fontSize: 10, color: "#556070", display: "flex", alignItems: "center", gap: 4 }}>
-                            <Play size={9} style={{ color: "#34D399" }} /> {wf.executionCount} {t('dash.runs')}
+                          <span style={{ fontSize: 10, color: "#556070", display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-jetbrains), monospace" }}>
+                            <Play size={9} style={{ color: "#10B981" }} /> {wf.executionCount} {t('dash.runs')}
                           </span>
                         </div>
-
                         <SignalLine color="#4F8AFF" delay={1.1 + i * 0.1} />
-
-                        <div style={{
-                          marginTop: 12, textAlign: "center",
-                          padding: "8px 0", borderRadius: 8,
-                          background: "rgba(184,115,51,0.06)", border: "1px solid rgba(184,115,51,0.12)",
-                          fontSize: 11, fontWeight: 600, color: "#B87333",
-                          fontFamily: "var(--font-jetbrains), monospace",
-                          letterSpacing: "0.04em",
-                        }}>
-                          {t('dash.openWorkflow')}
-                        </div>
                       </div>
                     </Link>
                   </motion.div>
                 ))}
               </div>
             </>
-          )}
-
-          {/* ════════════════════════════════════════════════════════════
-              TIP CARD
-              ════════════════════════════════════════════════════════════ */}
-          {data.flashEvent && !data.flashEvent.completed && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.2, duration: 0.5, ease: smoothEase }}
-            >
-              <Link
-                href={data.flashEvent.href}
-                className="block dashboard-tip"
-                style={{
-                  position: "relative",
-                  borderRadius: 14,
-                  border: "1px solid rgba(184,115,51,0.15)",
-                  background: "linear-gradient(135deg, rgba(184,115,51,0.04) 0%, rgba(255,191,0,0.02) 100%)",
-                  overflow: "hidden",
-                  textDecoration: "none",
-                  display: "flex", alignItems: "center", gap: 18,
-                  padding: "20px 24px",
-                  transition: "all 300ms cubic-bezier(0.25, 0.4, 0.25, 1)",
-                }}
-              >
-                {/* Blueprint pattern right side */}
-                <div style={{
-                  position: "absolute", top: 0, right: 0, bottom: 0, width: "40%",
-                  pointerEvents: "none",
-                  backgroundImage: "linear-gradient(rgba(184,115,51,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(184,115,51,0.06) 1px, transparent 1px)",
-                  backgroundSize: "28px 28px",
-                  maskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 100%)",
-                  WebkitMaskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 100%)",
-                }} />
-
-                {/* Left accent bar */}
-                <div style={{
-                  position: "absolute", left: 0, top: "20%", bottom: "20%", width: 3,
-                  borderRadius: "0 4px 4px 0",
-                  background: "linear-gradient(180deg, #B87333, #FFBF00)",
-                }} />
-
-                <div style={{
-                  width: 42, height: 42, borderRadius: 11, flexShrink: 0,
-                  background: "linear-gradient(135deg, rgba(184,115,51,0.12), rgba(255,191,0,0.06))",
-                  border: "1px solid rgba(184,115,51,0.2)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 0 16px rgba(184,115,51,0.08)",
-                }}>
-                  <Lightbulb size={18} style={{ color: "#B87333" }} />
-                </div>
-
-                <div style={{ flex: 1, position: "relative", zIndex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0", marginBottom: 3 }}>
-                    {t('dash.flashTitle')}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#8898A8", lineHeight: 1.5 }}>
-                    {t('dash.flashDesc')}
-                  </div>
-                </div>
-
-                <div style={{
-                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                  background: "rgba(184,115,51,0.08)",
-                  border: "1px solid rgba(184,115,51,0.15)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  position: "relative", zIndex: 1,
-                }}>
-                  <ArrowRight size={14} style={{ color: "#B87333" }} />
-                </div>
-              </Link>
-            </motion.div>
           )}
 
         </div>
