@@ -192,167 +192,218 @@ export default function DashboardPage() {
         <div className="dashboard-home-container" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
 
           {/* ══════════════════════════════════════════════════════════════
-              SECTION 1 — WELCOME HERO
+              SECTION 1 — WELCOME HERO (Cinematic)
               ══════════════════════════════════════════════════════════════ */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: smoothEase }}
+            transition={{ duration: 0.8, ease: smoothEase }}
+            className="dash-hero-main"
             style={{
               position: "relative", overflow: "hidden",
-              borderRadius: 24, marginBottom: 48,
-              background: "linear-gradient(145deg, rgba(10,12,22,0.95), rgba(15,18,32,0.9))",
-              border: "1px solid rgba(79,138,255,0.08)",
-              minHeight: 300,
+              borderRadius: 28, marginBottom: 48,
+              minHeight: 360,
             }}
-            className="dash-glow-border"
           >
-            {/* Blueprint grid */}
+            {/* ── Multi-layer background ── */}
+            {/* Base gradient */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "linear-gradient(160deg, #080a14 0%, #0d1020 40%, #0a0e1c 70%, #0c0f1f 100%)",
+            }} />
+            {/* Animated gradient mesh — 3 slow-moving orbs */}
+            <motion.div
+              animate={{ x: [0, 30, -10, 0], y: [0, -20, 10, 0] }}
+              transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+              style={{
+                position: "absolute", top: "-30%", right: "-5%", width: 500, height: 500,
+                borderRadius: "50%", pointerEvents: "none",
+                background: "radial-gradient(circle, rgba(79,138,255,0.1) 0%, transparent 60%)",
+                filter: "blur(60px)",
+              }}
+            />
+            <motion.div
+              animate={{ x: [0, -20, 15, 0], y: [0, 15, -10, 0] }}
+              transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+              style={{
+                position: "absolute", bottom: "-20%", left: "5%", width: 400, height: 400,
+                borderRadius: "50%", pointerEvents: "none",
+                background: "radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 60%)",
+                filter: "blur(50px)",
+              }}
+            />
+            <motion.div
+              animate={{ x: [0, 15, -15, 0], y: [0, -10, 20, 0] }}
+              transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 6 }}
+              style={{
+                position: "absolute", top: "20%", left: "40%", width: 300, height: 300,
+                borderRadius: "50%", pointerEvents: "none",
+                background: "radial-gradient(circle, rgba(16,185,129,0.05) 0%, transparent 60%)",
+                filter: "blur(45px)",
+              }}
+            />
+
+            {/* Blueprint grid with fade mask */}
             <div style={{
               position: "absolute", inset: 0, pointerEvents: "none",
-              backgroundImage: "linear-gradient(rgba(79,138,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(79,138,255,0.025) 1px, transparent 1px)",
+              backgroundImage: "linear-gradient(rgba(79,138,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(79,138,255,0.03) 1px, transparent 1px)",
               backgroundSize: "48px 48px",
+              maskImage: "radial-gradient(ellipse 70% 80% at 30% 50%, black 30%, transparent 80%)",
+              WebkitMaskImage: "radial-gradient(ellipse 70% 80% at 30% 50%, black 30%, transparent 80%)",
             }} />
 
             {/* Floating particles */}
             <div className="dash-particles">
               {[
-                { x: "8%", y: "20%", size: 3, color: "#4F8AFF", delay: "0s" },
-                { x: "25%", y: "70%", size: 2, color: "#8B5CF6", delay: "1.5s" },
-                { x: "45%", y: "15%", size: 4, color: "#10B981", delay: "3s" },
-                { x: "65%", y: "80%", size: 2, color: "#F59E0B", delay: "4.5s" },
-                { x: "90%", y: "30%", size: 3, color: "#06B6D4", delay: "2s" },
-                { x: "35%", y: "45%", size: 2, color: "#EC4899", delay: "5.5s" },
+                { x: "8%", y: "18%", size: 3, color: "#4F8AFF", delay: "0s" },
+                { x: "22%", y: "72%", size: 2, color: "#8B5CF6", delay: "1.5s" },
+                { x: "48%", y: "12%", size: 3, color: "#10B981", delay: "3s" },
+                { x: "62%", y: "82%", size: 2, color: "#F59E0B", delay: "4.5s" },
+                { x: "88%", y: "25%", size: 2, color: "#06B6D4", delay: "2s" },
+                { x: "32%", y: "50%", size: 2, color: "#EC4899", delay: "5.5s" },
+                { x: "75%", y: "55%", size: 3, color: "#4F8AFF", delay: "7s" },
+                { x: "55%", y: "35%", size: 2, color: "#8B5CF6", delay: "3.5s" },
               ].map((p, i) => (
                 <div key={i} className="dash-particle" style={{
                   left: p.x, top: p.y, width: p.size, height: p.size,
-                  background: p.color, boxShadow: `0 0 ${p.size * 3}px ${p.color}60`,
-                  animationDelay: p.delay, animationDuration: `${6 + i * 0.8}s`,
+                  background: p.color, boxShadow: `0 0 ${p.size * 4}px ${p.color}50`,
+                  animationDelay: p.delay, animationDuration: `${7 + i * 0.6}s`,
                 }} />
               ))}
             </div>
 
-            {/* Gradient mesh */}
-            <div style={{
-              position: "absolute", top: "-20%", right: "-10%", width: 400, height: 400,
-              borderRadius: "50%", pointerEvents: "none",
-              background: "radial-gradient(circle, rgba(79,138,255,0.06) 0%, transparent 70%)",
-              filter: "blur(40px)",
-            }} />
-            <div style={{
-              position: "absolute", bottom: "-30%", left: "10%", width: 350, height: 350,
-              borderRadius: "50%", pointerEvents: "none",
-              background: "radial-gradient(circle, rgba(139,92,246,0.04) 0%, transparent 70%)",
-              filter: "blur(30px)",
-            }} />
-
             {/* AEC Orbit */}
             <AECOrbit />
 
-            {/* Content */}
-            <div style={{ position: "relative", zIndex: 1, padding: "48px 48px 44px", maxWidth: 600 }} className="dashboard-hero-content">
-              {/* Plan badge */}
+            {/* ── Top accent line ── */}
+            <div style={{
+              position: "absolute", top: 0, left: 0, right: 0, height: 2,
+              background: "linear-gradient(90deg, transparent 5%, rgba(79,138,255,0.4) 20%, rgba(139,92,246,0.3) 50%, rgba(16,185,129,0.2) 80%, transparent 95%)",
+              pointerEvents: "none",
+            }} />
+
+            {/* ── Content ── */}
+            <div style={{ position: "relative", zIndex: 1, padding: "52px 52px 48px", maxWidth: 620 }} className="dashboard-hero-content">
+              {/* Plan + Usage row */}
               <motion.div
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.5, ease: smoothEase }}
-                style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.5, ease: smoothEase }}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 12,
+                  padding: "6px 6px 6px 14px", borderRadius: 24,
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  backdropFilter: "blur(12px)",
+                  marginBottom: 28,
+                }}
               >
                 <span style={{
                   display: "inline-flex", alignItems: "center", gap: 5,
-                  padding: "4px 12px", borderRadius: 20,
-                  background: role === "FREE" ? "rgba(79,138,255,0.08)" : "rgba(245,158,11,0.08)",
-                  border: `1px solid ${role === "FREE" ? "rgba(79,138,255,0.15)" : "rgba(245,158,11,0.2)"}`,
                   fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
                   color: role === "FREE" ? "#4F8AFF" : "#F59E0B",
                   fontFamily: "var(--font-jetbrains), monospace",
                 }}>
                   {role === "FREE" ? <Zap size={10} /> : <Crown size={10} />}
-                  {role} {t('dash.planLabel')}
+                  {role}
                 </span>
+                <div style={{ width: 1, height: 14, background: "rgba(255,255,255,0.08)" }} />
                 <span style={{ fontSize: 11, color: "#556070" }}>
                   {used}/{planLimit} {t('dash.workflowsUsed')}
                 </span>
+                {/* Mini progress ring */}
+                <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+                  <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="2" />
+                  <motion.circle
+                    cx="11" cy="11" r="9" fill="none"
+                    stroke={usagePercent > 80 ? "#EF4444" : "#4F8AFF"}
+                    strokeWidth="2" strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 9}`}
+                    initial={{ strokeDashoffset: 2 * Math.PI * 9 }}
+                    animate={{ strokeDashoffset: 2 * Math.PI * 9 * (1 - usagePercent / 100) }}
+                    transition={{ delay: 0.8, duration: 1.2, ease: smoothEase }}
+                    transform="rotate(-90 11 11)"
+                  />
+                </svg>
               </motion.div>
 
-              {/* Greeting */}
+              {/* Greeting — big, bold, gradient */}
               <motion.h1
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6, ease: smoothEase }}
-                style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 10 }}
+                transition={{ delay: 0.35, duration: 0.7, ease: smoothEase }}
+                style={{ fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.05, marginBottom: 16 }}
               >
                 {firstName ? (
                   <>
-                    <span style={{ color: "#6B7A8D", fontSize: "0.55em", fontWeight: 400, display: "block", marginBottom: 4, letterSpacing: "-0.5px" }}>
+                    <span style={{ color: "#4A5568", fontSize: "0.5em", fontWeight: 400, display: "block", marginBottom: 6, letterSpacing: "0px" }}>
                       {t('dash.welcomeBack')}
                     </span>
-                    <span style={{ color: "#F0F0F5" }}>{firstName}</span>
-                    <span style={{ color: "#4F8AFF" }}>.</span>
+                    <span className="dash-shimmer-text">{firstName}</span>
+                    <span style={{
+                      background: "linear-gradient(135deg, #4F8AFF, #8B5CF6)",
+                      WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+                    }}>.</span>
                   </>
                 ) : (
-                  <span style={{ color: "#F0F0F5" }}>{t('dash.welcomeNew')}</span>
+                  <>
+                    <span style={{ color: "#F0F0F5" }}>Welcome to </span>
+                    <span className="dash-shimmer-text">BuildFlow</span>
+                  </>
                 )}
               </motion.h1>
 
               <motion.p
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.5, ease: smoothEase }}
-                style={{ fontSize: 16, color: "#6B7A8D", lineHeight: 1.7, marginBottom: 8 }}
+                transition={{ delay: 0.45, duration: 0.5, ease: smoothEase }}
+                style={{ fontSize: 17, color: "#6B7A8D", lineHeight: 1.7, marginBottom: 32, maxWidth: 420 }}
               >
                 {t('dash.letsCreate')}
               </motion.p>
-
-              {/* Usage bar */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.5 }}
-                style={{ marginBottom: 28, maxWidth: 300 }}
-              >
-                <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${usagePercent}%` }}
-                    transition={{ delay: 0.8, duration: 1, ease: smoothEase }}
-                    style={{ height: "100%", borderRadius: 2, background: usagePercent > 80 ? "linear-gradient(90deg, #F59E0B, #EF4444)" : "linear-gradient(90deg, #4F8AFF, #8B5CF6)" }}
-                  />
-                </div>
-              </motion.div>
 
               {/* CTAs */}
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55, duration: 0.5, ease: smoothEase }}
-                style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+                style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}
               >
                 <Link href="/dashboard/workflows/new" className="dash-cta-primary" style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  padding: "12px 28px", borderRadius: 12,
-                  background: "linear-gradient(135deg, #4F8AFF, #6366F1)",
+                  padding: "14px 32px", borderRadius: 14,
+                  background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 50%, #8B5CF6 100%)",
+                  backgroundSize: "200% 200%",
                   color: "#fff", fontSize: 14, fontWeight: 700,
                   textDecoration: "none",
-                  boxShadow: "0 4px 24px rgba(79,138,255,0.25)",
+                  boxShadow: "0 4px 28px rgba(79,138,255,0.3), inset 0 1px 0 rgba(255,255,255,0.1)",
                   transition: "all 0.3s ease",
+                  letterSpacing: "-0.01em",
                 }}>
-                  <Plus size={16} /> {t('dash.startBuilding')}
+                  <Plus size={16} strokeWidth={2.5} /> {t('dash.startBuilding')}
                 </Link>
                 {role === "FREE" && (
-                  <Link href="/dashboard/billing" style={{
+                  <Link href="/dashboard/billing" className="dash-upgrade-btn" style={{
                     display: "flex", alignItems: "center", gap: 8,
-                    padding: "12px 24px", borderRadius: 12,
-                    background: "rgba(245,158,11,0.06)",
-                    border: "1px solid rgba(245,158,11,0.15)",
+                    padding: "14px 28px", borderRadius: 14,
+                    background: "rgba(245,158,11,0.04)",
+                    border: "1px solid rgba(245,158,11,0.12)",
                     color: "#F59E0B", fontSize: 14, fontWeight: 600,
                     textDecoration: "none",
+                    transition: "all 0.3s ease",
                   }}>
                     <Crown size={15} /> {t('dash.upgradePlan')}
                   </Link>
                 )}
               </motion.div>
             </div>
+
+            {/* ── Bottom fade line ── */}
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0, height: 1,
+              background: "linear-gradient(90deg, transparent, rgba(79,138,255,0.1), rgba(139,92,246,0.08), transparent)",
+              pointerEvents: "none",
+            }} />
           </motion.div>
 
           {/* ══════════════════════════════════════════════════════════════
@@ -768,6 +819,29 @@ export default function DashboardPage() {
       <style jsx global>{`
         /* Scrollbar hide */
         .dashboard-node-scroll::-webkit-scrollbar { display: none; }
+
+        /* ── Hero main container ── */
+        .dash-hero-main {
+          border: 1px solid rgba(79,138,255,0.06);
+          box-shadow: 0 0 80px rgba(79,138,255,0.03), 0 40px 80px rgba(0,0,0,0.4);
+        }
+        .dash-hero-main:hover {
+          border-color: rgba(79,138,255,0.1);
+          box-shadow: 0 0 100px rgba(79,138,255,0.05), 0 40px 80px rgba(0,0,0,0.5);
+        }
+
+        /* ── CTA hover effects ── */
+        .dash-cta-primary:hover {
+          transform: translateY(-2px) scale(1.02) !important;
+          box-shadow: 0 8px 36px rgba(79,138,255,0.4), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+          background-position: 100% 0 !important;
+        }
+        .dash-upgrade-btn:hover {
+          background: rgba(245,158,11,0.08) !important;
+          border-color: rgba(245,158,11,0.25) !important;
+          box-shadow: 0 0 20px rgba(245,158,11,0.1) !important;
+          transform: translateY(-1px) !important;
+        }
 
         /* ── Card hover effects ── */
         .dash-card-hover {
