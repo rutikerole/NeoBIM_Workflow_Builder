@@ -32,6 +32,15 @@ interface PipelineWorkflow {
   nodeId: string;
 }
 
+function getFutureDate(daysAhead: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + daysAhead);
+  const day = date.getDate();
+  const month = date.toLocaleString('en', { month: 'short' }).toUpperCase();
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
 function getWorkflows(t: (key: TranslationKey) => string): PipelineWorkflow[] {
   return [
     {
@@ -43,7 +52,7 @@ function getWorkflows(t: (key: TranslationKey) => string): PipelineWorkflow[] {
       totalFloors: 10,
       status: "in-development",
       statusLabel: t('landing.pipelineStatusDev'),
-      targetDate: t('landing.targetDate1'),
+      targetDate: getFutureDate(2),
       color: "#4F8AFF",
       secondaryColor: "#6366F1",
       nodeId: "WF-01",
@@ -57,7 +66,7 @@ function getWorkflows(t: (key: TranslationKey) => string): PipelineWorkflow[] {
       totalFloors: 10,
       status: "research",
       statusLabel: t('landing.pipelineStatusResearch'),
-      targetDate: t('landing.targetDate2'),
+      targetDate: getFutureDate(4),
       color: "#8B5CF6",
       secondaryColor: "#A78BFA",
       nodeId: "WF-02",
@@ -71,7 +80,7 @@ function getWorkflows(t: (key: TranslationKey) => string): PipelineWorkflow[] {
       totalFloors: 10,
       status: "planned",
       statusLabel: t('landing.pipelineStatusPlanned'),
-      targetDate: t('landing.targetDate3'),
+      targetDate: getFutureDate(6),
       color: "#10B981",
       secondaryColor: "#34D399",
       nodeId: "WF-03",
