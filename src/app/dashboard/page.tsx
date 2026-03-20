@@ -348,8 +348,7 @@ export default function DashboardPage() {
                   </>
                 ) : (
                   <>
-                    <span style={{ color: "#F0F0F5" }}>Welcome to </span>
-                    <span className="dash-shimmer-text">BuildFlow</span>
+                    <span className="dash-shimmer-text">{t('dash.welcomeNew')}</span>
                   </>
                 )}
               </motion.h1>
@@ -1046,10 +1045,10 @@ export default function DashboardPage() {
                       </div>
                       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                         <span style={{ fontSize: 10, color: "#556070", display: "flex", alignItems: "center", gap: 3, fontFamily: "var(--font-jetbrains), monospace" }}>
-                          <Zap size={9} style={{ color: "#4F8AFF" }} /> {wf.nodeCount} nodes
+                          <Zap size={9} style={{ color: "#4F8AFF" }} /> {wf.nodeCount} {t('dash.nodes')}
                         </span>
                         <span style={{ fontSize: 10, color: "#556070", display: "flex", alignItems: "center", gap: 3, fontFamily: "var(--font-jetbrains), monospace" }}>
-                          <Play size={8} style={{ color: "#10B981" }} /> {wf.executionCount} runs
+                          <Play size={8} style={{ color: "#10B981" }} /> {wf.executionCount} {t('dash.runs')}
                         </span>
                       </div>
                     </Link>

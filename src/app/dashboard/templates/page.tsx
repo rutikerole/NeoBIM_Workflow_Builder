@@ -758,9 +758,9 @@ export default function TemplatesPage() {
 
               const handleCardClick = (wf: WorkflowTemplate) => {
                 if (LOCKED_IDS.has(wf.id) && userRole === "FREE") {
-                  toast.error("Upgrade your plan to unlock this workflow", {
-                    description: "This template uses 3D, render, or video nodes that require a paid plan.",
-                    action: { label: "Upgrade", onClick: () => router.push("/dashboard/billing") },
+                  toast.error(t('dash.upgradeToast'), {
+                    description: t('dash.upgradeToastDesc'),
+                    action: { label: t('dash.upgradePlan'), onClick: () => router.push("/dashboard/billing") },
                   });
                   return;
                 }
@@ -901,10 +901,10 @@ export default function TemplatesPage() {
                               <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#556070", fontFamily: "var(--font-jetbrains), monospace" }}>
                                 <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
                                   <span style={{ width: 5, height: 5, borderRadius: "50%", background: wf.complexity === "simple" ? "#10B981" : "#F59E0B" }} />
-                                  {wf.complexity === "simple" ? "Simple" : "Advanced"}
+                                  {wf.complexity === "simple" ? t('dash.simpleLabel') : t('dash.advancedLabel')}
                                 </span>
                                 <span style={{ color: "#333" }}>•</span>
-                                <span>{nodeCount} nodes</span>
+                                <span>{nodeCount} {t('dash.nodes')}</span>
                                 <span style={{ color: "#333" }}>•</span>
                                 <span>{wf.estimatedRunTime}</span>
                               </div>
@@ -926,7 +926,7 @@ export default function TemplatesPage() {
                                   <Lock size={13} style={{ color: "#F59E0B" }} />
                                   <span style={{ fontSize: 11, fontWeight: 700, color: "#F59E0B", fontFamily: "var(--font-jetbrains), monospace" }}>PRO</span>
                                 </div>
-                                <span style={{ fontSize: 10, color: "#8898A8" }}>Click to upgrade</span>
+                                <span style={{ fontSize: 10, color: "#8898A8" }}>{t('dash.clickToUpgrade')}</span>
                               </div>
                             )}
                           </motion.div>
@@ -962,22 +962,22 @@ export default function TemplatesPage() {
                     /* When showing all, organize into 3 sections */
                     <>
                       {renderSection(
-                        "Quick Start",
-                        "Get your first output in under 2 minutes",
+                        t('dash.quickStartSection'),
+                        t('dash.quickStartDesc'),
                         <Lightbulb size={18} />,
                         "#10B981", "16,185,129",
                         quickStart, 0,
                       )}
                       {renderSection(
-                        "Core Pipelines",
-                        "3D models, IFC exports, BOQ generation — the workflows that change everything",
+                        t('dash.corePipelines'),
+                        t('dash.corePipelinesDesc'),
                         <Building2 size={18} />,
                         "#4F8AFF", "79,138,255",
                         core, quickStart.length,
                       )}
                       {renderSection(
-                        "Explore More",
-                        "Branching workflows, site analysis, and creative pipelines",
+                        t('dash.exploreMore'),
+                        t('dash.exploreMoreDesc'),
                         <Compass size={18} />,
                         "#8B5CF6", "139,92,246",
                         rest, quickStart.length + core.length,
@@ -1024,10 +1024,10 @@ export default function TemplatesPage() {
 
             <div style={{ flex: 1, position: "relative", zIndex: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#E2E8F0", marginBottom: 3, letterSpacing: "-0.02em" }}>
-                We&apos;re building new workflows every week
+                {t('dash.suggestTitle')}
               </div>
               <div style={{ fontSize: 12, color: "#6B7A8D", lineHeight: 1.6 }}>
-                Tell us what workflow template you&apos;d love to see. Your feedback shapes what we build next.
+                {t('dash.suggestDesc')}
               </div>
             </div>
 
@@ -1046,7 +1046,7 @@ export default function TemplatesPage() {
                 cursor: "pointer",
               }}
             >
-              Suggest a Workflow <ArrowRight size={13} />
+              {t('dash.suggestBtn')} <ArrowRight size={13} />
             </a>
           </motion.div>
         </div>

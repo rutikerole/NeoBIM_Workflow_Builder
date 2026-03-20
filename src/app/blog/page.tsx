@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Mail, BookOpen, PenTool, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { useLocale } from "@/hooks/useLocale";
 
 /* ------------------------------------------------------------------ */
 /*  Metadata is exported from a separate file or handled via layout   */
@@ -98,15 +99,13 @@ function BlueprintGrid() {
   );
 }
 
-/* ---------- floating topic cards ---------- */
-const topics = [
-  { icon: BookOpen, label: "BIM Workflows" },
-  { icon: PenTool, label: "AEC Innovation" },
-  { icon: Sparkles, label: "AI in Architecture" },
-];
+/* ---------- topic icon mapping ---------- */
+const TOPIC_ICONS = [BookOpen, PenTool, Sparkles] as const;
+const TOPIC_KEYS = ["blog.topicBIM", "blog.topicAEC", "blog.topicAI"] as const;
 
 /* ---------- main page ---------- */
 export default function BlogComingSoon() {
+  const { t } = useLocale();
   return (
     <>
       <title>Blog - Coming Soon | NeoBIM</title>
@@ -144,7 +143,7 @@ export default function BlogComingSoon() {
               className="group inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white"
             >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              Back to Home
+              {t('blog.backToHome')}
             </Link>
           </motion.div>
 
@@ -159,7 +158,7 @@ export default function BlogComingSoon() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
               </span>
-              Coming Soon
+              {t('blog.comingSoon')}
             </span>
           </motion.div>
 
@@ -170,7 +169,7 @@ export default function BlogComingSoon() {
             transition={{ duration: 0.6, delay: 0.15 }}
             className="mt-6 bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-5xl font-bold tracking-tight text-transparent sm:text-6xl"
           >
-            Blog
+            {t('blog.title')}
           </motion.h1>
 
           {/* description */}
@@ -180,8 +179,7 @@ export default function BlogComingSoon() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mt-6 max-w-lg text-lg leading-relaxed text-zinc-400"
           >
-            We&apos;re writing about AI in architecture, BIM workflows, and the
-            future of AEC. Stay tuned.
+            {t('blog.description')}
           </motion.p>
 
           {/* topic pills */}
@@ -191,18 +189,21 @@ export default function BlogComingSoon() {
             transition={{ duration: 0.6, delay: 0.45 }}
             className="mt-8 flex flex-wrap justify-center gap-3"
           >
-            {topics.map(({ icon: Icon, label }, i) => (
-              <motion.div
-                key={label}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: 0.55 + i * 0.1 }}
-                className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm text-zinc-300 backdrop-blur-sm"
-              >
-                <Icon className="h-4 w-4 text-indigo-400" />
-                {label}
-              </motion.div>
-            ))}
+            {TOPIC_KEYS.map((key, i) => {
+              const Icon = TOPIC_ICONS[i];
+              return (
+                <motion.div
+                  key={key}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: 0.55 + i * 0.1 }}
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm text-zinc-300 backdrop-blur-sm"
+                >
+                  <Icon className="h-4 w-4 text-indigo-400" />
+                  {t(key as import("@/lib/i18n").TranslationKey)}
+                </motion.div>
+              );
+            })}
           </motion.div>
 
           {/* divider */}
@@ -221,7 +222,7 @@ export default function BlogComingSoon() {
             className="w-full max-w-md"
           >
             <h2 className="text-sm font-medium text-zinc-300">
-              Get notified when we publish
+              {t('blog.getNotified')}
             </h2>
 
             <form
@@ -241,12 +242,12 @@ export default function BlogComingSoon() {
                 type="submit"
                 className="h-11 shrink-0 rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white transition hover:bg-indigo-500 active:scale-[0.97]"
               >
-                Subscribe
+                {t('blog.subscribe')}
               </button>
             </form>
 
             <p className="mt-3 text-xs text-zinc-500">
-              No spam. Unsubscribe anytime.
+              {t('blog.noSpam')}
             </p>
           </motion.div>
         </div>
