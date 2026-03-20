@@ -77,6 +77,112 @@ function hexToRgb(hex: string): string {
   return `${parseInt(r[1], 16)}, ${parseInt(r[2], 16)}, ${parseInt(r[3], 16)}`;
 }
 
+// ─── Video/image preview mapping for template cards ─────────────────────────
+const R2 = "https://pub-27d9a7371b6d47ff94fee1a3228f1720.r2.dev/workflow-demos";
+const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: number } | { type: "svg"; output: string }> = {
+  "wf-01": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 105 },
+  "wf-03": { type: "svg", output: "render" },
+  "wf-04": { type: "svg", output: "3d" },
+  "wf-05": { type: "svg", output: "ifc" },
+  "wf-09": { type: "svg", output: "boq" },
+  "wf-11": { type: "svg", output: "floorplan" },
+  "wf-12": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 108 },
+  "wf-13": { type: "svg", output: "map" },
+  "wf-14": { type: "video", url: "/videos/3d%20model.mp4", start: 5 },
+  "wf-15": { type: "video", url: `${R2}/floorplan-to-3d-model.mp4`, start: 112 },
+  "wf-16": { type: "video", url: `${R2}/floorplan-to-3d-model.mp4`, start: 110 },
+  "wf-17": { type: "video", url: `${R2}/floorplan-to-3d-model.mp4`, start: 115 },
+  "wf-18": { type: "svg", output: "ifc" },
+};
+
+// SVG output type illustrations
+function OutputPreviewSVG({ output, color }: { output: string; color: string }) {
+  const rgb = hexToRgb(color);
+  switch (output) {
+    case "3d":
+      return (
+        <svg viewBox="0 0 200 120" fill="none" style={{ width: "100%", height: "100%" }}>
+          <rect x="50" y="30" width="40" height="70" rx="2" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.2)`} strokeWidth="0.8" />
+          <rect x="95" y="15" width="35" height="85" rx="2" fill={`rgba(${rgb},0.06)`} stroke={`rgba(${rgb},0.15)`} strokeWidth="0.8" />
+          <rect x="135" y="40" width="30" height="60" rx="2" fill={`rgba(${rgb},0.04)`} stroke={`rgba(${rgb},0.12)`} strokeWidth="0.8" />
+          <path d="M50 30 L70 15 L110 15 L90 30 Z" fill={`rgba(${rgb},0.1)`} stroke={`rgba(${rgb},0.2)`} strokeWidth="0.5" />
+          <text x="100" y="112" textAnchor="middle" fill={`rgba(${rgb},0.3)`} fontSize="8" fontFamily="monospace">3D MODEL</text>
+        </svg>
+      );
+    case "floorplan":
+      return (
+        <svg viewBox="0 0 200 120" fill="none" style={{ width: "100%", height: "100%" }}>
+          <rect x="30" y="15" width="140" height="90" rx="2" fill="none" stroke={`rgba(${rgb},0.15)`} strokeWidth="1" />
+          <line x1="30" y1="55" x2="100" y2="55" stroke={`rgba(${rgb},0.12)`} strokeWidth="0.8" />
+          <line x1="100" y1="15" x2="100" y2="105" stroke={`rgba(${rgb},0.12)`} strokeWidth="0.8" />
+          <line x1="100" y1="75" x2="170" y2="75" stroke={`rgba(${rgb},0.1)`} strokeWidth="0.8" />
+          <rect x="45" y="25" width="15" height="12" rx="1" fill={`rgba(${rgb},0.06)`} stroke={`rgba(${rgb},0.1)`} strokeWidth="0.5" />
+          <rect x="75" y="62" width="12" height="10" rx="1" fill={`rgba(${rgb},0.06)`} stroke={`rgba(${rgb},0.1)`} strokeWidth="0.5" />
+          <rect x="120" y="82" width="20" height="14" rx="1" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.12)`} strokeWidth="0.5" />
+          <text x="100" y="112" textAnchor="middle" fill={`rgba(${rgb},0.3)`} fontSize="8" fontFamily="monospace">FLOOR PLAN</text>
+        </svg>
+      );
+    case "boq":
+      return (
+        <svg viewBox="0 0 200 120" fill="none" style={{ width: "100%", height: "100%" }}>
+          {[0,1,2,3,4].map(r => (
+            <g key={r}>
+              <rect x="35" y={18 + r * 18} width="130" height="14" rx="2" fill={r === 0 ? `rgba(${rgb},0.08)` : "rgba(255,255,255,0.02)"} stroke={`rgba(${rgb},${r === 0 ? 0.15 : 0.06})`} strokeWidth="0.5" />
+              <line x1="85" y1={18 + r * 18} x2="85" y2={32 + r * 18} stroke={`rgba(${rgb},0.06)`} strokeWidth="0.5" />
+              <line x1="130" y1={18 + r * 18} x2="130" y2={32 + r * 18} stroke={`rgba(${rgb},0.06)`} strokeWidth="0.5" />
+            </g>
+          ))}
+          <text x="100" y="112" textAnchor="middle" fill={`rgba(${rgb},0.3)`} fontSize="8" fontFamily="monospace">BOQ EXPORT</text>
+        </svg>
+      );
+    case "ifc":
+      return (
+        <svg viewBox="0 0 200 120" fill="none" style={{ width: "100%", height: "100%" }}>
+          <path d="M60 90 L60 30 L100 15 L140 30 L140 90" fill="none" stroke={`rgba(${rgb},0.15)`} strokeWidth="1" strokeDasharray="3 3" />
+          <path d="M60 30 L100 45 L140 30" fill="none" stroke={`rgba(${rgb},0.1)`} strokeWidth="0.8" />
+          <path d="M100 45 L100 105" fill="none" stroke={`rgba(${rgb},0.08)`} strokeWidth="0.8" strokeDasharray="2 2" />
+          <path d="M60 60 L100 75 L140 60" fill="none" stroke={`rgba(${rgb},0.08)`} strokeWidth="0.5" />
+          <circle cx="100" cy="15" r="3" fill={`rgba(${rgb},0.2)`} />
+          <text x="100" y="112" textAnchor="middle" fill={`rgba(${rgb},0.3)`} fontSize="8" fontFamily="monospace">IFC MODEL</text>
+        </svg>
+      );
+    case "render":
+      return (
+        <svg viewBox="0 0 200 120" fill="none" style={{ width: "100%", height: "100%" }}>
+          <defs>
+            <linearGradient id="render-grad" x1="0" y1="0" x2="200" y2="120" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor={`rgba(${rgb},0.1)`} />
+              <stop offset="100%" stopColor="rgba(139,92,246,0.05)" />
+            </linearGradient>
+          </defs>
+          <rect x="30" y="15" width="140" height="85" rx="4" fill="url(#render-grad)" stroke={`rgba(${rgb},0.12)`} strokeWidth="0.8" />
+          <rect x="50" y="35" width="35" height="50" rx="2" fill={`rgba(${rgb},0.06)`} />
+          <rect x="90" y="25" width="25" height="60" rx="2" fill={`rgba(${rgb},0.08)`} />
+          <rect x="120" y="40" width="30" height="45" rx="2" fill={`rgba(${rgb},0.05)`} />
+          <circle cx="155" cy="25" r="8" fill={`rgba(245,158,11,0.08)`} stroke="rgba(245,158,11,0.15)" strokeWidth="0.5" />
+          <text x="100" y="112" textAnchor="middle" fill={`rgba(${rgb},0.3)`} fontSize="8" fontFamily="monospace">RENDER</text>
+        </svg>
+      );
+    case "map":
+      return (
+        <svg viewBox="0 0 200 120" fill="none" style={{ width: "100%", height: "100%" }}>
+          <rect x="30" y="15" width="140" height="85" rx="4" fill="rgba(16,185,129,0.03)" stroke="rgba(16,185,129,0.1)" strokeWidth="0.8" />
+          <path d="M50 40 L80 30 L120 50 L150 35 L150 85 L120 100 L80 80 L50 90 Z" fill="rgba(16,185,129,0.04)" stroke="rgba(16,185,129,0.08)" strokeWidth="0.5" />
+          <circle cx="95" cy="55" r="5" fill="rgba(239,68,68,0.15)" stroke="rgba(239,68,68,0.3)" strokeWidth="0.8" />
+          <line x1="95" y1="50" x2="95" y2="42" stroke="rgba(239,68,68,0.3)" strokeWidth="0.8" />
+          <text x="100" y="112" textAnchor="middle" fill="rgba(16,185,129,0.3)" fontSize="8" fontFamily="monospace">SITE ANALYSIS</text>
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 200 120" fill="none" style={{ width: "100%", height: "100%" }}>
+          <rect x="60" y="30" width="80" height="60" rx="4" fill={`rgba(${rgb},0.05)`} stroke={`rgba(${rgb},0.1)`} strokeWidth="0.8" />
+          <text x="100" y="112" textAnchor="middle" fill={`rgba(${rgb},0.3)`} fontSize="8" fontFamily="monospace">OUTPUT</text>
+        </svg>
+      );
+  }
+}
+
 // ─── Isometric Building Illustration (SVG) ──────────────────────────────────
 
 function IsometricBuilding() {
@@ -709,48 +815,122 @@ export default function TemplatesPage() {
                     <div className="templates-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
                       {workflows.map((wf, i) => {
                         const isLocked = LOCKED_IDS.has(wf.id) && userRole === "FREE";
+                        const catColor = CATEGORY_COLORS[wf.category] ?? "#4F8AFF";
+                        const catRgb = hexToRgb(catColor);
+                        const preview = TEMPLATE_PREVIEWS[wf.id];
+                        const nodeCount = wf.tileGraph.nodes.length;
                         return (
-                          <div
+                          <motion.div
                             key={wf.id}
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, delay: (baseIndex + i) * 0.04, ease: "easeOut" }}
+                            whileHover={{ y: -5, transition: { duration: 0.2 } }}
                             onClick={() => handleCardClick(wf)}
                             style={{
-                              cursor: "pointer",
-                              position: "relative",
+                              cursor: "pointer", position: "relative",
+                              borderRadius: 16, overflow: "hidden",
+                              background: "linear-gradient(165deg, rgba(16,16,28,0.98), rgba(10,10,18,0.99))",
+                              border: `1px solid rgba(${catRgb}, 0.08)`,
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                              transition: "border-color 0.2s, box-shadow 0.2s",
+                            }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.borderColor = `rgba(${catRgb},0.2)`;
+                              (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 30px rgba(0,0,0,0.3), 0 0 20px rgba(${catRgb},0.04)`;
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.borderColor = `rgba(${catRgb},0.08)`;
+                              (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
                             }}
                           >
-                            <WorkflowCard
-                              workflow={wf}
-                              showCloneButton
-                              onClone={handleUse}
-                              isFeatured={wf.id === "wf-14"}
-                              index={baseIndex + i}
-                            />
-                            {/* Lock overlay for expensive templates */}
+                            {/* Preview area */}
+                            <div style={{ position: "relative", height: 160, overflow: "hidden", background: `rgba(${catRgb}, 0.02)` }}>
+                              {/* Top accent line */}
+                              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${catColor}, ${catColor}40)`, zIndex: 3 }} />
+
+                              {preview?.type === "video" ? (
+                                <video
+                                  src={preview.url} muted playsInline
+                                  onLoadedMetadata={e => { e.currentTarget.currentTime = preview.start; }}
+                                  onMouseEnter={e => { e.currentTarget.play().catch(() => {}); }}
+                                  onMouseLeave={e => { e.currentTarget.pause(); }}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                />
+                              ) : preview?.type === "svg" ? (
+                                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                                  <OutputPreviewSVG output={preview.output} color={catColor} />
+                                </div>
+                              ) : (
+                                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Building2 size={32} style={{ color: `rgba(${catRgb}, 0.15)` }} />
+                                </div>
+                              )}
+
+                              {/* Bottom gradient fade */}
+                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", background: "linear-gradient(transparent, rgba(10,10,18,0.95))", pointerEvents: "none" }} />
+
+                              {/* Corner marks */}
+                              <svg style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }} width={12} height={12}><path d="M0 12 L0 0 L12 0" stroke={catColor} strokeWidth="1" fill="none" opacity={0.3} /></svg>
+                              <svg style={{ position: "absolute", top: 0, right: 0, pointerEvents: "none" }} width={12} height={12}><path d="M0 0 L12 0 L12 12" stroke={catColor} strokeWidth="1" fill="none" opacity={0.3} /></svg>
+
+                              {/* Category badge */}
+                              <div style={{
+                                position: "absolute", bottom: 10, left: 12, zIndex: 2,
+                                display: "inline-flex", alignItems: "center", gap: 4,
+                                padding: "3px 8px", borderRadius: 6,
+                                background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+                                border: `1px solid rgba(${catRgb}, 0.2)`,
+                              }}>
+                                {CATEGORY_ICONS[wf.category] && <span style={{ color: catColor, display: "flex", opacity: 0.8 }}>{CATEGORY_ICONS[wf.category]}</span>}
+                                <span style={{ fontSize: 8, fontWeight: 700, color: catColor, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                                  {wf.category}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Content */}
+                            <div style={{ padding: "14px 16px 16px" }}>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0", marginBottom: 5, letterSpacing: "-0.02em", lineHeight: 1.3 }}>
+                                {wf.name}
+                              </div>
+                              <div style={{ fontSize: 11, color: "#6B7A8D", lineHeight: 1.55, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
+                                {wf.description}
+                              </div>
+
+                              {/* Meta row */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#556070", fontFamily: "var(--font-jetbrains), monospace" }}>
+                                <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: wf.complexity === "simple" ? "#10B981" : "#F59E0B" }} />
+                                  {wf.complexity === "simple" ? "Simple" : "Advanced"}
+                                </span>
+                                <span style={{ color: "#333" }}>•</span>
+                                <span>{nodeCount} nodes</span>
+                                <span style={{ color: "#333" }}>•</span>
+                                <span>{wf.estimatedRunTime}</span>
+                              </div>
+                            </div>
+
+                            {/* Lock overlay */}
                             {isLocked && (
                               <div style={{
-                                position: "absolute", inset: 0, zIndex: 10,
-                                borderRadius: 14,
-                                background: "rgba(8,10,18,0.5)",
-                                backdropFilter: "blur(2px)",
-                                display: "flex", flexDirection: "column",
-                                alignItems: "center", justifyContent: "center", gap: 8,
-                                cursor: "pointer",
+                                position: "absolute", inset: 0, zIndex: 10, borderRadius: 16,
+                                background: "rgba(8,10,18,0.55)", backdropFilter: "blur(3px)",
+                                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
                               }}>
                                 <div style={{
                                   display: "flex", alignItems: "center", gap: 6,
-                                  padding: "8px 18px", borderRadius: 12,
+                                  padding: "8px 20px", borderRadius: 12,
                                   background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)",
                                   backdropFilter: "blur(8px)",
                                 }}>
                                   <Lock size={13} style={{ color: "#F59E0B" }} />
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: "#F59E0B", fontFamily: "var(--font-jetbrains), monospace" }}>
-                                    PRO
-                                  </span>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: "#F59E0B", fontFamily: "var(--font-jetbrains), monospace" }}>PRO</span>
                                 </div>
                                 <span style={{ fontSize: 10, color: "#8898A8" }}>Click to upgrade</span>
                               </div>
                             )}
-                          </div>
+                          </motion.div>
                         );
                       })}
                     </div>
@@ -767,34 +947,18 @@ export default function TemplatesPage() {
                   transition={{ duration: 0.15 }}
                 >
                   {isFiltered ? (
-                    /* When filtered by category, show flat grid */
-                    <div className="templates-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-                      {filtered.map((wf, i) => {
-                        const isLocked = LOCKED_IDS.has(wf.id) && userRole === "FREE";
-                        return (
-                          <div key={wf.id} onClick={() => handleCardClick(wf)} style={{ cursor: "pointer", position: "relative" }}>
-                            <WorkflowCard workflow={wf} showCloneButton onClone={handleUse} isFeatured={wf.id === "wf-14"} index={i} />
-                            {isLocked && (
-                              <div style={{
-                                position: "absolute", inset: 0, zIndex: 10, borderRadius: 14,
-                                background: "rgba(8,10,18,0.5)", backdropFilter: "blur(2px)",
-                                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
-                                cursor: "pointer",
-                              }}>
-                                <div style={{
-                                  display: "flex", alignItems: "center", gap: 6,
-                                  padding: "8px 18px", borderRadius: 12,
-                                  background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)",
-                                }}>
-                                  <Lock size={13} style={{ color: "#F59E0B" }} />
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: "#F59E0B", fontFamily: "var(--font-jetbrains), monospace" }}>PRO</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    /* When filtered by category, show flat grid with preview cards */
+                    (() => {
+                      // Reuse the same renderSection but as flat
+                      return renderSection(
+                        CATEGORY_LABEL_KEYS[activeCategory] ? t(CATEGORY_LABEL_KEYS[activeCategory]) : activeCategory,
+                        `${filtered.length} templates`,
+                        CATEGORY_ICONS[activeCategory] || <Building2 size={18} />,
+                        CATEGORY_COLORS[activeCategory] || "#4F8AFF",
+                        hexToRgb(CATEGORY_COLORS[activeCategory] || "#4F8AFF"),
+                        filtered, 0,
+                      );
+                    })()
                   ) : (
                     /* When showing all, organize into 3 sections */
                     <>
