@@ -9,6 +9,7 @@ import {
   Sparkles, Palette, Building2, FileSpreadsheet, X, ChevronRight,
 } from "lucide-react";
 import { PageBackground } from "@/components/dashboard/PageBackground";
+import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 import { useLocale } from "@/hooks/useLocale";
 import type { TranslationKey } from "@/lib/i18n";
 
@@ -538,7 +539,253 @@ export default function DashboardPage() {
           <div className="dash-section-divider" />
 
           {/* ══════════════════════════════════════════════════════════════
-              SECTION 3 — PROBLEM → SOLUTION
+              SECTION 3 — TEMPLATE SHOWCASE
+              ══════════════════════════════════════════════════════════════ */}
+          <motion.div
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-60px" }}
+            variants={stagger}
+            style={{ marginBottom: 56 }}
+          >
+            <motion.div variants={fadeUp} transition={{ duration: 0.6, ease: smoothEase }} style={{ textAlign: "center", marginBottom: 40 }}>
+              <h2 style={{ fontSize: "clamp(22px, 3vw, 34px)", fontWeight: 800, color: "#F0F0F5", letterSpacing: "-0.04em", marginBottom: 8 }}>
+                {t('dash.templateShowcase')}
+              </h2>
+              <p style={{ fontSize: 14, color: "#6B7A8D", maxWidth: 460, margin: "0 auto", lineHeight: 1.7 }}>
+                {t('dash.templateShowcaseSub')}
+              </p>
+            </motion.div>
+
+            {/* ── FREE TEMPLATES ── */}
+            <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "4px 12px", borderRadius: 20,
+                  background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)",
+                  fontSize: 10, fontWeight: 700, color: "#10B981", letterSpacing: "0.1em",
+                  fontFamily: "var(--font-jetbrains), monospace",
+                }}>
+                  <Zap size={10} /> {t('dash.freeTemplates')}
+                </div>
+                <span style={{ fontSize: 12, color: "#556070" }}>{t('dash.freeTemplatesSub')}</span>
+              </div>
+            </motion.div>
+
+            <div className="grid gap-4 mb-10 dashboard-template-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+              {PREBUILT_WORKFLOWS
+                .filter(w => !["wf-03", "wf-12", "wf-14", "wf-15", "wf-16", "wf-17"].includes(w.id))
+                .slice(0, 6)
+                .map((wf, i) => {
+                  const catColors: Record<string, string> = {
+                    "Concept Design": "#3B82F6", "Visualization": "#10B981",
+                    "BIM Export": "#F59E0B", "Cost Estimation": "#8B5CF6",
+                    "3D Modeling": "#06B6D4", "Site Analysis": "#10B981",
+                  };
+                  const color = catColors[wf.category] ?? "#3B82F6";
+                  const nodeCount = wf.tileGraph?.nodes?.length ?? 0;
+                  return (
+                    <motion.div
+                      key={wf.id}
+                      variants={fadeUp}
+                      transition={{ duration: 0.4, delay: i * 0.08, ease: smoothEase }}
+                    >
+                      <Link
+                        href="/dashboard/workflows/new"
+                        className="dash-card-hover block"
+                        style={{
+                          position: "relative", overflow: "hidden",
+                          background: "rgba(12,14,22,0.85)", backdropFilter: "blur(12px)",
+                          border: `1px solid rgba(255,255,255,0.05)`,
+                          borderRadius: 16, padding: "20px 20px 18px",
+                          textDecoration: "none", height: "100%",
+                          display: "flex", flexDirection: "column",
+                          transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
+                        }}
+                      >
+                        {/* Top accent */}
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${color}, transparent)`, opacity: 0.3 }} />
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "3px 8px", borderRadius: 6,
+                            background: `${color}10`, border: `1px solid ${color}20`,
+                            fontSize: 9, fontWeight: 700, color,
+                            fontFamily: "var(--font-jetbrains), monospace", letterSpacing: "0.06em",
+                          }}>
+                            <span style={{ width: 4, height: 4, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}` }} />
+                            {wf.category}
+                          </span>
+                          <span style={{
+                            fontSize: 9, color: "#556070",
+                            fontFamily: "var(--font-jetbrains), monospace",
+                          }}>
+                            {nodeCount} {t('dash.nodes')}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0", marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>
+                          {wf.name}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#6B7A8D", lineHeight: 1.55, flex: 1, marginBottom: 14 }}>
+                          {wf.description.length > 90 ? wf.description.slice(0, 90) + "..." : wf.description}
+                        </div>
+
+                        <div style={{
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                          padding: "8px", borderRadius: 8,
+                          background: `${color}08`, border: `1px solid ${color}12`,
+                          fontSize: 11, fontWeight: 700, color,
+                          fontFamily: "var(--font-jetbrains), monospace",
+                        }}>
+                          {t('dash.useIt')} <ArrowRight size={12} />
+                        </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+            </div>
+
+            {/* ── PRO TEMPLATES ── */}
+            <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: smoothEase }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "4px 12px", borderRadius: 20,
+                  background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)",
+                  fontSize: 10, fontWeight: 700, color: "#F59E0B", letterSpacing: "0.1em",
+                  fontFamily: "var(--font-jetbrains), monospace",
+                }}>
+                  <Crown size={10} /> {t('dash.proTemplates')}
+                </div>
+                <span style={{ fontSize: 12, color: "#556070" }}>{t('dash.proTemplatesSub')}</span>
+              </div>
+            </motion.div>
+
+            <div className="grid gap-4 mb-8 dashboard-template-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+              {PREBUILT_WORKFLOWS
+                .filter(w => ["wf-03", "wf-12", "wf-14", "wf-15", "wf-16", "wf-17"].includes(w.id))
+                .map((wf, i) => {
+                  const catColors: Record<string, string> = {
+                    "Concept Design": "#3B82F6", "Visualization": "#10B981",
+                    "BIM Export": "#F59E0B", "Cost Estimation": "#8B5CF6",
+                    "3D Modeling": "#06B6D4",
+                  };
+                  const color = catColors[wf.category] ?? "#F59E0B";
+                  const nodeCount = wf.tileGraph?.nodes?.length ?? 0;
+                  const isFree = role !== "FREE";
+                  return (
+                    <motion.div
+                      key={wf.id}
+                      variants={fadeUp}
+                      transition={{ duration: 0.4, delay: i * 0.08, ease: smoothEase }}
+                    >
+                      <div
+                        className={isFree ? "dash-card-hover" : ""}
+                        style={{
+                          position: "relative", overflow: "hidden",
+                          background: "rgba(12,14,22,0.85)", backdropFilter: "blur(12px)",
+                          border: "1px solid rgba(245,158,11,0.08)",
+                          borderRadius: 16, padding: "20px 20px 18px",
+                          height: "100%",
+                          display: "flex", flexDirection: "column",
+                          opacity: role === "FREE" ? 0.6 : 1,
+                          transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
+                        }}
+                      >
+                        {/* Top accent */}
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, transparent, #F59E0B, transparent)", opacity: 0.2 }} />
+
+                        {/* PRO lock overlay for free users */}
+                        {role === "FREE" && (
+                          <div style={{
+                            position: "absolute", inset: 0, zIndex: 2,
+                            background: "rgba(10,12,20,0.4)", backdropFilter: "blur(1px)",
+                            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
+                            borderRadius: 16,
+                          }}>
+                            <div style={{
+                              padding: "8px 18px", borderRadius: 12,
+                              background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)",
+                              display: "flex", alignItems: "center", gap: 6,
+                            }}>
+                              <Crown size={14} style={{ color: "#F59E0B" }} />
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "#F59E0B", fontFamily: "var(--font-jetbrains), monospace" }}>
+                                {t('dash.proBadge')}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "3px 8px", borderRadius: 6,
+                            background: `${color}10`, border: `1px solid ${color}20`,
+                            fontSize: 9, fontWeight: 700, color,
+                            fontFamily: "var(--font-jetbrains), monospace", letterSpacing: "0.06em",
+                          }}>
+                            <span style={{ width: 4, height: 4, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}` }} />
+                            {wf.category}
+                          </span>
+                          <span style={{ fontSize: 9, color: "#556070", fontFamily: "var(--font-jetbrains), monospace" }}>
+                            {nodeCount} {t('dash.nodes')}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0", marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>
+                          {wf.name}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#6B7A8D", lineHeight: 1.55, flex: 1, marginBottom: 14 }}>
+                          {wf.description.length > 90 ? wf.description.slice(0, 90) + "..." : wf.description}
+                        </div>
+
+                        {role === "FREE" ? (
+                          <Link href="/dashboard/billing" style={{
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                            padding: "8px", borderRadius: 8,
+                            background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.1)",
+                            fontSize: 11, fontWeight: 700, color: "#F59E0B",
+                            fontFamily: "var(--font-jetbrains), monospace",
+                            textDecoration: "none", position: "relative", zIndex: 3,
+                          }}>
+                            <Crown size={11} /> {t('dash.upgradePlan')}
+                          </Link>
+                        ) : (
+                          <Link href="/dashboard/workflows/new" style={{
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                            padding: "8px", borderRadius: 8,
+                            background: `${color}08`, border: `1px solid ${color}12`,
+                            fontSize: 11, fontWeight: 700, color,
+                            fontFamily: "var(--font-jetbrains), monospace",
+                            textDecoration: "none",
+                          }}>
+                            {t('dash.useIt')} <ArrowRight size={12} />
+                          </Link>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+            </div>
+
+            {/* View All link */}
+            <motion.div variants={fadeUp} style={{ textAlign: "center" }}>
+              <Link href="/dashboard/templates" style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 13, fontWeight: 600, color: "#4F8AFF",
+                textDecoration: "none", transition: "all 0.2s",
+              }}>
+                {t('dash.viewAll')} <ArrowRight size={14} />
+              </Link>
+            </motion.div>
+          </motion.div>
+
+          {/* Section divider */}
+          <div className="dash-section-divider" />
+
+          {/* ══════════════════════════════════════════════════════════════
+              SECTION 4 — PROBLEM → SOLUTION
               ══════════════════════════════════════════════════════════════ */}
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}

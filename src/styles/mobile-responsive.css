@@ -941,6 +941,12 @@
     gap: 12px !important;
   }
 
+  /* Template grid: 1 col on mobile */
+  .dashboard-template-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
   /* Problem grid: stack vertically */
   .dashboard-problem-grid {
     grid-template-columns: 1fr !important;
