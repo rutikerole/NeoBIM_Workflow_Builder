@@ -4,7 +4,6 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Building2, Ruler, Compass, HardHat, Layers, PenTool, Triangle, Lock, Crown, Lightbulb, ArrowRight, MessageSquare } from "lucide-react";
 import { Header } from "@/components/dashboard/Header";
-import { WorkflowCard } from "@/components/community/WorkflowCard";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 import { toast } from "sonner";
 import { useWorkflowStore } from "@/stores/workflow-store";
