@@ -930,14 +930,19 @@
     padding: 28px 20px 32px !important;
   }
 
-  /* Capability grid: single column on mobile */
-  .dashboard-capability-grid {
+  /* Hide orbit animation on mobile */
+  .dashboard-orbit-container {
+    display: none !important;
+  }
+
+  /* Video grid: single column on mobile */
+  .dashboard-video-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
 
-  /* Quick grid: single column on mobile */
-  .dashboard-quick-grid {
+  /* Problem grid: stack vertically */
+  .dashboard-problem-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
