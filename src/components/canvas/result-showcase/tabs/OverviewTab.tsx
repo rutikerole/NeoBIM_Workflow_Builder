@@ -341,6 +341,70 @@ export function OverviewTab({ data, onExpandVideo, onNavigateTab, onRetryVideo }
         </div>
       </motion.div>
 
+      {/* ── Floor Plan Preview (if SVG exists) ─────────────────────────── */}
+      {data.svgContent && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <SectionHeader icon={<Layers size={13} />} title={t('showcase.typeFloorPlan')} />
+          <motion.button
+            whileHover={{ scale: 1.005 }}
+            whileTap={{ scale: 0.995 }}
+            onClick={() => onNavigateTab("media")}
+            style={{
+              position: "relative",
+              width: "100%",
+              background: "#FFFFFF",
+              border: `1px solid ${COLORS.GLASS_BORDER}`,
+              borderRadius: 12,
+              overflow: "hidden",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            {/* SVG Preview — scaled to fit */}
+            <div
+              style={{
+                maxHeight: 280,
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+              }}
+              dangerouslySetInnerHTML={{ __html: data.svgContent }}
+            />
+            {/* Fade overlay + CTA */}
+            <div style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: "32px 16px 12px",
+              background: "linear-gradient(transparent, rgba(7,8,9,0.85) 60%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: COLORS.CYAN,
+                letterSpacing: "0.03em",
+              }}>
+                {t('showcase.viewFullFloorPlan')}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={COLORS.CYAN} strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
+          </motion.button>
+        </motion.div>
+      )}
+
       {/* ── Description ──────────────────────────────────────────────────── */}
       {data.textContent && (
         <motion.div

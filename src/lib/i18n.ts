@@ -927,6 +927,7 @@ const en = {
   'showcase.typeDataTable': 'Data Table',
   'showcase.typeStructuredData': 'Structured Data',
   'showcase.typeFloorPlan': 'Floor Plan',
+  'showcase.viewFullFloorPlan': 'View full floor plan',
   'showcase.typeExportFile': 'Export File',
 
   // Overview — Execution stats
@@ -3164,6 +3165,7 @@ const de: Record<keyof typeof en, string | string[]> = {
   'showcase.typeDataTable': 'Datentabelle',
   'showcase.typeStructuredData': 'Strukturierte Daten',
   'showcase.typeFloorPlan': 'Grundriss',
+  'showcase.viewFullFloorPlan': 'Vollständigen Grundriss anzeigen',
   'showcase.typeExportFile': 'Exportdatei',
 
   // Overview — Execution stats

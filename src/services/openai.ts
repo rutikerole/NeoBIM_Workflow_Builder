@@ -599,7 +599,15 @@ QUALITY CHECKLIST:
 Total building area: ${totalArea} m². Floor plate area: ~${floorPlate} m² per floor.
 Program: ${programDetail}.
 
-Generate the MOST REPRESENTATIVE typical floor plan. The room areas in your roomList MUST sum to approximately ${floorPlate} m² (the per-floor area, not total building area).`,
+Generate the MOST REPRESENTATIVE typical floor plan. The room areas in your roomList MUST sum to approximately ${floorPlate} m² (the per-floor area, not total building area).
+
+CRITICAL REMINDERS:
+- Every room MUST have at least one door drawn as a quarter-circle arc on its wall
+- NO empty/dead space — rooms must tile together tightly with shared walls
+- Draw wall gaps where doors are (break the wall line, add the door arc)
+- Include at least one window per habitable room (mark on exterior walls)
+- The floor plan should fill the SVG canvas — use the full drawing area (x=40 to x=760, y=50 to y=540)
+- Label every room clearly with name + area in m²`,
         },
       ],
     });
@@ -613,6 +621,9 @@ Generate the MOST REPRESENTATIVE typical floor plan. The room areas in your room
     if (!result.svg || !result.svg.includes("<svg")) {
       throw new Error("Generated response does not contain valid SVG");
     }
+
+    // Post-process: clean up and enhance the SVG
+    result.svg = cleanupFloorPlanSvg(result.svg);
 
     // Validate room list sanity
     if (result.roomList && result.roomList.length > 0) {
@@ -638,6 +649,61 @@ Generate the MOST REPRESENTATIVE typical floor plan. The room areas in your room
     };
   });
 }
+
+/**
+ * Post-process AI-generated floor plan SVG to fix common issues:
+ * - Ensure viewBox is present and correct
+ * - Add missing xmlns attribute
+ * - Ensure proper font-family fallbacks
+ * - Fix empty/broken stroke attributes
+ * - Add a clean white background rect if missing
+ * - Ensure wall strokes are visible (minimum stroke-width)
+ */
+function cleanupFloorPlanSvg(svg: string): string {
+  let cleaned = svg;
+
+  // 1. Ensure xmlns attribute
+  if (!cleaned.includes('xmlns=')) {
+    cleaned = cleaned.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+
+  // 2. Ensure viewBox exists
+  if (!cleaned.includes('viewBox')) {
+    cleaned = cleaned.replace('<svg', '<svg viewBox="0 0 800 600"');
+  }
+
+  // 3. Add white background if no background rect exists near the start
+  const hasBackground = /fill=["']#[fF]{3,6}["']/.test(cleaned.slice(0, 500)) ||
+                        /fill=["']white["']/.test(cleaned.slice(0, 500));
+  if (!hasBackground) {
+    // Insert a white background rect right after the opening <svg> tag
+    cleaned = cleaned.replace(
+      /(<svg[^>]*>)/,
+      '$1<rect width="100%" height="100%" fill="white"/>'
+    );
+  }
+
+  // 4. Fix font-family for cross-platform rendering
+  cleaned = cleaned.replace(
+    /font-family=["']([^"']*)["']/g,
+    'font-family="Arial, Helvetica, sans-serif"'
+  );
+
+  // 5. Fix zero or missing stroke-width on wall elements (stroke="#333" or "#222")
+  cleaned = cleaned.replace(
+    /stroke=["'](#[23]{3,6})["']\s+stroke-width=["']0["']/g,
+    'stroke="$1" stroke-width="2"'
+  );
+
+  // 6. Remove any accidental script tags (security)
+  cleaned = cleaned.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+  // 7. Remove any external references (xlink:href to URLs)
+  cleaned = cleaned.replace(/xlink:href=["']https?:\/\/[^"']*["']/g, '');
+
+  return cleaned;
+}
+
 
 // ─── parseBriefDocument (TR-001) ────────────────────────────────────────────
 
