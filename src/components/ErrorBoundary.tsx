@@ -68,6 +68,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     return (
       <div
+        role="alert"
+        aria-live="assertive"
         style={{
           display: "flex",
           flexDirection: "column",

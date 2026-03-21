@@ -6,16 +6,35 @@ import type { ExecutionArtifact } from "@/types/execution";
 // Demo endpoint — no auth required, limited to WF-01 nodes only
 const DEMO_ALLOWED_IDS = new Set(["TR-003", "GN-003"]);
 
-// --- In-memory IP-based rate limiting ---
+// --- In-memory IP-based rate limiting with automatic cleanup ---
 const DEMO_RATE_LIMIT = 5; // max requests per window
 const DEMO_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const MAX_RATE_LIMIT_ENTRIES = 10_000; // prevent unbounded memory growth
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
+// Periodic cleanup of expired entries to prevent memory leak
+let lastCleanup = Date.now();
+function cleanupExpiredEntries() {
+  const now = Date.now();
+  // Only clean up every 5 minutes
+  if (now - lastCleanup < 5 * 60 * 1000) return;
+  lastCleanup = now;
+  for (const [ip, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(ip);
+  }
+}
+
 function checkDemoRateLimit(ip: string): boolean {
+  cleanupExpiredEntries();
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {
+    // Evict oldest if at capacity
+    if (rateLimitMap.size >= MAX_RATE_LIMIT_ENTRIES) {
+      const firstKey = rateLimitMap.keys().next().value;
+      if (firstKey) rateLimitMap.delete(firstKey);
+    }
     rateLimitMap.set(ip, { count: 1, resetAt: now + DEMO_RATE_WINDOW_MS });
     return true;
   }

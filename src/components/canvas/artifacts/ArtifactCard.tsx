@@ -145,7 +145,7 @@ interface ArtifactCardProps {
 
 // ─── Main card ────────────────────────────────────────────────────────────────
 
-export function ArtifactCard({ artifact, nodeLabel, nodeCategory, onDismiss, onRegenerate, regenRemaining, isRegenerating }: ArtifactCardProps) {
+function ArtifactCardInner({ artifact, nodeLabel, nodeCategory, onDismiss, onRegenerate, regenRemaining, isRegenerating }: ArtifactCardProps) {
   const [collapsed, setCollapsed] = useState(false);
   const prefersReduced = useReducedMotion();
   const { t } = useLocale();
@@ -982,3 +982,5 @@ function FileBody({ data }: { data: FileArtifactData }) {
     </div>
   );
 }
+
+export const ArtifactCard = React.memo(ArtifactCardInner);

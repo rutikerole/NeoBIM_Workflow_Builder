@@ -165,6 +165,7 @@ export default function Building3DViewer({
       (err) => {
         const msg = "Failed to load 3D model";
         console.error("[Building3DViewer]", err);
+        cleanup(); // Ensure renderer/controls are disposed on load error
         setError(msg);
         setLoading(false);
         onError?.(msg);

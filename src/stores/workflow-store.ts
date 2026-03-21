@@ -110,8 +110,8 @@ export const useWorkflowStore = create<WorkflowState>()(
       const { nodes, edges, _history, _historyIndex } = get();
       const truncated = _history.slice(0, _historyIndex + 1);
       const entry: HistoryEntry = {
-        nodes: JSON.parse(JSON.stringify(nodes)),
-        edges: JSON.parse(JSON.stringify(edges)),
+        nodes: structuredClone(nodes),
+        edges: structuredClone(edges),
       };
       const next = [...truncated, entry];
       if (next.length > MAX_HISTORY) next.shift();
@@ -289,21 +289,23 @@ export const useWorkflowStore = create<WorkflowState>()(
     setSaving: (isSaving) => set({ isSaving }),
 
     saveWorkflow: async (name) => {
-      const state = get();
-      if (state.isSaving) return null; // Prevent double-click race condition
+      // Atomic check-and-set: read isSaving and set it in one operation to avoid race
+      const { isSaving, nodes, edges, currentWorkflow } = get();
+      if (isSaving) return null;
       set({ isSaving: true });
       try {
-        const tileGraph = { nodes: state.nodes, edges: state.edges };
-        const workflowId = state.currentWorkflow?.id;
+        // Use snapshot from single get() call above to avoid mutation between reads
+        const tileGraph = { nodes, edges };
+        const workflowId = currentWorkflow?.id;
 
         if (isPersistedId(workflowId)) {
           // Has a real DB id (Prisma cuid) — update existing workflow
           await api.workflows.update(workflowId!, {
-            name: name ?? state.currentWorkflow!.name,
+            name: name ?? currentWorkflow!.name,
             tileGraph,
           });
           // Update name in store if changed
-          if (name && name !== state.currentWorkflow!.name) {
+          if (name && name !== currentWorkflow!.name) {
             set((s) => ({
               isDirty: false,
               currentWorkflow: s.currentWorkflow
@@ -317,9 +319,9 @@ export const useWorkflowStore = create<WorkflowState>()(
         } else {
           // No persisted ID — create new workflow in DB
           const { workflow } = await api.workflows.create({
-            name: name ?? state.currentWorkflow?.name ?? "Untitled Workflow",
-            description: state.currentWorkflow?.description ?? undefined,
-            tags: state.currentWorkflow?.tags ?? [],
+            name: name ?? currentWorkflow?.name ?? "Untitled Workflow",
+            description: currentWorkflow?.description ?? undefined,
+            tags: currentWorkflow?.tags ?? [],
             tileGraph,
           });
           set((s) => ({
@@ -392,3 +394,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       }),
   }))
 );
+
+// ─── Optimized selectors — prevent unnecessary re-renders (#45) ──────────────
+export const selectNodes = (s: WorkflowState) => s.nodes;
+export const selectEdges = (s: WorkflowState) => s.edges;
+export const selectCurrentWorkflow = (s: WorkflowState) => s.currentWorkflow;
+export const selectIsDirty = (s: WorkflowState) => s.isDirty;
+export const selectIsSaving = (s: WorkflowState) => s.isSaving;
+export const selectCanUndo = (s: WorkflowState) => s._historyIndex > 0;
+export const selectCanRedo = (s: WorkflowState) => s._historyIndex < s._history.length - 1;

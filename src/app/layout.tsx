@@ -258,8 +258,16 @@ export default function RootLayout({
         <TrackingScripts />
       </head>
       <body className={`${dmSans.variable} ${jetbrains.variable} ${syne.variable} ${spaceGrotesk.variable} font-body antialiased`} style={{ background: "#06080C", color: "#F0F4FF" }}>
+        {/* Skip-to-content link for keyboard/screen reader accessibility (#39) */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[99999] focus:rounded-lg focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
+          style={{ background: "#00F5FF", color: "#07070D" }}
+        >
+          Skip to main content
+        </a>
         <SessionProvider>
-          <MobileGate>{children}</MobileGate>
+          <MobileGate><div id="main-content">{children}</div></MobileGate>
         </SessionProvider>
         <Toaster
           position="bottom-right"

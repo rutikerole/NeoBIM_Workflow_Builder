@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const uploadId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const uploadId = `${Date.now().toString(36)}-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 
     return NextResponse.json({ uploadId });
   } catch (error) {

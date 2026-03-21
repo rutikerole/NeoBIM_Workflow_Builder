@@ -98,9 +98,9 @@ describe("Utils — formatBytes", () => {
 });
 
 describe("Utils — generateId", () => {
-  it("should return a 7-character string", () => {
+  it("should return a 12-character string", () => {
     const id = generateId();
-    expect(id).toHaveLength(7);
+    expect(id).toHaveLength(12);
   });
 
   it("should contain only alphanumeric characters", () => {
@@ -110,7 +110,7 @@ describe("Utils — generateId", () => {
 
   it("should generate unique IDs", () => {
     const ids = new Set(Array.from({ length: 100 }, () => generateId()));
-    // With 36^7 possible values, 100 IDs should be unique
+    // With crypto-secure randomness, 100 IDs should be unique
     expect(ids.size).toBe(100);
   });
 });
