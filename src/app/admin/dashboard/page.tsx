@@ -1007,7 +1007,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Right side: live indicator, refresh, export */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <div className="admin-dash-header-controls" style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0, flexWrap: "wrap" }}>
           {/* Live pulse + last updated */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="admin-live-pulse" style={{
@@ -1413,6 +1413,11 @@ export default function AdminDashboardPage() {
         }
         @media (max-width: 640px) {
           .admin-kpi-grid { grid-template-columns: 1fr !important; }
+          .admin-dash-header-controls {
+            flex-shrink: 1 !important;
+            width: 100% !important;
+            gap: 8px !important;
+          }
           .admin-dash-export-btns { width: 100% !important; }
           .admin-dash-export-btn { flex: 1 !important; justify-content: center !important; }
         }
