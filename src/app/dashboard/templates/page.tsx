@@ -82,7 +82,7 @@ const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: num
   "wf-01": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 105 },
   "wf-03": { type: "svg", output: "render" },
   "wf-04": { type: "video", url: `${R2}/parameters-to-3d-building.mp4`, start: 20 },
-  "wf-05": { type: "video", url: `${R2}/ifc-exporter.mp4`, start: 50 },
+  "wf-05": { type: "video", url: `${R2}/ifc-exporter.mp4`, start: 120 },
   "wf-09": { type: "svg", output: "boq" },
   "wf-11": { type: "video", url: `${R2}/text-prompt-to-floor-plan.mp4`, start: 22 },
   "wf-12": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 108 },
@@ -91,7 +91,7 @@ const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: num
   "wf-15": { type: "video", url: `${R2}/floor-plan-demo.mp4`, start: 0 },
   "wf-16": { type: "video", url: `${R2}/floor-plan-demo.mp4`, start: 0 },
   "wf-17": { type: "video", url: `${R2}/floor-plan-demo.mp4`, start: 0 },
-  "wf-18": { type: "video", url: `${R2}/ifc-exporter.mp4`, start: 50 },
+  "wf-18": { type: "video", url: `${R2}/ifc-exporter.mp4`, start: 120 },
 };
 
 // SVG output type illustrations
