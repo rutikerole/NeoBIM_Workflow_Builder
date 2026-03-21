@@ -87,10 +87,10 @@ const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: num
   "wf-11": { type: "svg", output: "floorplan" },
   "wf-12": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 108 },
   "wf-13": { type: "svg", output: "map" },
-  "wf-14": { type: "video", url: "/videos/3d%20model.mp4", start: 5 },
-  "wf-15": { type: "video", url: `${R2}/floorplan-to-3d-model.mp4`, start: 112 },
-  "wf-16": { type: "video", url: `${R2}/floorplan-to-3d-model.mp4`, start: 110 },
-  "wf-17": { type: "video", url: `${R2}/floorplan-to-3d-model.mp4`, start: 115 },
+  "wf-14": { type: "video", url: `${R2}/3d-model-preview.mp4`, start: 0 },
+  "wf-15": { type: "video", url: `${R2}/floor-plan-demo.mp4`, start: 0 },
+  "wf-16": { type: "video", url: `${R2}/floor-plan-demo.mp4`, start: 0 },
+  "wf-17": { type: "video", url: `${R2}/floor-plan-demo.mp4`, start: 0 },
   "wf-18": { type: "svg", output: "ifc" },
 };
 

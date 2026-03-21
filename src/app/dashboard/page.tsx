@@ -49,8 +49,8 @@ const stagger = { visible: { transition: { staggerChildren: 0.12 } } };
 const R2 = "https://pub-27d9a7371b6d47ff94fee1a3228f1720.r2.dev/workflow-demos";
 const DEMO_VIDEOS = [
   { id: "dv-1", url: `${R2}/text-to-concept-building.mp4`, previewStart: 105, color: "#4F8AFF", rgb: "79,138,255" },
-  { id: "dv-2", url: `${R2}/floorplan-to-3d-model.mp4`, previewStart: 110, color: "#8B5CF6", rgb: "139,92,246" },
-  { id: "dv-3", url: "/videos/3d%20model.mp4", previewStart: 5, color: "#10B981", rgb: "16,185,129" },
+  { id: "dv-2", url: `${R2}/floor-plan-demo.mp4`, previewStart: 0, color: "#8B5CF6", rgb: "139,92,246" },
+  { id: "dv-3", url: `${R2}/3d-model-preview.mp4`, previewStart: 0, color: "#10B981", rgb: "16,185,129" },
 ];
 
 // ─── Plan limits ─────────────────────────────────────────────────────────────

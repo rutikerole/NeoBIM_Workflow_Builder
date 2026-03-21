@@ -99,10 +99,10 @@ const VIDEOS: WFVideo[] = [
       { label: "Floor Plan Analyzer", cat: "transform" },
       { label: "3D Model Builder", cat: "generate" },
     ],
-    url: `${R2}/floorplan-to-3d-model.mp4`,
+    url: `${R2}/floor-plan-demo.mp4`,
     featured: true,
     spec: "3 Nodes · ML Vision · ~120s",
-    previewStart: 110,
+    previewStart: 0,
   },
   {
     id: "wv-03",
