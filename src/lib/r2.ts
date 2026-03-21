@@ -100,7 +100,7 @@ export async function uploadToR2(
   // Key format: files/2026/03/10/uuid-filename.pdf
   const now = new Date();
   const datePath = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
-  const uniqueId = Math.random().toString(36).slice(2, 10);
+  const uniqueId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const key = `files/${datePath}/${uniqueId}-${filename}`;
 
   try {
@@ -146,7 +146,7 @@ export async function uploadVideoToR2(
 
   const now = new Date();
   const datePath = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
-  const uniqueId = Math.random().toString(36).slice(2, 10);
+  const uniqueId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const key = `videos/${datePath}/${uniqueId}-${filename}`;
 
   try {
@@ -188,7 +188,7 @@ export async function createPresignedUploadUrl(
 
   const now = new Date();
   const datePath = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
-  const uniqueId = Math.random().toString(36).slice(2, 10);
+  const uniqueId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const key = `videos/${datePath}/${uniqueId}-${filename}`;
 
   try {
@@ -271,7 +271,7 @@ export async function uploadIFCToR2(
 
   const now = new Date();
   const datePath = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
-  const uniqueId = Math.random().toString(36).slice(2, 10);
+  const uniqueId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const key = `ifc/${datePath}/${uniqueId}-${filename}`;
 
   try {

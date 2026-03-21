@@ -492,7 +492,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
     const cy = window.innerHeight / 2;
     const position = screenToFlowPosition({ x: cx, y: cy });
     const newNode = {
-      id: `${catalogueItem.id}-${Math.random().toString(36).slice(2, 9)}`,
+      id: `${catalogueItem.id}-${crypto.randomUUID().replace(/-/g, "").slice(0, 9)}`,
       type: "workflowNode" as const,
       position,
       data: {
@@ -530,7 +530,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
   const prevExecutingRef = useRef(false);
 
   const addLogEntry = useCallback((entry: LogEntry) => {
-    setLogEntries(prev => [...prev, entry]);
+    setLogEntries(prev => [...prev.slice(-199), entry]);
     setShowLog(true);
   }, []);
 
@@ -1103,7 +1103,7 @@ function WorkflowCanvasInner({ workflowId: urlWorkflowId }: WorkflowCanvasInnerP
         {/* AI Chat Panel — floats on right edge */}
         <AIChatPanel
           messages={chatMessages}
-          onAddMessage={(msg) => setChatMessages(prev => [...prev, msg])}
+          onAddMessage={(msg) => setChatMessages(prev => [...prev.slice(-49), msg])}
           onClear={() => setChatMessages([])}
           isOpen={isChatOpen}
           onToggle={() => setIsChatOpen(o => !o)}

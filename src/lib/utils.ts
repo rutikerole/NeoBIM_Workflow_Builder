@@ -15,7 +15,9 @@ export function formatBytes(bytes: number, decimals = 2): string {
 }
 
 export function generateId(): string {
-  return Math.random().toString(36).substring(2, 9);
+  const bytes = new Uint8Array(7);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 12);
 }
 
 export function slugify(text: string): string {

@@ -264,3 +264,12 @@ export const useExecutionStore = create<ExecutionState>()((set, get) => ({
     }
   },
 }));
+
+// ─── Optimized selectors — prevent unnecessary re-renders (#45) ──────────────
+export const selectIsExecuting = (s: ExecutionState) => s.isExecuting;
+export const selectExecutionProgress = (s: ExecutionState) => s.executionProgress;
+export const selectIsRateLimited = (s: ExecutionState) => s.isRateLimited;
+export const selectArtifacts = (s: ExecutionState) => s.artifacts;
+export const selectVideoGenProgress = (s: ExecutionState) => s.videoGenProgress;
+export const selectCurrentExecution = (s: ExecutionState) => s.currentExecution;
+export const selectRegeneratingNodeId = (s: ExecutionState) => s.regeneratingNodeId;

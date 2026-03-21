@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useWorkflowStore } from "@/stores/workflow-store";
 import { useExecutionStore } from "@/stores/execution-store";
@@ -268,6 +268,15 @@ async function persistVideoToR2(
 const VIDEO_POLL_INTERVAL_MS = 6_000; // Poll every 6 seconds
 const VIDEO_POLL_TIMEOUT_MS = 600_000; // 10 minute timeout
 
+/** Abortable sleep — rejects with AbortError when signal is aborted */
+function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new DOMException("Aborted", "AbortError")); return; }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")); }, { once: true });
+  });
+}
+
 /** Poll /api/video-status for a SINGLE video task (floor plans) */
 async function pollSingleVideoGeneration(
   nodeId: string,
@@ -277,6 +286,7 @@ async function pollSingleVideoGeneration(
   clearVideoProgressFn: (nodeId: string) => void,
   currentArtifactData: Record<string, unknown>,
   executionId: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
 
@@ -286,10 +296,10 @@ async function pollSingleVideoGeneration(
   setVideoProgressFn(nodeId, { progress: 5, status: "processing", taskId });
 
   while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
+    await abortableSleep(VIDEO_POLL_INTERVAL_MS, signal);
 
     try {
-      const res = await fetch(`/api/video-status?taskId=${encodeURIComponent(taskId)}`);
+      const res = await fetch(`/api/video-status?taskId=${encodeURIComponent(taskId)}`, { signal });
 
       if (!res.ok) {
         console.error("[POLL] HTTP error:", res.status);
@@ -375,6 +385,7 @@ async function pollVideoGeneration(
   currentArtifactData: Record<string, unknown>,
   executionId: string,
   videoPipeline: "image2video" | "text2video" = "image2video",
+  signal?: AbortSignal,
 ): Promise<void> {
   const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
 
@@ -390,12 +401,13 @@ async function pollVideoGeneration(
   });
 
   while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
+    await abortableSleep(VIDEO_POLL_INTERVAL_MS, signal);
 
     try {
       console.log("[POLL] Checking video status...");
       const res = await fetch(
-        `/api/video-status?exteriorTaskId=${encodeURIComponent(exteriorTaskId)}&interiorTaskId=${encodeURIComponent(interiorTaskId)}&pipeline=${videoPipeline}`
+        `/api/video-status?exteriorTaskId=${encodeURIComponent(exteriorTaskId)}&interiorTaskId=${encodeURIComponent(interiorTaskId)}&pipeline=${videoPipeline}`,
+        { signal },
       );
 
       if (!res.ok) {
@@ -729,6 +741,17 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
   const isDemoMode = useUIStore(s => s.isDemoMode);
   const [rateLimitHit, setRateLimitHit] = useState<RateLimitInfo | null>(null);
 
+  // AbortController for cancelling background polling on unmount
+  const pollAbortRef = useRef<AbortController | null>(null);
+
+  // Cleanup polling on unmount to prevent memory leaks (#20)
+  useEffect(() => {
+    return () => {
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
+    };
+  }, []);
+
   // Warn user before navigating away during execution
   useEffect(() => {
     if (!isExecuting) return;
@@ -1033,6 +1056,10 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
 
             const taskIdStr = artData.taskId as string;
             console.log("[POLL] Starting single video poll — taskId:", taskIdStr);
+            // Create new AbortController for this poll (aborts previous if any)
+            pollAbortRef.current?.abort();
+            const pollCtrl = new AbortController();
+            pollAbortRef.current = pollCtrl;
             pollSingleVideoGeneration(
               node.id,
               taskIdStr,
@@ -1041,7 +1068,9 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
               clearVideoGenProgress,
               artData,
               executionId,
+              pollCtrl.signal,
             ).catch(err => {
+              if (err instanceof DOMException && err.name === "AbortError") return; // expected on unmount
               console.error("[Video Poll] Unhandled error:", err);
             });
           } else if (
@@ -1059,6 +1088,10 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
               duration: 5000,
             });
 
+            // Create new AbortController for this poll (aborts previous if any)
+            pollAbortRef.current?.abort();
+            const dualPollCtrl = new AbortController();
+            pollAbortRef.current = dualPollCtrl;
             pollVideoGeneration(
               node.id,
               artData.exteriorTaskId as string,
@@ -1069,7 +1102,9 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
               artData,
               executionId,
               pipeline,
+              dualPollCtrl.signal,
             ).catch(err => {
+              if (err instanceof DOMException && err.name === "AbortError") return; // expected on unmount
               console.error("[Video Poll] Unhandled error:", err);
             });
           } else if (artData.videoGenerationStatus === "client-rendering") {

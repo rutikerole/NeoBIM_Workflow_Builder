@@ -134,3 +134,9 @@ export const useUIStore = create<UIState>()((set) => ({
 
   setDemoMode: (demo) => set({ isDemoMode: demo }),
 }));
+
+// ─── Optimized selectors — prevent unnecessary re-renders (#45) ──────────────
+export const selectIsDemoMode = (s: UIState) => s.isDemoMode;
+export const selectActivePanel = (s: UIState) => s.activePanel;
+export const selectSelectedNodeIds = (s: UIState) => s.selectedNodeIds;
+export const selectIsNodeLibraryOpen = (s: UIState) => s.isNodeLibraryOpen;

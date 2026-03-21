@@ -2,35 +2,49 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { auth } from "@/lib/auth";
 import { checkEndpointRateLimit } from "@/lib/rate-limit";
-import { safeErrorMessage } from "@/lib/safe-error";
+import { formatErrorResponse, UserErrors, detectOpenAIError } from "@/lib/user-errors";
 
 export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(formatErrorResponse(UserErrors.UNAUTHORIZED), { status: 401 });
     }
 
     // Rate limit: 20 requests per minute
     const rateLimit = await checkEndpointRateLimit(session.user.id, "ai-chat", 20, "1 m");
     if (!rateLimit.success) {
-      return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+      return NextResponse.json(formatErrorResponse({
+        title: "Too many requests",
+        message: "Please wait a moment before sending another message.",
+        code: "RATE_001",
+      }), { status: 429 });
     }
 
     const body = (await req.json()) as { message?: string; systemPrompt?: string };
     const { message, systemPrompt } = body;
 
     if (!message || typeof message !== "string" || message.trim().length === 0) {
-      return NextResponse.json({ error: "Message is required" }, { status: 400 });
+      return NextResponse.json(formatErrorResponse(UserErrors.INVALID_INPUT, "Message is required"), { status: 400 });
     }
 
     if (message.length > 2000) {
-      return NextResponse.json({ error: "Message too long (max 2000 chars)" }, { status: 400 });
+      return NextResponse.json(formatErrorResponse(UserErrors.PROMPT_TOO_LONG, "Message too long (max 2000 chars)"), { status: 400 });
+    }
+
+    // Validate systemPrompt if provided — prevent injection and token exhaustion
+    if (systemPrompt !== undefined) {
+      if (typeof systemPrompt !== "string") {
+        return NextResponse.json(formatErrorResponse(UserErrors.INVALID_INPUT, "systemPrompt must be a string"), { status: 400 });
+      }
+      if (systemPrompt.length > 1000) {
+        return NextResponse.json(formatErrorResponse(UserErrors.INVALID_INPUT, "systemPrompt too long (max 1000 chars)"), { status: 400 });
+      }
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "OpenAI API key not configured" }, { status: 500 });
+      return NextResponse.json(formatErrorResponse(UserErrors.OPENAI_INVALID_KEY), { status: 500 });
     }
 
     const client = new OpenAI({ apiKey });
@@ -50,6 +64,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply });
   } catch (error: unknown) {
     console.error("[AI Chat]", error);
-    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
+    const userError = detectOpenAIError(error);
+    return NextResponse.json(formatErrorResponse(userError), { status: 500 });
   }
 }
