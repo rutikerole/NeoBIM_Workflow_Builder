@@ -79,7 +79,7 @@ const DEFAULT_DATA: DashboardData = {
 // ─── Orbit animation — floating AEC elements ────────────────────────────────
 function AECOrbit() {
   return (
-    <div style={{ position: "absolute", top: "50%", right: "10%", width: 280, height: 280, transform: "translateY(-50%)", pointerEvents: "none" }} className="dashboard-orbit-container">
+    <div style={{ position: "absolute", top: "50%", right: "10%", width: 200, height: 200, transform: "translateY(-50%)", pointerEvents: "none" }} className="dashboard-orbit-container">
       {/* Central glow */}
       <div style={{
         position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
@@ -87,22 +87,22 @@ function AECOrbit() {
         boxShadow: "0 0 40px rgba(79,138,255,0.3), 0 0 80px rgba(79,138,255,0.1)",
       }} />
       {/* Orbit ring */}
-      <svg style={{ position: "absolute", inset: 0 }} viewBox="0 0 280 280">
-        <circle cx="140" cy="140" r="100" fill="none" stroke="rgba(79,138,255,0.06)" strokeWidth="1" strokeDasharray="4 6" />
-        <circle cx="140" cy="140" r="60" fill="none" stroke="rgba(139,92,246,0.05)" strokeWidth="0.5" strokeDasharray="3 5" />
+      <svg style={{ position: "absolute", inset: 0 }} viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="75" fill="none" stroke="rgba(79,138,255,0.06)" strokeWidth="1" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="45" fill="none" stroke="rgba(139,92,246,0.05)" strokeWidth="0.5" strokeDasharray="3 5" />
       </svg>
       {/* Orbiting elements */}
       {[
-        { angle: 0, r: 100, color: "#4F8AFF", size: 10, dur: "12s", label: "3D" },
-        { angle: 90, r: 100, color: "#8B5CF6", size: 8, dur: "12s", label: "AI" },
-        { angle: 180, r: 100, color: "#10B981", size: 9, dur: "12s", label: "IFC" },
-        { angle: 270, r: 100, color: "#F59E0B", size: 7, dur: "12s", label: "BOQ" },
-        { angle: 45, r: 60, color: "#06B6D4", size: 6, dur: "8s", label: "" },
-        { angle: 200, r: 60, color: "#EC4899", size: 5, dur: "8s", label: "" },
+        { angle: 0, r: 75, color: "#4F8AFF", size: 8, dur: "12s", label: "3D" },
+        { angle: 90, r: 75, color: "#8B5CF6", size: 7, dur: "12s", label: "AI" },
+        { angle: 180, r: 75, color: "#10B981", size: 8, dur: "12s", label: "IFC" },
+        { angle: 270, r: 75, color: "#F59E0B", size: 6, dur: "12s", label: "BOQ" },
+        { angle: 45, r: 45, color: "#06B6D4", size: 5, dur: "8s", label: "" },
+        { angle: 200, r: 45, color: "#EC4899", size: 4, dur: "8s", label: "" },
       ].map((orb, i) => {
         const rad = (orb.angle * Math.PI) / 180;
-        const cx = 140 + orb.r * Math.cos(rad);
-        const cy = 140 + orb.r * Math.sin(rad);
+        const cx = 100 + orb.r * Math.cos(rad);
+        const cy = 100 + orb.r * Math.sin(rad);
         return (
           <motion.div
             key={i}
@@ -110,7 +110,7 @@ function AECOrbit() {
             transition={{ duration: parseFloat(orb.dur), repeat: Infinity, ease: "linear" }}
             style={{
               position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
-              transformOrigin: "140px 140px",
+              transformOrigin: "100px 100px",
             }}
           >
             <div style={{
@@ -202,8 +202,8 @@ export default function DashboardPage() {
             className="dash-hero-main"
             style={{
               position: "relative", overflow: "hidden",
-              borderRadius: 28, marginBottom: 48,
-              minHeight: 360,
+              borderRadius: 28, marginBottom: 32,
+              minHeight: 220,
             }}
           >
             {/* ── Multi-layer background ── */}
@@ -284,7 +284,7 @@ export default function DashboardPage() {
             }} />
 
             {/* ── Content ── */}
-            <div style={{ position: "relative", zIndex: 1, padding: "52px 52px 48px", maxWidth: 620 }} className="dashboard-hero-content">
+            <div style={{ position: "relative", zIndex: 1, padding: "32px 40px 28px", maxWidth: 620 }} className="dashboard-hero-content">
               {/* Plan + Usage row */}
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
@@ -296,7 +296,7 @@ export default function DashboardPage() {
                   background: "rgba(255,255,255,0.03)",
                   border: "1px solid rgba(255,255,255,0.06)",
                   backdropFilter: "blur(12px)",
-                  marginBottom: 28,
+                  marginBottom: 16,
                 }}
               >
                 <span style={{
@@ -333,7 +333,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35, duration: 0.7, ease: smoothEase }}
-                style={{ fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.05, marginBottom: 16 }}
+                style={{ fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 10 }}
               >
                 {firstName ? (
                   <>
@@ -357,7 +357,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.45, duration: 0.5, ease: smoothEase }}
-                style={{ fontSize: 17, color: "#6B7A8D", lineHeight: 1.7, marginBottom: 32, maxWidth: 420 }}
+                style={{ fontSize: 15, color: "#6B7A8D", lineHeight: 1.5, marginBottom: 20, maxWidth: 420 }}
               >
                 {t('dash.letsCreate')}
               </motion.p>
@@ -371,7 +371,7 @@ export default function DashboardPage() {
               >
                 <Link href="/dashboard/workflows/new" className="dash-cta-primary" style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  padding: "14px 32px", borderRadius: 14,
+                  padding: "11px 26px", borderRadius: 12,
                   background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 50%, #8B5CF6 100%)",
                   backgroundSize: "200% 200%",
                   color: "#fff", fontSize: 14, fontWeight: 700,
@@ -385,7 +385,7 @@ export default function DashboardPage() {
                 {role === "FREE" && (
                   <Link href="/dashboard/billing" className="dash-upgrade-btn" style={{
                     display: "flex", alignItems: "center", gap: 8,
-                    padding: "14px 28px", borderRadius: 14,
+                    padding: "11px 22px", borderRadius: 12,
                     background: "rgba(245,158,11,0.04)",
                     border: "1px solid rgba(245,158,11,0.12)",
                     color: "#F59E0B", fontSize: 14, fontWeight: 600,
