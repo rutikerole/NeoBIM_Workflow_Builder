@@ -35,9 +35,9 @@ const client = new S3Client({
 
 const VIDEOS = [
   {
-    localPath: "BOQ Results 2026-03-21T11-37-45-724Z.mp4",
-    r2Key: "workflow-demos/boq-result.mp4",
-    label: "BOQ Result",
+    localPath: "site-analysis-preview.jpg",
+    r2Key: "workflow-demos/site-analysis-preview.jpg",
+    label: "Site Analysis Preview",
   },
 ];
 
