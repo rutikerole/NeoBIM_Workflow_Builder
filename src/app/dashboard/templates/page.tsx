@@ -78,7 +78,7 @@ function hexToRgb(hex: string): string {
 
 // ─── Video/image preview mapping for template cards ─────────────────────────
 const R2 = "https://pub-27d9a7371b6d47ff94fee1a3228f1720.r2.dev/workflow-demos";
-const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: number } | { type: "svg"; output: string }> = {
+const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: number } | { type: "svg"; output: string } | { type: "image"; url: string }> = {
   "wf-01": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 105 },
   "wf-03": { type: "svg", output: "render" },
   "wf-04": { type: "video", url: `${R2}/parameters-to-3d-building.mp4`, start: 20 },
@@ -86,7 +86,7 @@ const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: num
   "wf-09": { type: "video", url: `${R2}/boq-result.mp4`, start: 45 },
   "wf-11": { type: "video", url: `${R2}/text-prompt-to-floor-plan.mp4`, start: 22 },
   "wf-12": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 108 },
-  "wf-13": { type: "svg", output: "map" },
+  "wf-13": { type: "image", url: `${R2}/site-analysis-preview.jpg` },
   "wf-14": { type: "video", url: `${R2}/floorplan-to-3d-video.mp4`, start: 65 },
   "wf-15": { type: "video", url: `${R2}/floorplan-to-3d-video.mp4`, start: 65 },
   "wf-16": { type: "video", url: `${R2}/floorplan-to-3d-video.mp4`, start: 65 },
@@ -854,6 +854,13 @@ export default function TemplatesPage() {
                                   onLoadedMetadata={e => { e.currentTarget.currentTime = preview.start; }}
                                   onMouseEnter={e => { e.currentTarget.play().catch(() => {}); }}
                                   onMouseLeave={e => { e.currentTarget.pause(); }}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                />
+                              ) : preview?.type === "image" ? (
+                                <img
+                                  src={preview.url}
+                                  alt={wf.name}
+                                  loading="lazy"
                                   style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                                 />
                               ) : preview?.type === "svg" ? (
