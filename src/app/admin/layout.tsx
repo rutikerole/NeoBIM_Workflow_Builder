@@ -498,7 +498,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </motion.aside>
 
       {/* ── Main Content ──────────────────────────────────────────────── */}
-      <div className="admin-main-content" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
+      <div className="admin-main-content" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {/* Top header */}
         <header
           className="admin-header"
@@ -595,7 +595,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Page content */}
-        <main style={{ flex: 1, overflow: "auto", overflowX: "hidden", background: "#070809" }}>
+        <main style={{ flex: 1, overflow: "auto", background: "#070809" }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -623,7 +623,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             display: none !important;
           }
           .admin-main-content {
-            overflow-x: hidden !important;
+            max-width: 100vw;
           }
         }
         @media (max-width: 480px) {
