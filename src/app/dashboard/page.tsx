@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, useInView } from "framer-motion";
 import {
   ArrowRight, Crown, Play, Plus, Zap,
@@ -10,8 +11,10 @@ import {
 } from "lucide-react";
 import { PageBackground } from "@/components/dashboard/PageBackground";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
+import { useWorkflowStore } from "@/stores/workflow-store";
 import { useLocale } from "@/hooks/useLocale";
 import type { TranslationKey } from "@/lib/i18n";
+import type { WorkflowTemplate } from "@/types/workflow";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface DashboardData {
@@ -143,6 +146,8 @@ function AECOrbit() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { t } = useLocale();
+  const router = useRouter();
+  const loadFromTemplate = useWorkflowStore((s) => s.loadFromTemplate);
   const [data, setData] = useState<DashboardData>(DEFAULT_DATA);
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const videoSectionRef = useRef<HTMLDivElement>(null);
@@ -176,6 +181,21 @@ export default function DashboardPage() {
   const planLimit = PLAN_LIMITS[role] ?? 5;
   const used = data.executionCount;
   const usagePercent = Math.min((used / planLimit) * 100, 100);
+
+  // Open a prebuilt template in the canvas
+  const openTemplate = useCallback((templateId: string) => {
+    const template = PREBUILT_WORKFLOWS.find(w => w.id === templateId);
+    if (!template) { router.push("/dashboard/canvas"); return; }
+    loadFromTemplate(template as WorkflowTemplate);
+    router.push("/dashboard/canvas");
+  }, [loadFromTemplate, router]);
+
+  // Map video demos to their matching prebuilt workflow IDs
+  const VIDEO_TO_TEMPLATE: Record<string, string> = {
+    "dv-1": "wf-01", // Text to Concept Building
+    "dv-2": "wf-17", // Floor Plan to 3D
+    "dv-3": "wf-04", // Parameters to 3D Building
+  };
 
   // Video card titles/subtitles/nodes from i18n
   const videoCards = [
@@ -512,22 +532,22 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Try this workflow button */}
-                    <Link
-                      href="/dashboard/workflows/new"
+                    <button
+                      onClick={() => openTemplate(VIDEO_TO_TEMPLATE[vc.id] ?? "wf-01")}
                       style={{
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                        padding: "9px 16px", borderRadius: 10,
+                        padding: "9px 16px", borderRadius: 10, width: "100%",
                         background: `rgba(${vc.rgb}, 0.08)`,
                         border: `1px solid rgba(${vc.rgb}, 0.15)`,
                         color: vc.color, fontSize: 11, fontWeight: 700,
-                        textDecoration: "none",
+                        cursor: "pointer",
                         fontFamily: "var(--font-jetbrains), monospace",
                         letterSpacing: "0.03em",
                         transition: "all 0.2s",
                       }}
                     >
                       {t('dash.tryThisWorkflow')} <ArrowRight size={12} />
-                    </Link>
+                    </button>
                   </div>
                 </motion.div>
               ))}
@@ -588,15 +608,18 @@ export default function DashboardPage() {
                       variants={fadeUp}
                       transition={{ duration: 0.4, delay: i * 0.08, ease: smoothEase }}
                     >
-                      <Link
-                        href="/dashboard/workflows/new"
+                      <div
+                        onClick={() => openTemplate(wf.id)}
                         className="dash-card-hover block"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === "Enter") openTemplate(wf.id); }}
                         style={{
                           position: "relative", overflow: "hidden",
                           background: "rgba(12,14,22,0.85)", backdropFilter: "blur(12px)",
                           border: `1px solid rgba(255,255,255,0.05)`,
                           borderRadius: 16, padding: "20px 20px 18px",
-                          textDecoration: "none", height: "100%",
+                          cursor: "pointer", height: "100%",
                           display: "flex", flexDirection: "column",
                           transition: "all 350ms cubic-bezier(0.25, 0.4, 0.25, 1)",
                         }}
@@ -639,7 +662,7 @@ export default function DashboardPage() {
                         }}>
                           {t('dash.useIt')} <ArrowRight size={12} />
                         </div>
-                      </Link>
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -751,16 +774,16 @@ export default function DashboardPage() {
                             <Crown size={11} /> {t('dash.upgradePlan')}
                           </Link>
                         ) : (
-                          <Link href="/dashboard/workflows/new" style={{
+                          <button onClick={() => openTemplate(wf.id)} style={{
                             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                            padding: "8px", borderRadius: 8,
+                            padding: "8px", borderRadius: 8, width: "100%",
                             background: `${color}08`, border: `1px solid ${color}12`,
                             fontSize: 11, fontWeight: 700, color,
                             fontFamily: "var(--font-jetbrains), monospace",
-                            textDecoration: "none",
+                            cursor: "pointer",
                           }}>
                             {t('dash.useIt')} <ArrowRight size={12} />
-                          </Link>
+                          </button>
                         )}
                       </div>
                     </motion.div>
