@@ -356,9 +356,11 @@ function NodeItem({ node, onDragStart }: NodeItemProps) {
             fontSize: 11.5,
             fontWeight: 600,
             color: hovered ? "#E8EDF8" : "#B0BCD4",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as const,
             overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            wordBreak: "break-word" as const,
             lineHeight: 1.3,
             transition: "color 120ms ease",
           }}
@@ -369,9 +371,11 @@ function NodeItem({ node, onDragStart }: NodeItemProps) {
           style={{
             fontSize: 10,
             color: "rgba(255,255,255,0.25)",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as const,
             overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            wordBreak: "break-word" as const,
             lineHeight: 1.3,
             marginTop: 1,
           }}
