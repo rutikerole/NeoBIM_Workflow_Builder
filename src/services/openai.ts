@@ -453,6 +453,7 @@ export interface FloorPlanResult {
   totalArea: number;
   floors: number;
   perFloorRooms?: Array<{ floorLabel: string; rooms: Array<{ name: string; area: number; type: string }> }>;
+  positionedRooms?: Array<{ name: string; type: string; x: number; y: number; width: number; depth: number; area: number }>;
 }
 
 // ─── Room type detection & colors ───────────────────────────────────────────
@@ -495,7 +496,493 @@ function isExteriorRoom(type: string): boolean {
   return ["bedroom", "master", "living", "dining", "office", "kitchen", "study"].includes(type);
 }
 
-// ─── Squarified Treemap Layout ──────────────────────────────────────────────
+// ─── Architecture-Aware AI-Positioned Layout ────────────────────────────────
+
+interface PositionedRoom extends RoomDef {
+  x: number;       // left edge in meters from building left wall
+  y: number;       // top edge in meters from building top wall
+  width: number;   // room width in meters (x-axis)
+  depth: number;   // room depth in meters (y-axis)
+}
+
+interface SharedWall {
+  roomA: string;
+  roomB: string;
+  x1: number; y1: number; x2: number; y2: number;
+  orientation: "h" | "v";
+  length: number;
+}
+
+/** Snap value to 0.1m grid */
+function snap(v: number): number { return Math.round(v * 10) / 10; }
+
+/** Validate and fix AI-positioned rooms to fit within footprint */
+function validateLayout(rooms: PositionedRoom[], fpW: number, fpH: number): PositionedRoom[] {
+  // 1. Snap to grid and enforce minimums
+  for (const r of rooms) {
+    r.x = snap(Math.max(0, r.x));
+    r.y = snap(Math.max(0, r.y));
+    r.width = snap(Math.max(1.5, r.width));
+    r.depth = snap(Math.max(1.5, r.depth));
+  }
+
+  // 2. Clamp to footprint boundary
+  for (const r of rooms) {
+    if (r.x + r.width > fpW + 0.05) r.width = snap(fpW - r.x);
+    if (r.y + r.depth > fpH + 0.05) r.depth = snap(fpH - r.y);
+    if (r.width < 1.5) { r.x = snap(Math.max(0, fpW - 1.5)); r.width = snap(fpW - r.x); }
+    if (r.depth < 1.5) { r.y = snap(Math.max(0, fpH - 1.5)); r.depth = snap(fpH - r.y); }
+    r.area = snap(r.width * r.depth);
+  }
+
+  // 3. Resolve overlaps by shrinking the smaller room
+  for (let iter = 0; iter < 3; iter++) {
+    for (let i = 0; i < rooms.length; i++) {
+      for (let j = i + 1; j < rooms.length; j++) {
+        const a = rooms[i], b = rooms[j];
+        const overlapX = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+        const overlapY = Math.min(a.y + a.depth, b.y + b.depth) - Math.max(a.y, b.y);
+        if (overlapX > 0.15 && overlapY > 0.15) {
+          const smaller = a.area <= b.area ? a : b;
+          const larger = a.area <= b.area ? b : a;
+          if (overlapX <= overlapY) {
+            // Nudge horizontally
+            if (smaller.x + smaller.width / 2 < larger.x + larger.width / 2) {
+              smaller.width = snap(larger.x - smaller.x);
+            } else {
+              const newX = snap(larger.x + larger.width);
+              smaller.width = snap(smaller.width - (newX - smaller.x));
+              smaller.x = newX;
+            }
+          } else {
+            // Nudge vertically
+            if (smaller.y + smaller.depth / 2 < larger.y + larger.depth / 2) {
+              smaller.depth = snap(larger.y - smaller.y);
+            } else {
+              const newY = snap(larger.y + larger.depth);
+              smaller.depth = snap(smaller.depth - (newY - smaller.y));
+              smaller.y = newY;
+            }
+          }
+          smaller.width = Math.max(1.0, smaller.width);
+          smaller.depth = Math.max(1.0, smaller.depth);
+          smaller.area = snap(smaller.width * smaller.depth);
+        }
+      }
+    }
+  }
+
+  return rooms;
+}
+
+/** Find shared walls between adjacent rooms for door placement */
+function findSharedWalls(rooms: PositionedRoom[]): SharedWall[] {
+  const walls: SharedWall[] = [];
+  const tolerance = 0.25;
+
+  for (let i = 0; i < rooms.length; i++) {
+    for (let j = i + 1; j < rooms.length; j++) {
+      const a = rooms[i], b = rooms[j];
+
+      // Vertical shared wall: a's right edge ≈ b's left edge
+      if (Math.abs((a.x + a.width) - b.x) < tolerance) {
+        const yStart = Math.max(a.y, b.y);
+        const yEnd = Math.min(a.y + a.depth, b.y + b.depth);
+        if (yEnd - yStart > 0.5) {
+          const wx = (a.x + a.width + b.x) / 2;
+          walls.push({ roomA: a.name, roomB: b.name, x1: wx, y1: yStart, x2: wx, y2: yEnd, orientation: "v", length: yEnd - yStart });
+        }
+      }
+      // Reverse: b's right edge ≈ a's left edge
+      if (Math.abs((b.x + b.width) - a.x) < tolerance) {
+        const yStart = Math.max(a.y, b.y);
+        const yEnd = Math.min(a.y + a.depth, b.y + b.depth);
+        if (yEnd - yStart > 0.5) {
+          const wx = (b.x + b.width + a.x) / 2;
+          walls.push({ roomA: b.name, roomB: a.name, x1: wx, y1: yStart, x2: wx, y2: yEnd, orientation: "v", length: yEnd - yStart });
+        }
+      }
+
+      // Horizontal shared wall: a's bottom edge ≈ b's top edge
+      if (Math.abs((a.y + a.depth) - b.y) < tolerance) {
+        const xStart = Math.max(a.x, b.x);
+        const xEnd = Math.min(a.x + a.width, b.x + b.width);
+        if (xEnd - xStart > 0.5) {
+          const wy = (a.y + a.depth + b.y) / 2;
+          walls.push({ roomA: a.name, roomB: b.name, x1: xStart, y1: wy, x2: xEnd, y2: wy, orientation: "h", length: xEnd - xStart });
+        }
+      }
+      // Reverse: b's bottom edge ≈ a's top edge
+      if (Math.abs((b.y + b.depth) - a.y) < tolerance) {
+        const xStart = Math.max(a.x, b.x);
+        const xEnd = Math.min(a.x + a.width, b.x + b.width);
+        if (xEnd - xStart > 0.5) {
+          const wy = (b.y + b.depth + a.y) / 2;
+          walls.push({ roomA: b.name, roomB: a.name, x1: xStart, y1: wy, x2: xEnd, y2: wy, orientation: "h", length: xEnd - xStart });
+        }
+      }
+    }
+  }
+
+  // Deduplicate (same wall detected both ways)
+  const seen = new Set<string>();
+  return walls.filter(w => {
+    const key = [w.x1, w.y1, w.x2, w.y2].map(v => v.toFixed(1)).join(",");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** Draw subtle furniture outlines for a room */
+function drawFurniture(roomType: string, rx: number, ry: number, rw: number, rh: number, ppm: number): string[] {
+  const parts: string[] = [];
+  const style = 'fill="none" stroke="#C0C0C0" stroke-width="0.7"';
+  const fillStyle = 'fill="#EBEBEB" stroke="#C0C0C0" stroke-width="0.5"';
+
+  // Convert meters to pixels
+  const m = (v: number) => v * ppm;
+
+  // Don't draw furniture in tiny rooms
+  if (rw < m(2) || rh < m(2)) return parts;
+
+  const t = roomType.toLowerCase();
+
+  if (t === "bedroom" || t === "master") {
+    // Bed centered against top wall
+    const bedW = Math.min(m(1.6), rw * 0.55);
+    const bedH = Math.min(m(2.0), rh * 0.45);
+    const bx = rx + (rw - bedW) / 2;
+    const by = ry + rh * 0.1;
+    parts.push(`<rect x="${bx}" y="${by}" width="${bedW}" height="${bedH}" ${style} rx="2"/>`);
+    // Headboard
+    parts.push(`<line x1="${bx}" y1="${by}" x2="${bx + bedW}" y2="${by}" stroke="#B0B0B0" stroke-width="2.5"/>`);
+    // Pillows
+    const pw = bedW * 0.38, ph = m(0.18);
+    parts.push(`<rect x="${bx + 3}" y="${by + 3}" width="${pw}" height="${ph}" ${fillStyle} rx="2"/>`);
+    if (bedW > m(1.2)) {
+      parts.push(`<rect x="${bx + bedW - pw - 3}" y="${by + 3}" width="${pw}" height="${ph}" ${fillStyle} rx="2"/>`);
+    }
+    // Nightstand
+    const nsW = m(0.35);
+    if (bx - rx > nsW + 4) {
+      parts.push(`<rect x="${bx - nsW - 3}" y="${by}" width="${nsW}" height="${nsW}" ${style}/>`);
+    }
+  } else if (t === "living" || t === "lounge" || t === "family") {
+    // Sofa against bottom wall
+    const sofaW = Math.min(m(2.2), rw * 0.55);
+    const sofaH = Math.min(m(0.8), rh * 0.2);
+    const sx = rx + (rw - sofaW) / 2;
+    const sy = ry + rh * 0.62;
+    parts.push(`<rect x="${sx}" y="${sy}" width="${sofaW}" height="${sofaH}" ${style} rx="3"/>`);
+    parts.push(`<line x1="${sx}" y1="${sy + sofaH}" x2="${sx + sofaW}" y2="${sy + sofaH}" stroke="#B0B0B0" stroke-width="2"/>`);
+    // Coffee table
+    const ctW = sofaW * 0.4, ctH = m(0.35);
+    parts.push(`<rect x="${sx + (sofaW - ctW) / 2}" y="${sy - ctH - 6}" width="${ctW}" height="${ctH}" ${style}/>`);
+    // TV unit against opposite wall
+    const tvW = Math.min(m(1.4), rw * 0.38);
+    parts.push(`<rect x="${rx + (rw - tvW) / 2}" y="${ry + rh * 0.06}" width="${tvW}" height="${m(0.06)}" fill="#D0D0D0" stroke="#B0B0B0" stroke-width="0.5"/>`);
+  } else if (t === "kitchen") {
+    // L-shaped counter along top and right walls
+    const cD = m(0.6);
+    const topCW = rw - 4;
+    parts.push(`<rect x="${rx + 2}" y="${ry + 2}" width="${topCW}" height="${cD}" ${fillStyle}/>`);
+    // Sink circle
+    parts.push(`<circle cx="${rx + topCW * 0.6}" cy="${ry + 2 + cD * 0.5}" r="${m(0.14)}" ${style}/>`);
+    // Right counter
+    const rightCH = Math.min(rh * 0.45, rh - cD - 8);
+    if (rightCH > cD) {
+      parts.push(`<rect x="${rx + rw - cD - 2}" y="${ry + cD + 2}" width="${cD}" height="${rightCH}" ${fillStyle}/>`);
+    }
+    // Stove (4 burners)
+    const stoveX = rx + topCW * 0.25;
+    const stoveY = ry + 2 + cD * 0.5;
+    const br = m(0.07);
+    parts.push(`<circle cx="${stoveX}" cy="${stoveY - br}" r="${br}" ${style}/>`);
+    parts.push(`<circle cx="${stoveX + br * 2.5}" cy="${stoveY - br}" r="${br}" ${style}/>`);
+    parts.push(`<circle cx="${stoveX}" cy="${stoveY + br}" r="${br}" ${style}/>`);
+    parts.push(`<circle cx="${stoveX + br * 2.5}" cy="${stoveY + br}" r="${br}" ${style}/>`);
+  } else if (t === "dining") {
+    // Dining table centered
+    const tblW = Math.min(m(1.4), rw * 0.4);
+    const tblH = Math.min(m(0.8), rh * 0.3);
+    const tx = rx + (rw - tblW) / 2;
+    const ty = ry + (rh - tblH) / 2;
+    parts.push(`<rect x="${tx}" y="${ty}" width="${tblW}" height="${tblH}" ${style} rx="2"/>`);
+    // Chairs (circles)
+    const chairR = m(0.15);
+    parts.push(`<circle cx="${tx + tblW * 0.25}" cy="${ty - chairR - 2}" r="${chairR}" ${style}/>`);
+    parts.push(`<circle cx="${tx + tblW * 0.75}" cy="${ty - chairR - 2}" r="${chairR}" ${style}/>`);
+    parts.push(`<circle cx="${tx + tblW * 0.25}" cy="${ty + tblH + chairR + 2}" r="${chairR}" ${style}/>`);
+    parts.push(`<circle cx="${tx + tblW * 0.75}" cy="${ty + tblH + chairR + 2}" r="${chairR}" ${style}/>`);
+  } else if (t === "bathroom") {
+    // Bathtub along top wall
+    const tubW = Math.min(m(1.7), rw * 0.7);
+    const tubH = Math.min(m(0.7), rh * 0.28);
+    parts.push(`<rect x="${rx + 3}" y="${ry + 3}" width="${tubW}" height="${tubH}" ${style} rx="3"/>`);
+    parts.push(`<rect x="${rx + 6}" y="${ry + 6}" width="${tubW - 6}" height="${tubH - 6}" fill="none" stroke="#D0D0D0" stroke-width="0.3" rx="2"/>`);
+    // Sink
+    const sinkR = m(0.16);
+    parts.push(`<circle cx="${rx + rw - m(0.35)}" cy="${ry + rh * 0.55}" r="${sinkR}" ${style}/>`);
+    // Toilet
+    const toiletX = rx + rw - m(0.42);
+    const toiletY = ry + rh * 0.73;
+    const tw = m(0.36);
+    parts.push(`<rect x="${toiletX}" y="${toiletY}" width="${tw}" height="${m(0.16)}" ${style}/>`);
+    parts.push(`<ellipse cx="${toiletX + tw / 2}" cy="${toiletY + m(0.16) + m(0.15)}" rx="${tw * 0.42}" ry="${m(0.15)}" ${style}/>`);
+  } else if (t === "wc" || t === "toilet") {
+    // Toilet + sink only
+    const sinkR = m(0.14);
+    parts.push(`<circle cx="${rx + rw * 0.65}" cy="${ry + rh * 0.28}" r="${sinkR}" ${style}/>`);
+    const toiletX = rx + rw * 0.2;
+    const toiletY = ry + rh * 0.45;
+    const tw = m(0.34);
+    parts.push(`<rect x="${toiletX}" y="${toiletY}" width="${tw}" height="${m(0.14)}" ${style}/>`);
+    parts.push(`<ellipse cx="${toiletX + tw / 2}" cy="${toiletY + m(0.14) + m(0.13)}" rx="${tw * 0.4}" ry="${m(0.13)}" ${style}/>`);
+  } else if (t === "office" || t === "study") {
+    // Desk against top wall
+    const deskW = Math.min(m(1.3), rw * 0.5);
+    const deskH = m(0.55);
+    parts.push(`<rect x="${rx + rw * 0.1}" y="${ry + 3}" width="${deskW}" height="${deskH}" ${style}/>`);
+    // Chair
+    const chairR = m(0.18);
+    parts.push(`<circle cx="${rx + rw * 0.1 + deskW * 0.5}" cy="${ry + 3 + deskH + chairR + 3}" r="${chairR}" ${style}/>`);
+  }
+
+  return parts;
+}
+
+// ─── Enhanced Architectural SVG Renderer ─────────────────────────────────
+
+function renderArchitecturalSvg(
+  rooms: PositionedRoom[],
+  sharedWalls: SharedWall[],
+  title: string,
+  ppm: number,
+  fpW: number,
+  fpH: number,
+  ox: number,
+  oy: number,
+): string {
+  const parts: string[] = [];
+  const planW = fpW * ppm;
+  const planH = fpH * ppm;
+
+  parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">`);
+  parts.push(`<rect width="800" height="600" fill="#FAFAFA"/>`);
+
+  // Title
+  parts.push(`<text x="400" y="26" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#222">${escSvg(title)}</text>`);
+
+  // Room fills
+  for (const r of rooms) {
+    const rx = ox + r.x * ppm;
+    const ry = oy + r.y * ppm;
+    const rw = r.width * ppm;
+    const rh = r.depth * ppm;
+    const color = ROOM_COLORS[r.type] ?? ROOM_COLORS.default;
+    parts.push(`<rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" fill="${color}"/>`);
+  }
+
+  // Furniture hints (subtle, drawn under walls)
+  for (const r of rooms) {
+    const rx = ox + r.x * ppm;
+    const ry = oy + r.y * ppm;
+    const rw = r.width * ppm;
+    const rh = r.depth * ppm;
+    parts.push(...drawFurniture(r.type, rx, ry, rw, rh, ppm));
+  }
+
+  // Interior walls (shared walls between rooms)
+  for (const w of sharedWalls) {
+    const x1 = ox + w.x1 * ppm, y1 = oy + w.y1 * ppm;
+    const x2 = ox + w.x2 * ppm, y2 = oy + w.y2 * ppm;
+    parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#333" stroke-width="2.5"/>`);
+  }
+
+  // Exterior wall (thick outline)
+  parts.push(`<rect x="${ox}" y="${oy}" width="${planW}" height="${planH}" fill="none" stroke="#222" stroke-width="5"/>`);
+
+  // Doors on shared walls (placed at 1/3 along the wall for realistic look)
+  const doorWidthM = 0.8;
+  const doorPx = doorWidthM * ppm;
+  for (const w of sharedWalls) {
+    const doorPos = 0.33;
+    if (w.orientation === "v") {
+      const dx = ox + w.x1 * ppm;
+      const dy = oy + (w.y1 + (w.y2 - w.y1) * doorPos) * ppm;
+      // Gap in wall
+      parts.push(`<line x1="${dx}" y1="${dy}" x2="${dx}" y2="${dy + doorPx}" stroke="${ROOM_COLORS.default}" stroke-width="4"/>`);
+      // Door arc
+      parts.push(`<path d="M ${dx} ${dy + doorPx} A ${doorPx} ${doorPx} 0 0 1 ${dx + doorPx} ${dy}" fill="none" stroke="#666" stroke-width="0.8"/>`);
+      parts.push(`<line x1="${dx}" y1="${dy + doorPx}" x2="${dx + doorPx}" y2="${dy}" stroke="#666" stroke-width="0.5" stroke-dasharray="3 2"/>`);
+    } else {
+      const dx = ox + (w.x1 + (w.x2 - w.x1) * doorPos) * ppm;
+      const dy = oy + w.y1 * ppm;
+      parts.push(`<line x1="${dx}" y1="${dy}" x2="${dx + doorPx}" y2="${dy}" stroke="${ROOM_COLORS.default}" stroke-width="4"/>`);
+      parts.push(`<path d="M ${dx} ${dy} A ${doorPx} ${doorPx} 0 0 0 ${dx + doorPx} ${dy + doorPx}" fill="none" stroke="#666" stroke-width="0.8"/>`);
+      parts.push(`<line x1="${dx}" y1="${dy}" x2="${dx + doorPx}" y2="${dy + doorPx}" stroke="#666" stroke-width="0.5" stroke-dasharray="3 2"/>`);
+    }
+  }
+
+  // Main entrance door on exterior wall
+  const entryRoom = rooms.find(r => ["hallway", "entry", "corridor", "foyer", "entrance"].includes(r.type))
+    ?? rooms.find(r => r.type === "living" && Math.abs(r.y + r.depth - fpH) < 0.3)
+    ?? rooms.find(r => Math.abs(r.y + r.depth - fpH) < 0.3);
+  if (entryRoom) {
+    const mainDoorPx = 1.0 * ppm;
+    if (Math.abs(entryRoom.y + entryRoom.depth - fpH) < 0.3) {
+      // Bottom wall entrance
+      const dx = ox + (entryRoom.x + entryRoom.width / 2) * ppm - mainDoorPx / 2;
+      const dy = oy + planH;
+      parts.push(`<line x1="${dx}" y1="${dy}" x2="${dx + mainDoorPx}" y2="${dy}" stroke="#FAFAFA" stroke-width="6"/>`);
+      const half = mainDoorPx / 2;
+      parts.push(`<path d="M ${dx + half} ${dy} A ${half} ${half} 0 0 0 ${dx} ${dy - half}" fill="none" stroke="#555" stroke-width="1"/>`);
+      parts.push(`<path d="M ${dx + half} ${dy} A ${half} ${half} 0 0 1 ${dx + mainDoorPx} ${dy - half}" fill="none" stroke="#555" stroke-width="1"/>`);
+      parts.push(`<text x="${dx + half}" y="${dy + 13}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="6.5" font-weight="bold" fill="#666" letter-spacing="1">ENTRANCE</text>`);
+    } else if (Math.abs(entryRoom.x) < 0.3) {
+      // Left wall entrance
+      const mainDoorPxV = 1.0 * ppm;
+      const dy = oy + (entryRoom.y + entryRoom.depth / 2) * ppm - mainDoorPxV / 2;
+      const dx = ox;
+      parts.push(`<line x1="${dx}" y1="${dy}" x2="${dx}" y2="${dy + mainDoorPxV}" stroke="#FAFAFA" stroke-width="6"/>`);
+      const half = mainDoorPxV / 2;
+      parts.push(`<path d="M ${dx} ${dy + half} A ${half} ${half} 0 0 0 ${dx + half} ${dy}" fill="none" stroke="#555" stroke-width="1"/>`);
+      parts.push(`<path d="M ${dx} ${dy + half} A ${half} ${half} 0 0 1 ${dx + half} ${dy + mainDoorPxV}" fill="none" stroke="#555" stroke-width="1"/>`);
+    }
+  }
+
+  // Windows on exterior walls (multiple windows on long walls)
+  for (const r of rooms) {
+    if (!isExteriorRoom(r.type)) continue;
+    const rx = ox + r.x * ppm;
+    const ry = oy + r.y * ppm;
+    const rw = r.width * ppm;
+    const rh = r.depth * ppm;
+    const winLen = Math.min(1.2 * ppm, Math.min(rw, rh) * 0.3);
+    const winThick = 4;
+
+    // Left exterior wall
+    if (r.x < 0.1) {
+      const numW = Math.max(1, Math.floor(r.depth / 2.5));
+      for (let wi = 0; wi < numW; wi++) {
+        const wy = ry + (rh / (numW + 1)) * (wi + 1) - winLen / 2;
+        parts.push(`<rect x="${rx - 1}" y="${wy}" width="${winThick}" height="${winLen}" fill="#B3E5FC" stroke="#81D4FA" stroke-width="0.5"/>`);
+        parts.push(`<line x1="${rx + 1}" y1="${wy + 2}" x2="${rx + 1}" y2="${wy + winLen - 2}" stroke="#4FC3F7" stroke-width="0.5"/>`);
+      }
+    }
+    // Right exterior wall
+    if (Math.abs(r.x + r.width - fpW) < 0.1) {
+      const numW = Math.max(1, Math.floor(r.depth / 2.5));
+      for (let wi = 0; wi < numW; wi++) {
+        const wy = ry + (rh / (numW + 1)) * (wi + 1) - winLen / 2;
+        parts.push(`<rect x="${rx + rw - winThick + 1}" y="${wy}" width="${winThick}" height="${winLen}" fill="#B3E5FC" stroke="#81D4FA" stroke-width="0.5"/>`);
+        parts.push(`<line x1="${rx + rw - 1}" y1="${wy + 2}" x2="${rx + rw - 1}" y2="${wy + winLen - 2}" stroke="#4FC3F7" stroke-width="0.5"/>`);
+      }
+    }
+    // Top exterior wall
+    if (r.y < 0.1) {
+      const numW = Math.max(1, Math.floor(r.width / 2.5));
+      for (let wi = 0; wi < numW; wi++) {
+        const wx = rx + (rw / (numW + 1)) * (wi + 1) - winLen / 2;
+        parts.push(`<rect x="${wx}" y="${ry - 1}" width="${winLen}" height="${winThick}" fill="#B3E5FC" stroke="#81D4FA" stroke-width="0.5"/>`);
+        parts.push(`<line x1="${wx + 2}" y1="${ry + 1}" x2="${wx + winLen - 2}" y2="${ry + 1}" stroke="#4FC3F7" stroke-width="0.5"/>`);
+      }
+    }
+    // Bottom exterior wall
+    if (Math.abs(r.y + r.depth - fpH) < 0.1) {
+      const numW = Math.max(1, Math.floor(r.width / 2.5));
+      for (let wi = 0; wi < numW; wi++) {
+        const wx = rx + (rw / (numW + 1)) * (wi + 1) - winLen / 2;
+        parts.push(`<rect x="${wx}" y="${ry + rh - winThick + 1}" width="${winLen}" height="${winThick}" fill="#B3E5FC" stroke="#81D4FA" stroke-width="0.5"/>`);
+        parts.push(`<line x1="${wx + 2}" y1="${ry + rh - 1}" x2="${wx + winLen - 2}" y2="${ry + rh - 1}" stroke="#4FC3F7" stroke-width="0.5"/>`);
+      }
+    }
+  }
+
+  // Room labels (drawn on top of everything)
+  for (const r of rooms) {
+    const rx = ox + r.x * ppm;
+    const ry = oy + r.y * ppm;
+    const rw = r.width * ppm;
+    const rh = r.depth * ppm;
+    const cx = rx + rw / 2;
+    const cy = ry + rh / 2;
+    const fontSize = Math.min(11, Math.max(7, Math.min(rw, rh) / 6));
+
+    // Semi-transparent background for label readability
+    const labelBgH = fontSize * 3 + 4;
+    const labelBgW = Math.min(rw * 0.85, 80);
+    parts.push(`<rect x="${cx - labelBgW / 2}" y="${cy - fontSize - 4}" width="${labelBgW}" height="${labelBgH}" fill="white" fill-opacity="0.6" rx="2"/>`);
+
+    // Room name
+    parts.push(`<text x="${cx}" y="${cy - 1}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="600" fill="#333">${escSvg(r.name)}</text>`);
+    // Dimensions
+    parts.push(`<text x="${cx}" y="${cy + fontSize}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${Math.max(6, fontSize - 2)}" fill="#777">${r.width.toFixed(1)}m × ${r.depth.toFixed(1)}m</text>`);
+    // Area
+    parts.push(`<text x="${cx}" y="${cy + fontSize * 2}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${Math.max(6, fontSize - 2)}" fill="#999">${r.area.toFixed(1)} m²</text>`);
+
+    // Stair treads for staircase rooms
+    if (r.type === "stair") {
+      const steps = Math.max(4, Math.floor(rh / 6));
+      for (let s = 0; s < steps; s++) {
+        const sy = ry + (s + 0.5) * (rh / steps);
+        parts.push(`<line x1="${rx + 3}" y1="${sy}" x2="${rx + rw - 3}" y2="${sy}" stroke="#BBB" stroke-width="0.5"/>`);
+      }
+      const arrowX = rx + rw / 2;
+      parts.push(`<line x1="${arrowX}" y1="${ry + rh - 6}" x2="${arrowX}" y2="${ry + 6}" stroke="#999" stroke-width="0.8"/>`);
+      parts.push(`<polygon points="${arrowX},${ry + 6} ${arrowX - 2.5},${ry + 10} ${arrowX + 2.5},${ry + 10}" fill="#999"/>`);
+    }
+  }
+
+  // Outer dimension lines
+  const dimOff = 18;
+  const dimFS = 8;
+
+  // Bottom: total width
+  const dimY = oy + planH + dimOff;
+  parts.push(`<line x1="${ox}" y1="${dimY}" x2="${ox + planW}" y2="${dimY}" stroke="#666" stroke-width="0.8"/>`);
+  parts.push(`<line x1="${ox}" y1="${dimY - 4}" x2="${ox}" y2="${dimY + 4}" stroke="#666" stroke-width="0.8"/>`);
+  parts.push(`<line x1="${ox + planW}" y1="${dimY - 4}" x2="${ox + planW}" y2="${dimY + 4}" stroke="#666" stroke-width="0.8"/>`);
+  parts.push(`<text x="${ox + planW / 2}" y="${dimY + 12}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${dimFS}" fill="#555">${fpW.toFixed(1)} m</text>`);
+
+  // Left: total depth
+  const dimX = ox - dimOff;
+  parts.push(`<line x1="${dimX}" y1="${oy}" x2="${dimX}" y2="${oy + planH}" stroke="#666" stroke-width="0.8"/>`);
+  parts.push(`<line x1="${dimX - 4}" y1="${oy}" x2="${dimX + 4}" y2="${oy}" stroke="#666" stroke-width="0.8"/>`);
+  parts.push(`<line x1="${dimX - 4}" y1="${oy + planH}" x2="${dimX + 4}" y2="${oy + planH}" stroke="#666" stroke-width="0.8"/>`);
+  parts.push(`<text x="${dimX}" y="${oy + planH / 2}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${dimFS}" fill="#555" transform="rotate(-90 ${dimX} ${oy + planH / 2})">${fpH.toFixed(1)} m</text>`);
+
+  // North arrow with circle
+  const nx = 755, ny = 55;
+  parts.push(`<circle cx="${nx}" cy="${ny}" r="12" fill="none" stroke="#444" stroke-width="1"/>`);
+  parts.push(`<polygon points="${nx},${ny - 10} ${nx - 4},${ny + 2} ${nx + 4},${ny + 2}" fill="#333"/>`);
+  parts.push(`<text x="${nx}" y="${ny + 22}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="bold" fill="#333">N</text>`);
+
+  // Scale bar
+  const sbY = 583, sbX = 300;
+  const metersToDraw = Math.min(10, Math.ceil(planW / ppm));
+  const sbLen = metersToDraw * ppm;
+  parts.push(`<line x1="${sbX}" y1="${sbY}" x2="${sbX + sbLen}" y2="${sbY}" stroke="#333" stroke-width="1.5"/>`);
+  for (let mi = 0; mi <= metersToDraw; mi++) {
+    const tx = sbX + mi * ppm;
+    const tickH = mi % 2 === 0 ? 5 : 3;
+    parts.push(`<line x1="${tx}" y1="${sbY - tickH}" x2="${tx}" y2="${sbY + tickH}" stroke="#333" stroke-width="0.8"/>`);
+    if (mi % 2 === 0) {
+      parts.push(`<text x="${tx}" y="${sbY + 13}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="7" fill="#666">${mi}</text>`);
+    }
+  }
+  parts.push(`<text x="${sbX + sbLen + 8}" y="${sbY + 4}" font-family="Arial, Helvetica, sans-serif" font-size="7" fill="#666">m</text>`);
+
+  // Area summary
+  const totalArea = rooms.reduce((s, r) => s + (r.area ?? 0), 0);
+  parts.push(`<text x="400" y="${sbY - 6}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="8" fill="#888">Total Area: ${Math.round(totalArea)} m² — ${rooms.length} rooms</text>`);
+
+  parts.push(`</svg>`);
+  return parts.join("\n");
+}
+
+// ─── Squarified Treemap Layout (fallback) ───────────────────────────────
 
 interface LayoutRect { x: number; y: number; w: number; h: number; room: RoomDef; }
 
@@ -914,49 +1401,70 @@ export async function generateFloorPlan(
 
     // ── Single floor plan generation ────────────────────────────────
 
-    // ── Step 1: Ask AI for room program ONLY (no SVG) ───────────────
+    // ── Calculate footprint dimensions ──────────────────────────────
+    const aspect = 1.33;
+    const fpWidthM = snap(Math.sqrt(floorPlate * aspect));
+    const fpHeightM = snap(floorPlate / fpWidthM);
+
+    // ── Step 1: Ask AI for positioned room layout ──────────────────
     const completion = await client.chat.completions.create({
       model: "gpt-4o",
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: `You are an expert residential and architectural space planner. Given a building brief, generate a precise room program.
+          content: `You are an expert residential architect creating a precise, dimensioned floor plan layout.
+Given a building brief, generate rooms with EXACT positions and dimensions in meters.
 
-CRITICAL: You MUST follow the user's room requirements EXACTLY:
-- If user says "1 hall, 2 bedrooms, kitchen, toilet, bathroom" → output EXACTLY those rooms, no more, no less
-- Do NOT add rooms the user didn't ask for (no "manager office", "break room", "lobby" etc.)
-- Do NOT rename rooms — use the user's exact names (e.g., "Hall" not "Living Room" if user said "hall")
-- If user says "toilet" include a toilet (type: "wc"). If user says "bathroom" include a bathroom (type: "bathroom"). These are DIFFERENT rooms.
-- Include a staircase (type: "stair") ONLY if user mentions stairs or the building has multiple floors
+COORDINATE SYSTEM:
+- Origin (0,0) is the top-left corner of the building
+- x increases to the right, y increases downward
+- Each room: x (left edge), y (top edge), width (x-axis), depth (y-axis)
+
+CRITICAL LAYOUT RULES:
+1. ALL rooms MUST tile PERFECTLY within the footprint rectangle — NO gaps, NO overlaps
+2. Room edges MUST align. If two rooms share a wall, their coordinates must match exactly
+3. Every point inside the footprint must belong to exactly one room. Think of it as partitioning a rectangle into smaller rectangles
+4. Room width:depth ratio must be between 0.5 and 2.5 (no extremely skinny rooms)
+5. Sum of all room areas must equal footprint width × depth
+
+ARCHITECTURAL DESIGN RULES:
+6. ZONING: Living/dining/kitchen near the entrance (bottom of plan, higher y values). Bedrooms toward the top (lower y, away from noise)
+7. ADJACENCY: Kitchen adjacent to dining. Master bedroom near master bath. Wet rooms (bath, WC, kitchen) should share walls for plumbing
+8. CIRCULATION: If there's a hallway/corridor, it should connect public and private zones
+9. NATURAL LIGHT: Bedrooms, living room, office, and kitchen MUST have at least one exterior wall (edge of footprint)
+10. SERVICE ROOMS: Bathrooms, WC, laundry, and storage CAN be interior rooms
+11. Entrance/hallway should be near the bottom of the plan (high y values) to create a front-to-back flow
+
+ROOM TYPES: living, dining, kitchen, bedroom, master, bathroom, wc, hallway, corridor, entry, office, study, stair, balcony, laundry, storage, retail, meeting
+
+MINIMUM AREAS: bedroom ≥ 10m², living/hall ≥ 15m², kitchen ≥ 7m², bathroom ≥ 4m², wc ≥ 2.5m², stair ≥ 4m²
+
+CRITICAL: Follow the user's room requirements EXACTLY. Do NOT add rooms they didn't ask for. Do NOT rename rooms.
+Use type "wc" for toilet, "bathroom" for bathroom/shower, "living" for hall/living/drawing room.
 
 RESPOND WITH JSON:
 {
   "rooms": [
-    { "name": "Hall", "area": 22, "type": "living" },
-    { "name": "Kitchen", "area": 10, "type": "kitchen" },
-    ...
+    { "name": "Living Room", "type": "living", "x": 0, "y": 0, "width": 5.0, "depth": 4.2, "area": 21.0 },
+    { "name": "Kitchen", "type": "kitchen", "x": 5.0, "y": 0, "width": 3.5, "depth": 2.8, "area": 9.8 }
   ],
-  "title": "Residential Ground Floor Plan"
-}
-
-RULES:
-- "area" is in m². Room areas MUST sum to approximately the floor plate area given.
-- "type" must be one of: living, dining, kitchen, bedroom, master, bathroom, wc, hallway, corridor, entry, office, study, stair, balcony, laundry, storage, retail, meeting
-- Use type "wc" for toilet, type "bathroom" for bathroom/shower
-- Use type "living" for hall/living room/drawing room
-- Respect minimum areas: bedroom ≥ 10m², living/hall ≥ 15m², kitchen ≥ 7m², bathroom ≥ 4m², wc ≥ 2.5m², stair ≥ 4m²
-- Title should describe the floor plan accurately`,
+  "title": "Residential Floor Plan"
+}`,
         },
         {
           role: "user",
-          content: `Generate a room program for: ${typology}.
-Total area: ${totalArea} m². Floor plate area: ~${floorPlate} m² per floor.
-Program requirements: ${programDetail}.
-${narrativeContext ? `\nAdditional context:\n${narrativeContext.substring(0, 500)}` : ""}
+          content: `Design a floor plan for: ${typology}
+Building footprint: ${fpWidthM}m × ${fpHeightM}m = ${floorPlate} m²
+Program requirements: ${programDetail}
+${narrativeContext ? `\nDescription: ${narrativeContext.substring(0, 500)}` : ""}
 ${programSummaryContext ? `\nSummary: ${programSummaryContext}` : ""}
 
-IMPORTANT: Room areas MUST sum to approximately ${floorPlate} m². Follow the user's room list EXACTLY.`,
+IMPORTANT:
+- Rooms MUST perfectly tile the ${fpWidthM}m × ${fpHeightM}m rectangle with NO gaps and NO overlaps
+- x + width ≤ ${fpWidthM} and y + depth ≤ ${fpHeightM} for ALL rooms
+- Follow the room list EXACTLY — no extra rooms, no renamed rooms
+- Room areas MUST sum to approximately ${floorPlate} m²`,
         },
       ],
     });
@@ -965,7 +1473,7 @@ IMPORTANT: Room areas MUST sum to approximately ${floorPlate} m². Follow the us
     if (!content) throw new Error("OpenAI returned empty response for floor plan");
 
     const aiResult = JSON.parse(content) as {
-      rooms: Array<{ name: string; area: number; type?: string }>;
+      rooms: Array<{ name: string; area: number; type?: string; x?: number; y?: number; width?: number; depth?: number }>;
       title?: string;
     };
 
@@ -973,7 +1481,56 @@ IMPORTANT: Room areas MUST sum to approximately ${floorPlate} m². Follow the us
       throw new Error("AI returned no rooms for floor plan");
     }
 
-    // ── Step 2: Normalize room areas to match floor plate ───────────
+    const title = aiResult.title ?? `${typology} — Floor Plan`;
+
+    // ── Check if AI returned positioned rooms ──────────────────────
+    const hasPositions = aiResult.rooms.every(r =>
+      typeof r.x === "number" && typeof r.y === "number" &&
+      typeof r.width === "number" && typeof r.depth === "number"
+    );
+
+    const margin = 50;
+    const drawW = 700;
+    const drawH = 490;
+    const pxPerMeter = Math.min(drawW / fpWidthM, drawH / fpHeightM);
+    const planW = fpWidthM * pxPerMeter;
+    const planH = fpHeightM * pxPerMeter;
+    const ox = margin + (drawW - planW) / 2;
+    const oy = margin + (drawH - planH) / 2;
+
+    if (hasPositions) {
+      // ── AI-positioned architectural layout ──────────────────────
+      let posRooms: PositionedRoom[] = aiResult.rooms.map(r => ({
+        name: r.name,
+        area: r.area ?? snap(r.width! * r.depth!),
+        type: r.type ?? detectRoomType(r.name),
+        x: r.x!,
+        y: r.y!,
+        width: r.width!,
+        depth: r.depth!,
+      }));
+
+      // Validate and fix the layout
+      posRooms = validateLayout(posRooms, fpWidthM, fpHeightM);
+
+      // Find shared walls for door placement
+      const sharedWalls = findSharedWalls(posRooms);
+
+      // Render enhanced architectural SVG
+      const svg = renderArchitecturalSvg(posRooms, sharedWalls, title, pxPerMeter, fpWidthM, fpHeightM, ox, oy);
+
+      const roomList = posRooms.map(r => ({ name: r.name, area: snap(r.width * r.depth), unit: "m²" }));
+
+      return {
+        svg, roomList, totalArea, floors,
+        positionedRooms: posRooms.map(r => ({
+          name: r.name, type: r.type, x: r.x, y: r.y,
+          width: r.width, depth: r.depth, area: snap(r.width * r.depth),
+        })),
+      };
+    }
+
+    // ── Fallback: treemap layout (AI didn't return positions) ──────
     const rooms: RoomDef[] = aiResult.rooms.map(r => ({
       name: r.name,
       area: r.area,
@@ -988,26 +1545,8 @@ IMPORTANT: Room areas MUST sum to approximately ${floorPlate} m². Follow the us
       }
     }
 
-    // ── Step 3: Deterministic layout via treemap ────────────────────
-    const aspect = 1.33;
-    const fpWidthM = Math.sqrt(floorPlate * aspect);
-    const fpHeightM = floorPlate / fpWidthM;
-
-    const margin = 50;
-    const drawW = 700;
-    const drawH = 490;
-    const pxPerMeter = Math.min(drawW / fpWidthM, drawH / fpHeightM);
-    const planW = fpWidthM * pxPerMeter;
-    const planH = fpHeightM * pxPerMeter;
-    const ox = margin + (drawW - planW) / 2;
-    const oy = margin + (drawH - planH) / 2;
-
     const rects = layoutTreemap(rooms, ox, oy, planW, planH);
-
-    // ── Step 4: Render SVG deterministically ────────────────────────
-    const title = aiResult.title ?? `${typology} — Floor Plan`;
     const svg = renderFloorPlanSvg(rects, title, pxPerMeter, planW, planH, ox, oy);
-
     const roomList = rooms.map(r => ({ name: r.name, area: r.area, unit: "m²" }));
 
     return { svg, roomList, totalArea, floors };
