@@ -42,15 +42,14 @@ export function SaveWorkflowModal({
 
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Escape to close + focus trapping (#38)
+  // Escape to close + focus trap
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") { onClose(); return; }
-      // Trap focus within modal
       if (e.key === "Tab" && modalRef.current) {
         const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, input, [tabindex]:not([tabindex="-1"])'
+          'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
         );
         if (focusable.length === 0) return;
         const first = focusable[0];
