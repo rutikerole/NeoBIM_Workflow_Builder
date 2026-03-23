@@ -2388,6 +2388,39 @@ const en = {
   'privacy.effectiveDate': 'This Privacy Policy is effective as of',
   'privacy.effectiveDateValue': 'March 1, 2026',
   'privacy.effectiveDatePost': 'If you have any questions, reach out to us at',
+
+  // ===== REFERRAL =====
+  'referral.inviteTitle': 'Invite & Earn',
+  'referral.inviteSubtitle': 'Invite a colleague, both get 5 free executions',
+  'referral.generateLink': 'Generate Referral Link',
+  'referral.copyLink': 'Copy Link',
+  'referral.copied': 'Copied!',
+  'referral.friendsInvited': 'friends invited',
+  'referral.converted': 'converted',
+  'referral.bonusEarned': 'bonus executions earned',
+  'referral.firstRunTitle': 'Great first run!',
+  'referral.firstRunSubtitle': 'Invite a colleague and you both get 5 more executions',
+
+  // ===== EXIT INTENT =====
+  'exitIntent.headline': "Wait — don't miss what BuildFlow can do for your projects",
+  'exitIntent.subtext': 'Get a free guide: 5 BIM workflows that save architects 10+ hours/week',
+  'exitIntent.cta': 'Send Me the Guide',
+  'exitIntent.noSpam': 'No spam. Unsubscribe anytime.',
+  'exitIntent.success': 'Check your inbox!',
+
+  // ===== EXPORT WATERMARK =====
+  'export.watermarkTitle': 'Export includes BuildFlow branding',
+  'export.watermarkDesc': 'Free exports include a small "Built with BuildFlow" footer on each page. Upgrade to remove.',
+  'export.proceedWithBranding': 'Export with branding',
+  'export.upgradeToRemove': 'Upgrade to remove',
+
+  // ===== SHARE =====
+  'share.title': 'Share Workflow',
+  'share.makePublic': 'Make this workflow public',
+  'share.shareOnX': 'Share on X',
+  'share.shareOnLinkedIn': 'Share on LinkedIn',
+  'share.copyLink': 'Copy Link',
+  'share.copied': 'Copied',
 } as const;
 
 const de: Record<keyof typeof en, string | string[]> = {
@@ -4773,6 +4806,39 @@ const de: Record<keyof typeof en, string | string[]> = {
   'privacy.effectiveDate': 'Diese Datenschutzrichtlinie gilt ab',
   'privacy.effectiveDateValue': '1. März 2026',
   'privacy.effectiveDatePost': 'Bei Fragen wenden Sie sich bitte an',
+
+  // ===== REFERRAL =====
+  'referral.inviteTitle': 'Einladen & Verdienen',
+  'referral.inviteSubtitle': 'Laden Sie einen Kollegen ein, beide erhalten 5 kostenlose Ausführungen',
+  'referral.generateLink': 'Empfehlungslink generieren',
+  'referral.copyLink': 'Link kopieren',
+  'referral.copied': 'Kopiert!',
+  'referral.friendsInvited': 'Freunde eingeladen',
+  'referral.converted': 'konvertiert',
+  'referral.bonusEarned': 'Bonus-Ausführungen verdient',
+  'referral.firstRunTitle': 'Toller erster Lauf!',
+  'referral.firstRunSubtitle': 'Laden Sie einen Kollegen ein und Sie beide erhalten 5 weitere Ausführungen',
+
+  // ===== EXIT INTENT =====
+  'exitIntent.headline': 'Warten Sie — verpassen Sie nicht, was BuildFlow für Ihre Projekte tun kann',
+  'exitIntent.subtext': 'Kostenloser Leitfaden: 5 BIM-Workflows, die Architekten 10+ Stunden/Woche sparen',
+  'exitIntent.cta': 'Leitfaden zusenden',
+  'exitIntent.noSpam': 'Kein Spam. Jederzeit abbestellbar.',
+  'exitIntent.success': 'Prüfen Sie Ihren Posteingang!',
+
+  // ===== EXPORT WATERMARK =====
+  'export.watermarkTitle': 'Export enthält BuildFlow-Branding',
+  'export.watermarkDesc': 'Kostenlose Exporte enthalten eine kleine „Built with BuildFlow"-Fußzeile. Upgraden Sie, um sie zu entfernen.',
+  'export.proceedWithBranding': 'Mit Branding exportieren',
+  'export.upgradeToRemove': 'Upgraden zum Entfernen',
+
+  // ===== SHARE =====
+  'share.title': 'Workflow teilen',
+  'share.makePublic': 'Workflow öffentlich machen',
+  'share.shareOnX': 'Auf X teilen',
+  'share.shareOnLinkedIn': 'Auf LinkedIn teilen',
+  'share.copyLink': 'Link kopieren',
+  'share.copied': 'Kopiert',
 };
 
 const translations: Record<Locale, Record<string, string | readonly string[]>> = { en, de };

@@ -30,6 +30,7 @@ import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 import { useLocale } from "@/hooks/useLocale";
 import { useAvatar } from "@/hooks/useAvatar";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { ReferralCard } from "@/components/referral/ReferralCard";
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
@@ -444,6 +445,13 @@ export function Sidebar() {
                       {t("nav.signOut")}
                     </button>
                   </div>
+
+                  {/* Referral Card — compact in sidebar */}
+                  {!isEffectivelyCollapsed && (
+                    <div style={{ marginTop: 10 }}>
+                      <ReferralCard compact />
+                    </div>
+                  )}
 
                   {/* Upgrade — standalone with more space */}
                   <div style={{ marginTop: 10 }}>

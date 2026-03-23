@@ -12,6 +12,7 @@ import { useWorkflowStore, isUntitledWorkflow } from "@/stores/workflow-store";
 import { useLocale } from "@/hooks/useLocale";
 import {
   shareWorkflowToTwitter,
+  shareWorkflowToLinkedIn,
   copyShareLink,
 } from "@/lib/share";
 
@@ -464,8 +465,9 @@ export function CanvasToolbar({
                 >
                   <div style={{ padding: 4 }}>
                     {[
-                      { label: t('canvas.shareOnX'), action: () => shareWorkflowToTwitter(workflowName) },
-                      { label: t('canvas.copyLink'), action: () => copyShareLink() },
+                      { label: t('canvas.shareOnX'), action: () => { shareWorkflowToTwitter(workflowName); window.gtag?.("event", "workflow_shared", { platform: "twitter" }); } },
+                      { label: "Share on LinkedIn", action: () => { shareWorkflowToLinkedIn(); window.gtag?.("event", "workflow_shared", { platform: "linkedin" }); } },
+                      { label: t('canvas.copyLink'), action: () => { copyShareLink(); window.gtag?.("event", "workflow_shared", { platform: "copy" }); } },
                     ].map(item => (
                       <button
                         key={item.label}

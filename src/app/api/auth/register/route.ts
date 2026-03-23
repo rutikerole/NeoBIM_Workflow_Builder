@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, password, source } = await req.json();
+    const { name, email, password, source, referralCode } = await req.json();
 
     // Validate required fields
     if (!email || !email.trim()) {
@@ -96,6 +96,15 @@ export async function POST(req: NextRequest) {
 
     // Fire-and-forget: don't block registration response on analytics
     trackSignup(user.id, source).catch(err => console.warn("[analytics]", err));
+
+    // Claim referral if a code was provided
+    if (referralCode && typeof referralCode === "string") {
+      fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/referral/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: referralCode.trim(), userId: user.id }),
+      }).catch(err => console.warn("[register] Referral claim failed:", err));
+    }
 
     // Send verification email (fire-and-forget)
     const verifyToken = crypto.randomBytes(32).toString("hex");

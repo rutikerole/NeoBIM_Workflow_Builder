@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, User, Chrome, Loader2, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
@@ -40,7 +40,17 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 }
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get("ref") || "";
   const { t } = useLocale();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -72,7 +82,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, ...(referralCode && { referralCode }) }),
       });
 
       const data = await res.json();

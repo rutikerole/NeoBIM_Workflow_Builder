@@ -23,6 +23,7 @@ import { FAQSection } from '@/components/landing/FAQSection';
 import { HowItWorksSection } from '@/components/landing/HowItWorksSection';
 import { PricingSection } from '@/components/landing/PricingSection';
 import { LandingFooter } from '@/components/landing/LandingFooter';
+import { ExitIntentModal } from '@/components/marketing/ExitIntentModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -3094,6 +3095,9 @@ export default function LandingPage() {
 
       {/* News Ticker */}
       <NewsTicker items={newsItems} whatsNewLabel={t('landing.whatsNew')} />
+
+      {/* Exit Intent Email Capture */}
+      <ExitIntentModal />
 
       {/* Mobile Responsive Styles */}
       <style jsx global>{`

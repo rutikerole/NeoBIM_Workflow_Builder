@@ -13,6 +13,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+    const source = typeof body?.source === "string" ? body.source : "organic";
 
     if (!email || !EMAIL_REGEX.test(email)) {
       return NextResponse.json({ error: "Please provide a valid email address." }, { status: 400 });
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
     await fs.mkdir(logDir, { recursive: true });
     await fs.appendFile(
       logFile,
-      JSON.stringify({ email, timestamp: new Date().toISOString(), ip: ip.substring(0, 8) + "***" }) + "\n",
+      JSON.stringify({ email, timestamp: new Date().toISOString(), ip: ip.substring(0, 8) + "***", source }) + "\n",
       "utf-8"
     );
 

@@ -39,6 +39,7 @@ interface ReportInput {
   artifacts: Map<string, ExecutionArtifact>;
   nodeLabels: Map<string, string>;
   executedAt?: Date;
+  userTier?: "FREE" | "MINI" | "STARTER" | "PRO" | "TEAM_ADMIN" | "PLATFORM_ADMIN";
 }
 
 // ─── Main PDF Generator ─────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ export async function generatePDFReport({
   artifacts,
   nodeLabels,
   executedAt,
+  userTier = "FREE",
 }: ReportInput): Promise<void> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pw = doc.internal.pageSize.getWidth();  // 210
@@ -1093,6 +1095,15 @@ export async function generatePDFReport({
     doc.text(`Page ${i} of ${totalPages}`, pw / 2, ph - 10, { align: "center" });
     doc.text("CONCEPT-LEVEL — Not for Construction", margin, ph - 10);
     doc.text(dateStr, pw - margin, ph - 10, { align: "right" });
+
+    // Watermark for FREE/MINI tier users
+    const showWatermark = userTier === "FREE" || userTier === "MINI";
+    if (showWatermark) {
+      doc.setFontSize(8);
+      doc.setTextColor(130, 135, 150);
+      doc.setFont("helvetica", "normal");
+      doc.text("Built with BuildFlow \u00B7 trybuildflow.in", pw / 2, ph - 5, { align: "center" });
+    }
   }
 
   // ─── Save ──────────────────────────────────────────────────────────────

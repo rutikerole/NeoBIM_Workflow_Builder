@@ -62,6 +62,13 @@ export function shareHistoryToTwitter(workflowName: string, nodeCount: number, d
   openPopup(`https://twitter.com/intent/tweet?text=${text}`);
 }
 
+// ── LinkedIn share ───────────────────────────────────────────────────────
+
+export function shareWorkflowToLinkedIn(workflowUrl?: string) {
+  const url = encodeURIComponent(workflowUrl || SITE_URL);
+  openPopup(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`);
+}
+
 // ── Copy link ────────────────────────────────────────────────────────────────
 
 export async function copyShareLink(path: string = "") {
