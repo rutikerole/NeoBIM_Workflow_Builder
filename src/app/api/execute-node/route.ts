@@ -984,9 +984,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const bW = Math.sqrt(fpArea * bAspect);
       const bD = fpArea / bW;
 
-      // Create row-based room layout for GN-011 3D viewer
+      // Create room layout for GN-011 3D viewer
+      // Use AI-positioned rooms if available, otherwise fall back to row-based layout
       const geometryRows: Array<Array<Record<string, unknown>>> = [];
-      // Group rooms into rows of 3 for layout
       let currentGeoRow: Array<Record<string, unknown>> = [];
       for (const rm of primaryFloorRooms) {
         const roomArea = rm.area;
@@ -1005,6 +1005,18 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       }
       if (currentGeoRow.length > 0) geometryRows.push(currentGeoRow);
 
+      // If AI returned positioned rooms, include them for accurate 3D placement
+      const positionedRoomsData = floorPlan.positionedRooms
+        ? floorPlan.positionedRooms.map(r => ({
+            name: r.name,
+            type: r.type,
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            depth: r.depth,
+          }))
+        : undefined;
+
       artifact = {
         id: generateId(),
         executionId: executionId ?? "local",
@@ -1022,12 +1034,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             buildingWidth: Math.round(bW * 10) / 10,
             buildingDepth: Math.round(bD * 10) / 10,
             rows: geometryRows,
-            rooms: primaryFloorRooms.map(r => ({
+            rooms: positionedRoomsData ?? primaryFloorRooms.map(r => ({
               name: r.name,
               type: r.type,
               width: Math.round(Math.sqrt(r.area * 1.2) * 10) / 10,
               depth: Math.round((r.area / Math.sqrt(r.area * 1.2)) * 10) / 10,
             })),
+            positionedRooms: positionedRoomsData,
           },
         },
         metadata: { model: "gpt-4o", real: true },
