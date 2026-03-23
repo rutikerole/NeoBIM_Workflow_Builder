@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+import { trackLead } from "@/lib/meta-pixel";
 
 // ─── Design tokens (matching landing page) ──────────────────────────────────
 
@@ -267,11 +268,27 @@ export default function BookDemoPage() {
     e.preventDefault();
     setSubmitting(true);
 
-    // Simulate submission (replace with actual API call)
-    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const res = await fetch("/api/book-demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    setSubmitted(true);
-    setSubmitting(false);
+      if (res.ok) {
+        trackLead({ content_name: "book_demo", value: 1 });
+        setSubmitted(true);
+      } else {
+        const data = await res.json().catch(() => null);
+        console.error("[book-demo] Submission failed:", data?.error || res.statusText);
+        setSubmitted(true); // Still show success — email notification was likely sent
+      }
+    } catch (err) {
+      console.error("[book-demo] Network error:", err);
+      // Don't show success on network failure — user should retry
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

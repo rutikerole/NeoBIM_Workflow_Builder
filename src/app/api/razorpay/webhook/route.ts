@@ -7,6 +7,7 @@ import {
   sendPaymentFailedEmail,
   sendSubscriptionCanceledEmail,
 } from '@/services/email';
+import { checkWebhookIdempotency } from '@/lib/webhook-idempotency';
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -32,7 +33,15 @@ export async function POST(req: NextRequest) {
   }
 
   const eventType = event.event as string;
-  console.info('[RAZORPAY_WEBHOOK] Event received:', eventType);
+  const eventId = event.event_id || `${eventType}_${Date.now()}`;
+  console.info('[RAZORPAY_WEBHOOK] Event received:', eventType, eventId);
+
+  // Idempotency: skip already-processed events
+  const isDuplicate = await checkWebhookIdempotency('razorpay', eventId);
+  if (isDuplicate) {
+    console.info('[RAZORPAY_WEBHOOK] Duplicate event skipped:', eventId);
+    return NextResponse.json({ received: true, duplicate: true });
+  }
 
   try {
     switch (eventType) {
@@ -84,7 +93,7 @@ export async function POST(req: NextRequest) {
             select: { email: true, name: true },
           });
           if (user?.email) {
-            sendPaymentFailedEmail(user.email, user.name).catch(() => {});
+            sendPaymentFailedEmail(user.email, user.name).catch((err) => console.error("[webhook] Failed to send payment failed email:", err));
           }
         }
         break;
@@ -177,7 +186,7 @@ async function activateSubscription(subscription: {
 
   // Send welcome email on first activation
   if (previousRole === 'FREE' && user.email) {
-    sendWelcomeEmail(user.email, user.name, newRole).catch(() => {});
+    sendWelcomeEmail(user.email, user.name, newRole).catch((err) => console.error("[webhook] Failed to send welcome email:", err));
   }
 }
 
@@ -211,7 +220,7 @@ async function cancelSubscription(subscription: { id: string }) {
   });
 
   if (user.email) {
-    sendSubscriptionCanceledEmail(user.email, user.name, previousRole).catch(() => {});
+    sendSubscriptionCanceledEmail(user.email, user.name, previousRole).catch((err) => console.error("[webhook] Failed to send subscription canceled email:", err));
   }
 }
 

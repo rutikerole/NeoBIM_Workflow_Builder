@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Mail, ArrowRight, Check, Loader2 } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+import { trackLead } from "@/lib/meta-pixel";
 
 export function NewsletterSignup() {
   const [email, setEmail] = useState("");
@@ -30,6 +31,7 @@ export function NewsletterSignup() {
       }
 
       setStatus("success");
+      trackLead({ content_name: "newsletter_signup" });
       setEmail("");
     } catch (err) {
       setStatus("error");
@@ -63,6 +65,7 @@ export function NewsletterSignup() {
         border: "1px solid rgba(255,255,255,0.08)",
       }}>
         <div style={{ position: "relative", flex: 1 }}>
+          <label htmlFor="newsletter-email" className="sr-only">{t('landing.subscribe')}</label>
           <Mail
             size={16}
             style={{
@@ -71,6 +74,7 @@ export function NewsletterSignup() {
             }}
           />
           <input
+            id="newsletter-email"
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); if (status === "error") setStatus("idle"); }}
