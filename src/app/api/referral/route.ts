@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 import { trackEvent } from "@/lib/analytics";
+import { getReferralBonus } from "@/lib/rate-limit";
+import { REFERRAL_BONUS_PER_CLAIM } from "@/lib/referral";
 
 export async function GET() {
   try {
@@ -16,23 +18,27 @@ export async function GET() {
 
     const userId = session.user.id;
 
+    // Fetch all referral records where this user is the referrer
     const referrals = await prisma.referral.findMany({
       where: { referrerId: userId },
     });
 
-    const total = referrals.length;
+    // The original code is the one with status "pending" (the reusable link)
+    const codeRecord = referrals.find((r) => r.status === "pending");
+    // Completed claims (each has a unique claim code)
     const completed = referrals.filter((r) => r.status === "completed").length;
-    const bonusExecutions = completed * 5;
+    const totalEarned = completed * REFERRAL_BONUS_PER_CLAIM;
 
-    // Find the user's referral code (from any referral they created)
-    const existingReferral = referrals.length > 0 ? referrals[0] : null;
+    // Get actual remaining bonus from Redis (includes bonuses from being referred)
+    const bonusRemaining = await getReferralBonus(userId);
 
     return NextResponse.json({
-      code: existingReferral?.code ?? null,
+      code: codeRecord?.code ?? null,
       stats: {
-        totalReferred: total,
+        totalReferred: completed,
         converted: completed,
-        bonusExecutions,
+        bonusEarned: totalEarned,
+        bonusRemaining,
       },
     });
   } catch (error) {
@@ -56,9 +62,9 @@ export async function POST() {
 
     const userId = session.user.id;
 
-    // Check if user already has a referral code
+    // Check if user already has a referral code (pending = the reusable link)
     const existing = await prisma.referral.findFirst({
-      where: { referrerId: userId },
+      where: { referrerId: userId, status: "pending" },
     });
 
     if (existing) {

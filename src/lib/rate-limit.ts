@@ -3,7 +3,7 @@ import { Redis } from "@upstash/redis";
 import { trackRateLimitHit } from "./analytics";
 
 // Initialize Redis client for Upstash
-let redis: Redis;
+export let redis: Redis;
 
 try {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
@@ -258,5 +258,38 @@ export async function checkEndpointRateLimit(
     // In production, fail closed
     console.error(`[rate-limit] Redis unavailable for ${endpoint}:`, error);
     return { success: false, remaining: 0 };
+  }
+}
+
+// ─── Referral bonus executions ──────────────────────────────────────────────
+
+/**
+ * Get remaining referral bonus executions for a user.
+ */
+export async function getReferralBonus(userId: string): Promise<number> {
+  try {
+    const val = await redis.get<number>(`referral:bonus:${userId}`);
+    return val ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Atomically consume one referral bonus execution.
+ * Returns true if a bonus was available and consumed, false otherwise.
+ */
+export async function consumeReferralBonus(userId: string): Promise<boolean> {
+  try {
+    const key = `referral:bonus:${userId}`;
+    const newVal = await redis.decrby(key, 1);
+    if (newVal < 0) {
+      // Was already 0 or didn't exist — roll back
+      await redis.incrby(key, 1);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
   }
 }

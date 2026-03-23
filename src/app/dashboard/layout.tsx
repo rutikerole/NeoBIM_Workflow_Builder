@@ -3,6 +3,8 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPaletteLoader } from "@/components/ui/CommandPaletteLoader";
 import { OnboardingModal } from "@/components/dashboard/OnboardingModal";
+import FirstRunSharePrompt from "@/components/referral/FirstRunSharePrompt";
+import { PendingReferralClaimer } from "@/components/referral/PendingReferralClaimer";
 
 export default function DashboardLayout({
   children,
@@ -19,6 +21,8 @@ export default function DashboardLayout({
       </ErrorBoundary>
       <CommandPaletteLoader />
       <OnboardingModal />
+      <FirstRunSharePrompt />
+      <PendingReferralClaimer />
     </div>
   );
 }

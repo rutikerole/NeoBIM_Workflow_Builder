@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, User, Chrome, Loader2, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Chrome, Loader2, Eye, EyeOff, Gift } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLocale } from "@/hooks/useLocale";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
@@ -115,6 +115,10 @@ function RegisterForm() {
     setGoogleLoading(true);
     setError("");
     try {
+      // Persist referral code so it survives the OAuth redirect
+      if (referralCode) {
+        localStorage.setItem("pending_referral_code", referralCode);
+      }
       trackCompleteRegistration({ content_name: "google_signup" });
       await signIn("google", { callbackUrl: "/dashboard" });
     } catch (err) {
@@ -158,6 +162,21 @@ function RegisterForm() {
       </div>
 
       <div className="auth-form-inner" style={{ padding: "32px 36px 36px" }}>
+      {/* Referral welcome banner */}
+      {referralCode && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "10px 14px", borderRadius: 10, marginBottom: 16,
+          background: "rgba(16,185,129,0.08)",
+          border: "1px solid rgba(16,185,129,0.15)",
+        }}>
+          <Gift size={16} style={{ color: "#10B981", flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, color: "#6EE7B7", lineHeight: 1.4 }}>
+            You were invited! Sign up and you both get a bonus execution.
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#F0F0F5", marginBottom: 6, letterSpacing: "-0.02em" }}>

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { trackSignup } from "@/lib/analytics";
 import { checkEndpointRateLimit } from "@/lib/rate-limit";
 import { sendVerificationEmail } from "@/services/email";
+import { claimReferralCode } from "@/lib/referral";
 import {
   formatErrorResponse,
   FormErrors,
@@ -97,13 +98,12 @@ export async function POST(req: NextRequest) {
     // Fire-and-forget: don't block registration response on analytics
     trackSignup(user.id, source).catch(err => console.warn("[analytics]", err));
 
-    // Claim referral if a code was provided
+    // Claim referral if a code was provided (awaited — ensures bonuses are granted)
     if (referralCode && typeof referralCode === "string") {
-      fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/referral/claim`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: referralCode.trim(), userId: user.id }),
-      }).catch(err => console.warn("[register] Referral claim failed:", err));
+      const claimResult = await claimReferralCode(referralCode, user.id);
+      if (!claimResult.success) {
+        console.warn("[register] Referral claim failed:", claimResult.error);
+      }
     }
 
     // Send verification email (fire-and-forget)

@@ -15,7 +15,7 @@ export default function FirstRunSharePrompt() {
     let cancelled = false;
     async function fetchOrGenerateCode() {
       try {
-        if (sessionStorage.getItem(DISMISSED_KEY) === "true") return;
+        if (localStorage.getItem(DISMISSED_KEY) === "true") return;
 
         const res = await fetch("/api/referral");
         if (!res.ok || cancelled) return;
@@ -44,7 +44,7 @@ export default function FirstRunSharePrompt() {
 
   const dismiss = () => {
     setVisible(false);
-    sessionStorage.setItem(DISMISSED_KEY, "true");
+    localStorage.setItem(DISMISSED_KEY, "true");
   };
 
   const copyLink = async () => {
@@ -88,7 +88,7 @@ export default function FirstRunSharePrompt() {
                 Great first run!
               </h4>
               <p className="text-xs text-white/50">
-                Invite a colleague — you both get 5 more executions
+                Invite a colleague — you both get 1 bonus execution
               </p>
             </div>
           </div>

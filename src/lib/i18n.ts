@@ -2391,15 +2391,16 @@ const en = {
 
   // ===== REFERRAL =====
   'referral.inviteTitle': 'Invite & Earn',
-  'referral.inviteSubtitle': 'Invite a colleague, both get 5 free executions',
+  'referral.inviteSubtitle': 'Invite a colleague, both get 1 bonus execution',
   'referral.generateLink': 'Generate Referral Link',
   'referral.copyLink': 'Copy Link',
   'referral.copied': 'Copied!',
-  'referral.friendsInvited': 'friends invited',
+  'referral.friendsInvited': 'referred',
   'referral.converted': 'converted',
   'referral.bonusEarned': 'bonus executions earned',
+  'referral.bonusRemaining': 'bonus remaining',
   'referral.firstRunTitle': 'Great first run!',
-  'referral.firstRunSubtitle': 'Invite a colleague and you both get 5 more executions',
+  'referral.firstRunSubtitle': 'Invite a colleague and you both get 1 bonus execution',
 
   // ===== EXIT INTENT =====
   'exitIntent.headline': "Wait — don't miss what BuildFlow can do for your projects",
@@ -4809,15 +4810,16 @@ const de: Record<keyof typeof en, string | string[]> = {
 
   // ===== REFERRAL =====
   'referral.inviteTitle': 'Einladen & Verdienen',
-  'referral.inviteSubtitle': 'Laden Sie einen Kollegen ein, beide erhalten 5 kostenlose Ausführungen',
+  'referral.inviteSubtitle': 'Laden Sie einen Kollegen ein, beide erhalten 1 Bonus-Ausführung',
   'referral.generateLink': 'Empfehlungslink generieren',
   'referral.copyLink': 'Link kopieren',
   'referral.copied': 'Kopiert!',
-  'referral.friendsInvited': 'Freunde eingeladen',
+  'referral.friendsInvited': 'empfohlen',
   'referral.converted': 'konvertiert',
   'referral.bonusEarned': 'Bonus-Ausführungen verdient',
+  'referral.bonusRemaining': 'Bonus verbleibend',
   'referral.firstRunTitle': 'Toller erster Lauf!',
-  'referral.firstRunSubtitle': 'Laden Sie einen Kollegen ein und Sie beide erhalten 5 weitere Ausführungen',
+  'referral.firstRunSubtitle': 'Laden Sie einen Kollegen ein und Sie beide erhalten 1 Bonus-Ausführung',
 
   // ===== EXIT INTENT =====
   'exitIntent.headline': 'Warten Sie — verpassen Sie nicht, was BuildFlow für Ihre Projekte tun kann',

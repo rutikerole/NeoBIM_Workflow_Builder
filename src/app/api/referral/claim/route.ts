@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { formatErrorResponse, UserErrors } from "@/lib/user-errors";
 import { checkEndpointRateLimit } from "@/lib/rate-limit";
-import { trackEvent } from "@/lib/analytics";
-import { Redis } from "@upstash/redis";
-
-let redis: Redis;
-try {
-  redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL || "https://placeholder.upstash.io",
-    token: process.env.UPSTASH_REDIS_REST_TOKEN || "placeholder",
-  });
-} catch {
-  redis = new Redis({
-    url: "https://placeholder.upstash.io",
-    token: "placeholder",
-  });
-}
+import { claimReferralCode } from "@/lib/referral";
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,60 +28,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the referral by code
-    const referral = await prisma.referral.findFirst({
-      where: { code: code.trim().toUpperCase() },
-    });
+    const result = await claimReferralCode(code, userId);
 
-    if (!referral) {
+    if (!result.success) {
+      const statusMap: Record<string, number> = {
+        "Invalid referral code": 404,
+        "Cannot refer yourself": 400,
+        "Already claimed": 409,
+        "Missing code or userId": 400,
+      };
       return NextResponse.json(
-        { error: "Invalid referral code" },
-        { status: 404 }
+        { error: result.error },
+        { status: statusMap[result.error ?? ""] ?? 500 }
       );
     }
-
-    // Verify it's still claimable
-    if (referral.status !== "pending" || referral.referredId !== null) {
-      return NextResponse.json(
-        { error: "Referral code already used" },
-        { status: 409 }
-      );
-    }
-
-    // Prevent self-referral
-    if (referral.referrerId === userId) {
-      return NextResponse.json(
-        { error: "Cannot refer yourself" },
-        { status: 400 }
-      );
-    }
-
-    // Update the referral record
-    await prisma.referral.update({
-      where: { id: referral.id },
-      data: {
-        referredId: userId,
-        status: "completed",
-        completedAt: new Date(),
-        rewardGiven: true,
-      },
-    });
-
-    // Grant both users +5 bonus executions in Redis
-    try {
-      await Promise.all([
-        redis.incrby(`referral:bonus:${referral.referrerId}`, 5),
-        redis.incrby(`referral:bonus:${userId}`, 5),
-      ]);
-    } catch (redisErr) {
-      console.warn("[referral/claim] Redis bonus grant failed:", redisErr);
-    }
-
-    trackEvent({
-      userId: referral.referrerId,
-      eventName: "feature_used",
-      properties: { feature: "referral_claimed", referredId: userId, code },
-    }).catch(() => {});
 
     return NextResponse.json({ success: true });
   } catch (error) {

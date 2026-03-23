@@ -5,7 +5,7 @@ import type { BuildingDescription } from "@/services/openai";
 import { analyzeSite } from "@/services/site-analysis";
 import { generateId } from "@/lib/utils";
 import type { ExecutionArtifact } from "@/types/execution";
-import { checkRateLimit, logRateLimitHit, isExecutionAlreadyCounted, isAdminUser, checkNodeTypeLimit } from "@/lib/rate-limit";
+import { checkRateLimit, logRateLimitHit, isExecutionAlreadyCounted, isAdminUser, checkNodeTypeLimit, consumeReferralBonus } from "@/lib/rate-limit";
 import { VIDEO_NODES, MODEL_3D_NODES, RENDER_NODES, getNodeTypeLimits } from "@/lib/stripe";
 import {
   findUnitRate,
@@ -155,37 +155,42 @@ export async function POST(req: NextRequest) {
         const rateLimitResult = await checkRateLimit(userId, userRole, userEmail);
 
         if (!rateLimitResult.success) {
-          const resetDate = new Date(rateLimitResult.reset);
-          const msUntilReset = resetDate.getTime() - Date.now();
-          const daysUntilReset = Math.ceil(msUntilReset / (1000 * 60 * 60 * 24));
-          const hoursUntilReset = Math.ceil(msUntilReset / (1000 * 60 * 60));
+          // Try consuming a referral bonus execution before rejecting
+          const usedBonus = await consumeReferralBonus(userId);
+          if (!usedBonus) {
+            const resetDate = new Date(rateLimitResult.reset);
+            const msUntilReset = resetDate.getTime() - Date.now();
+            const daysUntilReset = Math.ceil(msUntilReset / (1000 * 60 * 60 * 24));
+            const hoursUntilReset = Math.ceil(msUntilReset / (1000 * 60 * 60));
 
-          // Log the rate limit hit
-          logRateLimitHit(userId, userRole, rateLimitResult.remaining);
-          await logRateLimit(executionId, false, {
-            remaining: rateLimitResult.remaining, limit: rateLimitResult.limit,
-            reset: rateLimitResult.reset, userRole,
-          });
+            // Log the rate limit hit
+            logRateLimitHit(userId, userRole, rateLimitResult.remaining);
+            await logRateLimit(executionId, false, {
+              remaining: rateLimitResult.remaining, limit: rateLimitResult.limit,
+              reset: rateLimitResult.reset, userRole,
+            });
 
-          const rateLimitError = userRole === "FREE"
-            ? UserErrors.RATE_LIMIT_FREE(daysUntilReset)
-            : userRole === "MINI"
-            ? UserErrors.RATE_LIMIT_MINI(daysUntilReset)
-            : userRole === "STARTER"
-            ? UserErrors.RATE_LIMIT_STARTER(daysUntilReset)
-            : UserErrors.RATE_LIMIT_PRO(daysUntilReset);
+            const rateLimitError = userRole === "FREE"
+              ? UserErrors.RATE_LIMIT_FREE(daysUntilReset)
+              : userRole === "MINI"
+              ? UserErrors.RATE_LIMIT_MINI(daysUntilReset)
+              : userRole === "STARTER"
+              ? UserErrors.RATE_LIMIT_STARTER(daysUntilReset)
+              : UserErrors.RATE_LIMIT_PRO(daysUntilReset);
 
-          return NextResponse.json(
-            formatErrorResponse(rateLimitError),
-            {
-              status: 429,
-              headers: {
-                "X-RateLimit-Limit": rateLimitResult.limit.toString(),
-                "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
-                "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+            return NextResponse.json(
+              formatErrorResponse(rateLimitError),
+              {
+                status: 429,
+                headers: {
+                  "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+                  "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+                  "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+                }
               }
-            }
-          );
+            );
+          }
+          // Bonus consumed — allow execution to proceed
         }
 
         await logRateLimit(executionId, true, {
