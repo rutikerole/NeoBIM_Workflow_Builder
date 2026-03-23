@@ -46,6 +46,8 @@ interface DeltaPeriod {
   yesterday: number;
   thisWeek: number;
   lastWeek: number;
+  thisMonth: number;
+  lastMonth: number;
 }
 
 interface AdminStats {

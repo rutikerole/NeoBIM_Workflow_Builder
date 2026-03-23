@@ -15,6 +15,8 @@ export async function GET() {
   const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
   const thisWeekStart = new Date(todayStart.getTime() - todayStart.getDay() * 24 * 60 * 60 * 1000);
   const lastWeekStart = new Date(thisWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const thisMonthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+  const lastMonthStart = new Date(todayStart.getFullYear(), todayStart.getMonth() - 1, 1);
 
   // Run all queries in parallel
   const [
@@ -51,6 +53,15 @@ export async function GET() {
     feedbackYesterday,
     feedbackThisWeek,
     feedbackLastWeek,
+    // Monthly
+    usersThisMonth,
+    usersLastMonth,
+    workflowsThisMonth,
+    workflowsLastMonth,
+    execsThisMonth,
+    execsLastMonth,
+    feedbackThisMonth,
+    feedbackLastMonth,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.groupBy({ by: ["role"], _count: true }),
@@ -124,6 +135,15 @@ export async function GET() {
     prisma.feedback.count({ where: { createdAt: { gte: yesterdayStart, lt: todayStart } } }),
     prisma.feedback.count({ where: { createdAt: { gte: thisWeekStart } } }),
     prisma.feedback.count({ where: { createdAt: { gte: lastWeekStart, lt: thisWeekStart } } }),
+    // Monthly
+    prisma.user.count({ where: { createdAt: { gte: thisMonthStart } } }),
+    prisma.user.count({ where: { createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
+    prisma.workflow.count({ where: { createdAt: { gte: thisMonthStart } } }),
+    prisma.workflow.count({ where: { createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
+    prisma.execution.count({ where: { createdAt: { gte: thisMonthStart } } }),
+    prisma.execution.count({ where: { createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
+    prisma.feedback.count({ where: { createdAt: { gte: thisMonthStart } } }),
+    prisma.feedback.count({ where: { createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
   ]);
 
   // Group signups by day
@@ -222,12 +242,12 @@ export async function GET() {
       byStatus: feedbackStatusMap,
       byType: feedbackTypeMap,
     },
-    // ── Deltas (today vs yesterday, this week vs last week) ──────────
+    // ── Deltas (today vs yesterday, this week vs last week, this month vs last month) ──
     deltas: {
-      users:      { today: usersToday,     yesterday: usersYesterday,     thisWeek: usersThisWeek,     lastWeek: usersLastWeek },
-      workflows:  { today: workflowsToday, yesterday: workflowsYesterday, thisWeek: workflowsThisWeek, lastWeek: workflowsLastWeek },
-      executions: { today: execsToday,     yesterday: execsYesterday,     thisWeek: execsThisWeek,     lastWeek: execsLastWeek },
-      feedback:   { today: feedbackToday,  yesterday: feedbackYesterday,  thisWeek: feedbackThisWeek,  lastWeek: feedbackLastWeek },
+      users:      { today: usersToday,     yesterday: usersYesterday,     thisWeek: usersThisWeek,     lastWeek: usersLastWeek,     thisMonth: usersThisMonth,     lastMonth: usersLastMonth },
+      workflows:  { today: workflowsToday, yesterday: workflowsYesterday, thisWeek: workflowsThisWeek, lastWeek: workflowsLastWeek, thisMonth: workflowsThisMonth, lastMonth: workflowsLastMonth },
+      executions: { today: execsToday,     yesterday: execsYesterday,     thisWeek: execsThisWeek,     lastWeek: execsLastWeek,     thisMonth: execsThisMonth,     lastMonth: execsLastMonth },
+      feedback:   { today: feedbackToday,  yesterday: feedbackYesterday,  thisWeek: feedbackThisWeek,  lastWeek: feedbackLastWeek,  thisMonth: feedbackThisMonth,  lastMonth: feedbackLastMonth },
     },
   });
 }
