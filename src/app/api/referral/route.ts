@@ -69,24 +69,42 @@ export async function POST() {
     const name = session.user.name ?? "user";
     const prefix = name.replace(/[^a-zA-Z]/g, "").slice(0, 4).toUpperCase() || "USER";
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let suffix = "";
-    for (let i = 0; i < 4; i++) {
-      suffix += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    const code = `${prefix}${suffix}`;
 
-    const referral = await prisma.referral.create({
-      data: {
-        referrerId: userId,
-        code,
-        status: "pending",
-      },
-    });
+    let referral;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      let suffix = "";
+      for (let i = 0; i < 4; i++) {
+        suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const code = `${prefix}${suffix}`;
+      try {
+        referral = await prisma.referral.create({
+          data: {
+            referrerId: userId,
+            code,
+            status: "pending",
+          },
+        });
+        break;
+      } catch (e: unknown) {
+        const prismaError = e as { code?: string };
+        // P2002 = unique constraint violation — retry with a new code
+        if (prismaError.code === "P2002" && attempt < 4) continue;
+        throw e;
+      }
+    }
+
+    if (!referral) {
+      return NextResponse.json(
+        formatErrorResponse(UserErrors.INTERNAL_ERROR),
+        { status: 500 }
+      );
+    }
 
     trackEvent({
       userId,
       eventName: "feature_used",
-      properties: { feature: "referral_code_generated", code },
+      properties: { feature: "referral_code_generated", code: referral.code },
     }).catch(() => {});
 
     return NextResponse.json({ code: referral.code }, { status: 201 });
