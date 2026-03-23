@@ -99,10 +99,7 @@ export async function analyzeFloorPlanWithClaude(
   const client = isOAuth
     ? new Anthropic({ authToken: apiKey, apiKey: null })
     : new Anthropic({ apiKey });
-  console.log(`[Claude Vision] Auth mode: ${isOAuth ? "OAuth Bearer" : "API key"}`);
   const mediaType = normalizeMediaType(mimeType);
-
-  console.log("[Claude Vision] Analyzing floor plan (SVG approach)...");
 
   // ═══════════════════════════════════════════
   // Claude generates SVG replica of the floor plan
@@ -181,7 +178,6 @@ OUTPUT ONLY THE SVG CODE. No explanation. No markdown. Start with <svg and end w
   });
 
   const text = extractText(response);
-  console.log(`[Claude Vision] SVG response: input=${response.usage.input_tokens}, output=${response.usage.output_tokens}`);
 
   // Clean up SVG
   let svgContent = text;
@@ -197,25 +193,6 @@ OUTPUT ONLY THE SVG CODE. No explanation. No markdown. Start with <svg and end w
     throw new Error("Claude did not return valid SVG");
   }
 
-  console.log(`[Claude Vision] SVG size: ${svgContent.length} chars`);
-
-  // ═══════════════════════════════════════════
-  // DEBUG: Save SVG to public folder + log
-  // ═══════════════════════════════════════════
-  try {
-    const fs = await import('fs');
-    const path = await import('path');
-    const debugPath = path.join(process.cwd(), 'public', 'debug-floor-plan.svg');
-    fs.writeFileSync(debugPath, svgContent, 'utf-8');
-    console.log(`[DEBUG] SVG saved to ${debugPath} (${svgContent.length} chars)`);
-  } catch (e) {
-    console.log('[DEBUG] Could not save SVG file:', e);
-  }
-  console.log('=== RAW SVG FROM CLAUDE ===');
-  console.log(svgContent.substring(0, 2000));
-  console.log(svgContent.length > 2000 ? `... (${svgContent.length - 2000} more chars)` : '');
-  console.log('=== END SVG ===');
-
   // ═══════════════════════════════════════════
   // Parse SVG to extract geometry
   // ═══════════════════════════════════════════
@@ -223,23 +200,8 @@ OUTPUT ONLY THE SVG CODE. No explanation. No markdown. Start with <svg and end w
   const result = parseSVGtoFloorPlan(svgContent);
   result.svgContent = svgContent;
 
-  console.log('=== PARSED RESULT ===');
-  console.log('Rooms:', result.rooms.length);
-  for (const room of result.rooms) {
-    console.log(`  ${room.name} (${room.type}): ${room.width}x${room.depth}m at (${room.x},${room.y}) polygon:${room.polygon?.length || 0}pts area=${room.area}m²`);
-  }
-  console.log('Walls:', result.walls?.length ?? 0);
-  console.log('Building:', result.buildingWidth, 'x', result.buildingDepth);
-  console.log('Building shape:', result.buildingShape);
-  console.log('=== END PARSED ===');
-
   if (result.rooms.length < 1) {
     throw new Error(`SVG parsing found 0 rooms — Claude SVG may be malformed`);
-  }
-
-  console.log(`[Claude Vision] SVG parsed: ${result.rooms.length} rooms, ${result.walls?.length ?? 0} walls, ${result.buildingShape} ${result.buildingWidth.toFixed(1)}×${result.buildingDepth.toFixed(1)}m`);
-  for (const rm of result.rooms) {
-    console.log(`  ${rm.name} (${rm.type}): ${rm.width.toFixed(1)}×${rm.depth.toFixed(1)}m at (${rm.x.toFixed(1)},${rm.y.toFixed(1)}) ${rm.polygon ? `polygon:${rm.polygon.length}pts` : "rect"} area=${(rm.area ?? 0).toFixed(1)}m²`);
   }
 
   return result;
@@ -284,38 +246,27 @@ export function parseSVGtoFloorPlan(svgContent: string): ClaudeFloorPlanResult {
   const elementRegex = /<(?:polygon|path|rect)\s[^>]*?(?:class="[^"]*room[^"]*"|data-name=")[^>]*?(?:\/?>[^<]*?<\/(?:polygon|path|rect)>|\/>)/gi;
   let match;
 
-  console.log('=== ROOM REGEX MATCHING (primary) ===');
   while ((match = elementRegex.exec(svgContent)) !== null) {
     const el = match[0];
-    console.log(`  MATCHED element (${el.length} chars): ${el.substring(0, 200)}...`);
     const room = parseRoomElement(el, rooms.length);
     if (room) {
-      console.log(`    → Room: "${room.name}" (${room.type}) polygon:${room.polygon?.length || 0}pts area:${room.area}`);
       rooms.push(room);
-    } else {
-      console.log(`    → REJECTED (polygon < 3 points)`);
     }
   }
-  console.log(`=== Primary regex found ${rooms.length} rooms ===`);
 
   // Fallback: if no rooms found, try matching by id="room-*"
   if (rooms.length === 0) {
-    console.log('=== ROOM REGEX MATCHING (fallback: id="room-*") ===');
     const idRegex = /<(?:polygon|path|rect)\s[^>]*?id="room-\d+"[^>]*?(?:\/?>[^<]*?<\/(?:polygon|path|rect)>|\/>)/gi;
     while ((match = idRegex.exec(svgContent)) !== null) {
       const el = match[0];
-      console.log(`  MATCHED element: ${el.substring(0, 200)}...`);
       const room = parseRoomElement(el, rooms.length);
       if (room) rooms.push(room);
     }
-    console.log(`=== Fallback found ${rooms.length} rooms ===`);
   }
 
   // Filter out tiny rooms (< 0.5 m², likely SVG artifacts)
-  const preFilterCount = rooms.length;
   for (let i = rooms.length - 1; i >= 0; i--) {
     if ((rooms[i].area ?? 0) < 0.5) {
-      console.log(`[DEBUG] Removing tiny room: "${rooms[i].name}" area=${rooms[i].area}m²`);
       rooms.splice(i, 1);
     }
   }
@@ -325,15 +276,10 @@ export function parseSVGtoFloorPlan(svgContent: string): ClaudeFloorPlanResult {
   for (let i = rooms.length - 1; i >= 0; i--) {
     const key = rooms[i].name.toLowerCase();
     if (seenNames.has(key)) {
-      console.log(`[DEBUG] Removing duplicate room: "${rooms[i].name}"`);
       rooms.splice(i, 1);
     } else {
       seenNames.add(key);
     }
-  }
-
-  if (preFilterCount !== rooms.length) {
-    console.log(`[DEBUG] Rooms: ${preFilterCount} → ${rooms.length} after filtering`);
   }
 
   // Extract walls
@@ -348,7 +294,6 @@ export function parseSVGtoFloorPlan(svgContent: string): ClaudeFloorPlanResult {
 
     // Skip walls with NaN/undefined coordinates
     if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) {
-      console.log('[DEBUG] Skipping invalid wall line:', el.substring(0, 120));
       continue;
     }
 

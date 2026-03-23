@@ -10,8 +10,8 @@ import {
   FormErrors
 } from "@/lib/user-errors";
 
-// GET /api/workflows — list user's workflows
-export async function GET() {
+// GET /api/workflows — list user's workflows (supports optional pagination)
+export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -21,22 +21,31 @@ export async function GET() {
       );
     }
 
-    const workflows = await prisma.workflow.findMany({
-      where: { ownerId: session.user.id },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        tags: true,
-        isPublished: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: { select: { executions: true } },
-      },
-    });
+    const url = new URL(req.url);
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "50")));
 
-    const response = NextResponse.json({ workflows });
+    const [workflows, total] = await Promise.all([
+      prisma.workflow.findMany({
+        where: { ownerId: session.user.id },
+        orderBy: { updatedAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          tags: true,
+          isPublished: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { executions: true } },
+        },
+      }),
+      prisma.workflow.count({ where: { ownerId: session.user.id } }),
+    ]);
+
+    const response = NextResponse.json({ workflows, total, page, totalPages: Math.ceil(total / limit) });
     response.headers.set("Cache-Control", "private, max-age=30");
     return response;
   } catch (error) {

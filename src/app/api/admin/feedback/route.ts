@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { isAdminRequest, unauthorizedResponse } from "@/lib/admin-server";
 
 export async function GET(req: Request) {
@@ -11,14 +12,13 @@ export async function GET(req: Request) {
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "20")));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {};
+  const where: Prisma.FeedbackWhereInput = {};
 
   if (type && ["BUG", "FEATURE", "SUGGESTION"].includes(type)) {
-    where.type = type;
+    where.type = type as "BUG" | "FEATURE" | "SUGGESTION";
   }
   if (status && ["NEW", "REVIEWING", "PLANNED", "IN_PROGRESS", "DONE", "DECLINED"].includes(status)) {
-    where.status = status;
+    where.status = status as "NEW" | "REVIEWING" | "PLANNED" | "IN_PROGRESS" | "DONE" | "DECLINED";
   }
 
   const [items, total, statusCounts] = await Promise.all([

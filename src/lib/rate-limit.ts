@@ -5,23 +5,30 @@ import { trackRateLimitHit } from "./analytics";
 // Initialize Redis client for Upstash
 export let redis: Redis;
 
+/** Whether Redis is properly configured (not a placeholder) */
+export let redisConfigured = false;
+
 try {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL,
       token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
+    redisConfigured = true;
   } else if (process.env.REDIS_URL) {
     const url = new URL(process.env.REDIS_URL.replace("redis://", "http://"));
     redis = new Redis({
       url: `https://${url.host}`,
       token: url.password || "",
     });
+    redisConfigured = true;
   } else {
     if (process.env.NODE_ENV === "production") {
-      console.error("[rate-limit] WARNING: No Redis configured in production — rate limiting is disabled!");
+      console.error("[rate-limit] CRITICAL: No Redis configured in production — rate limiting will fail closed!");
+    } else {
+      console.warn("[rate-limit] No Redis configured — rate limiting disabled in development");
     }
-    console.warn("[rate-limit] No Redis configured — rate limiting may not persist across restarts");
+    // Placeholder client — only used in development; production checks redisConfigured flag
     redis = new Redis({
       url: "https://placeholder.upstash.io",
       token: "placeholder",
@@ -87,6 +94,17 @@ export async function checkRateLimit(
   userRole: "FREE" | "MINI" | "STARTER" | "PRO" | "TEAM_ADMIN" | "PLATFORM_ADMIN",
   userEmail?: string
 ) {
+  // In production without Redis, fail closed (block) — never silently allow unlimited requests
+  if (!redisConfigured && process.env.NODE_ENV === "production") {
+    return {
+      success: false,
+      limit: 0,
+      remaining: 0,
+      reset: Date.now() + 60000,
+      pending: Promise.resolve(),
+    };
+  }
+
   // Check if user is in admin list (bypasses rate limits)
   if (isAdminUser(userEmail)) {
     return {

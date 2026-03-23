@@ -68,14 +68,11 @@ async function executeNode(
     let fileName = nodeData.fileName as string | undefined;
     let mimeType = nodeData.mimeType as string | undefined;
 
-    console.log(`[INPUT] ${catalogueId} node.id=${node.id}: nodeData.fileData=${!!fileData} (len=${fileData?.length ?? 0}), inputFileStore has file=${inputFileStore.has(node.id)}, inputValue="${inputValue}"`);
-
     // Read from inputFileStore (where FileUploadInput stores the actual File object)
     // and convert to base64 so it can be sent to the server API.
     // Always prefer the live File object over stale nodeData.fileData (which may not persist across saves)
     const fileObj = inputFileStore.get(node.id);
     if (fileObj) {
-      console.log(`[INPUT] Converting file "${fileObj.name}" (${fileObj.size} bytes) to base64`);
       const arrayBuffer = await fileObj.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
       let binary = "";
@@ -85,10 +82,7 @@ async function executeNode(
       fileData = btoa(binary);
       fileName = fileObj.name;
       mimeType = fileObj.type || "application/pdf";
-      console.log(`[INPUT] base64 length: ${fileData.length} chars`);
     }
-
-    console.log(`[INPUT] ${catalogueId} artifact will include: fileData=${!!fileData} (len=${fileData?.length ?? 0}), fileName=${fileName}`);
 
     return {
       id: generateId(),
@@ -136,8 +130,6 @@ async function executeNode(
   const isLive = LIVE_NODE_IDS.has(catalogueId);
   const shouldUseRealAPI = isLive || (useRealExecution && REAL_NODE_IDS.has(catalogueId));
 
-  console.log(`[executeNode] ${catalogueId} → isLive=${isLive}, useReal=${useRealExecution}, shouldUseRealAPI=${shouldUseRealAPI}`);
-
   if (shouldUseRealAPI) {
     // Merge node-level config (e.g. viewType for GN-003/TR-005) into inputData
     const nodeConfig: Record<string, unknown> = {};
@@ -156,7 +148,6 @@ async function executeNode(
         ...(previousArtifact?.data as Record<string, unknown> ?? { prompt: inputValue ?? "" }),
         ...nodeConfig,
       };
-      console.log(`[API] ${catalogueId}: sending inputData keys=[${Object.keys(inputData).join(",")}], has fileData=${!!inputData.fileData}, fileData len=${typeof inputData.fileData === "string" ? inputData.fileData.length : "N/A"}`);
       res = await fetch("/api/execute-node", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -259,7 +250,6 @@ async function persistVideoToR2(
       // Update artifact with persisted URL
       const data = { ...(currentArtifact.data as Record<string, unknown>), persistedUrl };
       addArtifactFn(nodeId, { ...currentArtifact, data });
-      console.log("[persist-video] Video persisted to R2:", persistedUrl);
     }
   } catch (err) {
     console.warn("[persist-video] Error (non-fatal):", err);
@@ -290,9 +280,6 @@ async function pollSingleVideoGeneration(
 ): Promise<void> {
   const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
 
-  console.log("[POLL] === Starting SINGLE video poll ===");
-  console.log("[POLL] taskId:", taskId);
-
   setVideoProgressFn(nodeId, { progress: 5, status: "processing", taskId });
 
   while (Date.now() < deadline) {
@@ -307,7 +294,6 @@ async function pollSingleVideoGeneration(
       }
 
       const status = await res.json();
-      console.log("[POLL] Single status:", JSON.stringify(status));
 
       setVideoProgressFn(nodeId, {
         progress: status.progress,
@@ -326,8 +312,6 @@ async function pollSingleVideoGeneration(
       }
 
       if (status.isComplete && status.videoUrl) {
-        console.log("[RENDER] Single video complete! URL:", status.videoUrl.slice(0, 100));
-
         const durationSec = (currentArtifactData.durationSeconds as number) || 10;
         const isOmni = currentArtifactData.usedOmni === true;
         const labelPrefix = isOmni ? "Kling 3.0 Walkthrough" : "Cinematic Walkthrough";
@@ -389,10 +373,6 @@ async function pollVideoGeneration(
 ): Promise<void> {
   const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
 
-  console.log("[POLL] === Starting video poll ===");
-  console.log("[POLL] exteriorTaskId:", exteriorTaskId);
-  console.log("[POLL] interiorTaskId:", interiorTaskId);
-
   setVideoProgressFn(nodeId, {
     progress: 5,
     status: "processing",
@@ -404,7 +384,6 @@ async function pollVideoGeneration(
     await abortableSleep(VIDEO_POLL_INTERVAL_MS, signal);
 
     try {
-      console.log("[POLL] Checking video status...");
       const res = await fetch(
         `/api/video-status?exteriorTaskId=${encodeURIComponent(exteriorTaskId)}&interiorTaskId=${encodeURIComponent(interiorTaskId)}&pipeline=${videoPipeline}`,
         { signal },
@@ -416,15 +395,6 @@ async function pollVideoGeneration(
       }
 
       const status = await res.json();
-      console.log("[POLL] Status response:", JSON.stringify(status));
-      console.log("[POLL] Exterior status:", status.exteriorStatus);
-      console.log("[POLL] Interior status:", status.interiorStatus);
-      console.log("[POLL] Exterior video URL:", status.exteriorVideoUrl || "NONE");
-      console.log("[POLL] Interior video URL:", status.interiorVideoUrl || "NONE");
-      console.log("[POLL] Progress:", status.progress);
-      console.log("[POLL] isComplete:", status.isComplete);
-      console.log("[POLL] hasFailed:", status.hasFailed);
-      console.log("[POLL] failureMessage:", status.failureMessage || "NONE");
 
       // Update progress in store
       setVideoProgressFn(nodeId, {
@@ -455,11 +425,6 @@ async function pollVideoGeneration(
           failureMessage: undefined,
         });
 
-        console.log("[RENDER] Videos received by frontend:");
-        console.log("[RENDER] Exterior URL:", status.exteriorVideoUrl || "NONE");
-        console.log("[RENDER] Interior URL:", status.interiorVideoUrl || "NONE");
-        console.log("[RENDER] Are both present?", !!status.exteriorVideoUrl && !!status.interiorVideoUrl);
-
         // Build segments array for sequential playback (no server-side concat needed)
         const segments: { videoUrl: string; downloadUrl: string; durationSeconds: number; label: string }[] = [];
         if (status.exteriorVideoUrl) {
@@ -471,8 +436,6 @@ async function pollVideoGeneration(
 
         // Use exterior as primary videoUrl for backward compat, but segments drive playback
         const finalVideoUrl = status.exteriorVideoUrl ?? "";
-        console.log("[RENDER] Segments built:", segments.length, "clips, total", segments.reduce((s, c) => s + c.durationSeconds, 0), "s");
-        console.log("[RENDER] Primary videoUrl (exterior):", finalVideoUrl?.slice(0, 100));
 
         const finalArtifact: ExecutionArtifact = {
           id: `video-${nodeId}`,
@@ -1001,13 +964,11 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
                 upData.fileData = d.fileData;
                 if (d.mimeType) upData.mimeType = d.mimeType;
                 if (d.fileName) upData.fileName = d.fileName;
-                console.log("[Execution] Injected image fileData into GN-009 (mime:", artMime, ")");
                 break;
               }
               if (d?.imageUrl && typeof d.imageUrl === "string") {
                 upData.imageUrl = d.imageUrl;
                 upData.url = d.imageUrl;
-                console.log("[Execution] Injected imageUrl into GN-009 from upstream node");
                 break;
               }
             }
@@ -1056,7 +1017,6 @@ export function useExecution({ onLog }: UseExecutionOptions = {}) {
             });
 
             const taskIdStr = artData.taskId as string;
-            console.log("[POLL] Starting single video poll — taskId:", taskIdStr);
             // Create new AbortController for this poll (aborts previous if any)
             pollAbortRef.current?.abort();
             const pollCtrl = new AbortController();

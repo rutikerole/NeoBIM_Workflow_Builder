@@ -1,7 +1,6 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
-const isDev = process.env.NODE_ENV === 'development';
 const R2_CDN_BASE = process.env.R2_PUBLIC_URL || "https://pub-27d9a7371b6d47ff94fee1a3228f1720.r2.dev";
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || "";
 const R2_BUCKET = process.env.R2_BUCKET_NAME || process.env.R2_BUCKET || "buildflow-files";

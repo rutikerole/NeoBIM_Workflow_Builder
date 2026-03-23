@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RotateCcw, Home, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { t as translate, getLocaleFromStorage } from "@/lib/i18n";
@@ -33,12 +34,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log to console in dev, send to error tracking in prod
     console.error("ErrorBoundary caught:", error, errorInfo);
     this.setState({ errorInfo });
-    
-    // TODO: Send to Sentry/error tracking service
-    // Sentry.captureException(error, { extra: errorInfo });
+
+    Sentry.captureException(error, {
+      extra: {
+        componentStack: errorInfo.componentStack,
+      },
+    });
   }
 
   reset = () => {

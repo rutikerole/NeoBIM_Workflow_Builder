@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // ─── Skeleton Canvas Loading Screen ──────────────────────────────
 function CanvasSkeletonLoader() {
@@ -274,8 +275,10 @@ export default function CanvasPage() {
   const workflowId = searchParams.get("id") ?? undefined;
 
   return (
-    <Suspense fallback={<CanvasSkeletonLoader />}>
-      <WorkflowCanvas workflowId={workflowId} />
-    </Suspense>
+    <ErrorBoundary showHomeButton showSupportButton>
+      <Suspense fallback={<CanvasSkeletonLoader />}>
+        <WorkflowCanvas workflowId={workflowId} />
+      </Suspense>
+    </ErrorBoundary>
   );
 }

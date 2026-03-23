@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { isAdminRequest, unauthorizedResponse } from "@/lib/admin-server";
 
 export async function GET(req: Request) {
@@ -10,8 +11,7 @@ export async function GET(req: Request) {
   const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "50")));
   const action = url.searchParams.get("action") || "";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {};
+  const where: Prisma.AdminAuditLogWhereInput = {};
   if (action) where.action = action;
 
   const [logs, total] = await Promise.all([

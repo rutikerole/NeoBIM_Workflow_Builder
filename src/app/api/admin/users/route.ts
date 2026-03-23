@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { isAdminRequest, unauthorizedResponse } from "@/lib/admin-server";
 
 export async function GET(req: Request) {
@@ -13,8 +14,7 @@ export async function GET(req: Request) {
   const sort = url.searchParams.get("sort") || "createdAt";
   const order = url.searchParams.get("order") === "asc" ? "asc" : "desc";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {};
+  const where: Prisma.UserWhereInput = {};
 
   if (search) {
     where.OR = [
@@ -24,14 +24,14 @@ export async function GET(req: Request) {
   }
 
   if (role && ["FREE", "MINI", "STARTER", "PRO", "TEAM_ADMIN", "PLATFORM_ADMIN"].includes(role)) {
-    where.role = role;
+    where.role = role as "FREE" | "MINI" | "STARTER" | "PRO" | "TEAM_ADMIN" | "PLATFORM_ADMIN";
   }
 
   const allowedSorts = ["createdAt", "name", "email", "role", "xp", "level", "workflows", "executions"];
   const sortField = allowedSorts.includes(sort) ? sort : "createdAt";
 
   // Relation-count sorts use a different Prisma orderBy shape
-  const orderBy =
+  const orderBy: Prisma.UserOrderByWithRelationInput =
     sortField === "workflows"
       ? { workflows: { _count: order } }
       : sortField === "executions"
@@ -56,8 +56,7 @@ export async function GET(req: Request) {
         createdAt: true,
         _count: { select: { workflows: true, executions: true } },
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      orderBy: orderBy as any,
+      orderBy,
       skip: (page - 1) * limit,
       take: limit,
     }),
