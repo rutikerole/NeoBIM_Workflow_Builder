@@ -375,8 +375,8 @@ export function Sidebar() {
             <div style={{ padding: "14px 12px 12px" }}>
               {session?.user ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                  {/* User card — enhanced */}
-                  <div className="sb-user-card" style={{ borderRadius: "12px 12px 0 0", borderBottom: "none" }}>
+                  {/* User card — enhanced — clickable to settings/profile */}
+                  <Link href="/dashboard/settings" className="sb-user-card" style={{ borderRadius: "12px 12px 0 0", borderBottom: "none", textDecoration: "none", cursor: "pointer" }}>
                     {/* Ambient glow behind avatar */}
                     <div style={{
                       position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)",
@@ -413,7 +413,7 @@ export function Sidebar() {
                         {session.user.email}
                       </div>
                     </div>
-                  </div>
+                  </Link>
 
                   {/* Quick actions row — language + sign out in one line */}
                   <div style={{

@@ -27,6 +27,7 @@ interface DashboardData {
   xpForNext: number;
   workflowCount: number;
   executionCount: number;
+  referralBonus: number;
   missions: unknown[];
   blueprints: unknown[];
   achievements: unknown[];
@@ -74,7 +75,7 @@ const NODE_TYPES = [
 const DEFAULT_DATA: DashboardData = {
   userName: null, userRole: "FREE",
   xp: 0, level: 1, progress: 0, xpInLevel: 0, xpForNext: 500,
-  workflowCount: 0, executionCount: 0,
+  workflowCount: 0, executionCount: 0, referralBonus: 0,
   missions: [], blueprints: [], achievements: [],
   flashEvent: null, recentWorkflows: [],
 };
@@ -178,9 +179,11 @@ export default function DashboardPage() {
 
   const firstName = data.userName?.split(" ")[0] ?? "";
   const role = data.userRole ?? "FREE";
-  const planLimit = PLAN_LIMITS[role] ?? 5;
+  const basePlanLimit = PLAN_LIMITS[role] ?? 5;
+  const bonus = data.referralBonus ?? 0;
+  const effectiveLimit = basePlanLimit + bonus;
   const used = data.executionCount;
-  const usagePercent = Math.min((used / planLimit) * 100, 100);
+  const usagePercent = Math.min((used / effectiveLimit) * 100, 100);
 
   // Open a prebuilt template in the canvas
   const openTemplate = useCallback((templateId: string) => {
@@ -330,7 +333,12 @@ export default function DashboardPage() {
                 </span>
                 <div style={{ width: 1, height: 14, background: "rgba(255,255,255,0.08)" }} />
                 <span style={{ fontSize: 11, color: "#556070" }}>
-                  {used}/{planLimit} {t('dash.workflowsUsed')}
+                  {used}/{effectiveLimit} {t('dash.workflowsUsed')}
+                  {bonus > 0 && (
+                    <span style={{ color: "#10B981", marginLeft: 4, fontSize: 10 }}>
+                      (+{bonus})
+                    </span>
+                  )}
                 </span>
                 {/* Mini progress ring */}
                 <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>

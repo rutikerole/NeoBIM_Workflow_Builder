@@ -10,6 +10,7 @@ import {
   User, Key, Shield, Save, Loader2, AlertCircle,
   CheckCircle2, Info, Crown, Star, Lock, Unlock,
   Fingerprint, ScanLine, Cpu, Activity, Camera, Trash2, Pencil,
+  Gift, Users, Zap, Copy, Check,
 } from "lucide-react";
 import { PageBackground } from "@/components/dashboard/PageBackground";
 import { useLocale } from "@/hooks/useLocale";
@@ -541,6 +542,220 @@ function ProfileSection({
               )}
               {t('settings.saveProfile')}
             </motion.button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ---- Referral Details Section ----
+function ReferralDetailsSection() {
+  const { t } = useLocale();
+  const [stats, setStats] = useState<{
+    code: string | null;
+    stats: { totalReferred: number; converted: number; bonusEarned: number; bonusRemaining: number };
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/referral")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setStats(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const referralLink = stats?.code
+    ? `https://trybuildflow.in/register?ref=${stats.code}`
+    : null;
+
+  const copyLink = async () => {
+    if (!referralLink) return;
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* */ }
+  };
+
+  const generateCode = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/referral", { method: "POST" });
+      if (res.ok) {
+        const d = await res.json();
+        setStats(prev => prev ? { ...prev, code: d.code } : { code: d.code, stats: { totalReferred: 0, converted: 0, bonusEarned: 0, bonusRemaining: 0 } });
+      }
+    } catch { /* */ }
+    setGenerating(false);
+  };
+
+  const s = stats?.stats ?? { totalReferred: 0, converted: 0, bonusEarned: 0, bonusRemaining: 0 };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.15 }}
+    >
+      <div
+        className="dp-glass-card"
+        data-accent="green"
+        style={{ padding: 0, overflow: "hidden", marginTop: 20 }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: "14px 24px",
+          background: "rgba(16,185,129,0.04)",
+          borderBottom: "1px solid rgba(16,185,129,0.08)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Gift size={14} style={{ color: "#10B981" }} />
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+              textTransform: "uppercase", color: "#10B981",
+              fontFamily: "var(--font-jetbrains), monospace",
+            }}>
+              {t('referral.inviteTitle')}
+            </span>
+          </div>
+          {s.bonusRemaining > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "3px 10px", borderRadius: 20,
+              background: "rgba(16,185,129,0.1)",
+              border: "1px solid rgba(16,185,129,0.2)",
+            }}>
+              <Zap size={10} style={{ color: "#10B981" }} />
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: "#10B981",
+                fontFamily: "var(--font-jetbrains), monospace",
+              }}>
+                {s.bonusRemaining} BONUS
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: "24px" }}>
+          {loading ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
+              <Loader2 size={16} style={{ color: "#10B981", animation: "spin 1s linear infinite" }} />
+            </div>
+          ) : (
+            <>
+              {/* Stats grid */}
+              <div style={{
+                display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12,
+                marginBottom: 20,
+              }}>
+                {[
+                  { label: "Referred", value: s.totalReferred, icon: <Users size={14} />, color: "#4F8AFF" },
+                  { label: "Earned", value: s.bonusEarned, icon: <Gift size={14} />, color: "#8B5CF6" },
+                  { label: "Remaining", value: s.bonusRemaining, icon: <Zap size={14} />, color: "#10B981" },
+                ].map((stat) => (
+                  <div key={stat.label} style={{
+                    padding: "14px 16px", borderRadius: 12,
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    textAlign: "center",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 6, color: stat.color, opacity: 0.7 }}>
+                      {stat.icon}
+                    </div>
+                    <div style={{
+                      fontSize: 22, fontWeight: 800, color: "#F0F0F5",
+                      fontFamily: "var(--font-jetbrains), monospace",
+                      lineHeight: 1,
+                    }}>
+                      {stat.value}
+                    </div>
+                    <div style={{
+                      fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)",
+                      letterSpacing: "0.1em", textTransform: "uppercase",
+                      fontFamily: "var(--font-jetbrains), monospace",
+                      marginTop: 4,
+                    }}>
+                      {stat.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* How it works */}
+              <div style={{
+                padding: "12px 16px", borderRadius: 10,
+                background: "rgba(16,185,129,0.04)",
+                border: "1px solid rgba(16,185,129,0.08)",
+                marginBottom: 16,
+              }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: "#10B981",
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  fontFamily: "var(--font-jetbrains), monospace",
+                  marginBottom: 8,
+                }}>
+                  How it works
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
+                  Share your link. When someone signs up, you both get <span style={{ color: "#10B981", fontWeight: 600 }}>+1 bonus execution</span>. Bonuses stack on top of your plan limit.
+                </div>
+              </div>
+
+              {/* Referral link */}
+              {referralLink ? (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "10px 14px", borderRadius: 10,
+                  border: `1px solid ${copied ? "rgba(16,185,129,0.25)" : "rgba(255,255,255,0.06)"}`,
+                  background: copied ? "rgba(16,185,129,0.05)" : "rgba(255,255,255,0.02)",
+                  transition: "all 0.2s",
+                }}>
+                  <span style={{
+                    flex: 1, fontSize: 12, color: "rgba(255,255,255,0.5)",
+                    fontFamily: "var(--font-jetbrains), monospace",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {referralLink}
+                  </span>
+                  <button
+                    onClick={copyLink}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "6px 14px", borderRadius: 8,
+                      background: copied ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.1)",
+                      border: "1px solid rgba(16,185,129,0.15)",
+                      color: "#10B981", fontSize: 11, fontWeight: 600,
+                      cursor: "pointer", transition: "all 0.2s",
+                      fontFamily: "var(--font-jetbrains), monospace",
+                    }}
+                  >
+                    {copied ? <Check size={12} /> : <Copy size={12} />}
+                    {copied ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={generateCode}
+                  disabled={generating}
+                  style={{
+                    width: "100%", padding: "10px 16px", borderRadius: 10,
+                    background: "rgba(16,185,129,0.08)",
+                    border: "1px solid rgba(16,185,129,0.15)",
+                    color: "#10B981", fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", transition: "all 0.2s",
+                    fontFamily: "var(--font-jetbrains), monospace",
+                    opacity: generating ? 0.5 : 1,
+                  }}
+                >
+                  {generating ? "Generating..." : "Generate Referral Link"}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -1371,6 +1586,7 @@ export default function SettingsPage() {
                 {activeTab === "profile" && (
                   <motion.div key="profile" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
                     <ProfileSection user={user} initials={initials} saveStatus={saveStatus} onSaveStatusChange={setSaveStatus} onSessionUpdate={updateSession} />
+                    <ReferralDetailsSection />
                   </motion.div>
                 )}
                 {activeTab === "api-keys" && (

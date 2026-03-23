@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { checkEndpointRateLimit } from "@/lib/rate-limit";
+import { checkEndpointRateLimit, getReferralBonus } from "@/lib/rate-limit";
 import {
   levelFromXp,
   MISSIONS,
@@ -27,7 +27,7 @@ export async function GET() {
     const userId = session.user.id;
 
     // Parallel queries
-    const [user, achievements, workflowCount, executionCount, recentWorkflows, flashCompletion] =
+    const [user, achievements, workflowCount, executionCount, recentWorkflows, flashCompletion, referralBonus] =
       await Promise.all([
         prisma.user.findUnique({
           where: { id: userId },
@@ -54,6 +54,7 @@ export async function GET() {
         prisma.flashEventCompletion.findFirst({
           where: { userId, eventKey: todaysFlashEvent().eventKey },
         }),
+        getReferralBonus(userId),
       ]);
 
     const xp = user?.xp ?? 0;
@@ -105,6 +106,7 @@ export async function GET() {
       xpForNext,
       workflowCount,
       executionCount,
+      referralBonus,
       missions,
       blueprints,
       achievements: achievements.map((a) => ({ action: a.action, xp: a.xpAwarded, date: a.createdAt.toISOString() })),
