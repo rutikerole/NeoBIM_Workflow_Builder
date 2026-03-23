@@ -9,13 +9,18 @@ import {
   RefreshCw, Calendar,
 } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+import type { TranslationKey } from "@/lib/i18n";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+type ComparePeriod = "yesterday" | "lastWeek" | "lastMonth";
+
 interface DeltaPeriod {
   today: number;
   yesterday: number;
   thisWeek: number;
   lastWeek: number;
+  thisMonth: number;
+  lastMonth: number;
 }
 
 interface StatsResponse {
@@ -58,118 +63,67 @@ const monoFont = "var(--font-jetbrains), monospace";
 const headingFont = "var(--font-dm-sans), sans-serif";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function getDelta(current: number, previous: number): number {
-  return current - previous;
-}
-
 function getPctChange(current: number, previous: number): number | null {
   if (previous === 0 && current === 0) return 0;
   if (previous === 0) return 100;
   return Math.round(((current - previous) / previous) * 100);
 }
 
-// ─── Delta Row Component ─────────────────────────────────────────────────────
-function DeltaMetricRow({
-  icon,
-  label,
-  total,
-  todayVal,
-  yesterdayVal,
-  thisWeekVal,
-  lastWeekVal,
-  accentColor,
-  delay,
+function getPeriodValues(dp: DeltaPeriod, period: ComparePeriod): { current: number; previous: number } {
+  switch (period) {
+    case "yesterday":  return { current: dp.today,    previous: dp.yesterday };
+    case "lastWeek":   return { current: dp.thisWeek, previous: dp.lastWeek };
+    case "lastMonth":  return { current: dp.thisMonth, previous: dp.lastMonth };
+  }
+}
+
+// ─── Period Selector ─────────────────────────────────────────────────────────
+function PeriodSelector({
+  value,
+  onChange,
+  t,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  total: number;
-  todayVal: number;
-  yesterdayVal: number;
-  thisWeekVal: number;
-  lastWeekVal: number;
-  accentColor: string;
-  delay: number;
+  value: ComparePeriod;
+  onChange: (v: ComparePeriod) => void;
+  t: (key: TranslationKey) => string;
 }) {
-  const dayDelta = getDelta(todayVal, yesterdayVal);
-  const weekDelta = getDelta(thisWeekVal, lastWeekVal);
-  const dayPct = getPctChange(todayVal, yesterdayVal);
-  const weekPct = getPctChange(thisWeekVal, lastWeekVal);
+  const options: { key: ComparePeriod; labelKey: TranslationKey }[] = [
+    { key: "yesterday", labelKey: "admin.growth.compareYesterday" },
+    { key: "lastWeek",  labelKey: "admin.growth.compareLastWeek" },
+    { key: "lastMonth", labelKey: "admin.growth.compareLastMonth" },
+  ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -16 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay, duration: 0.45, ease: smoothEase }}
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(180px, 1.2fr) repeat(6, minmax(90px, 1fr))",
-        gap: 0,
-        alignItems: "center",
-        padding: "14px 20px",
-        minWidth: 700,
-        borderBottom: "1px solid rgba(255,255,255,0.03)",
-        transition: "background 0.15s ease",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.015)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-    >
-      {/* Metric name */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: `${accentColor}12`,
-          border: `1px solid ${accentColor}20`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: accentColor, flexShrink: 0,
-        }}>
-          {icon}
-        </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary, lineHeight: 1.3 }}>{label}</div>
-          <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: monoFont }}>
-            {total.toLocaleString()} total
-          </div>
-        </div>
-      </div>
-
-      {/* Today */}
-      <div style={{ textAlign: "center" }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color: COLORS.textPrimary, fontFamily: monoFont }}>
-          {todayVal.toLocaleString()}
-        </span>
-      </div>
-
-      {/* Yesterday */}
-      <div style={{ textAlign: "center" }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color: COLORS.textSecondary, fontFamily: monoFont }}>
-          {yesterdayVal.toLocaleString()}
-        </span>
-      </div>
-
-      {/* Day Delta */}
-      <div style={{ textAlign: "center" }}>
-        <DeltaChip value={dayDelta} pct={dayPct} />
-      </div>
-
-      {/* This Week */}
-      <div style={{ textAlign: "center" }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color: COLORS.textPrimary, fontFamily: monoFont }}>
-          {thisWeekVal.toLocaleString()}
-        </span>
-      </div>
-
-      {/* Last Week */}
-      <div style={{ textAlign: "center" }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color: COLORS.textSecondary, fontFamily: monoFont }}>
-          {lastWeekVal.toLocaleString()}
-        </span>
-      </div>
-
-      {/* Week Delta */}
-      <div style={{ textAlign: "center" }}>
-        <DeltaChip value={weekDelta} pct={weekPct} />
-      </div>
-    </motion.div>
+    <div style={{
+      display: "inline-flex", borderRadius: 10, overflow: "hidden",
+      border: `1px solid ${COLORS.cardBorder}`,
+      background: "rgba(255,255,255,0.02)",
+    }}>
+      {options.map((opt) => {
+        const isActive = value === opt.key;
+        return (
+          <button
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            style={{
+              padding: "7px 14px",
+              fontSize: 11,
+              fontWeight: isActive ? 700 : 500,
+              fontFamily: monoFont,
+              letterSpacing: "0.02em",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              background: isActive ? `${COLORS.cyan}15` : "transparent",
+              color: isActive ? COLORS.cyan : COLORS.textMuted,
+              borderRight: `1px solid ${COLORS.cardBorder}`,
+            }}
+          >
+            {t(opt.labelKey)}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -189,16 +143,11 @@ function DeltaChip({ value, pct }: { value: number; pct: number | null }) {
       background: bg, border: `1px solid ${borderColor}`,
     }}>
       <Icon size={12} style={{ color, flexShrink: 0 }} />
-      <span style={{
-        fontSize: 12, fontWeight: 700, fontFamily: monoFont, color,
-      }}>
+      <span style={{ fontSize: 12, fontWeight: 700, fontFamily: monoFont, color }}>
         {isPositive ? "+" : ""}{value}
       </span>
       {pct !== null && pct !== 0 && (
-        <span style={{
-          fontSize: 9, fontWeight: 600, fontFamily: monoFont, color,
-          opacity: 0.7,
-        }}>
+        <span style={{ fontSize: 9, fontWeight: 600, fontFamily: monoFont, color, opacity: 0.7 }}>
           ({isPositive ? "+" : ""}{pct}%)
         </span>
       )}
@@ -206,25 +155,20 @@ function DeltaChip({ value, pct }: { value: number; pct: number | null }) {
   );
 }
 
-// ─── Summary Card ────────────────────────────────────────────────────────────
+// ─── Summary Card (dynamic) ─────────────────────────────────────────────────
 function SummaryCard({
-  icon,
-  label,
-  currentVal,
-  previousVal,
-  periodLabel,
-  accentColor,
-  delay,
+  icon, label, dp, period, periodLabel, accentColor, delay,
 }: {
   icon: React.ReactNode;
   label: string;
-  currentVal: number;
-  previousVal: number;
+  dp: DeltaPeriod;
+  period: ComparePeriod;
   periodLabel: string;
   accentColor: string;
   delay: number;
 }) {
-  const delta = getDelta(currentVal, previousVal);
+  const { current: currentVal, previous: previousVal } = getPeriodValues(dp, period);
+  const delta = currentVal - previousVal;
   const pct = getPctChange(currentVal, previousVal);
   const isPositive = delta > 0;
   const isNeutral = delta === 0;
@@ -249,7 +193,6 @@ function SummaryCard({
         transform: hovered ? "translateY(-2px)" : "translateY(0)",
       }}
     >
-      {/* Top accent */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, height: 2,
         background: `linear-gradient(90deg, ${accentColor}, ${accentColor}44, transparent)`,
@@ -265,7 +208,6 @@ function SummaryCard({
         </span>
       </div>
 
-      {/* Current vs Previous */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
         <span style={{ fontSize: 28, fontWeight: 700, color: COLORS.textPrimary, fontFamily: monoFont, letterSpacing: "-0.03em" }}>
           {currentVal.toLocaleString()}
@@ -275,7 +217,6 @@ function SummaryCard({
         </span>
       </div>
 
-      {/* Delta row */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 3,
@@ -298,7 +239,88 @@ function SummaryCard({
   );
 }
 
-// ─── Sparkline (pure CSS) ────────────────────────────────────────────────────
+// ─── Comparison Row (dynamic) ────────────────────────────────────────────────
+function ComparisonRow({
+  icon, label, total, dp, period, currentLabel, previousLabel,
+  accentColor, delay,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  total: number;
+  dp: DeltaPeriod;
+  period: ComparePeriod;
+  currentLabel: string;
+  previousLabel: string;
+  accentColor: string;
+  delay: number;
+}) {
+  const { current: currentVal, previous: previousVal } = getPeriodValues(dp, period);
+  const delta = currentVal - previousVal;
+  const pct = getPctChange(currentVal, previousVal);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay, duration: 0.45, ease: smoothEase }}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(170px, 1.5fr) repeat(3, minmax(100px, 1fr))",
+        gap: 0, alignItems: "center",
+        padding: "14px 20px", minWidth: 560,
+        borderBottom: "1px solid rgba(255,255,255,0.03)",
+        transition: "background 0.15s ease",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.015)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+    >
+      {/* Metric name */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: `${accentColor}12`, border: `1px solid ${accentColor}20`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: accentColor, flexShrink: 0,
+        }}>
+          {icon}
+        </div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary, lineHeight: 1.3 }}>{label}</div>
+          <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: monoFont }}>
+            {total.toLocaleString()} total
+          </div>
+        </div>
+      </div>
+
+      {/* Current period */}
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.textPrimary, fontFamily: monoFont }}>
+          {currentVal.toLocaleString()}
+        </div>
+        <div style={{ fontSize: 9, color: COLORS.textMuted, fontFamily: monoFont, marginTop: 2 }}>
+          {currentLabel}
+        </div>
+      </div>
+
+      {/* Previous period */}
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.textSecondary, fontFamily: monoFont }}>
+          {previousVal.toLocaleString()}
+        </div>
+        <div style={{ fontSize: 9, color: COLORS.textMuted, fontFamily: monoFont, marginTop: 2 }}>
+          {previousLabel}
+        </div>
+      </div>
+
+      {/* Delta */}
+      <div style={{ textAlign: "center" }}>
+        <DeltaChip value={delta} pct={pct} />
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Sparkline ───────────────────────────────────────────────────────────────
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null;
   const max = Math.max(...data, 1);
@@ -308,19 +330,8 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block" }}>
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <polyline
-        points={`0,${height} ${points} ${width},${height}`}
-        fill={`${color}15`}
-        stroke="none"
-      />
+      <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={`0,${height} ${points} ${width},${height}`} fill={`${color}15`} stroke="none" />
     </svg>
   );
 }
@@ -370,6 +381,7 @@ export default function AdminGrowthPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState("");
+  const [period, setPeriod] = useState<ComparePeriod>("yesterday");
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const fetchStats = useCallback(async (isPolling = false) => {
@@ -416,7 +428,28 @@ export default function AdminGrowthPage() {
 
   const d = stats.deltas;
 
-  // Last 7 days signups for sparkline
+  // Period labels
+  const periodLabelMap: Record<ComparePeriod, string> = {
+    yesterday: t("admin.growth.vsYesterday"),
+    lastWeek:  t("admin.growth.vsLastWeek"),
+    lastMonth: t("admin.growth.vsLastMonth"),
+  };
+  const currentLabelMap: Record<ComparePeriod, string> = {
+    yesterday: t("admin.growth.today"),
+    lastWeek:  t("admin.growth.thisWeek"),
+    lastMonth: t("admin.growth.thisMonth"),
+  };
+  const previousLabelMap: Record<ComparePeriod, string> = {
+    yesterday: t("admin.growth.yesterday"),
+    lastWeek:  t("admin.growth.lastWeek"),
+    lastMonth: t("admin.growth.lastMonth"),
+  };
+
+  const periodLabel = periodLabelMap[period];
+  const currentLabel = currentLabelMap[period];
+  const previousLabel = previousLabelMap[period];
+
+  // Sparkline data
   const last7Signups = stats.users.dailySignups.slice(-7).map(s => s.count);
   const last7Execs = stats.executions.dailyExecutions.slice(-7).map(e => e.total);
 
@@ -441,7 +474,10 @@ export default function AdminGrowthPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          {/* Period selector */}
+          <PeriodSelector value={period} onChange={setPeriod} t={t} />
+
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Calendar size={12} style={{ color: COLORS.textMuted }} />
             <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: monoFont }}>
@@ -468,186 +504,92 @@ export default function AdminGrowthPage() {
         </div>
       </motion.div>
 
-      {/* ── Daily Summary Cards ──────────────────────────────────────── */}
+      {/* ── Summary Cards (dynamic based on selected period) ─────────── */}
       <div className="growth-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
         <SummaryCard
           icon={<Users size={15} />}
-          label={t("admin.growth.usersDaily")}
-          currentVal={d.users.today}
-          previousVal={d.users.yesterday}
-          periodLabel={t("admin.growth.vsYesterday")}
+          label={t("admin.growth.newUsers")}
+          dp={d.users}
+          period={period}
+          periodLabel={periodLabel}
           accentColor={COLORS.cyan}
           delay={0.05}
         />
         <SummaryCard
           icon={<Workflow size={15} />}
-          label={t("admin.growth.workflowsDaily")}
-          currentVal={d.workflows.today}
-          previousVal={d.workflows.yesterday}
-          periodLabel={t("admin.growth.vsYesterday")}
+          label={t("admin.growth.newWorkflows")}
+          dp={d.workflows}
+          period={period}
+          periodLabel={periodLabel}
           accentColor={COLORS.amber}
           delay={0.1}
         />
         <SummaryCard
           icon={<Zap size={15} />}
-          label={t("admin.growth.execsDaily")}
-          currentVal={d.executions.today}
-          previousVal={d.executions.yesterday}
-          periodLabel={t("admin.growth.vsYesterday")}
+          label={t("admin.growth.executions")}
+          dp={d.executions}
+          period={period}
+          periodLabel={periodLabel}
           accentColor={COLORS.copper}
           delay={0.15}
         />
         <SummaryCard
           icon={<MessageSquare size={15} />}
-          label={t("admin.growth.feedbackDaily")}
-          currentVal={d.feedback.today}
-          previousVal={d.feedback.yesterday}
-          periodLabel={t("admin.growth.vsYesterday")}
+          label={t("admin.growth.feedbackItems")}
+          dp={d.feedback}
+          period={period}
+          periodLabel={periodLabel}
           accentColor={COLORS.blue}
           delay={0.2}
         />
       </div>
 
-      {/* ── Weekly Summary Cards ─────────────────────────────────────── */}
-      <div className="growth-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
-        <SummaryCard
-          icon={<Users size={15} />}
-          label={t("admin.growth.usersWeekly")}
-          currentVal={d.users.thisWeek}
-          previousVal={d.users.lastWeek}
-          periodLabel={t("admin.growth.vsLastWeek")}
-          accentColor={COLORS.cyan}
-          delay={0.25}
-        />
-        <SummaryCard
-          icon={<Workflow size={15} />}
-          label={t("admin.growth.workflowsWeekly")}
-          currentVal={d.workflows.thisWeek}
-          previousVal={d.workflows.lastWeek}
-          periodLabel={t("admin.growth.vsLastWeek")}
-          accentColor={COLORS.amber}
-          delay={0.3}
-        />
-        <SummaryCard
-          icon={<Zap size={15} />}
-          label={t("admin.growth.execsWeekly")}
-          currentVal={d.executions.thisWeek}
-          previousVal={d.executions.lastWeek}
-          periodLabel={t("admin.growth.vsLastWeek")}
-          accentColor={COLORS.copper}
-          delay={0.35}
-        />
-        <SummaryCard
-          icon={<MessageSquare size={15} />}
-          label={t("admin.growth.feedbackWeekly")}
-          currentVal={d.feedback.thisWeek}
-          previousVal={d.feedback.lastWeek}
-          periodLabel={t("admin.growth.vsLastWeek")}
-          accentColor={COLORS.blue}
-          delay={0.4}
-        />
-      </div>
-
-      {/* ── Comparison Table ─────────────────────────────────────────── */}
+      {/* ── Comparison Table (dynamic) ───────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45, duration: 0.5, ease: smoothEase }}
+        transition={{ delay: 0.25, duration: 0.5, ease: smoothEase }}
         style={{
           background: COLORS.cardBg, backdropFilter: COLORS.cardBlur,
           border: `1px solid ${COLORS.cardBorder}`, borderRadius: 14,
           boxShadow: CARD_SHADOW, overflow: "hidden", marginBottom: 28,
         }}
       >
-        {/* Table header */}
         <div style={{ padding: "18px 20px 0", position: "sticky", left: 0 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: COLORS.textPrimary, margin: 0, fontFamily: headingFont }}>
             {t("admin.growth.comparisonTable")}
           </h2>
           <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "4px 0 0", fontFamily: monoFont }}>
-            {t("admin.growth.comparisonSub")}
+            {currentLabel} {periodLabel}
           </p>
         </div>
 
-        {/* Scrollable table area for mobile */}
         <div style={{ overflowX: "auto", minWidth: 0 }}>
+          {/* Column headers */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "minmax(170px, 1.5fr) repeat(3, minmax(100px, 1fr))",
+            gap: 0, padding: "14px 20px 10px", minWidth: 560,
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}>
+            <div style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase" }}>
+              {t("admin.growth.metric")}
+            </div>
+            <div style={{ fontSize: 9, color: COLORS.cyan, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
+              {currentLabel}
+            </div>
+            <div style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
+              {previousLabel}
+            </div>
+            <div style={{ fontSize: 9, color: COLORS.amber, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
+              {t("admin.growth.delta")}
+            </div>
+          </div>
 
-        {/* Column headers */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "minmax(180px, 1.2fr) repeat(6, minmax(90px, 1fr))",
-          gap: 0, padding: "14px 20px 10px", minWidth: 700,
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}>
-          <div style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase" }}>
-            {t("admin.growth.metric")}
-          </div>
-          <div style={{ fontSize: 9, color: COLORS.cyan, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
-            {t("admin.growth.today")}
-          </div>
-          <div style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
-            {t("admin.growth.yesterday")}
-          </div>
-          <div style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
-            {t("admin.growth.dayDelta")}
-          </div>
-          <div style={{ fontSize: 9, color: COLORS.amber, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
-            {t("admin.growth.thisWeek")}
-          </div>
-          <div style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
-            {t("admin.growth.lastWeek")}
-          </div>
-          <div style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: 600, fontFamily: monoFont, letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center" }}>
-            {t("admin.growth.weekDelta")}
-          </div>
+          <ComparisonRow icon={<Users size={14} />} label={t("admin.growth.newUsers")} total={stats.users.total} dp={d.users} period={period} currentLabel={currentLabel} previousLabel={previousLabel} accentColor={COLORS.cyan} delay={0.3} />
+          <ComparisonRow icon={<Workflow size={14} />} label={t("admin.growth.newWorkflows")} total={stats.workflows.total} dp={d.workflows} period={period} currentLabel={currentLabel} previousLabel={previousLabel} accentColor={COLORS.amber} delay={0.35} />
+          <ComparisonRow icon={<Zap size={14} />} label={t("admin.growth.executions")} total={stats.executions.total} dp={d.executions} period={period} currentLabel={currentLabel} previousLabel={previousLabel} accentColor={COLORS.copper} delay={0.4} />
+          <ComparisonRow icon={<MessageSquare size={14} />} label={t("admin.growth.feedbackItems")} total={stats.feedback.total} dp={d.feedback} period={period} currentLabel={currentLabel} previousLabel={previousLabel} accentColor={COLORS.blue} delay={0.45} />
         </div>
-
-        {/* Metric rows */}
-        <DeltaMetricRow
-          icon={<Users size={14} />}
-          label={t("admin.growth.newUsers")}
-          total={stats.users.total}
-          todayVal={d.users.today}
-          yesterdayVal={d.users.yesterday}
-          thisWeekVal={d.users.thisWeek}
-          lastWeekVal={d.users.lastWeek}
-          accentColor={COLORS.cyan}
-          delay={0.5}
-        />
-        <DeltaMetricRow
-          icon={<Workflow size={14} />}
-          label={t("admin.growth.newWorkflows")}
-          total={stats.workflows.total}
-          todayVal={d.workflows.today}
-          yesterdayVal={d.workflows.yesterday}
-          thisWeekVal={d.workflows.thisWeek}
-          lastWeekVal={d.workflows.lastWeek}
-          accentColor={COLORS.amber}
-          delay={0.55}
-        />
-        <DeltaMetricRow
-          icon={<Zap size={14} />}
-          label={t("admin.growth.executions")}
-          total={stats.executions.total}
-          todayVal={d.executions.today}
-          yesterdayVal={d.executions.yesterday}
-          thisWeekVal={d.executions.thisWeek}
-          lastWeekVal={d.executions.lastWeek}
-          accentColor={COLORS.copper}
-          delay={0.6}
-        />
-        <DeltaMetricRow
-          icon={<MessageSquare size={14} />}
-          label={t("admin.growth.feedbackItems")}
-          total={stats.feedback.total}
-          todayVal={d.feedback.today}
-          yesterdayVal={d.feedback.yesterday}
-          thisWeekVal={d.feedback.thisWeek}
-          lastWeekVal={d.feedback.lastWeek}
-          accentColor={COLORS.blue}
-          delay={0.65}
-        />
-
-        </div>{/* end scrollable */}
       </motion.div>
 
       {/* ── Trend Sparklines ─────────────────────────────────────────── */}
@@ -655,7 +597,7 @@ export default function AdminGrowthPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.45, ease: smoothEase }}
+          transition={{ delay: 0.5, duration: 0.45, ease: smoothEase }}
           style={{
             background: COLORS.cardBg, backdropFilter: COLORS.cardBlur,
             border: `1px solid ${COLORS.cardBorder}`, borderRadius: 14,
@@ -688,7 +630,7 @@ export default function AdminGrowthPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.75, duration: 0.45, ease: smoothEase }}
+          transition={{ delay: 0.55, duration: 0.45, ease: smoothEase }}
           style={{
             background: COLORS.cardBg, backdropFilter: COLORS.cardBlur,
             border: `1px solid ${COLORS.cardBorder}`, borderRadius: 14,
