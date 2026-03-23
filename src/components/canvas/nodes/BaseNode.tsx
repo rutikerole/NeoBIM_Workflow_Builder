@@ -723,7 +723,7 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
         style={{
           ["--cat-color" as string]: color,
           ["--cat-rgb" as string]: rgb,
-          width: isInput ? 320 : 220,
+          width: isInput ? 320 : 260,
           background: "rgba(10, 12, 14, 0.75)",
           border: `1px solid ${outerBorderColor}`,
           borderRadius: 4,
@@ -897,12 +897,13 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
         <div style={{ padding: "16px 18px 14px 18px", position: "relative", zIndex: 1 }}>
 
           {/* Row 1: Icon + name + status + INPUT badge */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 2 }}>
             {/* Simple icon — no container, Atelier style */}
             <div style={{
               color,
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
+              marginTop: 2,
               filter: `drop-shadow(0 0 6px rgba(${rgb}, 0.3))`,
               animation: category === "transform" ? "spin-slow 8s linear infinite" : "none",
             }}>
@@ -911,17 +912,19 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
 
             {/* Node name — Playfair Display italic (Atelier) */}
             <span style={{
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: 400,
               fontStyle: "italic",
               color,
               letterSpacing: "0.05em",
               flex: 1,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical" as const,
               overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              lineHeight: 1.3,
+              lineHeight: 1.35,
               fontFamily: "'Playfair Display', serif",
+              wordBreak: "break-word" as const,
             }}>
               {data.label}
             </span>
@@ -1025,9 +1028,11 @@ export const BaseNode = memo(function BaseNode({ id, data, selected }: BaseNodeP
               color: `rgba(${rgb}, 0.65)`,
               marginTop: 4,
               lineHeight: 1.4,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical" as const,
               overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              wordBreak: "break-word" as const,
               textTransform: "uppercase" as const,
               letterSpacing: "0.1em",
               fontFamily: "'Space Mono', monospace",

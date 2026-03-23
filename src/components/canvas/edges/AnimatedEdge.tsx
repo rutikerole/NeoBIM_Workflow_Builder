@@ -45,8 +45,8 @@ export const AnimatedEdge = memo(function AnimatedEdge({
 
   // Visual states
   const active     = selected || isHovered;
-  const strokeW    = isFlowing ? 2 : active ? 1.5 : 1;
-  const strokeOp   = isFlowing ? 1 : active ? 0.6 : 0.3;
+  const strokeW    = isFlowing ? 3 : active ? 2.5 : 1.8;
+  const strokeOp   = isFlowing ? 1 : active ? 0.85 : 0.55;
 
   return (
     <>
@@ -106,7 +106,7 @@ export const AnimatedEdge = memo(function AnimatedEdge({
           <path
             d="M0,0 L12,4 L0,8 L3,4 Z"
             fill={targetColor}
-            opacity={active ? 0.85 : 0.6}
+            opacity={active ? 0.9 : 0.75}
           />
         </marker>
       </defs>
@@ -127,8 +127,8 @@ export const AnimatedEdge = memo(function AnimatedEdge({
         d={edgePath}
         fill="none"
         stroke={targetColor}
-        strokeWidth={strokeW + (active ? 5 : 3)}
-        strokeOpacity={active ? 0.1 : 0.03}
+        strokeWidth={strokeW + (active ? 6 : 4)}
+        strokeOpacity={active ? 0.18 : 0.08}
         strokeLinecap="round"
         style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}
       />
@@ -156,8 +156,8 @@ export const AnimatedEdge = memo(function AnimatedEdge({
             d={edgePath}
             fill="none"
             stroke={sourceColor}
-            strokeWidth={0.8}
-            strokeOpacity={active ? 0.35 : 0.15}
+            strokeWidth={1.2}
+            strokeOpacity={active ? 0.5 : 0.3}
             strokeDasharray="20 10"
             strokeLinecap="round"
             style={{
@@ -166,13 +166,13 @@ export const AnimatedEdge = memo(function AnimatedEdge({
               animation: "atelier-flow 3s linear infinite",
             }}
           />
-          {/* Subtle ghost line — barely visible */}
+          {/* Subtle ghost line */}
           <path
             d={edgePath}
             fill="none"
             stroke={targetColor}
-            strokeWidth={0.3}
-            strokeOpacity={active ? 0.15 : 0.06}
+            strokeWidth={0.6}
+            strokeOpacity={active ? 0.25 : 0.12}
             strokeLinecap="round"
             style={{ pointerEvents: "none" }}
           />

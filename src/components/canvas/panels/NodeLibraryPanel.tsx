@@ -106,12 +106,16 @@ function PaletteItem({ node, onSelect, onDragStart, isHighlighted, searchQuery }
       {/* Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          display: "flex", alignItems: "center", gap: 5,
+          display: "flex", alignItems: "flex-start", gap: 5,
         }}>
           <span style={{
             fontSize: 13, fontWeight: 500, color: "#e8e8f0",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            flex: 1, lineHeight: 1.2,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as const,
+            overflow: "hidden",
+            wordBreak: "break-word" as const,
+            flex: 1, lineHeight: 1.25,
             fontFamily: "'Playfair Display', serif", fontStyle: "italic",
           }}>
             {highlightText(node.name)}
@@ -135,9 +139,13 @@ function PaletteItem({ node, onSelect, onDragStart, isHighlighted, searchQuery }
         <div style={{
           fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 1,
           fontFamily: "'Space Mono', monospace",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical" as const,
+          overflow: "hidden",
+          wordBreak: "break-word" as const,
         }}>
-          {node.description.slice(0, 60)}{node.description.length > 60 ? "..." : ""}
+          {node.description}
         </div>
       </div>
 
