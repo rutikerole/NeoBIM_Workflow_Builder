@@ -341,21 +341,21 @@ export async function cleanupOldFiles(): Promise<CleanupResult> {
         }),
       );
 
-      for (const obj of listResult.Contents ?? []) {
-        if (!obj.Key || !obj.LastModified) continue;
+      const toDelete = (listResult.Contents ?? []).filter(
+        (obj) => obj.Key && obj.LastModified && obj.LastModified < cutoff,
+      );
 
-        if (obj.LastModified < cutoff) {
-          try {
-            await client!.send(
-              new DeleteObjectCommand({
-                Bucket: BUCKET_NAME,
-                Key: obj.Key,
-              }),
-            );
-            deleted++;
-          } catch {
-            errs++;
-          }
+      // Delete in parallel batches of 20 for throughput
+      for (let i = 0; i < toDelete.length; i += 20) {
+        const batch = toDelete.slice(i, i + 20);
+        const results = await Promise.allSettled(
+          batch.map((obj) =>
+            client!.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: obj.Key! })),
+          ),
+        );
+        for (const r of results) {
+          if (r.status === "fulfilled") deleted++;
+          else errs++;
         }
       }
 
@@ -520,12 +520,12 @@ async function cleanupTempChunks(
   uploadId: string,
   totalChunks: number,
 ): Promise<void> {
-  for (let i = 0; i < totalChunks; i++) {
-    const key = `temp/${uploadId}/chunk-${String(i).padStart(4, "0")}`;
-    try {
-      await client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
-    } catch { /* best-effort cleanup */ }
-  }
+  await Promise.allSettled(
+    Array.from({ length: totalChunks }, (_, i) => {
+      const key = `temp/${uploadId}/chunk-${String(i).padStart(4, "0")}`;
+      return client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+    }),
+  );
 }
 
 // ─── Storage Info ──────────────────────────────────────────────────────────

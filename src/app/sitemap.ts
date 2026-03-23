@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 import { PREBUILT_WORKFLOWS } from '@/constants/prebuilt-workflows';
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buildflow.vercel.app';
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://trybuildflow.in';
 
 function slugify(name: string): string {
   return name
