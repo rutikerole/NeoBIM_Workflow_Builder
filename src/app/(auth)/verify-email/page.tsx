@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
@@ -12,6 +13,7 @@ const smoothEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
 function VerifyEmailContent() {
   const { t } = useLocale();
   const searchParams = useSearchParams();
+  const { update: updateSession } = useSession();
   const token = searchParams.get("token") || "";
   const email = searchParams.get("email") || "";
 
@@ -25,25 +27,33 @@ function VerifyEmailContent() {
       return;
     }
 
+    let cancelled = false;
+
     fetch("/api/auth/verify-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, email }),
     })
       .then(async (res) => {
+        if (cancelled) return;
         const data = await res.json();
         if (res.ok) {
           setStatus("success");
+          // Refresh session so emailVerified is immediately reflected
+          await updateSession();
         } else {
           setStatus("error");
           setErrorMsg(data?.error || t('auth.verificationFailed'));
         }
       })
       .catch(() => {
+        if (cancelled) return;
         setStatus("error");
         setErrorMsg(t('auth.networkError'));
       });
-  }, [token, email, t]);
+
+    return () => { cancelled = true; };
+  }, [token, email, t, updateSession]);
 
   if (status === "loading") {
     return (

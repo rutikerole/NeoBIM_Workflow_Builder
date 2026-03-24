@@ -28,6 +28,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Don't store data URLs in JWT (too large for cookies)
         token.picture = user.image?.startsWith("data:") ? "uploaded" : (user.image ?? null);
         token.role = (user as { role?: string }).role;
+        // Google OAuth users have emailVerified set by the adapter automatically
+        token.emailVerified = !!(user as { emailVerified?: Date | null }).emailVerified;
       }
       // Refresh role from DB so subscription changes are reflected without sign-out.
       // Throttled to once per 60s to avoid excessive DB queries. Explicit session
@@ -42,11 +44,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             const dbUser = await prisma.user.findUnique({
               where: { id: token.sub },
               select: trigger === "update"
-                ? { role: true, name: true, image: true }
-                : { role: true },
+                ? { role: true, name: true, image: true, emailVerified: true }
+                : { role: true, emailVerified: true },
             });
             if (dbUser) {
               token.role = dbUser.role;
+              token.emailVerified = !!dbUser.emailVerified;
               if (trigger === "update") {
                 token.name = (dbUser as { name?: string | null }).name;
                 const img = (dbUser as { image?: string | null }).image;
@@ -114,6 +117,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.image,
           role: user.role,
+          emailVerified: user.emailVerified,
         };
       },
     }),

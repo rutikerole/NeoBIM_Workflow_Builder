@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { Autosend } from "autosendjs";
 
 export interface WeeklyDigestData {
   featuredWorkflow: {
@@ -14,8 +14,8 @@ export interface WeeklyDigestData {
   };
 }
 
-const FROM_EMAIL =
-  process.env.RESEND_FROM_EMAIL || "BuildFlow <noreply@buildflow.app>";
+const FROM_EMAIL = process.env.AUTOSEND_FROM_EMAIL || "noreply@buildflow.app";
+const FROM_NAME = process.env.AUTOSEND_FROM_NAME || "BuildFlow";
 
 export function renderWeeklyDigestEmail(data: WeeklyDigestData): string {
   const { featuredWorkflow, tips, featureHighlight } = data;
@@ -218,34 +218,32 @@ export async function sendWeeklyDigest(
   emails: string[],
   data: WeeklyDigestData
 ): Promise<{ sent: number; failed: number }> {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const autosend = new Autosend(process.env.AUTOSEND_API_KEY || "AS_placeholder");
   const html = renderWeeklyDigestEmail(data);
 
   let sent = 0;
   let failed = 0;
 
-  // Resend supports batch sending up to 100 emails at a time
+  // AutoSend supports bulk sending up to 100 recipients at a time
   const batchSize = 100;
   for (let i = 0; i < emails.length; i += batchSize) {
     const batch = emails.slice(i, i + batchSize);
 
     try {
-      await resend.batch.send(
-        batch.map((email) => ({
-          from: FROM_EMAIL,
-          to: email,
-          subject: "This Week in BuildFlow — Workflow of the Week",
-          html,
-        }))
-      );
+      await autosend.emails.bulk({
+        from: { email: FROM_EMAIL, name: FROM_NAME },
+        subject: "This Week in BuildFlow — Workflow of the Week",
+        html,
+        recipients: batch.map((email) => ({ email })),
+      });
       sent += batch.length;
     } catch {
-      // Fall back to individual sends if batch fails
+      // Fall back to individual sends if bulk fails
       for (const email of batch) {
         try {
-          await resend.emails.send({
-            from: FROM_EMAIL,
-            to: email,
+          await autosend.emails.send({
+            from: { email: FROM_EMAIL, name: FROM_NAME },
+            to: { email },
             subject: "This Week in BuildFlow — Workflow of the Week",
             html,
           });

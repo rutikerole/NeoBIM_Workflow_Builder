@@ -122,6 +122,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Block unverified email users from running workflows
+  const emailVerified = (session.user as { emailVerified?: boolean }).emailVerified;
+  if (!emailVerified) {
+    return NextResponse.json(
+      formatErrorResponse({
+        title: "Email not verified",
+        message: "Please verify your email address before running workflows. Check your inbox for a verification link.",
+        code: "AUTH_002",
+      }),
+      { status: 403 }
+    );
+  }
+
   const userId: string = session.user.id;
   const userRole = (session.user as { role?: string }).role as "FREE" | "MINI" | "STARTER" | "PRO" | "TEAM_ADMIN" | "PLATFORM_ADMIN" || "FREE";
   const userEmail = session.user.email || "";
