@@ -13,9 +13,9 @@ export async function POST(req: Request) {
     }
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const rl = await checkEndpointRateLimit(ip, "send-verification", 3, "15 m");
+    const rl = await checkEndpointRateLimit(ip, "send-verification", 10, "15 m");
     if (!rl.success) {
-      return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+      return NextResponse.json({ error: "Too many requests. Please wait a few minutes before trying again." }, { status: 429 });
     }
 
     const user = await prisma.user.findUnique({
@@ -52,6 +52,7 @@ export async function POST(req: Request) {
       || "https://trybuildflow.in";
     const verifyUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(user.email)}`;
 
+    console.info("[send-verification] Sending to:", user.email, "url:", verifyUrl);
     await sendVerificationEmail(user.email, user.name, verifyUrl);
 
     return NextResponse.json({ success: true });
