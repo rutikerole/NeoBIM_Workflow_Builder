@@ -3,7 +3,9 @@
  * Minimal, dark-themed, AEC-branded.
  */
 
-const BASE_URL = process.env.NEXTAUTH_URL || 'https://buildflow.app';
+const BASE_URL = process.env.NEXTAUTH_URL
+  || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
+  || 'https://trybuildflow.in';
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

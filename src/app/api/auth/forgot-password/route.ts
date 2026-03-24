@@ -43,7 +43,9 @@ export async function POST(req: Request) {
         },
       });
 
-      const baseUrl = process.env.NEXTAUTH_URL || "https://buildflow.app";
+      const baseUrl = process.env.NEXTAUTH_URL
+        || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
+        || "https://trybuildflow.in";
       const resetUrl = `${baseUrl}/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
 
       sendPasswordResetEmail(normalizedEmail, user.name, resetUrl).catch((err) => console.error("[forgot-password] Failed to send reset email", err));

@@ -9,19 +9,38 @@ export function EmailVerificationBanner() {
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
   const [dismissed, setDismissed] = useState(false);
+  const [dbVerified, setDbVerified] = useState<boolean | null>(null);
 
-  const emailVerified = (session?.user as { emailVerified?: boolean } | undefined)?.emailVerified;
+  const sessionVerified = (session?.user as { emailVerified?: boolean } | undefined)?.emailVerified;
+  const isVerified = sessionVerified || dbVerified === true;
 
-  // Periodically refresh session to pick up verification (every 30s while banner is visible)
-  const refreshSession = useCallback(() => { update(); }, [update]);
+  // On mount + every 15s, check DB for verification status (more reliable than session)
+  const checkVerification = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/profile");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.emailVerified) {
+          setDbVerified(true);
+          // Also refresh session so other components pick it up
+          await update();
+        }
+      }
+    } catch {
+      // silent
+    }
+  }, [update]);
+
   useEffect(() => {
-    if (emailVerified || !session?.user) return;
-    const interval = setInterval(refreshSession, 30_000);
+    if (isVerified || !session?.user) return;
+    // Check immediately on mount
+    checkVerification();
+    const interval = setInterval(checkVerification, 15_000);
     return () => clearInterval(interval);
-  }, [emailVerified, session?.user, refreshSession]);
+  }, [isVerified, session?.user, checkVerification]);
 
   // Don't show if verified, no session, or dismissed
-  if (!session?.user || emailVerified || dismissed) return null;
+  if (!session?.user || isVerified || dismissed) return null;
 
   const handleResend = () => {
     setError("");
@@ -33,7 +52,7 @@ export function EmailVerificationBanner() {
         } else {
           const data = await res.json().catch(() => ({}));
           if (data.error?.includes("already verified")) {
-            // User verified in another tab — refresh session
+            setDbVerified(true);
             await update();
             return;
           }

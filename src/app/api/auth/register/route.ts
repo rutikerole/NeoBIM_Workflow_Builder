@@ -116,7 +116,9 @@ export async function POST(req: NextRequest) {
         expires: verifyExpires,
       },
     }).then(() => {
-      const baseUrl = process.env.NEXTAUTH_URL || "https://buildflow.app";
+      const baseUrl = process.env.NEXTAUTH_URL
+        || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
+        || "https://trybuildflow.in";
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
       sendVerificationEmail(normalizedEmail, name, verifyUrl).catch(err => console.warn("[register] Failed to send verification email:", err));
     }).catch(err => console.warn("[register] Failed to create verification token:", err));

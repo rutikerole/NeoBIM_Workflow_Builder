@@ -47,7 +47,9 @@ export async function POST(req: Request) {
       },
     });
 
-    const baseUrl = process.env.NEXTAUTH_URL || "https://buildflow.app";
+    const baseUrl = process.env.NEXTAUTH_URL
+      || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
+      || "https://trybuildflow.in";
     const verifyUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(user.email)}`;
 
     await sendVerificationEmail(user.email, user.name, verifyUrl);
