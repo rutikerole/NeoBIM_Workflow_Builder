@@ -23,6 +23,8 @@ export const authConfig = {
         session.user.name = (token.name as string) ?? null;
         session.user.image = (token.picture as string) ?? null;
         (session.user as { role?: string }).role = token.role as string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session.user as any).emailVerified = !!token.emailVerified;
       }
       return session;
     },
@@ -34,6 +36,7 @@ export const authConfig = {
         token.name = user.name;
         token.picture = user.image;
         token.role = (user as { role?: string }).role;
+        token.emailVerified = !!(user as { emailVerified?: Date | null }).emailVerified;
       }
       return token;
     },

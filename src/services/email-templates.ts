@@ -59,21 +59,80 @@ function button(text: string, url: string, color = '#4F8AFF'): string {
 export function welcomeEmail(name: string | null, plan: string): string {
   const displayName = safeName(name);
   return layout(`
-    <h1 style="font-size:24px;font-weight:800;color:#F0F0F5;margin:0 0 8px;">Welcome to BuildFlow! 🏗️</h1>
-    <p style="font-size:14px;color:#9898B0;line-height:1.6;margin:0 0 16px;">
-      Hey ${displayName}, thanks for subscribing to the <strong style="color:#4F8AFF;">${plan}</strong> plan.
-      You now have access to all the tools you need to build powerful AEC workflows.
-    </p>
-    <div style="background:rgba(79,138,255,0.06);border:1px solid rgba(79,138,255,0.12);border-radius:12px;padding:20px;margin:20px 0;">
-      <div style="font-size:12px;font-weight:700;color:#4F8AFF;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Quick Start</div>
-      <ul style="margin:0;padding:0 0 0 18px;color:#C0C0D0;font-size:13px;line-height:2;">
-        <li>Create your first workflow from a template</li>
-        <li>Upload an IFC file and run AI analysis</li>
-        <li>Generate concept renders and 3D models</li>
-        <li>Export reports as PDF, CSV, or IFC</li>
-      </ul>
+    <!-- Hero greeting -->
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="display:inline-block;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#4F8AFF 0%,#6366F1 100%);line-height:64px;text-align:center;font-size:28px;margin-bottom:16px;">
+        &#9889;
+      </div>
+      <h1 style="font-size:26px;font-weight:800;color:#F0F0F5;margin:0 0 6px;letter-spacing:-0.5px;">
+        Welcome aboard, ${displayName}!
+      </h1>
+      <p style="font-size:14px;color:#9898B0;margin:0;">
+        You're now on the <strong style="color:#4F8AFF;">${plan}</strong> plan — let's build something extraordinary.
+      </p>
     </div>
-    ${button('Go to Dashboard', `${BASE_URL}/dashboard`)}
+
+    <!-- Divider -->
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(79,138,255,0.2),transparent);margin:24px 0;"></div>
+
+    <!-- 3-step quickstart -->
+    <div style="font-size:11px;font-weight:700;color:#4F8AFF;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px;">Get started in 3 steps</div>
+
+    <!-- Step 1 -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr>
+        <td width="40" valign="top">
+          <div style="width:32px;height:32px;border-radius:10px;background:rgba(79,138,255,0.1);border:1px solid rgba(79,138,255,0.2);text-align:center;line-height:32px;font-size:14px;font-weight:800;color:#4F8AFF;">1</div>
+        </td>
+        <td valign="top" style="padding-left:8px;">
+          <div style="font-size:14px;font-weight:700;color:#F0F0F5;margin-bottom:2px;">Create a Workflow</div>
+          <div style="font-size:12px;color:#7C7C96;line-height:1.5;">Pick a template or start from scratch — drag &amp; drop nodes onto the canvas.</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Step 2 -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr>
+        <td width="40" valign="top">
+          <div style="width:32px;height:32px;border-radius:10px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);text-align:center;line-height:32px;font-size:14px;font-weight:800;color:#6366F1;">2</div>
+        </td>
+        <td valign="top" style="padding-left:8px;">
+          <div style="font-size:14px;font-weight:700;color:#F0F0F5;margin-bottom:2px;">Upload &amp; Analyze</div>
+          <div style="font-size:12px;color:#7C7C96;line-height:1.5;">Feed in IFC files, floor plans, or images — AI does the heavy lifting.</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Step 3 -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      <tr>
+        <td width="40" valign="top">
+          <div style="width:32px;height:32px;border-radius:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);text-align:center;line-height:32px;font-size:14px;font-weight:800;color:#10B981;">3</div>
+        </td>
+        <td valign="top" style="padding-left:8px;">
+          <div style="font-size:14px;font-weight:700;color:#F0F0F5;margin-bottom:2px;">Export Deliverables</div>
+          <div style="font-size:12px;color:#7C7C96;line-height:1.5;">Generate 3D models, renders, PDF reports, CSV data — all production-ready.</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- CTA Button -->
+    ${button('Open Your Dashboard', `${BASE_URL}/dashboard`)}
+
+    <!-- Plan info badge -->
+    <div style="margin-top:28px;text-align:center;">
+      <div style="display:inline-block;background:rgba(79,138,255,0.06);border:1px solid rgba(79,138,255,0.15);border-radius:20px;padding:8px 20px;">
+        <span style="font-size:11px;color:#7C7C96;">YOUR PLAN</span>
+        <span style="font-size:12px;font-weight:700;color:#4F8AFF;margin-left:8px;">${plan}</span>
+      </div>
+    </div>
+
+    <!-- Support note -->
+    <p style="font-size:12px;color:#55556A;text-align:center;line-height:1.5;margin-top:24px;">
+      Questions? Just reply to this email — we're here to help.<br>
+      Or reach us at <a href="mailto:hello@trybuildflow.in" style="color:#4F8AFF;text-decoration:none;">hello@trybuildflow.in</a>
+    </p>
   `);
 }
 

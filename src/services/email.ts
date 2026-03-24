@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import { Autosend } from 'autosendjs';
 import {
   welcomeEmail,
   paymentFailedEmail,
@@ -8,10 +8,11 @@ import {
   passwordResetEmail,
 } from './email-templates';
 
-// Initialize Resend — uses placeholder during build
-const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder');
+// Initialize AutoSend client
+const autosend = new Autosend(process.env.AUTOSEND_API_KEY || 'AS_placeholder');
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'BuildFlow <noreply@buildflow.app>';
+const FROM_EMAIL = process.env.AUTOSEND_FROM_EMAIL || 'noreply@buildflow.app';
+const FROM_NAME = process.env.AUTOSEND_FROM_NAME || 'BuildFlow';
 
 /** Map role enum to display name */
 function planDisplayName(role: string): string {
@@ -35,23 +36,18 @@ async function sendEmail({
   subject: string;
   html: string;
 }): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('[email] RESEND_API_KEY not configured, skipping email to:', to);
+  if (!process.env.AUTOSEND_API_KEY) {
+    console.warn('[email] AUTOSEND_API_KEY not configured, skipping email to:', to);
     return false;
   }
 
   try {
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to,
+    await autosend.emails.send({
+      from: { email: FROM_EMAIL, name: FROM_NAME },
+      to: { email: to },
       subject,
       html,
     });
-
-    if (error) {
-      console.error('[email] Resend error:', error);
-      return false;
-    }
 
     console.info('[email] Sent:', { to, subject });
     return true;
@@ -83,7 +79,7 @@ export async function sendWelcomeEmail(email: string, name: string | null, role:
   const plan = planDisplayName(role);
   await sendEmail({
     to: email,
-    subject: `Welcome to BuildFlow ${plan}! 🏗️`,
+    subject: `Welcome to BuildFlow ${plan}!`,
     html: welcomeEmail(name, plan),
   });
 }

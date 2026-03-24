@@ -5,6 +5,7 @@ import { CommandPaletteLoader } from "@/components/ui/CommandPaletteLoader";
 import { OnboardingModal } from "@/components/dashboard/OnboardingModal";
 import FirstRunSharePrompt from "@/components/referral/FirstRunSharePrompt";
 import { PendingReferralClaimer } from "@/components/referral/PendingReferralClaimer";
+import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
 
 export default function DashboardLayout({
   children,
@@ -16,6 +17,7 @@ export default function DashboardLayout({
       <Sidebar />
       <ErrorBoundary>
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <EmailVerificationBanner />
           {children}
         </div>
       </ErrorBoundary>

@@ -34,24 +34,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please provide a message." }, { status: 400 });
     }
 
-    // Log to file for analytics
-    const fs = await import("fs/promises");
-    const path = await import("path");
-    const logDir = path.join(process.cwd(), "analytics-logs");
-    const logFile = path.join(logDir, "contact-submissions.jsonl");
-    await fs.mkdir(logDir, { recursive: true });
-    await fs.appendFile(
-      logFile,
-      JSON.stringify({
-        type: "contact",
-        name,
-        email,
-        subject,
-        message,
-        timestamp: new Date().toISOString(),
-      }) + "\n",
-      "utf-8"
-    );
+    // Fire-and-forget: log to file (best-effort, filesystem may be read-only on Vercel)
+    import("fs/promises").then(async (fs) => {
+      const path = await import("path");
+      const logDir = path.join(process.cwd(), "analytics-logs");
+      const logFile = path.join(logDir, "contact-submissions.jsonl");
+      await fs.mkdir(logDir, { recursive: true });
+      await fs.appendFile(
+        logFile,
+        JSON.stringify({
+          type: "contact",
+          name,
+          email,
+          subject,
+          message,
+          timestamp: new Date().toISOString(),
+        }) + "\n",
+        "utf-8"
+      );
+    }).catch(() => {});
 
     // Send notification email to team
     sendInboundLeadNotification({
