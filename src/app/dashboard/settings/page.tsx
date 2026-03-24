@@ -153,6 +153,91 @@ function SaveStatus({ status }: { status: "idle" | "saving" | "saved" }) {
   );
 }
 
+// ---- Email Verification Status inside Profile ----
+function EmailVerificationStatus({ emailVerified, onVerified }: { emailVerified: boolean; onVerified: () => void }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  if (emailVerified) {
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "10px 16px", borderRadius: 10,
+        background: "rgba(16,185,129,0.05)",
+        border: "1px solid rgba(16,185,129,0.12)",
+      }}>
+        <CheckCircle2 size={14} style={{ color: "#10B981", flexShrink: 0 }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#10B981", fontFamily: "var(--font-jetbrains), monospace" }}>
+          EMAIL VERIFIED
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      padding: "12px 16px", borderRadius: 10,
+      background: "rgba(245,158,11,0.05)",
+      border: "1px solid rgba(245,158,11,0.12)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" as const }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <AlertCircle size={14} style={{ color: "#F59E0B", flexShrink: 0 }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#F59E0B", fontFamily: "var(--font-jetbrains), monospace" }}>
+            EMAIL NOT VERIFIED
+          </span>
+        </div>
+        {sent ? (
+          <span style={{ fontSize: 11, color: "#10B981", fontWeight: 600 }}>&#10003; Verification email sent!</span>
+        ) : (
+          <button
+            onClick={async () => {
+              setSending(true);
+              setError("");
+              try {
+                const res = await fetch("/api/auth/send-verification", { method: "POST" });
+                if (res.ok) {
+                  setSent(true);
+                } else {
+                  const data = await res.json().catch(() => ({}));
+                  if (data.error?.includes("already verified")) {
+                    onVerified();
+                    return;
+                  }
+                  setError(data.error || "Failed to send.");
+                }
+              } catch {
+                setError("Network error.");
+              } finally {
+                setSending(false);
+              }
+            }}
+            disabled={sending}
+            style={{
+              background: "rgba(245,158,11,0.1)",
+              border: "1px solid rgba(245,158,11,0.2)",
+              borderRadius: 6, padding: "4px 12px",
+              fontSize: 11, fontWeight: 600, color: "#F59E0B",
+              cursor: sending ? "wait" : "pointer",
+              opacity: sending ? 0.6 : 1,
+              fontFamily: "var(--font-jetbrains), monospace",
+            }}
+          >
+            {sending ? "SENDING..." : "RESEND EMAIL"}
+          </button>
+        )}
+      </div>
+      {error && (
+        <div style={{ fontSize: 11, color: "#EF4444", marginTop: 6 }}>{error}</div>
+      )}
+      <div style={{ fontSize: 11, color: "#7C7C96", marginTop: 6, lineHeight: 1.5 }}>
+        Verify your email to unlock workflow execution and full platform access.
+      </div>
+    </div>
+  );
+}
+
 // ---- Profile Section — Identity Card (Editable) ----
 function ProfileSection({
   user, initials, saveStatus, onSaveStatusChange, onSessionUpdate,
@@ -171,6 +256,21 @@ function ProfileSection({
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [profileData, setProfileData] = useState<{
+    emailVerified: boolean; createdAt: string | null; role: string;
+  }>({ emailVerified: false, createdAt: null, role: "FREE" });
+
+  // Fetch profile data (emailVerified, createdAt, role)
+  useEffect(() => {
+    fetch("/api/user/profile")
+      .then(res => res.json())
+      .then(data => {
+        if (data.emailVerified !== undefined) {
+          setProfileData({ emailVerified: data.emailVerified, createdAt: data.createdAt, role: data.role });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Fetch actual avatar (handles "uploaded" sentinel)
   const loadedImage = useAvatar(user?.image);
@@ -322,30 +422,32 @@ function ProfileSection({
         {/* Card header stripe */}
         <div style={{
           padding: "14px 24px",
-          background: "rgba(27,79,255,0.04)",
-          borderBottom: "1px solid rgba(27,79,255,0.08)",
+          background: profileData.emailVerified ? "rgba(27,79,255,0.04)" : "rgba(245,158,11,0.04)",
+          borderBottom: `1px solid ${profileData.emailVerified ? "rgba(27,79,255,0.08)" : "rgba(245,158,11,0.08)"}`,
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Fingerprint size={14} style={{ color: "#4F8AFF" }} />
+            <Fingerprint size={14} style={{ color: profileData.emailVerified ? "#4F8AFF" : "#F59E0B" }} />
             <span style={{
               fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-              textTransform: "uppercase", color: "#4F8AFF",
+              textTransform: "uppercase",
+              color: profileData.emailVerified ? "#4F8AFF" : "#F59E0B",
               fontFamily: "var(--font-jetbrains), monospace",
             }}>
-              IDENTITY VERIFIED
+              {profileData.emailVerified ? "IDENTITY VERIFIED" : "VERIFICATION PENDING"}
             </span>
           </div>
           <div style={{
             padding: "2px 8px", borderRadius: 4,
-            background: "rgba(16,185,129,0.1)",
-            border: "1px solid rgba(16,185,129,0.2)",
+            background: profileData.emailVerified ? "rgba(16,185,129,0.1)" : "rgba(245,158,11,0.1)",
+            border: `1px solid ${profileData.emailVerified ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.2)"}`,
           }}>
             <span style={{
-              fontSize: 9, fontWeight: 700, color: "#10B981",
+              fontSize: 9, fontWeight: 700,
+              color: profileData.emailVerified ? "#10B981" : "#F59E0B",
               fontFamily: "var(--font-jetbrains), monospace",
             }}>
-              ACTIVE
+              {profileData.emailVerified ? "ACTIVE" : "PENDING"}
             </span>
           </div>
         </div>
@@ -543,6 +645,64 @@ function ProfileSection({
               {t('settings.saveProfile')}
             </motion.button>
           )}
+        </div>
+      </div>
+
+      {/* Email Verification Status */}
+      <EmailVerificationStatus
+        emailVerified={profileData.emailVerified}
+        onVerified={() => {
+          setProfileData(prev => ({ ...prev, emailVerified: true }));
+          onSessionUpdate();
+        }}
+      />
+
+      {/* Account Details Card */}
+      <div
+        className="dp-glass-card"
+        data-accent="blue"
+        style={{ padding: 0, overflow: "hidden" }}
+      >
+        <div style={{
+          padding: "14px 24px",
+          background: "rgba(27,79,255,0.04)",
+          borderBottom: "1px solid rgba(27,79,255,0.08)",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <ScanLine size={14} style={{ color: "#4F8AFF" }} />
+          <span style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "#4F8AFF",
+            fontFamily: "var(--font-jetbrains), monospace",
+          }}>
+            ACCOUNT DETAILS
+          </span>
+        </div>
+        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {[
+            { label: "Email", value: user?.email ?? "—" },
+            { label: "Plan", value: profileData.role === "FREE" ? "Free" : profileData.role === "MINI" ? "Mini" : profileData.role === "STARTER" ? "Starter" : profileData.role === "PRO" ? "Pro" : profileData.role === "TEAM_ADMIN" ? "Team" : profileData.role === "PLATFORM_ADMIN" ? "Admin" : profileData.role },
+            { label: "Member since", value: profileData.createdAt ? new Date(profileData.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "—" },
+            { label: "Auth method", value: user?.image?.startsWith("https://lh3.googleusercontent.com") ? "Google OAuth" : "Email & Password" },
+          ].map((item) => (
+            <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{
+                fontSize: 12, color: "rgba(255,255,255,0.35)",
+                fontFamily: "var(--font-jetbrains), monospace",
+                letterSpacing: "0.03em",
+              }}>
+                {item.label}
+              </span>
+              <span style={{
+                fontSize: 12, color: "#C0C0D0", fontWeight: 500,
+                fontFamily: "var(--font-jetbrains), monospace",
+                textAlign: "right",
+                overflowWrap: "break-word", wordBreak: "break-all", maxWidth: "60%",
+              }}>
+                {item.value}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </motion.div>

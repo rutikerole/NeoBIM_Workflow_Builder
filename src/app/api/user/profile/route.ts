@@ -17,7 +17,7 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, email: true, image: true, password: true },
+      select: { name: true, email: true, image: true, password: true, emailVerified: true, createdAt: true, role: true },
     });
 
     const response = NextResponse.json({
@@ -25,6 +25,9 @@ export async function GET() {
       email: user?.email ?? null,
       image: user?.image ?? null,
       isOAuthOnly: !user?.password,
+      emailVerified: !!user?.emailVerified,
+      createdAt: user?.createdAt?.toISOString() ?? null,
+      role: user?.role ?? "FREE",
     });
     response.headers.set("Cache-Control", "private, max-age=30");
     return response;
