@@ -858,6 +858,83 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
       ],
     },
   },
+  {
+    id: "wf-19",
+    name: "Building Photo → Video Render",
+    description:
+      "Upload building photos → GPT-4o analyzes architecture, materials & style → Kling 3.0 produces a cinematic 15s renovation video showing the building transformed with new life — modernized facades, contemporary extensions, premium finishes, and lush landscaping. Works with old facade photos (renovation) or new building photos (polished upgrade).",
+    tags: ["image", "video", "render", "walkthrough", "photo", "building", "cinematic", "kling", "renovation", "facade"],
+    category: "Visualization",
+    complexity: "simple",
+    estimatedRunTime: "~4 minutes",
+    requiredInputs: ["At least one building photograph (old facade, existing building, or new building)"],
+    expectedOutputs: [
+      "Building analysis with detected style, materials & typology",
+      "Cinematic 15s MP4 video showing the building renovated & modernized with new life",
+    ],
+    thumbnail: "https://picsum.photos/seed/wf19/600/400",
+    tileGraph: {
+      nodes: [
+        {
+          id: "n1",
+          type: "workflowNode",
+          position: { x: X1, y: 250 },
+          data: {
+            catalogueId: "IN-008",
+            label: "Building Photos",
+            category: "input",
+            status: "idle",
+            inputs: [],
+            outputs: [{ id: "images-out", label: "Images", type: "image" }],
+            icon: "Images",
+          },
+        },
+        {
+          id: "n2",
+          type: "workflowNode",
+          position: { x: X2, y: 250 },
+          data: {
+            catalogueId: "TR-004",
+            label: "Building Analyzer (GPT-4o)",
+            category: "transform",
+            status: "idle",
+            inputs: [{ id: "image-in", label: "Image", type: "image" }],
+            outputs: [
+              { id: "text-out", label: "Building Analysis", type: "text" },
+              { id: "feat-out", label: "Extracted Features", type: "json" },
+            ],
+            icon: "Eye",
+          },
+        },
+        {
+          id: "n3",
+          type: "workflowNode",
+          position: { x: X3, y: 250 },
+          data: {
+            catalogueId: "GN-009",
+            label: "Video Walkthrough (Kling 3.0)",
+            category: "generate",
+            status: "idle",
+            inputs: [
+              { id: "image-in", label: "Source Images", type: "image" },
+              { id: "geo-in", label: "3D Model / Renders", type: "geometry" },
+              { id: "style-in", label: "Style & Camera", type: "json" },
+            ],
+            outputs: [{ id: "video-out", label: "MP4 Video", type: "binary" }],
+            icon: "Video",
+          },
+        },
+      ],
+      edges: [
+        // Images → Building Analyzer
+        { id: "e1-2", source: "n1", sourceHandle: "images-out", target: "n2", targetHandle: "image-in", type: "animatedEdge" },
+        // Original photos → Video source images
+        { id: "e1-3", source: "n1", sourceHandle: "images-out", target: "n3", targetHandle: "image-in", type: "animatedEdge" },
+        // Building analysis → Video style & camera config
+        { id: "e2-3", source: "n2", sourceHandle: "text-out", target: "n3", targetHandle: "style-in", type: "animatedEdge" },
+      ],
+    },
+  },
 ];
 
 export const PREBUILT_WORKFLOWS_MAP = new Map(

@@ -536,6 +536,57 @@ export function buildInteriorPrompt(buildingDescription: string): string {
   );
 }
 
+// ─── Building Photo → Renovation/New-Life Video Prompts ─────────────────────
+
+/**
+ * Build prompt for Part 1 (5s): Cinematic exterior of the DALL-E renovated building.
+ * The input image is already a polished renovation render from DALL-E 3.
+ * Kling just needs to create smooth camera movement around it.
+ */
+export function buildRenovationExteriorPrompt(buildingDescription: string): string {
+  const desc = buildingDescription.slice(0, 400);
+
+  return (
+    `Cinematic architectural exterior walkthrough of this beautifully renovated modern building. ` +
+    `The building has been completely transformed with new contemporary facades, modern glazing, ` +
+    `rooftop extension, and professional landscaping. Building: ${desc.slice(0, 250)}. ` +
+    "Exterior cinematic sequence (5 seconds): " +
+    "Camera starts with a wide establishing shot — slow dramatic approach toward the building, " +
+    "showing the full renovated facade with premium materials catching golden hour sunlight. " +
+    "Smooth dolly-in toward the main entrance revealing new cladding, modern windows, designer entrance canopy. " +
+    "Camera orbits smoothly to the side, revealing the building's depth and the new rooftop extension against the sky. " +
+    "Final sweeping upward crane shot showing the complete renovated building with landscaping and sky. " +
+    "Physically accurate architecture, photorealistic materials, golden hour lighting, " +
+    "cinematic smooth camera, 8K architectural visualization, no distortion."
+  );
+}
+
+/**
+ * Build prompt for Part 2 (10s): Interior walkthrough of the renovated building.
+ * Describes a luxury renovated interior since DALL-E rendered the exterior.
+ */
+export function buildRenovationInteriorPrompt(buildingDescription: string): string {
+  const desc = buildingDescription.slice(0, 400);
+
+  return (
+    `Cinematic interior walkthrough of a completely renovated modern building. ` +
+    `The building exterior was fully renovated — now show the premium interior spaces. ` +
+    `Building: ${desc.slice(0, 250)}. ` +
+    "Interior walkthrough (10 seconds): " +
+    "Camera enters through the redesigned modern entrance — glass doors open into a bright double-height lobby " +
+    "with polished concrete floors, designer pendant lights, and a reception area. " +
+    "Smooth walkthrough through renovated open-plan spaces: " +
+    "floor-to-ceiling windows flooding rooms with natural light, " +
+    "premium finishes — engineered hardwood floors, natural stone feature walls, " +
+    "modern kitchen with marble island and integrated appliances, " +
+    "spacious living areas with contemporary furniture and curated artwork, " +
+    "elegant bathroom with walk-in rain shower and floating vanity. " +
+    "Each space flows naturally through wide glass-partitioned passages. " +
+    "Warm interior lighting blended with natural daylight, " +
+    "photorealistic materials, cinematic smooth camera, 8K quality, no distortion."
+  );
+}
+
 // ─── Floor Plan → Video Prompts ──────────────────────────────────────────────
 
 /**
@@ -881,18 +932,24 @@ export async function submitDualWalkthrough(
   imageUrl: string,
   buildingDescription: string,
   mode: "std" | "pro" = "pro",
-  options?: { isFloorPlan?: boolean; roomInfo?: string },
+  options?: { isFloorPlan?: boolean; roomInfo?: string; isRenovation?: boolean },
 ): Promise<SubmittedVideoTasks> {
-  console.log("[DUAL] submitDualWalkthrough: mode=%s isFloorPlan=%s", mode, options?.isFloorPlan);
+  console.log("[DUAL] submitDualWalkthrough: mode=%s isFloorPlan=%s isRenovation=%s", mode, options?.isFloorPlan, options?.isRenovation);
 
   const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark, oversaturated colors, CGI look, video game graphics, toy model, miniature, tilt-shift, abstract, surreal, people walking, cars moving, birds flying, lens flare";
 
+  // Building photos from IN-008 → renovation prompts (transform old to new)
+  // Concept renders from GN-003 → standard prompts (match the render)
   const exteriorPrompt = options?.isFloorPlan
     ? buildFloorPlanExteriorPrompt(buildingDescription, options.roomInfo)
-    : buildExteriorPrompt(buildingDescription);
+    : options?.isRenovation
+      ? buildRenovationExteriorPrompt(buildingDescription)
+      : buildExteriorPrompt(buildingDescription);
   const interiorPrompt = options?.isFloorPlan
     ? buildFloorPlanInteriorPrompt(buildingDescription, options.roomInfo)
-    : buildInteriorPrompt(buildingDescription);
+    : options?.isRenovation
+      ? buildRenovationInteriorPrompt(buildingDescription)
+      : buildInteriorPrompt(buildingDescription);
 
   // Submit both tasks in parallel — don't poll, return task IDs immediately
   const [exteriorResult, interiorResult] = await Promise.all([

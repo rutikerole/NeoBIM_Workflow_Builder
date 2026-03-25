@@ -14,6 +14,7 @@ import type { WorkflowNodeData } from "@/types/nodes";
 
 // ─── File store (module-level, not in Zustand — files can't serialize) ───────
 export const inputFileStore = new Map<string, File>();
+export const inputMultiFileStore = new Map<string, File[]>();
 
 // ─── Shared stop-propagation handler ─────────────────────────────────────────
 function stopAll(e: React.SyntheticEvent) {
@@ -530,6 +531,237 @@ export function LocationInput({ nodeId, data }: { nodeId: string; data: Workflow
   );
 }
 
+// ─── Multi-Image Upload (IN-008) ──────────────────────────────────────────────
+
+export function MultiImageUploadInput({ nodeId, data }: { nodeId: string; data: WorkflowNodeData }) {
+  const updateNode = useWorkflowStore(s => s.updateNode);
+  const t = useLocale(s => s.t);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const maxMB = 10;
+
+  const fileNames = (data.fileNames as string[] | undefined) ?? [];
+  const imageCount = fileNames.length;
+
+  const handleFiles = useCallback((files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const validFiles: File[] = [];
+    for (const file of fileArray) {
+      if (file.size > maxMB * 1024 * 1024) {
+        toast.error(`${file.name} exceeds ${maxMB}MB limit`);
+        continue;
+      }
+      const ext = "." + file.name.split(".").pop()?.toLowerCase();
+      if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
+        toast.error(`${file.name}: unsupported format. Use PNG, JPG, or WebP.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+    if (validFiles.length === 0) return;
+
+    // Merge with existing files
+    const existing = inputMultiFileStore.get(nodeId) ?? [];
+    const merged = [...existing, ...validFiles];
+    inputMultiFileStore.set(nodeId, merged);
+
+    // Convert all files to base64
+    const names: string[] = merged.map(f => f.name);
+    const sizes: number[] = merged.map(f => f.size);
+    const mimes: string[] = merged.map(f => f.type);
+
+    // Update immediately with names
+    const currentNode = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
+    if (!currentNode) return;
+    updateNode(nodeId, {
+      data: {
+        ...currentNode.data,
+        inputValue: `${merged.length} image${merged.length > 1 ? "s" : ""} uploaded`,
+        fileNames: names,
+        fileSizes: sizes,
+        mimeTypes: mimes,
+        imageCount: merged.length,
+      },
+    });
+
+    // Read all files to base64
+    Promise.all(merged.map(f => new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.readAsDataURL(f);
+    }))).then((base64Arr) => {
+      const node = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      updateNode(nodeId, {
+        data: {
+          ...node.data,
+          fileData: base64Arr,
+          fileNames: names,
+          fileSizes: sizes,
+          mimeTypes: mimes,
+          imageCount: merged.length,
+        },
+      });
+    });
+  }, [nodeId, updateNode]);
+
+  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) handleFiles(e.target.files);
+    if (inputRef.current) inputRef.current.value = "";
+  }, [handleFiles]);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
+  }, [handleFiles]);
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+  }, []);
+
+  const onRemove = useCallback((idx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const existing = inputMultiFileStore.get(nodeId) ?? [];
+    existing.splice(idx, 1);
+    inputMultiFileStore.set(nodeId, existing);
+
+    if (existing.length === 0) {
+      inputMultiFileStore.delete(nodeId);
+      const currentNode = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
+      if (!currentNode) return;
+      updateNode(nodeId, {
+        data: { ...currentNode.data, inputValue: "", fileNames: undefined, fileSizes: undefined, mimeTypes: undefined, fileData: undefined, imageCount: 0 },
+      });
+      return;
+    }
+
+    // Re-read remaining files
+    const names = existing.map(f => f.name);
+    const sizes = existing.map(f => f.size);
+    const mimes = existing.map(f => f.type);
+
+    Promise.all(existing.map(f => new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.readAsDataURL(f);
+    }))).then((base64Arr) => {
+      const node = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      updateNode(nodeId, {
+        data: {
+          ...node.data,
+          inputValue: `${existing.length} image${existing.length > 1 ? "s" : ""} uploaded`,
+          fileData: base64Arr,
+          fileNames: names,
+          fileSizes: sizes,
+          mimeTypes: mimes,
+          imageCount: existing.length,
+        },
+      });
+    });
+  }, [nodeId, updateNode]);
+
+  const storedFiles = inputMultiFileStore.get(nodeId) ?? [];
+
+  return (
+    <div className="nodrag nowheel nopan" onMouseDown={stopAll} onClick={stopAll} onKeyDown={stopAll}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".png,.jpg,.jpeg,.webp"
+        multiple
+        onChange={onFileChange}
+        style={{ display: "none" }}
+      />
+
+      {/* Thumbnail grid of uploaded images */}
+      {imageCount > 0 && (
+        <div style={{
+          marginTop: 8, display: "grid",
+          gridTemplateColumns: imageCount === 1 ? "1fr" : "1fr 1fr",
+          gap: 4,
+        }}>
+          {storedFiles.map((file, idx) => (
+            <div key={`${file.name}-${idx}`} style={{
+              position: "relative", borderRadius: 4, overflow: "hidden",
+              border: "1px solid rgba(16,185,129,0.25)",
+              background: "rgba(16,185,129,0.06)",
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={URL.createObjectURL(file)}
+                alt={file.name}
+                style={{ width: "100%", height: imageCount === 1 ? 60 : 44, objectFit: "cover", display: "block" }}
+              />
+              <button
+                onClick={(e) => onRemove(idx, e)}
+                style={{
+                  position: "absolute", top: 2, right: 2,
+                  width: 14, height: 14, borderRadius: "50%",
+                  background: "rgba(0,0,0,0.7)", color: "#fff",
+                  border: "none", cursor: "pointer", fontSize: 8,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+              <div style={{
+                fontSize: 8, color: "#10B981", padding: "2px 4px",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {file.name}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Upload area / Add more button */}
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        style={{
+          marginTop: imageCount > 0 ? 4 : 8,
+          padding: imageCount > 0 ? "6px 8px" : "10px 8px",
+          borderRadius: 6, cursor: "pointer",
+          border: "1px dashed rgba(0,245,255,0.25)",
+          background: "rgba(0,245,255,0.03)",
+          textAlign: "center",
+          transition: "all 0.15s",
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,245,255,0.5)";
+          (e.currentTarget as HTMLElement).style.background = "rgba(0,245,255,0.07)";
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,245,255,0.25)";
+          (e.currentTarget as HTMLElement).style.background = "rgba(0,245,255,0.03)";
+        }}
+      >
+        <div style={{ fontSize: 9, color: "#55556A", lineHeight: 1.5 }}>
+          {imageCount > 0
+            ? <><span style={{ color: "#00F5FF" }}>+ Add more images</span></>
+            : <>Drop images {t('input.dropHereOr')} <span style={{ color: "#00F5FF" }}>{t('input.clickToBrowse')}</span></>
+          }
+        </div>
+        {imageCount === 0 && (
+          <div style={{ fontSize: 8, color: "#3A3A4E", marginTop: 2 }}>
+            .png,.jpg,.jpeg,.webp · max {maxMB}MB each · multiple allowed
+          </div>
+        )}
+      </div>
+
+      {/* Summary */}
+      {imageCount > 0 && (
+        <div style={{ fontSize: 9, color: "#10B981", marginTop: 4, textAlign: "center" }}>
+          {imageCount} image{imageCount > 1 ? "s" : ""} · {((data.fileSizes as number[] | undefined)?.reduce((a, b) => a + b, 0) ?? 0 / 1024).toFixed(0)} KB total
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Selector: which component to render ─────────────────────────────────────
 
 export function InputNodeContent({ nodeId, data }: { nodeId: string; data: WorkflowNodeData }) {
@@ -548,6 +780,8 @@ export function InputNodeContent({ nodeId, data }: { nodeId: string; data: Workf
       return <LocationInput nodeId={nodeId} data={data} />;
     case "IN-007":
       return <FileUploadInput nodeId={nodeId} data={data} accept=".dxf,.dwg" label="a DXF/DWG file" maxMB={30} />;
+    case "IN-008":
+      return <MultiImageUploadInput nodeId={nodeId} data={data} />;
     default:
       return null;
   }

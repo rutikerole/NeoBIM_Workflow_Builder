@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { generateBuildingDescription, generateConceptImage, generateFloorPlan, parseBriefDocument, analyzeImage, enhanceArchitecturalPrompt } from "@/services/openai";
+import { generateBuildingDescription, generateConceptImage, generateRenovationRender, generateFloorPlan, parseBriefDocument, analyzeImage, enhanceArchitecturalPrompt } from "@/services/openai";
 import type { BuildingDescription } from "@/services/openai";
 import { analyzeSite } from "@/services/site-analysis";
 import { generateId } from "@/lib/utils";
@@ -2214,12 +2214,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // ── Resolve the SOURCE IMAGE for Kling (priority order) ──
       let renderImageUrl = "";
       let isFloorPlanInput = false;
+      let isRenovationInput = false; // true when user uploaded building photos (IN-008) — triggers renovation prompts
       let roomInfo = "";
 
       logger.debug("[KLING] Step 1: fileData present:", !!(inputData?.fileData), "size:", typeof inputData?.fileData === "string" ? inputData.fileData.length : 0);
       logger.debug("[KLING] Step 1: url present:", !!(inputData?.url), "imageUrl present:", !!(inputData?.imageUrl), "svg present:", !!(inputData?.svg));
 
-      // ── Priority 1: Direct image upload from IN-003 (original user file) ──
+      // ── Priority 1: Direct image upload from IN-003/IN-008 (original user file) ──
       // FIX F: Send base64 directly to Kling API — no temp-image URL needed.
       // Kling's image field accepts both URLs and base64 encoded strings.
       // Skip non-image files (PDFs, docs) — they should use text2video path instead.
@@ -2227,8 +2228,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const isImageFile = inputMimeType.startsWith("image/") || !inputMimeType;
       if (inputData?.fileData && typeof inputData.fileData === "string" && isImageFile) {
         const imgMime = inputMimeType || "image/jpeg";
-        const raw = inputData.fileData as string;
-        const cleanBase64 = raw.startsWith("data:") ? raw.split(",")[1] ?? raw : raw;
+        const rawImg = inputData.fileData as string;
+        const cleanBase64 = rawImg.startsWith("data:") ? rawImg.split(",")[1] ?? rawImg : rawImg;
 
         logger.debug("[KLING] Step 2: Clean base64 length:", cleanBase64.length, "mime:", imgMime);
 
@@ -2240,7 +2241,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             logger.debug("[KLING] Step 2a: R2 is configured, uploading...");
             const ext = imgMime.includes("png") ? "png" : "jpg";
             const imgBuffer = Buffer.from(cleanBase64, "base64");
-            const uploadResult = await uploadToR2(imgBuffer, `floorplan-upload-${generateId()}.${ext}`, imgMime);
+            const uploadResult = await uploadToR2(imgBuffer, `building-photo-${generateId()}.${ext}`, imgMime);
             if (uploadResult.success) {
               renderImageUrl = uploadResult.url;
               logger.debug("[KLING] Step 2a: R2 upload succeeded:", renderImageUrl);
@@ -2259,7 +2260,17 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           logger.debug("[KLING] Step 2b: Using raw base64, length:", cleanBase64.length);
         }
 
-        isFloorPlanInput = true;
+        // Only mark as floor plan if TR-004 analysis flagged it or if upstream says so.
+        // Building photos from IN-008 are NOT floor plans — they should use image2video path.
+        const upstreamIsFloorPlan = !!(inputData?.isFloorPlan);
+        isFloorPlanInput = upstreamIsFloorPlan;
+
+        // Building photos from IN-008 trigger renovation prompts —
+        // transform the old/existing building into a modernized, polished version.
+        // Detect via isMultiImage flag (set by IN-008 handler) or absence of floor plan flag.
+        if (!upstreamIsFloorPlan) {
+          isRenovationInput = !!(inputData?.isMultiImage) || !!(inputData?.fileDataArray);
+        }
       }
 
       // ── Priority 2: Floor plan SVG from GN-004 ──
@@ -2332,14 +2343,28 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // Also pick up layoutDescription from TR-004
       const layoutDescription = (inputData?.layoutDescription as string) ?? "";
 
-      logger.debug("===== GENERIC FLOOR PLAN DEBUG =====");
+      // Fallback renovation detection: if we have building photo data specifically from IN-008
+      // (identified by isMultiImage or fileDataArray flags) and it's not a floor plan.
+      // DO NOT match IN-003 single image uploads — those use standard prompts.
+      if (!isRenovationInput && !isFloorPlanInput) {
+        const hasMultiImageMarker = !!(inputData?.isMultiImage) || !!(inputData?.fileDataArray);
+        if (hasMultiImageMarker) {
+          isRenovationInput = true;
+          logger.debug("[GN-009] Fallback: detected IN-008 multi-image markers → enabling renovation mode");
+        }
+      }
+
+      logger.debug("===== GN-009 VIDEO DEBUG =====");
       logger.debug("[GN-009] All inputData keys:", Object.keys(inputData ?? {}));
       logger.debug("[GN-009] buildingDescription:", JSON.stringify(buildingDesc)?.slice(0, 800));
       logger.debug("[GN-009] roomInfo:", JSON.stringify(roomInfo)?.slice(0, 800));
       logger.debug("[GN-009] layoutDescription:", JSON.stringify(layoutDescription)?.slice(0, 500));
       logger.debug("[GN-009] isFloorPlan:", isFloorPlanInput);
+      logger.debug("[GN-009] isRenovation:", isRenovationInput);
+      logger.debug("[GN-009] isMultiImage:", !!(inputData?.isMultiImage));
+      logger.debug("[GN-009] fileDataArray:", !!(inputData?.fileDataArray));
       logger.debug("[GN-009] renderImageUrl resolved:", renderImageUrl ? renderImageUrl.slice(0, 120) : "EMPTY");
-      logger.debug("====================================");
+      logger.debug("==============================");
 
       if (!hasKlingKeys) {
         // ── No Kling API keys — fall back to Three.js client-side rendering ──
@@ -2454,11 +2479,70 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             logger.debug("[GN-009] Artifact data.usedOmni:", submitted.usedOmni);
             logger.debug("[GN-009] Artifact data.durationSeconds:", submitted.durationSeconds);
           } else {
-            // ── DUAL video for non-floor-plan (concept renders) ──
-            logger.debug("[GN-009] Function: submitDualWalkthrough (concept render → dual 5s+10s)");
-            const submitted = await submitDualWalkthrough(renderImageUrl, buildingDesc, "pro");
+            // ── DUAL video for non-floor-plan (concept renders or building photos) ──
+            logger.debug("[GN-009] Function: submitDualWalkthrough (dual 5s+10s), isRenovation:", isRenovationInput);
+
+            // ── RENOVATION PATH: Generate a DALL-E 3 renovation render first ──
+            // Kling image2video preserves the source image too faithfully — old cracked
+            // walls stay cracked. So for building photo inputs, we first generate a
+            // DALL-E 3 "renovated" version of the building, then feed THAT to Kling.
+            let klingSourceImage = renderImageUrl;
+            let renovationRenderUrl: string | undefined;
+
+            // Use env OPENAI_API_KEY as fallback when user doesn't have a personal key
+            const dalleKey = apiKey || process.env.OPENAI_API_KEY || undefined;
+
+            // Get the original building photo base64 for GPT-4o vision
+            // This is the actual image the user uploaded — GPT-4o will SEE it
+            // and write a DALL-E prompt that preserves the exact building geometry.
+            const originalPhotoBase64 = (inputData?.fileData as string) ?? "";
+            const originalPhotoMime = (inputData?.mimeType as string) ?? "image/jpeg";
+
+            if (isRenovationInput && dalleKey && originalPhotoBase64) {
+              logger.debug("[GN-009] Renovation: GPT-4o will analyze the ACTUAL photo → write DALL-E prompt → render");
+              logger.debug("[GN-009] Original photo base64 length:", originalPhotoBase64.length);
+              logger.debug("[GN-009] Building analysis:", buildingDesc.slice(0, 300));
+
+              try {
+                // Step 1: GPT-4o SEES the building photo → writes precise DALL-E prompt
+                // Step 2: DALL-E 3 renders the renovated version from that prompt
+                // The result looks like the SAME building but completely renovated.
+                const dalleResult = await generateRenovationRender(
+                  originalPhotoBase64.startsWith("data:") ? originalPhotoBase64.split(",")[1] ?? originalPhotoBase64 : originalPhotoBase64,
+                  buildingDesc,
+                  originalPhotoMime,
+                  dalleKey,
+                );
+
+                if (dalleResult.url) {
+                  renovationRenderUrl = dalleResult.url;
+                  klingSourceImage = dalleResult.url;
+                  logger.debug("[GN-009] Renovation render SUCCESS! URL:", dalleResult.url.slice(0, 100));
+                  logger.debug("[GN-009] GPT-4o renovation prompt:", dalleResult.renovationPrompt.slice(0, 200));
+                }
+              } catch (dalleErr) {
+                // Non-fatal — fall back to original image for Kling
+                console.warn("[GN-009] Renovation render failed, falling back to original photo:", dalleErr);
+              }
+            } else if (isRenovationInput) {
+              logger.debug("[GN-009] Renovation skipped — missing:", !dalleKey ? "OPENAI_API_KEY" : "originalPhotoBase64");
+            }
+
+            const submitted = await submitDualWalkthrough(klingSourceImage, buildingDesc, "pro", {
+              isRenovation: isRenovationInput,
+            });
 
             logger.debug("[GN-009] Dual tasks submitted! exterior:", submitted.exteriorTaskId, "interior:", submitted.interiorTaskId);
+
+            const videoLabel = isRenovationInput
+              ? "Building Renovation Walkthrough — 15s (generating...)"
+              : "AEC Cinematic Walkthrough — 15s (generating...)";
+            const videoContent = isRenovationInput
+              ? `15s renovation walkthrough: 5s exterior transformation + 10s renovated interior — ${buildingDesc.slice(0, 100)}`
+              : `15s AEC walkthrough: 5s exterior + 10s interior — ${buildingDesc.slice(0, 100)}`;
+            const videoPipelineLabel = isRenovationInput
+              ? "building photo → DALL-E 3 renovation render → Kling Official API (pro, image2video) → 2x MP4 video"
+              : "concept render → Kling Official API (pro, image2video) → 2x MP4 video";
 
             artifact = {
               id: generateId(),
@@ -2469,12 +2553,12 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 name: `walkthrough_${generateId()}.mp4`,
                 videoUrl: "",
                 downloadUrl: "",
-                label: "AEC Cinematic Walkthrough — 15s (generating...)",
-                content: `15s AEC walkthrough: 5s exterior + 10s interior — ${buildingDesc.slice(0, 100)}`,
+                label: videoLabel,
+                content: videoContent,
                 durationSeconds: 15,
                 shotCount: 2,
-                pipeline: "concept render → Kling Official API (pro, image2video) → 2x MP4 video",
-                costUsd: 1.50,
+                pipeline: videoPipelineLabel,
+                costUsd: isRenovationInput ? 1.54 : 1.50, // +$0.04 for DALL-E 3 HD render
                 segments: [],
                 videoGenerationStatus: "processing",
                 videoPipeline: "image2video",
@@ -2482,6 +2566,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 interiorTaskId: submitted.interiorTaskId,
                 generationProgress: 0,
                 isFloorPlanInput: false,
+                isRenovation: isRenovationInput,
+                ...(renovationRenderUrl && { renovationRenderUrl }),
               },
               metadata: {
                 engine: "kling-official",

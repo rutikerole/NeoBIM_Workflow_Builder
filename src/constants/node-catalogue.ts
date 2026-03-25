@@ -91,6 +91,18 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
     tags: ["cad", "dxf", "dwg", "drawing", "autocad"],
     executionTime: "< 5s",
   },
+  {
+    id: "IN-008",
+    name: "Multi-Image Upload",
+    description: "Upload one or more building photos for multi-angle analysis and video rendering",
+    category: "input",
+    icon: "Images",
+    inputs: [],
+    outputs: [{ id: "images-out", label: "Images", type: "image" }],
+    apiEngine: "Native",
+    tags: ["images", "multi", "photo", "building", "upload", "batch"],
+    executionTime: "< 3s",
+  },
 
   // ============================================================
   // TRANSFORM / AI NODES (Purple)

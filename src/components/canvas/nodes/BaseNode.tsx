@@ -13,7 +13,7 @@ import { useExecutionStore } from "@/stores/execution-store";
 import { useUIStore } from "@/stores/ui-store";
 import type { ExecutionArtifact } from "@/types/execution";
 
-const INPUT_NODE_IDS = new Set(["IN-001","IN-002","IN-003","IN-004","IN-005","IN-006","IN-007"]);
+const INPUT_NODE_IDS = new Set(["IN-001","IN-002","IN-003","IN-004","IN-005","IN-006","IN-007","IN-008"]);
 
 import { CATEGORY_COLORS, hexToRgb } from "@/lib/ui-constants";
 import { LIVE_NODES } from "@/constants/node-catalogue";
