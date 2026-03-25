@@ -6,7 +6,7 @@ import { useWorkflowStore } from "@/stores/workflow-store";
 import { useExecutionStore } from "@/stores/execution-store";
 import { useUIStore } from "@/stores/ui-store";
 import { executeNode as mockExecuteNode } from "@/services/mock-executor";
-import { inputFileStore } from "@/components/canvas/nodes/InputNode";
+import { inputFileStore, inputMultiFileStore } from "@/components/canvas/nodes/InputNode";
 import { generateId } from "@/lib/utils";
 import { awardXP } from "@/lib/award-xp";
 import { trackWorkflowExecuted, trackNodeUsed, trackRegenerationUsed } from "@/lib/track";
@@ -44,7 +44,7 @@ interface APIErrorResponse {
 }
 
 // Input node IDs whose user-supplied value should pass through directly
-const INPUT_NODE_IDS = new Set(["IN-001", "IN-002", "IN-003", "IN-004", "IN-005", "IN-006"]);
+const INPUT_NODE_IDS = new Set(["IN-001", "IN-002", "IN-003", "IN-004", "IN-005", "IN-006", "IN-008"]);
 
 // Demo-allowed node IDs (routed to /api/demo/execute)
 const DEMO_NODE_IDS = new Set(["TR-003", "GN-003"]);
@@ -64,6 +64,55 @@ async function executeNode(
   if (INPUT_NODE_IDS.has(catalogueId)) {
     await new Promise(r => setTimeout(r, 150)); // brief delay for UX
     const nodeData = node.data as Record<string, unknown>;
+
+    // ── IN-008: Multi-Image Upload — pass all user images as base64 array ──
+    if (catalogueId === "IN-008") {
+      const multiFiles = inputMultiFileStore.get(node.id);
+      // Prefer live File objects from the store; fall back to nodeData.fileData (base64 array)
+      let fileDataArr = nodeData.fileData as string[] | undefined;
+      let fileNames = (nodeData.fileNames as string[]) ?? [];
+      let mimeTypes = (nodeData.mimeTypes as string[]) ?? [];
+
+      if (multiFiles && multiFiles.length > 0) {
+        // Convert live File objects to base64
+        fileDataArr = await Promise.all(multiFiles.map(async (f) => {
+          const buf = await f.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          return btoa(binary);
+        }));
+        fileNames = multiFiles.map(f => f.name);
+        mimeTypes = multiFiles.map(f => f.type || "image/jpeg");
+      }
+
+      const count = fileDataArr?.length ?? 0;
+      // Pass the FIRST image as `fileData` (string) for downstream nodes that expect a single image,
+      // and ALL images in `fileDataArray` for nodes that can use multiple.
+      return {
+        id: generateId(),
+        executionId,
+        tileInstanceId: node.id,
+        type: "image",
+        data: {
+          content: inputValue ?? `${count} image${count !== 1 ? "s" : ""} uploaded`,
+          label: `${count} Building Photo${count !== 1 ? "s" : ""} Uploaded`,
+          imageCount: count,
+          fileNames,
+          mimeTypes,
+          isMultiImage: true,
+          // Single-image compat: first image as fileData + mimeType
+          ...(fileDataArr?.[0] && { fileData: fileDataArr[0] }),
+          ...(mimeTypes[0] && { mimeType: mimeTypes[0] }),
+          // Full array for nodes that handle multiple images
+          ...(fileDataArr && { fileDataArray: fileDataArr }),
+        },
+        metadata: { source: "user-input" },
+        createdAt: new Date(),
+      };
+    }
+
+    // ── Single-file input nodes (IN-001..IN-007) ──
     let fileData = nodeData.fileData as string | undefined;
     let fileName = nodeData.fileName as string | undefined;
     let mimeType = nodeData.mimeType as string | undefined;

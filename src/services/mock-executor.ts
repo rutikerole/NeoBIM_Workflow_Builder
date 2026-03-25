@@ -62,6 +62,19 @@ export async function executeNode(
         label: "Uploaded Reference Image",
       });
 
+    case "IN-008": { // Multi-Image Upload
+      const imgCount = Number(inputData?.imageCount) || 1;
+      const fNames = (inputData?.fileNames as string[]) ?? ["building_photo.jpg"];
+      return mockArtifact(executionId, tileInstanceId, "image", {
+        url: ARCHITECTURAL_IMAGES[0],
+        urls: ARCHITECTURAL_IMAGES.slice(0, Math.min(imgCount, 5)),
+        label: `${imgCount} Building Photo${imgCount > 1 ? "s" : ""} Uploaded`,
+        imageCount: imgCount,
+        fileNames: fNames,
+        isMultiImage: true,
+      });
+    }
+
     case "IN-004": // IFC Upload
       return mockArtifact(executionId, tileInstanceId, "json", {
         json: {
@@ -866,7 +879,7 @@ export async function executeNode(
 
 function getNodeDelay(catalogueId: string): number {
   const delays: Record<string, number> = {
-    "IN-001": 200, "IN-002": 300, "IN-003": 250, "IN-004": 500, "IN-005": 150, "IN-006": 400,
+    "IN-001": 200, "IN-002": 300, "IN-003": 250, "IN-004": 500, "IN-005": 150, "IN-006": 400, "IN-008": 300,
     "TR-001": 800, "TR-002": 1000, "TR-003": 700, "TR-004": 800, "TR-005": 500, "TR-006": 1200,
     "TR-007": 900, "TR-008": 700, "TR-009": 800, "TR-010": 1000, "TR-012": 700,
     "GN-001": 1200, "GN-002": 1800, "GN-003": 1400, "GN-004": 1600, "GN-008": 1800,

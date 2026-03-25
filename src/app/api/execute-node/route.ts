@@ -2219,7 +2219,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       logger.debug("[KLING] Step 1: fileData present:", !!(inputData?.fileData), "size:", typeof inputData?.fileData === "string" ? inputData.fileData.length : 0);
       logger.debug("[KLING] Step 1: url present:", !!(inputData?.url), "imageUrl present:", !!(inputData?.imageUrl), "svg present:", !!(inputData?.svg));
 
-      // ── Priority 1: Direct image upload from IN-003 (original user file) ──
+      // ── Priority 1: Direct image upload from IN-003/IN-008 (original user file) ──
       // FIX F: Send base64 directly to Kling API — no temp-image URL needed.
       // Kling's image field accepts both URLs and base64 encoded strings.
       // Skip non-image files (PDFs, docs) — they should use text2video path instead.
@@ -2227,8 +2227,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const isImageFile = inputMimeType.startsWith("image/") || !inputMimeType;
       if (inputData?.fileData && typeof inputData.fileData === "string" && isImageFile) {
         const imgMime = inputMimeType || "image/jpeg";
-        const raw = inputData.fileData as string;
-        const cleanBase64 = raw.startsWith("data:") ? raw.split(",")[1] ?? raw : raw;
+        const rawImg = inputData.fileData as string;
+        const cleanBase64 = rawImg.startsWith("data:") ? rawImg.split(",")[1] ?? rawImg : rawImg;
 
         logger.debug("[KLING] Step 2: Clean base64 length:", cleanBase64.length, "mime:", imgMime);
 
@@ -2240,7 +2240,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             logger.debug("[KLING] Step 2a: R2 is configured, uploading...");
             const ext = imgMime.includes("png") ? "png" : "jpg";
             const imgBuffer = Buffer.from(cleanBase64, "base64");
-            const uploadResult = await uploadToR2(imgBuffer, `floorplan-upload-${generateId()}.${ext}`, imgMime);
+            const uploadResult = await uploadToR2(imgBuffer, `building-photo-${generateId()}.${ext}`, imgMime);
             if (uploadResult.success) {
               renderImageUrl = uploadResult.url;
               logger.debug("[KLING] Step 2a: R2 upload succeeded:", renderImageUrl);
@@ -2259,7 +2259,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           logger.debug("[KLING] Step 2b: Using raw base64, length:", cleanBase64.length);
         }
 
-        isFloorPlanInput = true;
+        // Only mark as floor plan if TR-004 analysis flagged it or if upstream says so.
+        // Building photos from IN-008 are NOT floor plans — they should use image2video path.
+        const upstreamIsFloorPlan = !!(inputData?.isFloorPlan);
+        isFloorPlanInput = upstreamIsFloorPlan;
       }
 
       // ── Priority 2: Floor plan SVG from GN-004 ──
