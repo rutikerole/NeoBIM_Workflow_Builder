@@ -600,7 +600,7 @@ export default function DashboardPage() {
 
             <div className="grid gap-4 mb-10 dashboard-template-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
               {PREBUILT_WORKFLOWS
-                .filter(w => !["wf-02", "wf-06", "wf-07", "wf-08", "wf-10"].includes(w.id))
+                .filter(w => !["wf-02", "wf-06", "wf-07", "wf-08", "wf-10", "wf-11"].includes(w.id))
                 .slice(0, 6)
                 .map((wf, i) => {
                   const catColors: Record<string, string> = {
@@ -694,7 +694,7 @@ export default function DashboardPage() {
 
             <div className="grid gap-4 mb-8 dashboard-template-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
               {PREBUILT_WORKFLOWS
-                .filter(w => ["wf-02", "wf-06", "wf-07", "wf-08", "wf-10"].includes(w.id))
+                .filter(w => ["wf-02", "wf-06", "wf-07", "wf-08", "wf-10", "wf-11"].includes(w.id))
                 .map((wf, i) => {
                   const catColors: Record<string, string> = {
                     "Concept Design": "#3B82F6", "Visualization": "#10B981",

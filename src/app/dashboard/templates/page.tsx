@@ -53,7 +53,7 @@ const SORT_OPTION_KEYS: Record<string, string> = {
 const COMPLEXITY_ORDER: Record<string, number> = { simple: 0, intermediate: 1, advanced: 2 };
 
 // Templates that use expensive API nodes (render, video, 3D model) — locked for FREE users
-const LOCKED_IDS = new Set(["wf-02", "wf-05", "wf-06", "wf-07", "wf-08"]);
+const LOCKED_IDS = new Set(["wf-02", "wf-05", "wf-06", "wf-07", "wf-08", "wf-11"]);
 
 // Quick start templates (simple, fast output — displayed in order)
 const QUICK_START_IDS = ["wf-01", "wf-03", "wf-04"];
@@ -89,6 +89,7 @@ const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: num
   "wf-06": { type: "video", url: `${R2}/floorplan-to-3d-video.mp4`, start: 65 },
   "wf-05": { type: "video", url: `${R2}/floor-plan-demo.mp4`, start: 100 },
   "wf-03": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 132 },
+  "wf-11": { type: "svg", output: "render" },
 };
 
 // SVG output type illustrations

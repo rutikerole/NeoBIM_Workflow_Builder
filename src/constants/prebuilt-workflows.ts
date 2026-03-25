@@ -859,8 +859,8 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
     },
   },
   {
-    id: "wf-19",
-    name: "Building Photo → Video Render",
+    id: "wf-11",
+    name: "Building Photo → Renovation Video",
     description:
       "Upload building photos → GPT-4o analyzes architecture, materials & style → Kling 3.0 produces a cinematic 15s renovation video showing the building transformed with new life — modernized facades, contemporary extensions, premium finishes, and lush landscaping. Works with old facade photos (renovation) or new building photos (polished upgrade).",
     tags: ["image", "video", "render", "walkthrough", "photo", "building", "cinematic", "kling", "renovation", "facade"],
