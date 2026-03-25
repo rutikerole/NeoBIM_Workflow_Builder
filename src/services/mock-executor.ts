@@ -425,20 +425,51 @@ export async function executeNode(
         label: "Model Delta Report",
       });
 
-    case "TR-012": // GIS Context
-      return mockArtifact(executionId, tileInstanceId, "json", {
-        json: {
-          site: { address: "Dronning Eufemias gate, Oslo", area_m2: 1050, shape: "rectangular" },
-          terrain: { elevation_m: 4.2, slope_pct: 0.8, type: "flat" },
-          context: {
-            buildings_30m: 3,
-            nearest_public_transport_m: 180,
-            nearest_green_space_m: 320,
-            noise_db: 62,
-          },
+    case "TR-012": { // GIS Context — preserve user's location from upstream
+      // Extract the actual location from the upstream Location Input data
+      let mockAddress = "Dronning Eufemias gate, Oslo";
+      let mockClimateZone = "temperate maritime";
+      const mockDesignImplications = ["Climate-responsive facade design", "Energy-efficient building envelope", "Local material palette"];
+
+      // Try to parse the user's actual location from inputData
+      const rawContent = String(inputData?.content ?? inputData?.prompt ?? inputData?.address ?? "");
+      if (rawContent.startsWith("{")) {
+        try {
+          const locJson = JSON.parse(rawContent) as Record<string, string>;
+          const parts = [locJson.city, locJson.state, locJson.country].filter(Boolean);
+          if (parts.length > 0) {
+            mockAddress = parts.join(", ");
+            if (locJson.country?.toLowerCase() === "india") mockClimateZone = "tropical / composite";
+          }
+        } catch { /* ignore */ }
+      } else if (rawContent.length > 2) {
+        mockAddress = rawContent;
+      }
+
+      // Also check direct fields
+      if (inputData?.city || inputData?.state || inputData?.country) {
+        const parts = [inputData.city, inputData.state, inputData.country].filter(Boolean).map(String);
+        if (parts.length > 0) mockAddress = parts.join(", ");
+      }
+
+      return mockArtifact(executionId, tileInstanceId, "kpi", {
+        metrics: [
+          { label: "Location", value: mockAddress, unit: "" },
+          { label: "Climate", value: mockClimateZone, unit: "" },
+        ],
+        content: `SITE ANALYSIS — ${mockAddress}\n\nClimate Zone: ${mockClimateZone}\n\nDESIGN IMPLICATIONS:\n${mockDesignImplications.map(d => `• ${d}`).join("\n")}`,
+        prompt: `SITE ANALYSIS — ${mockAddress}\n\nClimate Zone: ${mockClimateZone}\n\nDESIGN IMPLICATIONS:\n${mockDesignImplications.map(d => `• ${d}`).join("\n")}`,
+        label: `Site Analysis: ${mockAddress}`,
+        _raw: {
+          location: { address: mockAddress, lat: 0, lon: 0, displayName: mockAddress },
+          elevation: { value: 500, unit: "m" },
+          climate: { zone: mockClimateZone, avgTempSummer: 30, avgTempWinter: 15, annualRainfall: 1000, currentTemp: null, currentWeather: null },
+          solar: { summerNoonAltitude: 70, winterNoonAltitude: 40, equinoxNoonAltitude: 55 },
+          designImplications: mockDesignImplications,
         },
-        label: "Site Context Data",
+        mockNote: `Mock mode — Site Analysis using estimated data for ${mockAddress}`,
       });
+    }
 
     case "GN-001": { // Massing Generator
       // Parse upstream data for floor count and building description
