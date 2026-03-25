@@ -2467,7 +2467,57 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           } else {
             // ── DUAL video for non-floor-plan (concept renders or building photos) ──
             logger.debug("[GN-009] Function: submitDualWalkthrough (dual 5s+10s), isRenovation:", isRenovationInput);
-            const submitted = await submitDualWalkthrough(renderImageUrl, buildingDesc, "pro", {
+
+            // ── RENOVATION PATH: Generate a DALL-E 3 renovation render first ──
+            // Kling image2video preserves the source image too faithfully — old cracked
+            // walls stay cracked. So for building photo inputs, we first generate a
+            // DALL-E 3 "renovated" version of the building, then feed THAT to Kling.
+            let klingSourceImage = renderImageUrl;
+            let renovationRenderUrl: string | undefined;
+
+            if (isRenovationInput && apiKey) {
+              logger.debug("[GN-009] Renovation: Generating DALL-E 3 renovation render before Kling video...");
+              try {
+                const renovationPrompt =
+                  `Photorealistic architectural visualization of a COMPLETELY RENOVATED and MODERNIZED building. ` +
+                  `The original building from the reference has this analysis: ${buildingDesc.slice(0, 400)}. ` +
+                  `Transform this building into a stunning, contemporary renovated version: ` +
+                  `- Keep the same basic building form, proportions, and number of floors ` +
+                  `- Replace ALL old/damaged/weathered surfaces with pristine new materials ` +
+                  `- New facade: clean white render or light stone cladding combined with dark metal/glass accents ` +
+                  `- Modern floor-to-ceiling window systems replacing old windows ` +
+                  `- Elegant ground-floor entrance with glass canopy and designer lighting ` +
+                  `- Add a contemporary rooftop extension with glass balustrades and a green terrace ` +
+                  `- Professional landscaping: mature trees, ornamental grasses, pathway lighting, clean sidewalks ` +
+                  `- Remove all scaffolding, construction barriers, and visual clutter ` +
+                  `- Golden hour lighting, dramatic sky, the building looks brand new and premium ` +
+                  `Style: high-end real-estate marketing render, V-Ray quality, 8K resolution, ` +
+                  `photorealistic materials, global illumination, architectural photography composition. ` +
+                  `The building must be RECOGNIZABLY the same structure but DRAMATICALLY upgraded — ` +
+                  `like a before/after renovation reveal.`;
+
+                const dalleResult = await generateConceptImage(
+                  renovationPrompt,
+                  "photorealistic architectural renovation render",
+                  apiKey,
+                  undefined,
+                  undefined,
+                  undefined,
+                  "exterior"
+                );
+
+                if (dalleResult.url) {
+                  renovationRenderUrl = dalleResult.url;
+                  klingSourceImage = dalleResult.url;
+                  logger.debug("[GN-009] Renovation render generated! URL:", dalleResult.url.slice(0, 100));
+                }
+              } catch (dalleErr) {
+                // Non-fatal — fall back to original image
+                console.warn("[GN-009] DALL-E renovation render failed, using original photo:", dalleErr);
+              }
+            }
+
+            const submitted = await submitDualWalkthrough(klingSourceImage, buildingDesc, "pro", {
               isRenovation: isRenovationInput,
             });
 
@@ -2480,7 +2530,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               ? `15s renovation walkthrough: 5s exterior transformation + 10s renovated interior — ${buildingDesc.slice(0, 100)}`
               : `15s AEC walkthrough: 5s exterior + 10s interior — ${buildingDesc.slice(0, 100)}`;
             const videoPipelineLabel = isRenovationInput
-              ? "building photo → renovation prompts → Kling Official API (pro, image2video) → 2x MP4 video"
+              ? "building photo → DALL-E 3 renovation render → Kling Official API (pro, image2video) → 2x MP4 video"
               : "concept render → Kling Official API (pro, image2video) → 2x MP4 video";
 
             artifact = {
@@ -2497,7 +2547,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 durationSeconds: 15,
                 shotCount: 2,
                 pipeline: videoPipelineLabel,
-                costUsd: 1.50,
+                costUsd: isRenovationInput ? 1.54 : 1.50, // +$0.04 for DALL-E 3 HD render
                 segments: [],
                 videoGenerationStatus: "processing",
                 videoPipeline: "image2video",
@@ -2506,6 +2556,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 generationProgress: 0,
                 isFloorPlanInput: false,
                 isRenovation: isRenovationInput,
+                ...(renovationRenderUrl && { renovationRenderUrl }),
               },
               metadata: {
                 engine: "kling-official",
