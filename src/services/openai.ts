@@ -447,11 +447,11 @@ export async function generateConceptImage(
 
 // ─── generateRenovationRender ─────────────────────────────────────────────────
 //
-// Two-step pipeline that produces a DALL-E 3 renovation render faithful to the
-// original building photo:
-//   Step 1: GPT-4o SEES the photo and writes a hyper-detailed DALL-E prompt
-//           that captures the exact geometry, proportions, window patterns, etc.
-//   Step 2: DALL-E 3 renders the renovated version from that prompt.
+// Uses OpenAI's gpt-image-1 model via the images.edit endpoint to transform
+// the user's ACTUAL building photo into a renovated version.
+// Unlike DALL-E 3 (text-to-image only), gpt-image-1 SEES the input image and
+// edits it — preserving the exact building structure, proportions, and geometry
+// while applying new materials, extensions, and landscaping.
 
 export async function generateRenovationRender(
   imageBase64: string,
@@ -460,78 +460,87 @@ export async function generateRenovationRender(
   userApiKey?: string,
 ): Promise<{ url: string; revisedPrompt: string; renovationPrompt: string }> {
   return handleOpenAICall(async () => {
-    const client = getClient(userApiKey, 90000); // 90s timeout for 2 API calls
-    const imageDataUrl = `data:${mimeType};base64,${imageBase64}`;
+    const client = getClient(userApiKey, 120000); // 120s — image editing can be slow
 
-    // ── Step 1: GPT-4o vision → hyper-detailed renovation prompt ──
-    // GPT-4o CAN see the image — it describes the exact building, then writes
-    // a DALL-E prompt that preserves the building's form but applies renovation.
-    const promptGeneration = await client.chat.completions.create({
-      model: "gpt-4o",
-      temperature: 0.3,
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert architectural visualization artist. You will receive a photo of an existing building.
+    // Convert base64 to a File object for the images.edit API
+    const cleanBase64 = imageBase64.startsWith("data:") ? imageBase64.split(",")[1] ?? imageBase64 : imageBase64;
+    const imageBuffer = Buffer.from(cleanBase64, "base64");
+    const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+    const imageFile = new File([imageBuffer], `building.${ext}`, { type: mimeType });
 
-Your task: Write a DALL-E 3 image generation prompt that produces a photorealistic render of THIS EXACT SAME BUILDING but COMPLETELY RENOVATED with modern materials and an extension.
+    // Craft the renovation prompt — gpt-image-1 will SEE the actual building
+    // and modify it while preserving structure, proportions, and geometry.
+    const renovationPrompt =
+      `Transform this existing building into a beautifully RENOVATED, MODERNIZED version. ` +
+      `CRITICAL: Keep the EXACT SAME building structure — same number of floors, same width, ` +
+      `same proportions, same window positions, same overall shape and massing. ` +
+      `Do NOT change the building's form or create a different building. ` +
+      `\n\nRENOVATION CHANGES to apply to this exact building: ` +
+      `1. FACADE: Replace all old, cracked, weathered, peeling surfaces with pristine new materials — ` +
+      `smooth white render combined with natural stone cladding accents and dark charcoal metal panels. ` +
+      `Clean, fresh, brand-new facade surfaces with no damage or weathering. ` +
+      `2. WINDOWS: Replace all existing windows with modern aluminum-framed double-glazed units ` +
+      `in the SAME positions and SAME grid pattern — just new, clean, contemporary frames. ` +
+      `3. GROUND FLOOR: Upgrade the entrance with a modern glass canopy, clean glass doors, ` +
+      `designer lighting, and polished stone threshold. Modern retail/cafe glass shopfront at street level. ` +
+      `4. ROOFTOP: Add a contemporary glass-and-steel penthouse extension on top — ` +
+      `one extra floor with curtain wall glazing, rooftop terrace with glass balustrades and green planters. ` +
+      `5. SURROUNDINGS: Remove all scaffolding, fencing, barriers, and construction clutter. ` +
+      `Add professional landscaping — mature trees, ornamental planters, clean new sidewalks, ` +
+      `recessed pathway lighting, pedestrian-friendly plaza. ` +
+      `6. LIGHTING: Golden hour warm sunlight, interior lights glowing through windows, dramatic sky. ` +
+      `\nBuilding analysis: ${buildingAnalysis.slice(0, 600)} ` +
+      `\nStyle: Photorealistic high-end architectural visualization, V-Ray quality, ` +
+      `the building must be RECOGNIZABLY the same structure but dramatically upgraded and polished.`;
 
-CRITICAL RULES:
-1. PRESERVE the exact building geometry: same number of floors, same footprint shape, same proportions, same window grid pattern (rows × columns), same roof form.
-2. DESCRIBE the building's geometry in extreme detail so DALL-E reproduces the SAME structure: "X-storey rectangular building with Y windows across and Z bays deep, flat/pitched roof, L-shaped/rectangular plan..."
-3. ONLY change the surface treatment: replace old/damaged materials with new premium ones.
-4. Add a 1-storey contemporary glass rooftop extension.
-5. Upgrade the ground floor entrance.
-6. Add landscaping around the base.
+    console.log("[RenovationRender] Using gpt-image-1 images.edit with actual building photo");
+    console.log("[RenovationRender] Image size:", imageBuffer.length, "bytes, type:", mimeType);
+    console.log("[RenovationRender] Prompt (first 200):", renovationPrompt.slice(0, 200));
 
-Your output must be a SINGLE paragraph — the raw DALL-E prompt (no labels, no markdown, no explanation). Start directly with the architectural description.
-
-Include these elements in order:
-- Exact building form (floors, proportions, window pattern, plan shape)
-- New facade materials (white render + stone + dark metal accents)
-- New window systems (same grid, modern aluminum frames, floor-to-ceiling)
-- New ground floor (glass entrance, retail/cafe frontage)
-- Rooftop extension (glass penthouse, terrace, planters)
-- Landscaping (trees, granite pavers, lighting)
-- Photographic quality (golden hour, eye-level, V-Ray quality)`,
-        },
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
-            {
-              type: "text",
-              text: `Here is the building photo. The analysis says: ${buildingAnalysis.slice(0, 500)}\n\nWrite the DALL-E 3 prompt for a renovated version of THIS EXACT building. Preserve its exact geometry and proportions.`,
-            },
-          ],
-        },
-      ],
-      max_tokens: 1000,
-    });
-
-    const renovationPrompt = promptGeneration.choices[0]?.message?.content;
-    if (!renovationPrompt) throw new Error("GPT-4o returned empty renovation prompt");
-
-    console.log("[RenovationRender] GPT-4o prompt (first 300 chars):", renovationPrompt.slice(0, 300));
-
-    // ── Step 2: DALL-E 3 renders the renovated building ──
-    const response = await client.images.generate({
-      model: "dall-e-3",
+    // Use gpt-image-1 images.edit — this model SEES the input image and edits it
+    // input_fidelity: "high" ensures the output closely matches the input structure
+    const response = await client.images.edit({
+      model: "gpt-image-1",
+      image: imageFile,
       prompt: renovationPrompt,
-      n: 1,
       size: "1024x1024",
-      quality: "hd",
-      style: "natural",
+      quality: "high",
+      input_fidelity: "high",
     });
 
     const image = response.data?.[0];
-    if (!image?.url) throw new Error("No image URL in DALL-E renovation response");
+    if (!image?.url && !image?.b64_json) throw new Error("No image in gpt-image-1 renovation response");
 
-    console.log("[RenovationRender] DALL-E 3 render complete:", image.url.slice(0, 80));
+    // gpt-image-1 returns b64_json by default — we need a URL for Kling
+    let resultUrl = image.url ?? "";
+    if (!resultUrl && image.b64_json) {
+      // Upload the base64 result to R2 for a public URL
+      try {
+        const { uploadToR2, isR2Configured } = await import("@/lib/r2");
+        if (isR2Configured()) {
+          const resultBuffer = Buffer.from(image.b64_json, "base64");
+          const uploadResult = await uploadToR2(resultBuffer, `renovation-render-${Date.now()}.png`, "image/png");
+          if (uploadResult.success) {
+            resultUrl = uploadResult.url;
+            console.log("[RenovationRender] Uploaded to R2:", resultUrl.slice(0, 80));
+          }
+        }
+      } catch (r2Err) {
+        console.warn("[RenovationRender] R2 upload failed:", r2Err);
+      }
+
+      // Fallback: pass as data URI (Kling accepts base64)
+      if (!resultUrl) {
+        resultUrl = image.b64_json; // raw base64 — Kling can handle this
+        console.log("[RenovationRender] Using raw base64 (length:", image.b64_json.length, ")");
+      }
+    }
+
+    console.log("[RenovationRender] gpt-image-1 edit complete! URL type:", resultUrl.startsWith("http") ? "URL" : "base64");
 
     return {
-      url: image.url,
-      revisedPrompt: image.revised_prompt ?? renovationPrompt,
+      url: resultUrl,
+      revisedPrompt: renovationPrompt,
       renovationPrompt,
     };
   });
