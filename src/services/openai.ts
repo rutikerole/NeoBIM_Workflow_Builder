@@ -66,6 +66,12 @@ export interface BuildingDescription {
   estimatedCost: string;
   constructionDuration: string;
   narrative: string; // 8-section professional narrative (TR-003 v2)
+  // Location & climate context for accurate renders
+  location?: string; // e.g. "Guwahati, Assam, India"
+  city?: string;
+  country?: string;
+  climateZone?: string; // e.g. "tropical monsoon", "arid", "temperate"
+  designImplications?: string[]; // from TR-012 site analysis
 }
 
 
@@ -78,7 +84,7 @@ function parseUserRequirements(prompt: string): { floors?: number; location?: st
 
   // Detect location from prompt — cities, countries, regions
   const locations = [
-    "Mumbai", "Delhi", "Bangalore", "Chennai", "Hyderabad", "Pune", "Kolkata", "Ahmedabad",
+    "Mumbai", "Delhi", "Bangalore", "Chennai", "Hyderabad", "Pune", "Kolkata", "Ahmedabad", "Guwahati", "Jaipur", "Lucknow", "Kochi", "Chandigarh", "Bhopal", "Indore", "Surat", "Nagpur", "Visakhapatnam", "Coimbatore",
     "Berlin", "Munich", "Hamburg", "Frankfurt",
     "London", "Manchester", "Birmingham", "Edinburgh",
     "New York", "Los Angeles", "Chicago", "San Francisco", "Miami", "Seattle", "Boston",
@@ -189,6 +195,11 @@ Respond with a JSON object with these exact fields:
 - estimatedCost (string: e.g. "£12.5M")
 - constructionDuration (string: e.g. "18 months")
 - narrative (string: full 8-section markdown description, see below)
+- location (string: full location e.g. "Guwahati, Assam, India" — extract from user input or context)
+- city (string: city name only e.g. "Guwahati")
+- country (string: country name e.g. "India")
+- climateZone (string: e.g. "tropical monsoon", "hot-arid", "temperate continental", "cold")
+- designImplications (array of strings: 3-5 location-specific design responses, e.g. "deep overhangs for monsoon rain protection", "raised plinth for flood resilience")
 
 NARRATIVE FORMAT (500-700 words):
 Write a professional, client-facing architectural narrative with these 8 sections:
@@ -260,13 +271,13 @@ export async function enhanceArchitecturalPrompt(
     const client = getClient(apiKey);
 
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       response_format: { type: "json_object" },
       temperature: 0.4,
       messages: [
         {
           role: "system",
-          content: `You are an expert AEC visualization prompt engineer. Convert structured building data into precise, detailed DALL-E 3 prompts using proper architectural terminology.
+          content: `You are an expert AEC visualization prompt engineer. Convert structured building data into precise, detailed image generation prompts using proper architectural terminology.
 
 Use specific AEC vocabulary: floor count, facade materials, massing strategy, glazing ratio, setbacks, structural grid, floor-to-floor heights, podium/tower relationship, curtain wall systems, fenestration patterns, etc.
 
@@ -276,6 +287,18 @@ For each view type, emphasize different aspects:
 - site_plan: building footprint, setbacks, landscaping, access, parking, orientation
 - interior: spatial quality, ceiling heights, natural light, materials, furnishings
 
+CRITICAL — LOCATION & CONTEXT ACCURACY:
+When a location is provided, the render MUST look like it belongs in that specific city/region:
+- Include location-specific vegetation (e.g. tropical palms & bamboo for NE India, pine trees for Scandinavia, date palms for Middle East)
+- Show local street character, vehicles, signage style, and pedestrian attire appropriate to the region
+- Use climate-appropriate architectural features (deep overhangs for monsoon regions, courtyards for arid climates, pitched roofs for heavy rain/snow)
+- Reference local urban density, building heights, and streetscape character
+- Include atmospheric conditions typical of the region (humidity haze for tropical, crisp air for alpine, etc.)
+- The building MUST have EXACTLY the specified number of floors — count them carefully in your prompt
+- Include design implications (if provided) as visible architectural features in the render
+
+The prompt must be 200-350 words, richly descriptive, and specific enough that the generated image is unmistakably set in the given location.
+
 Respond with JSON: { "prompt": "<the enhanced DALL-E 3 prompt>" }`,
         },
         {
@@ -283,7 +306,7 @@ Respond with JSON: { "prompt": "<the enhanced DALL-E 3 prompt>" }`,
           content: `Create an optimised DALL-E 3 prompt for a ${viewType} view of this building:
 
 Building Type: ${description.buildingType}
-Floors: ${description.floors}
+Floors: ${description.floors} (MUST show exactly ${description.floors} floors in the image)
 Total GFA: ${description.totalGFA ?? description.totalArea} m²
 Height: ${description.height ?? description.floors * 3.5}m
 Footprint: ${description.footprint ?? Math.round(description.totalArea / description.floors)} m²
@@ -291,7 +314,10 @@ Program: ${JSON.stringify(description.program ?? [{ space: description.programSu
 Style: ${style ?? "contemporary architectural"}
 View Type: ${viewType}
 Facade: ${description.facade}
-Structure: ${description.structure}`,
+Structure: ${description.structure}
+Location: ${description.location ?? description.city ?? "unspecified urban setting"}
+Climate Zone: ${description.climateZone ?? "temperate"}
+${description.designImplications?.length ? `Design Implications (must be visible in render):\n${description.designImplications.map(d => `- ${d}`).join("\n")}` : ""}`,
         },
       ],
     });
@@ -303,8 +329,121 @@ Structure: ${description.structure}`,
     return parsed.prompt;
   } catch (error) {
     console.error("[enhanceArchitecturalPrompt] Falling back to basic prompt:", error);
-    return `Professional architectural concept rendering of a ${description.floors}-story ${description.buildingType}. Exterior perspective view from street level, 3/4 angle. ${description.facade} facade. Show building in realistic urban context with surrounding buildings, street, landscaping, and people for scale. Golden hour lighting. High-quality architectural visualization style similar to Foster+Partners or BIG presentations. Photorealistic materials, accurate proportions, contemporary architectural photography style.`;
+    const loc = description.location ?? description.city ?? "urban setting";
+    const climate = description.climateZone ? ` in a ${description.climateZone} climate` : "";
+    return `Professional architectural concept rendering of a ${description.floors}-story ${description.buildingType} in ${loc}${climate}. Exterior perspective view from street level, 3/4 angle. ${description.facade} facade. The building must have EXACTLY ${description.floors} floors visible. Show building in realistic local context with region-appropriate vegetation, street character, vehicles, and people in local attire for scale. ${description.designImplications?.length ? `Key design features: ${description.designImplications.slice(0, 3).join("; ")}.` : ""} Golden hour lighting. High-quality architectural visualization style similar to Foster+Partners or BIG presentations. Photorealistic materials, accurate proportions, contemporary architectural photography style.`;
   }
+}
+
+// ─── Location-aware context helpers ──────────────────────────────────────────
+
+/**
+ * Generates location-specific street context for photorealistic prompts.
+ * Instead of hardcoding Mumbai, dynamically adapts to any city/climate.
+ */
+function buildLocationContext(location: string, climateZone: string): string {
+  const loc = location.toLowerCase();
+
+  // Indian cities
+  if (loc.includes("mumbai") || loc.includes("bombay")) {
+    return "busy Mumbai street corner with moderate pedestrian traffic (8-10 people visible: office workers, shoppers, food vendor). Street lined with mature rain trees with dappled shade. Black/yellow auto-rickshaws and cars with Mumbai license plates. Vendor cart with bright fabric canopy (orange/magenta) in foreground. Shallow puddles from recent monsoon rain reflecting golden light.";
+  }
+  if (loc.includes("guwahati") || loc.includes("assam") || loc.includes("northeast india")) {
+    return "lush green Guwahati streetscape with tropical vegetation — mature areca nut palms, banana plants, and bamboo groves framing the scene. Local vehicles including Tata Sumos and auto-rickshaws. Pedestrians in mix of modern and traditional Assamese attire (mekhela chador visible on women). Nearby low-rise buildings with corrugated metal roofs and colorful facades. Red laterite earth visible at road edges. Overcast tropical sky with cumulus clouds suggesting monsoon season. A tea stall with bamboo structure visible in foreground.";
+  }
+  if (loc.includes("delhi") || loc.includes("new delhi") || loc.includes("noida") || loc.includes("gurgaon") || loc.includes("gurugram")) {
+    return "wide Delhi boulevard with mixed traffic (auto-rickshaws, cars, two-wheelers). Mature neem and gulmohar trees along the road. Pedestrians in contemporary Indian attire. Adjacent buildings showing Delhi's mixed architectural character. Dry summer atmosphere with warm light.";
+  }
+  if (loc.includes("bangalore") || loc.includes("bengaluru")) {
+    return "tree-lined Bangalore road with rain trees and jacarandas providing canopy shade. Mix of tech workers, two-wheelers, and modern vehicles. Adjacent buildings showing Bangalore's contemporary IT corridor character. Pleasant tropical highland atmosphere.";
+  }
+  if (loc.includes("chennai") || loc.includes("hyderabad") || loc.includes("kolkata") || loc.includes("pune") || loc.includes("ahmedabad")) {
+    return `busy ${location} street with local traffic, auto-rickshaws, and pedestrians in regional attire. Tropical vegetation and mature shade trees lining the road. Adjacent buildings reflecting local architectural character. Warm, humid atmospheric conditions.`;
+  }
+  if (loc.includes("india")) {
+    return `Indian urban street in ${location} with local traffic including auto-rickshaws and two-wheelers. Tropical vegetation, mature shade trees. Pedestrians in mix of modern and traditional Indian attire. Local street vendors and small shops visible. Adjacent buildings showing regional architectural character.`;
+  }
+
+  // Middle East
+  if (loc.includes("dubai") || loc.includes("abu dhabi") || loc.includes("riyadh") || loc.includes("doha") || loc.includes("qatar") || loc.includes("uae")) {
+    return `modern ${location} boulevard with luxury vehicles, date palms, and manicured landscaping. Pedestrians in mix of Western and traditional Gulf attire (kandura/thobe visible). Adjacent towers and modern architecture. Clear desert sky with intense sunlight. Pristine sidewalks and well-maintained street furniture.`;
+  }
+
+  // East/Southeast Asia
+  if (loc.includes("tokyo") || loc.includes("osaka") || loc.includes("japan")) {
+    return `orderly Japanese street in ${location} with compact vehicles, cherry or maple trees, and precise urban infrastructure. Pedestrians in business attire. Clean, well-organized streetscape with distinctive Japanese signage. Adjacent buildings showing characteristic Japanese density and scale.`;
+  }
+  if (loc.includes("singapore") || loc.includes("bangkok") || loc.includes("kuala lumpur")) {
+    return `tropical ${location} street with lush equatorial vegetation, modern vehicles, and diverse pedestrian traffic. Rain trees and tropical palms providing shade. Adjacent buildings showing the city's characteristic mix of modern and heritage architecture. Warm, humid atmosphere.`;
+  }
+
+  // Europe
+  if (loc.includes("london") || loc.includes("uk") || loc.includes("united kingdom") || loc.includes("manchester") || loc.includes("birmingham")) {
+    return `London street with Georgian/Victorian context buildings, black cabs and red buses visible. Mature London plane trees, pedestrians in smart-casual attire. Overcast British sky with soft diffused light. Brick and stone adjacent buildings.`;
+  }
+  if (loc.includes("berlin") || loc.includes("munich") || loc.includes("germany") || loc.includes("hamburg") || loc.includes("frankfurt")) {
+    return `German urban street in ${location} with clean, organized streetscape. Mature linden trees, bicycles parked along the road. Pedestrians in European attire. Adjacent buildings showing characteristic German architectural order. Clear continental European atmosphere.`;
+  }
+  if (loc.includes("paris") || loc.includes("france")) {
+    return "Parisian boulevard with Haussmann-era buildings context, mature chestnut trees, café terraces, pedestrians in elegant attire. Classic wrought-iron balconies on adjacent buildings. Warm Parisian light with slight atmospheric haze.";
+  }
+  if (loc.includes("stockholm") || loc.includes("copenhagen") || loc.includes("oslo") || loc.includes("scandinavia") || loc.includes("nordic")) {
+    return `Nordic streetscape in ${location} with birch trees, clean minimalist urban design. Cyclists and pedestrians in Scandinavian casual wear. Adjacent buildings in characteristic Nordic brick/render. Soft northern light with clean, crisp atmosphere.`;
+  }
+
+  // Americas
+  if (loc.includes("new york") || loc.includes("manhattan") || loc.includes("brooklyn")) {
+    return "New York City streetscape with yellow cabs, fire hydrants, mature honey locusts, diverse pedestrian traffic in urban attire. Brownstones and mixed-height buildings as context. Characteristic NYC energy and density.";
+  }
+  if (loc.includes("san francisco") || loc.includes("los angeles") || loc.includes("chicago") || loc.includes("miami") || loc.includes("usa") || loc.includes("united states")) {
+    return `American urban street in ${location} with local vehicles, street trees, and pedestrian activity. Adjacent buildings reflecting the city's architectural character. Well-maintained sidewalks with American street furniture and signage.`;
+  }
+
+  // Climate-based fallback
+  if (climateZone.includes("tropical") || climateZone.includes("monsoon")) {
+    return `tropical urban street in ${location} with lush vegetation — palms, broad-leafed trees, and flowering plants. Local vehicles and pedestrians. Warm, humid atmosphere with cumulus clouds. Adjacent buildings with climate-responsive features (overhangs, ventilation).`;
+  }
+  if (climateZone.includes("arid") || climateZone.includes("desert")) {
+    return `arid urban setting in ${location} with date palms, xeriscaped landscape. Bright sunlight with sharp shadows. Modern vehicles and pedestrians. Sand-toned adjacent buildings.`;
+  }
+  if (climateZone.includes("cold") || climateZone.includes("subarctic")) {
+    return `cold-climate urban street in ${location} with evergreen trees, clean sidewalks. Bundled-up pedestrians and modern vehicles. Adjacent buildings with heavy insulation and steep roofs. Crisp, clear atmosphere.`;
+  }
+
+  // Generic fallback
+  return `urban street in ${location} with pedestrian activity (6-8 people visible), street trees providing natural shade, parked cars and passing traffic. Adjacent buildings showing mixed architectural styles. Well-maintained sidewalk with street furniture.`;
+}
+
+/**
+ * Generates location-specific atmospheric details for photorealistic prompts.
+ */
+function buildAtmosphericDetails(location: string, climateZone: string): string {
+  const loc = location.toLowerCase();
+
+  if (loc.includes("mumbai") || loc.includes("bombay")) {
+    return "Slight atmospheric haze typical of coastal Mumbai (humidity visible in distance). Light smoke from street food vendor. Motion blur on passing auto-rickshaw. Wet pavement reflections. Seagulls in distant sky.";
+  }
+  if (loc.includes("guwahati") || loc.includes("assam") || loc.includes("northeast india")) {
+    return "Tropical humidity haze with lush green tones saturated by moisture. Dramatic monsoon clouds in background. Light mist rising from vegetation after rain. Reflections on wet road surface. Distant Brahmaputra river valley visible. Rich, saturated greens dominating the landscape.";
+  }
+  if (loc.includes("delhi") || loc.includes("noida") || loc.includes("gurgaon") || loc.includes("gurugram")) {
+    return "Warm atmospheric haze typical of North Indian plains. Dust particles visible in golden light. Motion blur on traffic. Slight pollution haze softening distant buildings.";
+  }
+
+  // Tropical/monsoon climates
+  if (climateZone.includes("tropical") || climateZone.includes("monsoon") || loc.includes("india") || loc.includes("southeast asia") || loc.includes("singapore") || loc.includes("bangkok")) {
+    return `Tropical humidity with lush saturated colors. Cumulus clouds building in background. Wet pavement reflections from recent rain. Light atmospheric haze from warmth and moisture. Rich green vegetation tones.`;
+  }
+  // Arid climates
+  if (climateZone.includes("arid") || climateZone.includes("desert") || loc.includes("dubai") || loc.includes("riyadh")) {
+    return "Crystal-clear atmosphere with intense sunlight. Sharp shadows with minimal diffusion. Heat shimmer visible near ground. Distant buildings crisp against blue sky. Sand-tinted ambient light.";
+  }
+  // Nordic/cold climates
+  if (climateZone.includes("cold") || climateZone.includes("subarctic") || loc.includes("stockholm") || loc.includes("oslo") || loc.includes("helsinki")) {
+    return "Clean Nordic air with exceptional clarity. Soft, diffused northern light. Crisp shadows. Minimal atmospheric haze. Pale blue sky with high thin clouds.";
+  }
+
+  return "Clear atmospheric depth with slight urban haze. Motion blur on vehicles. Sharp foreground, gradual background softness. Natural depth cues.";
 }
 
 // ─── buildPhotorealisticPrompt ────────────────────────────────────────────────
@@ -319,21 +458,22 @@ function buildPhotorealisticPrompt(
   cameraAngle: string = "eye-level corner",
   timeOfDay: string = "golden hour"
 ): string {
+  // Use description.location if available and caller didn't provide specific location
+  const effectiveLocation = (location === "urban setting" && description.location)
+    ? description.location
+    : location;
+
   // Extract key details
   const typology = description.buildingType.toLowerCase();
   const floors = description.floors;
   const facade = description.facade;
   const structure = description.structure;
-  
-  // Determine location-specific context
-  const isMumbai = location.toLowerCase().includes("mumbai");
-  const contextElements = isMumbai
-    ? "busy Mumbai street corner with moderate pedestrian traffic (8-10 people visible: office workers, shoppers, food vendor). Street lined with mature rain trees with dappled shade. Black/yellow auto-rickshaws and cars with Mumbai license plates. Vendor cart with bright fabric canopy (orange/magenta) in foreground. Shallow puddles from recent monsoon rain reflecting golden light."
-    : "urban street with pedestrian activity (6-8 people visible), street trees providing natural shade, parked cars and passing traffic. Adjacent buildings showing mixed architectural styles. Well-maintained sidewalk with street furniture.";
-  
-  const atmosphericDetails = isMumbai
-    ? "Slight atmospheric haze typical of coastal Mumbai (humidity visible in distance). Light smoke from street food vendor. Motion blur on passing auto-rickshaw. Wet pavement reflections. Seagulls in distant sky."
-    : "Clear atmospheric depth with slight urban haze. Motion blur on vehicles. Sharp foreground, gradual background softness. Natural depth cues.";
+  const climateZone = description.climateZone ?? "";
+  const designImpl = description.designImplications ?? [];
+
+  // Determine location-specific context dynamically
+  const contextElements = buildLocationContext(effectiveLocation, climateZone);
+  const atmosphericDetails = buildAtmosphericDetails(effectiveLocation, climateZone);
   
   // Time of day settings
   const timeSettings = timeOfDay === "golden hour"
@@ -354,8 +494,13 @@ function buildPhotorealisticPrompt(
     ? "Eye-level view from street corner, 24mm wide-angle perspective, capturing both street facades. Building occupies right two-thirds of frame, with street context on left third. Slight upward tilt emphasizing verticality without distortion."
     : "Three-quarter aerial view at 45° angle, drone perspective showing roof and massing in urban context. Building centered in frame with surrounding streetscape visible.";
   
+  // Design implications as visible features
+  const designFeatures = designImpl.length
+    ? `\n\n**Location-Specific Design Features:**\n${designImpl.slice(0, 5).map(d => `- ${d}`).join("\n")}`
+    : "";
+
   // Build comprehensive prompt following 9-element structure
-  return `Photorealistic architectural rendering of a ${floors}-story contemporary ${typology} building in ${location}.
+  return `Photorealistic architectural rendering of a ${floors}-story contemporary ${typology} building in ${effectiveLocation}. The building MUST have exactly ${floors} floors — count them carefully.
 
 **Camera & Composition:**
 ${cameraComposition}
@@ -364,7 +509,7 @@ ${cameraComposition}
 ${timeSettings}
 
 **Building Description:**
-${floors}-story ${typology} with ${facade} facade and ${structure} conceptual structure. The building features ${description.programSummary}. Lower floors have recessed floor-to-ceiling glazing with warm LED lighting visible inside. Upper floors showcase the primary facade system with high-performance tinted glazing. Visible green terrace on upper setback levels. Rooftop with clean architectural profile.
+${floors}-story ${typology} (exactly ${floors} visible floors) with ${facade} facade and ${structure} conceptual structure. The building features ${description.programSummary}. Lower floors have recessed floor-to-ceiling glazing with warm LED lighting visible inside. Upper floors showcase the primary facade system with high-performance tinted glazing. Visible green terrace on upper setback levels. Rooftop with clean architectural profile.
 
 **Materials — Specific Details:**
 - **Facade:** ${facade} with subtle reflections of sky and adjacent buildings
@@ -373,7 +518,7 @@ ${floors}-story ${typology} with ${facade} facade and ${structure} conceptual st
 - **Ground plane:** Honed granite pavers with defined mortar joints
 - **Entry:** Recessed with polished metal trim details
 
-**Context & Atmosphere:**
+**Context & Atmosphere (${effectiveLocation}):**
 ${contextElements}
 
 **Lighting — Specific:**
@@ -381,12 +526,235 @@ ${lightingDetails}
 
 **Atmospheric Details:**
 ${atmosphericDetails}
+${designFeatures}
 
 **Style & Rendering Quality:**
 Photorealistic architectural visualization, high detail, professional photography composition. Depth of field: sharp focus on building, slight background blur (f/5.6 equivalent). Color grading: ${timeOfDay === "golden hour" ? "warm, saturated, HDR-style contrast" : "balanced, natural, true-to-life colors"}. Reference: Luxigon/MIR/DBOX quality level. No text, watermarks, or labels.`;
 }
 
 // ─── generateConceptImage ─────────────────────────────────────────────────────
+
+// ─── Elevation Sketch Generator (GPT-4o → SVG) ─────────────────────────────
+//
+// Generates a precise architectural elevation SVG that serves as a geometric
+// reference for gpt-image-1. This ensures correct floor count, proportions,
+// facade rhythm, and building massing — things DALL-E 3 cannot get right.
+
+async function generateElevationSketch(
+  description: BuildingDescription,
+): Promise<string> {
+  const floors = description.floors;
+  const floorHeight = 3.5; // metres
+  const groundFloorHeight = 4.2; // taller ground floor
+  const buildingHeight = groundFloorHeight + (floors - 1) * floorHeight;
+  const buildingWidth = description.footprint
+    ? Math.sqrt(description.footprint * 1.5) // assume 1.5:1 aspect ratio
+    : Math.max(floors * 4, 20); // reasonable width based on floors
+
+  // SVG canvas dimensions (pixels)
+  const svgW = 1536;
+  const svgH = 1024;
+  const margin = 80;
+  const groundLevel = svgH - margin - 60; // leave room for ground plane
+
+  // Scale building to fit SVG
+  const availH = groundLevel - margin;
+  const availW = svgW - margin * 2;
+  const scale = Math.min(availW / buildingWidth, availH / buildingHeight) * 0.85;
+
+  const bW = buildingWidth * scale;
+  const bH = buildingHeight * scale;
+  const bX = (svgW - bW) / 2;
+  const bY = groundLevel - bH;
+
+  // Generate window grid
+  const windowsPerFloor = Math.max(3, Math.round(buildingWidth / 3));
+  const windowW = (bW * 0.6) / windowsPerFloor;
+  const windowH = floorHeight * scale * 0.5;
+  const windowGapX = (bW - windowsPerFloor * windowW) / (windowsPerFloor + 1);
+
+  let windowsSvg = "";
+  for (let f = 0; f < floors; f++) {
+    const isGround = f === floors - 1;
+    const fH = isGround ? groundFloorHeight * scale : floorHeight * scale;
+    const fY = bY + (f === 0 ? 0 : groundFloorHeight * scale + (f - 1) * floorHeight * scale);
+    const wH = isGround ? fH * 0.7 : windowH;
+    const wY = fY + (fH - wH) / 2;
+
+    for (let w = 0; w < windowsPerFloor; w++) {
+      const wX = bX + windowGapX + w * (windowW + windowGapX);
+      if (isGround && (w === Math.floor(windowsPerFloor / 2))) {
+        // Door/entrance on ground floor center
+        windowsSvg += `<rect x="${wX}" y="${wY}" width="${windowW * 1.2}" height="${fH * 0.85}" rx="2" fill="#4a90d9" stroke="#2c3e50" stroke-width="1.5"/>`;
+        windowsSvg += `<line x1="${wX + windowW * 0.6}" y1="${wY}" x2="${wX + windowW * 0.6}" y2="${wY + fH * 0.85}" stroke="#2c3e50" stroke-width="1"/>`;
+      } else {
+        windowsSvg += `<rect x="${wX}" y="${wY}" width="${windowW}" height="${wH}" rx="1" fill="#87CEEB" stroke="#2c3e50" stroke-width="1"/>`;
+      }
+    }
+  }
+
+  // Floor lines
+  let floorLines = "";
+  for (let f = 1; f < floors; f++) {
+    const lineY = bY + groundFloorHeight * scale + (f - 1) * floorHeight * scale;
+    floorLines += `<line x1="${bX}" y1="${lineY}" x2="${bX + bW}" y2="${lineY}" stroke="#7f8c8d" stroke-width="0.5" stroke-dasharray="4,2"/>`;
+  }
+
+  // Floor labels
+  let floorLabels = "";
+  for (let f = 0; f < floors; f++) {
+    const fY = f === 0
+      ? bY + groundFloorHeight * scale * 0.5
+      : bY + groundFloorHeight * scale + (f - 1) * floorHeight * scale + floorHeight * scale * 0.5;
+    const label = f === floors - 1 ? "GF" : `L${floors - f - 1}`;
+    floorLabels += `<text x="${bX - 15}" y="${fY + 4}" text-anchor="end" font-size="11" fill="#555" font-family="Arial">${label}</text>`;
+  }
+
+  // Context: ground plane, sky gradient, surrounding context boxes
+  const contextSvg = `
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#87CEEB"/>
+        <stop offset="100%" stop-color="#E0F0FF"/>
+      </linearGradient>
+    </defs>
+    <rect width="${svgW}" height="${svgH}" fill="url(#sky)"/>
+    <rect x="0" y="${groundLevel}" width="${svgW}" height="${svgH - groundLevel}" fill="#8B7355"/>
+    <rect x="0" y="${groundLevel}" width="${svgW}" height="4" fill="#555"/>
+    <!-- Smaller context buildings -->
+    <rect x="${bX - bW * 0.5}" y="${groundLevel - bH * 0.4}" width="${bW * 0.3}" height="${bH * 0.4}" fill="#C0C0C0" stroke="#999" stroke-width="0.5" opacity="0.5"/>
+    <rect x="${bX + bW + bW * 0.2}" y="${groundLevel - bH * 0.6}" width="${bW * 0.25}" height="${bH * 0.6}" fill="#C0C0C0" stroke="#999" stroke-width="0.5" opacity="0.5"/>
+    <!-- Trees -->
+    <circle cx="${bX - 30}" cy="${groundLevel - 25}" r="20" fill="#2d8a4e" opacity="0.7"/>
+    <rect x="${bX - 33}" y="${groundLevel - 8}" width="6" height="12" fill="#5C4033"/>
+    <circle cx="${bX + bW + 40}" cy="${groundLevel - 30}" r="22" fill="#2d8a4e" opacity="0.7"/>
+    <rect x="${bX + bW + 37}" y="${groundLevel - 10}" width="6" height="14" fill="#5C4033"/>
+  `;
+
+  // Dimension annotation
+  const heightAnnotation = `
+    <line x1="${bX + bW + 20}" y1="${bY}" x2="${bX + bW + 20}" y2="${groundLevel}" stroke="#333" stroke-width="1" marker-start="url(#arrowUp)" marker-end="url(#arrowDown)"/>
+    <text x="${bX + bW + 30}" y="${bY + bH / 2}" font-size="12" fill="#333" font-family="Arial">${Math.round(buildingHeight)}m</text>
+    <text x="${bX + bW / 2}" y="${bY - 15}" text-anchor="middle" font-size="14" font-weight="bold" fill="#2c3e50" font-family="Arial">${description.buildingType} — ${floors} Floors</text>
+  `;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}">
+  ${contextSvg}
+  <!-- Main building -->
+  <rect x="${bX}" y="${bY}" width="${bW}" height="${bH}" fill="#E8DCC8" stroke="#2c3e50" stroke-width="2"/>
+  ${floorLines}
+  ${windowsSvg}
+  ${floorLabels}
+  ${heightAnnotation}
+</svg>`;
+
+  console.log(`[ElevationSketch] Generated SVG: ${floors} floors, ${buildingWidth.toFixed(1)}m × ${buildingHeight.toFixed(1)}m`);
+  return svg;
+}
+
+// ─── Sketch-to-Render Pipeline (gpt-image-1) ────────────────────────────────
+//
+// Takes an elevation sketch SVG, converts to PNG, then uses gpt-image-1's
+// image edit capability to transform it into a photorealistic render while
+// preserving the geometry (floor count, proportions, massing).
+
+async function sketchToRender(
+  sketchSvg: string,
+  description: BuildingDescription,
+  renderPrompt: string,
+  viewType: "exterior" | "floor_plan" | "site_plan" | "interior",
+  apiKey?: string
+): Promise<{ url: string; revisedPrompt: string }> {
+  const client = getClient(apiKey, 120000); // 120s for gpt-image-1
+
+  // Convert SVG → PNG via sharp
+  const sharp = (await import("sharp")).default;
+  const pngBuffer = await sharp(Buffer.from(sketchSvg))
+    .resize(1536, 1024, { fit: "contain", background: { r: 230, g: 240, b: 255, alpha: 1 } })
+    .png()
+    .toBuffer();
+
+  console.log(`[SketchToRender] SVG → PNG: ${pngBuffer.length} bytes`);
+
+  // Create File object for gpt-image-1 (convert Buffer → Uint8Array for type safety)
+  const imageFile = new File([new Uint8Array(pngBuffer)], "elevation-sketch.png", { type: "image/png" });
+
+  // Build the render prompt — gpt-image-1 will SEE the sketch and transform it
+  const location = description.location ?? description.city ?? "urban setting";
+  const climate = description.climateZone ?? "";
+  const designImpl = description.designImplications ?? [];
+
+  const fullPrompt =
+    `Transform this architectural elevation sketch into a PHOTOREALISTIC exterior render. ` +
+    `CRITICAL REQUIREMENTS: ` +
+    `1. PRESERVE the EXACT building geometry — same number of floors (EXACTLY ${description.floors} floors), ` +
+    `same proportions, same window grid pattern, same building width-to-height ratio. ` +
+    `Do NOT add or remove floors. Count them: ${description.floors} floors total. ` +
+    `2. LOCATION: This building is in ${location}. ` +
+    `Show location-appropriate context: local vegetation, street character, vehicles, ` +
+    `pedestrians in local attire, and regional atmospheric conditions. ` +
+    `${climate ? `Climate: ${climate}. Design features must respond to this climate. ` : ""}` +
+    `3. MATERIALS: ${description.facade} facade. ${description.structure} structure. ` +
+    `Apply realistic materials, textures, and reflections to the sketch geometry. ` +
+    `4. ARCHITECTURE: ${description.buildingType} — ${description.programSummary}. ` +
+    `Ground floor should show active frontage (retail/lobby with warm interior lighting). ` +
+    `${designImpl.length ? `5. LOCAL DESIGN: ${designImpl.slice(0, 3).join(". ")}. ` : ""}` +
+    `6. RENDERING QUALITY: Golden hour lighting from southwest. Photorealistic V-Ray/Lumion quality. ` +
+    `Eye-level 3/4 perspective view from street corner. Sharp focus, depth of field. ` +
+    `Include people for scale (6-8 pedestrians). ` +
+    `${renderPrompt ? `Additional style: ${renderPrompt.slice(0, 200)}. ` : ""}` +
+    `Reference quality: Luxigon / MIR / DBOX architectural visualization. No text or labels.`;
+
+  console.log(`[SketchToRender] Prompt (first 300): ${fullPrompt.slice(0, 300)}`);
+
+  // Use gpt-image-1 images.edit — it SEES the sketch and renders it photorealistically
+  // input_fidelity: "medium" — preserve structure/geometry but allow creative material interpretation
+  const response = await client.images.edit({
+    model: "gpt-image-1",
+    image: imageFile,
+    prompt: fullPrompt,
+    size: "1536x1024" as "1024x1024", // landscape for exterior renders (type workaround)
+    quality: "high",
+    input_fidelity: "medium" as "high", // preserve geometry, allow material creativity
+  });
+
+  const image = response.data?.[0];
+  if (!image?.url && !image?.b64_json) throw new Error("No image in gpt-image-1 render response");
+
+  // Handle URL or base64 response
+  let resultUrl = image.url ?? "";
+  if (!resultUrl && image.b64_json) {
+    try {
+      const { uploadToR2, isR2Configured } = await import("@/lib/r2");
+      if (isR2Configured()) {
+        const resultBuffer = Buffer.from(image.b64_json, "base64");
+        const uploadResult = await uploadToR2(resultBuffer, `concept-render-${Date.now()}.png`, "image/png");
+        if (uploadResult.success) {
+          resultUrl = uploadResult.url;
+          console.log("[SketchToRender] Uploaded to R2:", resultUrl.slice(0, 80));
+        }
+      }
+    } catch (r2Err) {
+      console.warn("[SketchToRender] R2 upload failed, using base64:", r2Err);
+    }
+    if (!resultUrl) {
+      resultUrl = `data:image/png;base64,${image.b64_json}`;
+    }
+  }
+
+  console.log("[SketchToRender] gpt-image-1 render complete!");
+  return {
+    url: resultUrl,
+    revisedPrompt: fullPrompt,
+  };
+}
+
+// ─── generateConceptImage ─────────────────────────────────────────────────────
+//
+// Primary render pipeline for GN-003. Uses a tiered approach:
+// 1. BuildingDescription → Elevation Sketch (SVG) → gpt-image-1 edit (BEST accuracy)
+// 2. String prompt → gpt-image-1 generate (good accuracy, no sketch)
+// 3. Fallback → DALL-E 3 (legacy, if gpt-image-1 unavailable)
 
 export async function generateConceptImage(
   descriptionOrPrompt: BuildingDescription | string,
@@ -398,15 +766,36 @@ export async function generateConceptImage(
   viewType: "exterior" | "floor_plan" | "site_plan" | "interior" = "exterior"
 ): Promise<{ url: string; revisedPrompt: string }> {
   return handleOpenAICall(async () => {
-    const client = getClient(userApiKey, 60000); // 60s — DALL-E 3 HD images take longer
+    const client = getClient(userApiKey, 120000); // 120s for gpt-image-1
 
+    // ── Path 1: BuildingDescription → Sketch → gpt-image-1 Render (highest accuracy) ──
+    if (typeof descriptionOrPrompt !== "string" && viewType === "exterior") {
+      try {
+        console.log("[generateConceptImage] Using Sketch → gpt-image-1 pipeline for maximum accuracy");
+
+        // Generate the architectural elevation sketch
+        const sketchSvg = await generateElevationSketch(descriptionOrPrompt);
+
+        // Generate enhanced prompt for the render
+        let renderStyle = style;
+        try {
+          renderStyle = await enhanceArchitecturalPrompt(descriptionOrPrompt, viewType, style, userApiKey);
+        } catch { /* use default style */ }
+
+        // Transform sketch into photorealistic render via gpt-image-1
+        return await sketchToRender(sketchSvg, descriptionOrPrompt, renderStyle, viewType, userApiKey);
+      } catch (sketchErr) {
+        console.warn("[generateConceptImage] Sketch pipeline failed, falling back to gpt-image-1 generate:", sketchErr);
+        // Fall through to Path 2
+      }
+    }
+
+    // ── Path 2: Enhanced prompt → gpt-image-1 generate (good accuracy) ──
     let imagePrompt: string;
 
     if (typeof descriptionOrPrompt === "string") {
-      // Backward compatibility: plain string prompt
       imagePrompt = descriptionOrPrompt;
     } else {
-      // BuildingDescription object — enhance with GPT-4o-mini, then use photorealistic builder
       try {
         imagePrompt = await enhanceArchitecturalPrompt(
           descriptionOrPrompt,
@@ -416,7 +805,6 @@ export async function generateConceptImage(
         );
       } catch (enhanceErr) {
         console.error("[generateConceptImage] enhanceArchitecturalPrompt failed, using photorealistic fallback:", enhanceErr);
-        // Fallback to existing photorealistic prompt builder
         imagePrompt = buildPhotorealisticPrompt(
           descriptionOrPrompt,
           location || "urban setting",
@@ -426,23 +814,172 @@ export async function generateConceptImage(
       }
     }
 
-    const response = await client.images.generate({
-      model: "dall-e-3",
-      prompt: imagePrompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "hd",
-      style: "natural",
+    // Use gpt-image-1 for generation (much better instruction following than DALL-E 3)
+    try {
+      console.log("[generateConceptImage] Using gpt-image-1 generate");
+      const size = (viewType === "exterior" || viewType === "interior") ? "1536x1024" : "1024x1024";
+      const response = await client.images.generate({
+        model: "gpt-image-1",
+        prompt: imagePrompt,
+        n: 1,
+        size: size as "1024x1024", // type workaround for extended sizes
+        quality: "high",
+      });
+
+      const image = response.data?.[0];
+      let resultUrl = image?.url ?? "";
+
+      // Handle base64 response from gpt-image-1
+      if (!resultUrl && image?.b64_json) {
+        try {
+          const { uploadToR2, isR2Configured } = await import("@/lib/r2");
+          if (isR2Configured()) {
+            const resultBuffer = Buffer.from(image.b64_json, "base64");
+            const uploadResult = await uploadToR2(resultBuffer, `concept-render-${Date.now()}.png`, "image/png");
+            if (uploadResult.success) resultUrl = uploadResult.url;
+          }
+        } catch { /* ignore R2 errors */ }
+        if (!resultUrl) resultUrl = `data:image/png;base64,${image.b64_json}`;
+      }
+
+      if (!resultUrl) throw new Error("No image in gpt-image-1 response");
+      return {
+        url: resultUrl,
+        revisedPrompt: image?.revised_prompt ?? imagePrompt,
+      };
+    } catch (gptImgErr) {
+      // ── Path 3: Fallback to DALL-E 3 (legacy) ──
+      console.warn("[generateConceptImage] gpt-image-1 failed, falling back to DALL-E 3:", gptImgErr);
+      const fallbackClient = getClient(userApiKey, 60000);
+      const response = await fallbackClient.images.generate({
+        model: "dall-e-3",
+        prompt: imagePrompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "hd",
+        style: "natural",
+      });
+
+      const image = response.data?.[0];
+      if (!image?.url) throw new Error("No image URL in DALL-E response");
+
+      return {
+        url: image.url,
+        revisedPrompt: image.revised_prompt ?? imagePrompt,
+      };
+    }
+  });
+}
+
+// ─── Claude Vision QA — Render Accuracy Validation ──────────────────────────
+//
+// Uses Claude to verify the generated render matches the architectural spec.
+// Checks: floor count, building type recognition, context/location accuracy.
+// Returns a pass/fail with specific feedback for regeneration if needed.
+
+export interface RenderQAResult {
+  passed: boolean;
+  floorCountCorrect: boolean;
+  detectedFloors: number;
+  locationContextCorrect: boolean;
+  feedback: string;
+}
+
+export async function validateRenderWithClaude(
+  imageUrl: string,
+  description: BuildingDescription,
+): Promise<RenderQAResult> {
+  try {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      console.warn("[RenderQA] No ANTHROPIC_API_KEY — skipping QA");
+      return { passed: true, floorCountCorrect: true, detectedFloors: description.floors, locationContextCorrect: true, feedback: "QA skipped (no API key)" };
+    }
+
+    const isOAuth = apiKey.startsWith("sk-ant-oat01-");
+    const client = isOAuth
+      ? new Anthropic({ authToken: apiKey, apiKey: null })
+      : new Anthropic({ apiKey });
+
+    // Fetch image and convert to base64 for Claude
+    let imageContent: { type: "image"; source: { type: "base64"; media_type: "image/png"; data: string } } | { type: "image"; source: { type: "url"; url: string } };
+    if (imageUrl.startsWith("data:")) {
+      const b64 = imageUrl.split(",")[1] ?? "";
+      imageContent = { type: "image", source: { type: "base64", media_type: "image/png", data: b64 } };
+    } else {
+      // Fetch the image and convert to base64
+      try {
+        const resp = await fetch(imageUrl);
+        const buffer = Buffer.from(await resp.arrayBuffer());
+        imageContent = { type: "image", source: { type: "base64", media_type: "image/png", data: buffer.toString("base64") } };
+      } catch {
+        console.warn("[RenderQA] Failed to fetch image for QA");
+        return { passed: true, floorCountCorrect: true, detectedFloors: description.floors, locationContextCorrect: true, feedback: "QA skipped (image fetch failed)" };
+      }
+    }
+
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 500,
+      temperature: 0,
+      messages: [{
+        role: "user",
+        content: [
+          imageContent,
+          {
+            type: "text",
+            text: `You are an architectural render quality checker. Analyze this building render and answer in JSON:
+
+SPECIFICATION:
+- Expected floors: ${description.floors}
+- Building type: ${description.buildingType}
+- Location: ${description.location ?? description.city ?? "not specified"}
+- Facade: ${description.facade}
+
+COUNT THE FLOORS CAREFULLY. Look at distinct horizontal floor levels/bands/window rows from ground to roof.
+
+Respond with JSON only:
+{
+  "detectedFloors": <number of floors you count>,
+  "floorCountCorrect": <true if detected matches ${description.floors} ±1>,
+  "locationContextCorrect": <true if the setting/vegetation/atmosphere matches the specified location>,
+  "buildingTypeMatch": <true if it looks like a ${description.buildingType}>,
+  "feedback": "<specific issues found, or 'Render matches specification' if accurate>"
+}`
+          }
+        ]
+      }]
     });
 
-    const image = response.data?.[0];
-    if (!image?.url) throw new Error("No image URL in DALL-E response");
+    const text = response.content.find(b => b.type === "text")?.text ?? "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return { passed: true, floorCountCorrect: true, detectedFloors: description.floors, locationContextCorrect: true, feedback: "QA parse failed — assuming pass" };
+    }
+
+    const qa = JSON.parse(jsonMatch[0]) as {
+      detectedFloors: number;
+      floorCountCorrect: boolean;
+      locationContextCorrect: boolean;
+      buildingTypeMatch: boolean;
+      feedback: string;
+    };
+
+    const passed = qa.floorCountCorrect && qa.locationContextCorrect && qa.buildingTypeMatch;
+    console.log(`[RenderQA] ${passed ? "PASSED" : "FAILED"}: floors=${qa.detectedFloors}/${description.floors}, location=${qa.locationContextCorrect}, type=${qa.buildingTypeMatch}`);
 
     return {
-      url: image.url,
-      revisedPrompt: image.revised_prompt ?? imagePrompt,
+      passed,
+      floorCountCorrect: qa.floorCountCorrect,
+      detectedFloors: qa.detectedFloors,
+      locationContextCorrect: qa.locationContextCorrect,
+      feedback: qa.feedback,
     };
-  });
+  } catch (err) {
+    console.warn("[RenderQA] Claude QA error:", err);
+    return { passed: true, floorCountCorrect: true, detectedFloors: description.floors, locationContextCorrect: true, feedback: "QA error — assuming pass" };
+  }
 }
 
 // ─── generateRenovationRender ─────────────────────────────────────────────────

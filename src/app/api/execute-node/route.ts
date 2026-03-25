@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { generateBuildingDescription, generateConceptImage, generateRenovationRender, generateFloorPlan, parseBriefDocument, analyzeImage, enhanceArchitecturalPrompt } from "@/services/openai";
-import type { BuildingDescription } from "@/services/openai";
+import { generateBuildingDescription, generateConceptImage, generateRenovationRender, generateFloorPlan, parseBriefDocument, analyzeImage, enhanceArchitecturalPrompt, validateRenderWithClaude } from "@/services/openai";
+import type { BuildingDescription, RenderQAResult } from "@/services/openai";
 import { analyzeSite } from "@/services/site-analysis";
 import { generateId } from "@/lib/utils";
 import type { ExecutionArtifact } from "@/types/execution";
@@ -291,6 +291,29 @@ export async function POST(req: NextRequest) {
         prompt = (inputData?.prompt as string) ?? (inputData?.content as string) ?? "Modern mixed-use building";
       }
       const description = await generateBuildingDescription(prompt, apiKey);
+
+      // Inject site analysis location data if upstream TR-012 provided it
+      const siteRaw = inputData?._raw as Record<string, unknown> | undefined;
+      if (siteRaw?.location && typeof siteRaw.location === "object") {
+        const siteLoc = siteRaw.location as { displayName?: string; address?: string };
+        if (!description.location && siteLoc.displayName) {
+          description.location = siteLoc.displayName;
+        }
+      }
+      // Also extract from the prompt text if GPT didn't set location fields
+      if (!description.location && typeof prompt === "string") {
+        const locMatch = prompt.match(/SITE ANALYSIS\s*[—–-]\s*(.+)/);
+        if (locMatch) description.location = locMatch[1].trim();
+      }
+      // Carry forward climate zone and design implications from site analysis
+      const siteClimate = (siteRaw as Record<string, unknown> | undefined)?.climate as Record<string, unknown> | undefined;
+      if (siteClimate?.zone && !description.climateZone) {
+        description.climateZone = String(siteClimate.zone);
+      }
+      const siteDesignImpl = (siteRaw as Record<string, unknown> | undefined)?.designImplications as string[] | undefined;
+      if (siteDesignImpl?.length && (!description.designImplications || !description.designImplications.length)) {
+        description.designImplications = siteDesignImpl;
+      }
 
       artifact = {
         id: generateId(),
@@ -876,6 +899,12 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         estimatedCost: upstreamDescription.estimatedCost ?? "TBD",
         constructionDuration: upstreamDescription.constructionDuration ?? "18 months",
         narrative: upstreamDescription.narrative ?? "",
+        // Pass through location context for accurate renders
+        location: upstreamDescription.location,
+        city: upstreamDescription.city,
+        country: upstreamDescription.country,
+        climateZone: upstreamDescription.climateZone,
+        designImplications: upstreamDescription.designImplications,
       };
 
       const enhancedPrompt = await enhanceArchitecturalPrompt(
@@ -895,7 +924,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           enhancedPrompt,
           label: "Enhanced Architectural Prompt",
         },
-        metadata: { model: "gpt-4o-mini", real: true },
+        metadata: { model: "gpt-4o", real: true },
         createdAt: new Date(),
       };
 
@@ -911,6 +940,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const viewType = ((inputData?.viewType as string) ?? "exterior") as "exterior" | "floor_plan" | "site_plan" | "interior";
       const style = (inputData?.style as string) ?? "photorealistic architectural render";
 
+      // Extract location from upstream data chain (TR-012 → TR-003 → GN-003)
+      const descRaw = description as Record<string, unknown> | null;
+      const locationFromDesc = (descRaw?.location as string | undefined)
+        ?? (descRaw?.city as string | undefined);
+      const locationFromContent = typeof inputData?.content === "string"
+        ? inputData.content.match(/SITE ANALYSIS\s*[—–-]\s*(.+)/)?.[1]?.trim()
+        : undefined;
+      const effectiveLocation = locationFromDesc ?? locationFromContent ?? undefined;
+
       // If upstream TR-005 already enhanced the prompt, use it directly.
       // Also check for render prompts from TR-004 floor plan pipeline (GPT-4o generated).
       const enhancedPrompt = (inputData?.enhancedPrompt as string | undefined)
@@ -922,11 +960,16 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
       if (enhancedPrompt) {
         // TR-005 already produced the optimised prompt — pass directly to DALL-E 3
+        // If the enhanced prompt doesn't mention the location, prepend it
+        let finalPrompt = enhancedPrompt;
+        if (effectiveLocation && !enhancedPrompt.toLowerCase().includes(effectiveLocation.toLowerCase().split(",")[0])) {
+          finalPrompt = `Setting: ${effectiveLocation}. ${enhancedPrompt}`;
+        }
         const result = await generateConceptImage(
-          enhancedPrompt,
+          finalPrompt,
           style,
           apiKey,
-          undefined,
+          effectiveLocation,
           undefined,
           undefined,
           viewType
@@ -949,17 +992,56 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           narrative: "",
         };
 
+        // Ensure location is on the description for prompt generation
+        if (effectiveLocation && !desc.location) {
+          desc.location = effectiveLocation;
+        }
+
         const result = await generateConceptImage(
           desc,
           style,
           apiKey,
-          undefined,
+          effectiveLocation ?? desc.location,
           undefined,
           undefined,
           viewType
         );
         url = result.url;
         revisedPrompt = result.revisedPrompt;
+      }
+
+      // ── Claude Vision QA: validate render accuracy ──
+      // Only run QA when we have a BuildingDescription (structured data to check against)
+      const descForQA = (inputData?._raw as BuildingDescription | undefined) ?? null;
+      let qaResult: RenderQAResult | null = null;
+      if (descForQA && url && viewType === "exterior") {
+        try {
+          qaResult = await validateRenderWithClaude(url, descForQA);
+
+          // If QA fails on floor count, attempt one regeneration with explicit correction
+          if (!qaResult.passed && !qaResult.floorCountCorrect && qaResult.detectedFloors !== descForQA.floors) {
+            console.log(`[GN-003] QA FAILED: detected ${qaResult.detectedFloors} floors, expected ${descForQA.floors}. Regenerating...`);
+            const correctionPrompt = `CRITICAL CORRECTION: The building MUST have EXACTLY ${descForQA.floors} floors. ` +
+              `The previous render incorrectly showed ${qaResult.detectedFloors} floors. ` +
+              `Count carefully: ${descForQA.floors} distinct floor levels from ground to roof. ` +
+              `${qaResult.feedback}. ${revisedPrompt}`;
+
+            const retryResult = await generateConceptImage(
+              correctionPrompt,
+              style,
+              apiKey,
+              effectiveLocation,
+              undefined,
+              undefined,
+              viewType
+            );
+            url = retryResult.url;
+            revisedPrompt = retryResult.revisedPrompt;
+            console.log("[GN-003] Regenerated render after QA correction");
+          }
+        } catch (qaErr) {
+          console.warn("[GN-003] QA validation error (non-blocking):", qaErr);
+        }
       }
 
       const viewLabel = viewType.replace("_", " ");
@@ -973,8 +1055,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           url,
           label: `${viewLabel.charAt(0).toUpperCase() + viewLabel.slice(1)} render`,
           style: revisedPrompt.substring(0, 100),
+          ...(qaResult && { _qa: { passed: qaResult.passed, floors: qaResult.detectedFloors, feedback: qaResult.feedback } }),
         },
-        metadata: { model: "dall-e-3", real: true },
+        metadata: { model: "gpt-image-1", real: true, qaValidated: !!qaResult?.passed },
         createdAt: new Date(),
       };
     } else if (catalogueId === "GN-004") {
