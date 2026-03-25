@@ -4,7 +4,7 @@ import { generateIFCFile } from "@/services/ifc-exporter";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 
 /**
- * Tests for wf-14: "Detailed PDF → 3D Video Walkthrough" pipeline.
+ * Tests for wf-08: "Detailed PDF → 3D Video Walkthrough" pipeline.
  *
  * Validates the end-to-end data flow:
  *   PDF Upload (IN-002) → Brief Parser (TR-001) → IFC Exporter (EX-001)
@@ -142,9 +142,9 @@ const TR001_OUTPUTS: Record<string, Record<string, unknown>> = {
   },
 };
 
-describe("wf-14: PDF → Video Walkthrough + IFC Pipeline", () => {
+describe("wf-08: PDF → Video Walkthrough + IFC Pipeline", () => {
   describe("Workflow template structure", () => {
-    const wf14 = PREBUILT_WORKFLOWS.find((w) => w.id === "wf-14");
+    const wf14 = PREBUILT_WORKFLOWS.find((w) => w.id === "wf-08");
 
     it("exists in prebuilt workflows", () => {
       expect(wf14).toBeDefined();

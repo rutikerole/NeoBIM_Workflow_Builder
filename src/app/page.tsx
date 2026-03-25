@@ -204,8 +204,8 @@ function AnimatedNumber({ value, decimals = 0, suffix = '', prefix = '', color }
 
 
 const SHOWCASE = [
-  { id: "wf-18", badge: null },
-  { id: "wf-14", badge: "MOST POPULAR" },
+  { id: "wf-03", badge: null },
+  { id: "wf-08", badge: "MOST POPULAR" },
   { id: "wf-09", badge: null },
 ];
 
