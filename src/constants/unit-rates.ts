@@ -50,7 +50,7 @@ export const UNIT_RATES: UnitRate[] = [
   { csi: "26-05-13.10", division: "26", description: "Electrical Rough-In per 1000SF", unit: "MSF", material: 3500.00, labor: 4800.00, equipment: 200.00, total: 8500.00 },
 ];
 
-// Map IFC element types to CSI codes
+// Default IFC-to-CSI mapping (used when no material info available)
 export const IFC_TO_CSI_MAP: Record<string, string[]> = {
   IfcWall: ["04-22-10.15", "09-22-16.13", "09-91-13.10", "07-21-13.10"],
   IfcSlab: ["03-30-53.40", "09-65-13.10"],
@@ -66,12 +66,70 @@ export const IFC_TO_CSI_MAP: Record<string, string[]> = {
   IfcSpace: ["09-91-13.10", "09-65-13.10"],
 };
 
+// Material-aware CSI overrides: when IFC material name contains these keywords,
+// use specific CSI codes instead of default. This prevents a brick wall from
+// being costed as concrete block, or a steel column from getting concrete rates.
+const MATERIAL_CSI_OVERRIDES: Record<string, Record<string, string[]>> = {
+  IfcWall: {
+    brick:    ["04-21-13.13", "09-91-13.10"],           // Brick veneer + paint
+    concrete: ["04-22-10.15", "09-22-16.13", "09-91-13.10"], // Concrete block + drywall + paint
+    steel:    ["05-12-23.10", "07-21-13.10"],            // Structural steel + insulation
+    timber:   ["06-11-10.10", "06-16-23.10", "09-91-13.10"], // Wood framing + plywood + paint
+    wood:     ["06-11-10.10", "06-16-23.10", "09-91-13.10"],
+    glass:    ["08-51-13.10", "05-31-13.25"],            // Curtain wall treatment
+    gypsum:   ["09-22-16.13", "09-91-13.10"],            // Drywall partition + paint
+    drywall:  ["09-22-16.13", "09-91-13.10"],
+  },
+  IfcColumn: {
+    steel:    ["05-12-23.10"],                           // Steel column
+    concrete: ["03-11-13.25"],                           // Concrete column formwork
+    timber:   ["06-11-10.10"],                           // Wood column
+    wood:     ["06-11-10.10"],
+  },
+  IfcBeam: {
+    steel:    ["05-12-23.10"],
+    concrete: ["03-11-13.25"],
+    timber:   ["06-11-10.10"],
+    wood:     ["06-11-10.10"],
+  },
+  IfcSlab: {
+    steel:    ["05-31-13.25", "09-65-13.10"],            // Metal deck + flooring
+    concrete: ["03-30-53.40", "09-65-13.10"],            // Concrete slab + flooring
+    timber:   ["06-16-23.10", "09-65-13.10"],            // Plywood + flooring
+    wood:     ["06-16-23.10", "09-65-13.10"],
+  },
+};
+
 export function getUnitRate(csi: string): UnitRate | undefined {
   return UNIT_RATES.find(r => r.csi === csi);
 }
 
-export function getRatesForElement(ifcType: string): UnitRate[] {
-  const csiCodes = IFC_TO_CSI_MAP[ifcType] || [];
+/**
+ * Get applicable unit rates for an IFC element, optionally using extracted material
+ * names for more accurate cost code selection.
+ *
+ * @param ifcType - IFC element type (e.g. "IfcWall", "IfcColumn")
+ * @param materialName - Optional material name from IFC (e.g. "Brick", "Reinforced Concrete")
+ */
+export function getRatesForElement(ifcType: string, materialName?: string): UnitRate[] {
+  let csiCodes: string[];
+
+  // Try material-aware mapping first
+  if (materialName) {
+    const overrides = MATERIAL_CSI_OVERRIDES[ifcType];
+    if (overrides) {
+      const matLower = materialName.toLowerCase();
+      for (const [keyword, codes] of Object.entries(overrides)) {
+        if (matLower.includes(keyword)) {
+          csiCodes = codes;
+          return csiCodes.map(code => getUnitRate(code)).filter(Boolean) as UnitRate[];
+        }
+      }
+    }
+  }
+
+  // Fall back to default mapping
+  csiCodes = IFC_TO_CSI_MAP[ifcType] || [];
   return csiCodes.map(code => getUnitRate(code)).filter(Boolean) as UnitRate[];
 }
 
@@ -99,6 +157,7 @@ export function calculateBOQ(elements: Array<{
   netArea?: number;
   openingArea?: number;
   volume?: number;
+  materialName?: string; // from IFC material extraction — used for accurate CSI mapping
 }>): {
   lines: BOQLine[];
   subtotalMaterial: number;
@@ -112,7 +171,7 @@ export function calculateBOQ(elements: Array<{
   let subtotalEquipment = 0;
 
   for (const element of elements) {
-    const rates = getRatesForElement(element.type);
+    const rates = getRatesForElement(element.type, element.materialName);
 
     for (const rate of rates) {
       let qty: number;

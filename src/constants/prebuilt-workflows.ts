@@ -682,7 +682,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
     id: "wf-09",
     name: "IFC Model → BOQ Cost Estimate",
     description:
-      "Upload a photo of a building → get IFC quantities extracted, costs mapped, and a downloadable BOQ spreadsheet.",
+      "Upload an IFC model file → real geometry-based quantity takeoff (walls, slabs, columns, openings) → CSI-mapped cost estimation with regional pricing for 20+ countries → downloadable BOQ spreadsheet with M/L/E breakdown.",
     tags: ["ifc", "qto", "boq", "cost", "quantities", "estimating"],
     category: "Cost Estimation",
     complexity: "intermediate",

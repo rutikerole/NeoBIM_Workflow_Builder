@@ -1352,16 +1352,21 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
           parseSummary = `Parsed ${parseResult.summary.processedElements} of ${parseResult.summary.totalElements} elements from ${parseResult.summary.buildingStoreys} storeys (${parseResult.meta.ifcSchema})`;
         } catch (parseError) {
-          console.error("[TR-007] IFC parsing failed:", parseError);
+          const errMsg = parseError instanceof Error ? parseError.message : String(parseError);
+          console.error("[TR-007] IFC parsing failed:", errMsg);
+          parseSummary = `⚠️ IFC parsing encountered errors: ${errMsg.slice(0, 200)}. Partial results may be shown.`;
         }
       }
 
-      // No fallback — if parsing produced zero elements, return a clear error
+      // If parsing produced zero elements, provide a clear and helpful error
       if (rows.length === 0) {
+        const reason = !ifcData ? "No IFC file data received. Make sure the IFC Upload node (IN-004) is connected and has a file loaded."
+          : !ifcData.buffer ? "IFC file data was received but could not be decoded. The file may be corrupted or too large."
+          : "The IFC file was parsed but contained no recognizable building elements (IfcWall, IfcSlab, IfcColumn, etc.). This can happen with: (1) IFC files containing only spaces/zones but no geometry, (2) Coordination models without architectural elements, (3) IFC files exported with geometry stripped.";
         return NextResponse.json(
           formatErrorResponse({
-            title: "IFC parsing failed",
-            message: "IFC parsing produced no elements. Please upload a valid IFC file with building elements (walls, slabs, columns, etc.).",
+            title: "No quantities extracted",
+            message: reason,
             code: "NODE_001",
           }),
           { status: 422 }
@@ -1587,7 +1592,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         } else {
           // Fallback for unknown items — estimate with default waste
           estimatedItemsCount++;
-          const fallbackRate = 100;
+          const fallbackRate = 100 * locationFactor * exchangeRate;
           const defaultWaste = 0.10;
           const adjQty = quantity * (1 + defaultWaste);
           const lineTotal = adjQty * fallbackRate;
@@ -1597,17 +1602,18 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           totalLabor += lineTotal * breakdown.labor;
           totalEquipment += lineTotal * breakdown.equipment;
 
+          const cs1 = currencySymbol;
           rows.push([
             description + " (est.)",
             "EA",
             quantity.toFixed(2),
             `${(defaultWaste * 100).toFixed(0)}%`,
             adjQty.toFixed(2),
-            `$${fallbackRate.toFixed(2)}`,
-            `$${(lineTotal * breakdown.material).toFixed(2)}`,
-            `$${(lineTotal * breakdown.labor).toFixed(2)}`,
-            `$${(lineTotal * breakdown.equipment).toFixed(2)}`,
-            `$${lineTotal.toFixed(2)}`,
+            `${cs1}${fallbackRate.toFixed(2)}`,
+            `${cs1}${(lineTotal * breakdown.material).toFixed(2)}`,
+            `${cs1}${(lineTotal * breakdown.labor).toFixed(2)}`,
+            `${cs1}${(lineTotal * breakdown.equipment).toFixed(2)}`,
+            `${cs1}${lineTotal.toFixed(2)}`,
           ]);
 
           boqLines.push({

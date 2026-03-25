@@ -197,13 +197,13 @@ export const NODE_CATALOGUE: NodeCatalogueItem[] = [
   {
     id: "TR-007",
     name: "Quantity Extractor",
-    description: "Extract conceptual quantities from IFC model - ⚠️ SAMPLE DATA for demonstration only",
+    description: "Extract real quantities (gross/net area, volume, openings) from IFC models with automatic CSI MasterFormat mapping and per-storey breakdown",
     category: "transform",
     icon: "Calculator",
     inputs: [{ id: "ifc-in", label: "IFC Model", type: "ifc" }],
     outputs: [{ id: "qty-out", label: "Quantities JSON", type: "json" }],
-    apiEngine: "IFCOpenShell",
-    tags: ["quantities", "qto", "bim", "ifc", "takeoff"],
+    apiEngine: "web-ifc (WASM)",
+    tags: ["quantities", "qto", "bim", "ifc", "takeoff", "measurement"],
     executionTime: "< 20s",
   },
   {
