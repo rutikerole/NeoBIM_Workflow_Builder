@@ -89,7 +89,7 @@ const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: num
   "wf-06": { type: "video", url: `${R2}/floorplan-to-3d-video.mp4`, start: 65 },
   "wf-05": { type: "video", url: `${R2}/floor-plan-demo.mp4`, start: 100 },
   "wf-03": { type: "video", url: `${R2}/text-to-concept-building.mp4`, start: 132 },
-  "wf-11": { type: "svg", output: "render" },
+  "wf-11": { type: "video", url: `${R2}/renovated-building.mp4`, start: 3 },
 };
 
 // SVG output type illustrations
