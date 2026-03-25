@@ -2214,6 +2214,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // ── Resolve the SOURCE IMAGE for Kling (priority order) ──
       let renderImageUrl = "";
       let isFloorPlanInput = false;
+      let isRenovationInput = false; // true when user uploaded building photos (IN-008) — triggers renovation prompts
       let roomInfo = "";
 
       logger.debug("[KLING] Step 1: fileData present:", !!(inputData?.fileData), "size:", typeof inputData?.fileData === "string" ? inputData.fileData.length : 0);
@@ -2263,6 +2264,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         // Building photos from IN-008 are NOT floor plans — they should use image2video path.
         const upstreamIsFloorPlan = !!(inputData?.isFloorPlan);
         isFloorPlanInput = upstreamIsFloorPlan;
+
+        // Building photos from IN-008 trigger renovation prompts —
+        // transform the old/existing building into a modernized, polished version.
+        // Detect via isMultiImage flag (set by IN-008 handler) or absence of floor plan flag.
+        if (!upstreamIsFloorPlan) {
+          isRenovationInput = !!(inputData?.isMultiImage) || !!(inputData?.fileDataArray);
+        }
       }
 
       // ── Priority 2: Floor plan SVG from GN-004 ──
@@ -2457,11 +2465,23 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             logger.debug("[GN-009] Artifact data.usedOmni:", submitted.usedOmni);
             logger.debug("[GN-009] Artifact data.durationSeconds:", submitted.durationSeconds);
           } else {
-            // ── DUAL video for non-floor-plan (concept renders) ──
-            logger.debug("[GN-009] Function: submitDualWalkthrough (concept render → dual 5s+10s)");
-            const submitted = await submitDualWalkthrough(renderImageUrl, buildingDesc, "pro");
+            // ── DUAL video for non-floor-plan (concept renders or building photos) ──
+            logger.debug("[GN-009] Function: submitDualWalkthrough (dual 5s+10s), isRenovation:", isRenovationInput);
+            const submitted = await submitDualWalkthrough(renderImageUrl, buildingDesc, "pro", {
+              isRenovation: isRenovationInput,
+            });
 
             logger.debug("[GN-009] Dual tasks submitted! exterior:", submitted.exteriorTaskId, "interior:", submitted.interiorTaskId);
+
+            const videoLabel = isRenovationInput
+              ? "Building Renovation Walkthrough — 15s (generating...)"
+              : "AEC Cinematic Walkthrough — 15s (generating...)";
+            const videoContent = isRenovationInput
+              ? `15s renovation walkthrough: 5s exterior transformation + 10s renovated interior — ${buildingDesc.slice(0, 100)}`
+              : `15s AEC walkthrough: 5s exterior + 10s interior — ${buildingDesc.slice(0, 100)}`;
+            const videoPipelineLabel = isRenovationInput
+              ? "building photo → renovation prompts → Kling Official API (pro, image2video) → 2x MP4 video"
+              : "concept render → Kling Official API (pro, image2video) → 2x MP4 video";
 
             artifact = {
               id: generateId(),
@@ -2472,11 +2492,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 name: `walkthrough_${generateId()}.mp4`,
                 videoUrl: "",
                 downloadUrl: "",
-                label: "AEC Cinematic Walkthrough — 15s (generating...)",
-                content: `15s AEC walkthrough: 5s exterior + 10s interior — ${buildingDesc.slice(0, 100)}`,
+                label: videoLabel,
+                content: videoContent,
                 durationSeconds: 15,
                 shotCount: 2,
-                pipeline: "concept render → Kling Official API (pro, image2video) → 2x MP4 video",
+                pipeline: videoPipelineLabel,
                 costUsd: 1.50,
                 segments: [],
                 videoGenerationStatus: "processing",
@@ -2485,6 +2505,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 interiorTaskId: submitted.interiorTaskId,
                 generationProgress: 0,
                 isFloorPlanInput: false,
+                isRenovation: isRenovationInput,
               },
               metadata: {
                 engine: "kling-official",

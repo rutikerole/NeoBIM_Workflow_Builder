@@ -536,6 +536,66 @@ export function buildInteriorPrompt(buildingDescription: string): string {
   );
 }
 
+// ─── Building Photo → Renovation/New-Life Video Prompts ─────────────────────
+
+/**
+ * Build prompt for Part 1 (5s): Exterior transformation — the old/existing building
+ * transforms into a renovated, polished, modern version with extensions.
+ * Kling sees the original building photo and generates a video showing it
+ * upgraded with new facades, modern materials, landscaping, and extensions.
+ */
+export function buildRenovationExteriorPrompt(buildingDescription: string): string {
+  const desc = buildingDescription.slice(0, 600);
+
+  return (
+    `The provided image shows an existing building. Generate a cinematic architectural visualization video ` +
+    `that reimagines and transforms this exact building into a beautifully RENOVATED, MODERNIZED version — ` +
+    `preserving the original structure's footprint and form but upgrading it with: ` +
+    `new contemporary facade materials (clean render, glass curtain walls, composite cladding, stone accents), ` +
+    `modern window systems, elegant entrance canopy, fresh landscaping with mature trees and pathway lighting, ` +
+    `rooftop terrace or green roof extension, clean geometric extensions that complement the original massing. ` +
+    `Building analysis: ${desc.slice(0, 300)}. ` +
+    "Cinematic exterior transformation sequence (5 seconds): " +
+    "Camera starts with a wide establishing shot showing the building in its renovated glory — " +
+    "pristine new facade with premium materials catching golden hour light. " +
+    "Slow cinematic dolly toward the main entrance, revealing upgraded details — new cladding, modern glazing, designer lighting. " +
+    "Camera smoothly orbits to reveal side elevations with seamless modern extensions and lush landscaping. " +
+    "Final sweeping crane shot rises to show the full renovated building with any rooftop additions and surrounding landscape improvements. " +
+    "The building must look TRANSFORMED — same recognizable form but dramatically upgraded with contemporary materials, " +
+    "clean lines, professional lighting design, and premium finishes. " +
+    "Photorealistic architectural visualization, golden hour warm lighting, global illumination, " +
+    "cinematic smooth camera, 8K resolution, V-Ray/Corona render quality, no distortion, no artifacts."
+  );
+}
+
+/**
+ * Build prompt for Part 2 (10s): Interior transformation — walkthrough showing
+ * the renovated interior with modern finishes, new spatial flow, and premium materials.
+ */
+export function buildRenovationInteriorPrompt(buildingDescription: string): string {
+  const desc = buildingDescription.slice(0, 600);
+
+  return (
+    `The provided image shows an existing building. Generate a cinematic interior walkthrough video ` +
+    `showing the COMPLETELY RENOVATED interior of this building — transformed with modern, premium finishes. ` +
+    `Building analysis: ${desc.slice(0, 300)}. ` +
+    "Interior renovation walkthrough (10 seconds): " +
+    "Camera enters through a redesigned modern entrance — new glass doors, polished lobby with contemporary reception desk. " +
+    "Smooth first-person walkthrough revealing fully renovated interiors: " +
+    "open-plan living spaces with floor-to-ceiling windows flooding rooms with natural light, " +
+    "premium materials throughout — engineered hardwood floors, quartz countertops, designer tile work, " +
+    "modern kitchen with integrated appliances and island counter, " +
+    "elegant bathrooms with walk-in rain showers and floating vanities, " +
+    "smart home lighting with layered ambient, task, and accent illumination, " +
+    "contemporary furniture and curated art pieces suggesting luxury living. " +
+    "Each space flows naturally into the next through wide passages and glass partitions. " +
+    "The interior must feel TRANSFORMED — bright, spacious, premium, and thoroughly modernized " +
+    "while maintaining the original building's spatial structure. " +
+    "Photorealistic architectural visualization, natural light blended with warm designer interior lighting, " +
+    "cinematic smooth camera movement, 8K resolution, V-Ray/Corona render quality, no distortion, no artifacts."
+  );
+}
+
 // ─── Floor Plan → Video Prompts ──────────────────────────────────────────────
 
 /**
@@ -881,18 +941,24 @@ export async function submitDualWalkthrough(
   imageUrl: string,
   buildingDescription: string,
   mode: "std" | "pro" = "pro",
-  options?: { isFloorPlan?: boolean; roomInfo?: string },
+  options?: { isFloorPlan?: boolean; roomInfo?: string; isRenovation?: boolean },
 ): Promise<SubmittedVideoTasks> {
-  console.log("[DUAL] submitDualWalkthrough: mode=%s isFloorPlan=%s", mode, options?.isFloorPlan);
+  console.log("[DUAL] submitDualWalkthrough: mode=%s isFloorPlan=%s isRenovation=%s", mode, options?.isFloorPlan, options?.isRenovation);
 
   const negativePrompt = "blur, distortion, low quality, warped geometry, melting walls, deformed architecture, shaky camera, noise, artifacts, morphing surfaces, bent lines, wobbly structure, jittery motion, flickering textures, plastic appearance, fisheye distortion, floating objects, wireframe, cartoon, sketch, low polygon, unrealistic proportions, text overlay, watermark, oversaturated colors, CGI look, video game graphics, toy model, miniature, tilt-shift, abstract, surreal, people walking, cars moving, birds flying, lens flare";
 
+  // Building photos from IN-008 → renovation prompts (transform old to new)
+  // Concept renders from GN-003 → standard prompts (match the render)
   const exteriorPrompt = options?.isFloorPlan
     ? buildFloorPlanExteriorPrompt(buildingDescription, options.roomInfo)
-    : buildExteriorPrompt(buildingDescription);
+    : options?.isRenovation
+      ? buildRenovationExteriorPrompt(buildingDescription)
+      : buildExteriorPrompt(buildingDescription);
   const interiorPrompt = options?.isFloorPlan
     ? buildFloorPlanInteriorPrompt(buildingDescription, options.roomInfo)
-    : buildInteriorPrompt(buildingDescription);
+    : options?.isRenovation
+      ? buildRenovationInteriorPrompt(buildingDescription)
+      : buildInteriorPrompt(buildingDescription);
 
   // Submit both tasks in parallel — don't poll, return task IDs immediately
   const [exteriorResult, interiorResult] = await Promise.all([

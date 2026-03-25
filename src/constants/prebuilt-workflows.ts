@@ -1056,15 +1056,15 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
     id: "wf-19",
     name: "Building Photo → Video Render",
     description:
-      "Upload building photos → GPT-4o analyzes architecture, materials & style → Kling 3.0 produces a cinematic 15s video walkthrough directly from your input images. Simple 3-node workflow — no intermediate renders needed.",
-    tags: ["image", "video", "render", "walkthrough", "photo", "building", "cinematic", "kling"],
+      "Upload building photos → GPT-4o analyzes architecture, materials & style → Kling 3.0 produces a cinematic 15s renovation video showing the building transformed with new life — modernized facades, contemporary extensions, premium finishes, and lush landscaping. Works with old facade photos (renovation) or new building photos (polished upgrade).",
+    tags: ["image", "video", "render", "walkthrough", "photo", "building", "cinematic", "kling", "renovation", "facade"],
     category: "Visualization",
     complexity: "simple",
     estimatedRunTime: "~4 minutes",
-    requiredInputs: ["At least one building photograph (exterior or interior)"],
+    requiredInputs: ["At least one building photograph (old facade, existing building, or new building)"],
     expectedOutputs: [
       "Building analysis with detected style, materials & typology",
-      "Cinematic 15s MP4 video walkthrough from your building photos",
+      "Cinematic 15s MP4 video showing the building renovated & modernized with new life",
     ],
     thumbnail: "https://picsum.photos/seed/wf19/600/400",
     tileGraph: {
