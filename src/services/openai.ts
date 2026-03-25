@@ -297,9 +297,18 @@ When a location is provided, the render MUST look like it belongs in that specif
 - The building MUST have EXACTLY the specified number of floors — count them carefully in your prompt
 - Include design implications (if provided) as visible architectural features in the render
 
-The prompt must be 200-350 words, richly descriptive, and specific enough that the generated image is unmistakably set in the given location.
+ULTRA-PHOTOREALISM REQUIREMENTS (critical — the output must look like a REAL PHOTOGRAPH, not CGI):
+- Describe the image as if it's a real DSLR photograph (Canon EOS R5, 35mm, f/4, golden hour)
+- Specify material IMPERFECTIONS: weathering, patina, construction joints, slight staining, dust on ledges
+- Specify GLASS REFLECTIONS: each pane reflects actual sky/clouds/surroundings differently (not uniform blue)
+- Specify LIGHT PHYSICS: caustic reflections, color bleeding between materials, specular highlights on metal
+- Specify LENS EFFECTS: shallow depth of field, natural bokeh, subtle vignetting
+- Explicitly say "NOT a 3D render, NOT CGI, NOT illustration — a real architectural photograph"
+- Reference specific real photographers: Hufton+Crow, Iwan Baan, Nigel Young quality
 
-Respond with JSON: { "prompt": "<the enhanced DALL-E 3 prompt>" }`,
+The prompt must be 250-400 words, richly descriptive, and specific enough that the generated image is unmistakably set in the given location and indistinguishable from a real photograph.
+
+Respond with JSON: { "prompt": "<the enhanced prompt>" }`,
         },
         {
           role: "user",
@@ -685,37 +694,53 @@ async function sketchToRender(
   const designImpl = description.designImplications ?? [];
 
   const fullPrompt =
-    `Transform this architectural elevation sketch into a PHOTOREALISTIC exterior render. ` +
+    `Transform this architectural elevation sketch into an ULTRA-PHOTOREALISTIC exterior photograph. ` +
+    `This must look like a REAL PHOTOGRAPH taken with a Canon EOS R5, 35mm lens, f/4, ISO 200 — NOT a 3D render or CGI. ` +
     `CRITICAL REQUIREMENTS: ` +
-    `1. PRESERVE the EXACT building geometry — same number of floors (EXACTLY ${description.floors} floors), ` +
-    `same proportions, same window grid pattern, same building width-to-height ratio. ` +
-    `Do NOT add or remove floors. Count them: ${description.floors} floors total. ` +
-    `2. LOCATION: This building is in ${location}. ` +
-    `Show location-appropriate context: local vegetation, street character, vehicles, ` +
-    `pedestrians in local attire, and regional atmospheric conditions. ` +
-    `${climate ? `Climate: ${climate}. Design features must respond to this climate. ` : ""}` +
-    `3. MATERIALS: ${description.facade} facade. ${description.structure} structure. ` +
-    `Apply realistic materials, textures, and reflections to the sketch geometry. ` +
-    `4. ARCHITECTURE: ${description.buildingType} — ${description.programSummary}. ` +
-    `Ground floor should show active frontage (retail/lobby with warm interior lighting). ` +
-    `${designImpl.length ? `5. LOCAL DESIGN: ${designImpl.slice(0, 3).join(". ")}. ` : ""}` +
-    `6. RENDERING QUALITY: Golden hour lighting from southwest. Photorealistic V-Ray/Lumion quality. ` +
-    `Eye-level 3/4 perspective view from street corner. Sharp focus, depth of field. ` +
-    `Include people for scale (6-8 pedestrians). ` +
-    `${renderPrompt ? `Additional style: ${renderPrompt.slice(0, 200)}. ` : ""}` +
-    `Reference quality: Luxigon / MIR / DBOX architectural visualization. No text or labels.`;
+    `1. FLOOR COUNT: The building has EXACTLY ${description.floors} floors. Preserve the overall massing and proportions from the sketch. ` +
+    `2. PHOTOREALISM — this is the MOST IMPORTANT requirement: ` +
+    `- Real material DEPTH: concrete shows formwork texture and slight weathering, glass has complex reflections of sky/surroundings/clouds, ` +
+    `metal has brushed finish with subtle scratches, stone has natural grain variation. ` +
+    `- IMPERFECTIONS that prove reality: slight water staining near drip edges, construction joints visible in facade panels, ` +
+    `minor scuff marks near ground level, dust accumulation on horizontal ledges, uneven mortar joints. ` +
+    `- LIGHT BEHAVIOR: soft caustic reflections from glass onto adjacent surfaces, color bleeding between materials, ` +
+    `subsurface scattering in translucent panels, specular highlights on metal trim that shift with viewing angle. ` +
+    `- DEPTH OF FIELD: sharp focus on building center, gentle blur at edges (f/4 bokeh), background buildings slightly soft. ` +
+    `- LENS EFFECTS: subtle chromatic aberration at frame edges, natural vignetting, micro lens flare from sun reflections on glass. ` +
+    `- NO CGI tells: avoid perfectly uniform surfaces, avoid identical repeating patterns, avoid overly saturated colors, ` +
+    `avoid unnaturally sharp edges, avoid plastic-looking materials. Every surface must have micro-variation. ` +
+    `3. LOCATION: ${location}. ` +
+    `Show authentic local context: real-looking vegetation native to the region, local vehicle types, ` +
+    `pedestrians in regionally appropriate attire, signage in local language, street infrastructure matching the city. ` +
+    `${climate ? `Climate: ${climate}. Building shows climate-responsive features. ` : ""}` +
+    `4. MATERIALS: ${description.facade} facade with realistic aging appropriate for ${climate || "local climate"}. ` +
+    `${description.structure} structure. Apply materials with photographic texture quality — each panel slightly different shade, ` +
+    `glazing reflects actual sky and surroundings (not uniform blue), structural elements show realistic concrete/steel finish. ` +
+    `5. ARCHITECTURE: ${description.buildingType} — ${description.programSummary}. ` +
+    `Ground floor: active retail/lobby frontage with warm 3000K interior LED light spilling out through floor-to-ceiling glass. ` +
+    `${designImpl.length ? `6. LOCAL DESIGN: ${designImpl.slice(0, 3).join(". ")}. ` : ""}` +
+    `7. LIGHTING & ATMOSPHERE: Golden hour (6:15 PM), warm directional sunlight from southwest casting long shadows. ` +
+    `Sky gradient from amber horizon to blue zenith with wispy cirrus clouds. Interior lights glowing warm through windows. ` +
+    `Atmospheric haze appropriate for ${location} — gives depth and distance to the scene. ` +
+    `8. SCENE LIFE: 8-10 pedestrians in natural poses (walking, talking, checking phone), 2-3 vehicles, ` +
+    `street trees with individual leaf detail, motion blur on one passing vehicle. ` +
+    `${renderPrompt ? `Style notes: ${renderPrompt.slice(0, 150)}. ` : ""}` +
+    `QUALITY REFERENCE: This should be indistinguishable from a real photograph in a Dezeen/ArchDaily article. ` +
+    `Think Foster + Partners project photography by Nigel Young, or Heatherwick Studio shoots by Hufton+Crow. No text, watermarks, or labels.`;
 
   console.log(`[SketchToRender] Prompt (first 300): ${fullPrompt.slice(0, 300)}`);
 
   // Use gpt-image-1 images.edit — it SEES the sketch and renders it photorealistically
-  // input_fidelity: "medium" — preserve structure/geometry but allow creative material interpretation
+  // input_fidelity: "low" — use sketch as loose reference for massing/floor count,
+  // but allow full creative freedom for photorealistic materials, depth, and detail.
+  // "medium" produced too-literal/flat results that looked CGI.
   const response = await client.images.edit({
     model: "gpt-image-1",
     image: imageFile,
     prompt: fullPrompt,
     size: "1536x1024" as "1024x1024", // landscape for exterior renders (type workaround)
     quality: "high",
-    input_fidelity: "medium" as "high", // preserve geometry, allow material creativity
+    input_fidelity: "low" as "high", // loose reference — preserves massing but allows photorealistic detail
   });
 
   const image = response.data?.[0];
