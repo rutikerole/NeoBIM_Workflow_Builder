@@ -809,7 +809,7 @@ export default function TemplatesPage() {
                     </motion.div>
 
                     {/* Cards grid */}
-                    <div className="templates-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+                    <div className="templates-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
                       {workflows.map((wf, i) => {
                         const isLocked = LOCKED_IDS.has(wf.id) && userRole === "FREE";
                         const catColor = CATEGORY_COLORS[wf.category] ?? "#4F8AFF";
@@ -817,47 +817,55 @@ export default function TemplatesPage() {
                         const preview = TEMPLATE_PREVIEWS[wf.id];
                         const nodeCount = wf.tileGraph.nodes.length;
 
-                        // Output type badges derived from expectedOutputs
-                        const outputBadges: Array<{ label: string; color: string }> = [];
+                        // Output type badges from expectedOutputs
+                        const outputBadges: Array<{ label: string; icon: string; color: string }> = [];
                         const eo = (wf.expectedOutputs ?? []).join(" ").toLowerCase();
-                        if (eo.includes("floor plan") || eo.includes("svg")) outputBadges.push({ label: "Floor Plan", color: "#14B8A6" });
-                        if (eo.includes("3d") || eo.includes("massing") || eo.includes("interactive")) outputBadges.push({ label: "3D Model", color: "#FFBF00" });
-                        if (eo.includes("render") || eo.includes("image") || eo.includes("concept")) outputBadges.push({ label: "Render", color: "#10B981" });
-                        if (eo.includes("video") || eo.includes("walkthrough") || eo.includes("cinematic")) outputBadges.push({ label: "Video", color: "#8B5CF6" });
-                        if (eo.includes("ifc") || eo.includes("bim")) outputBadges.push({ label: "IFC", color: "#3B82F6" });
-                        if (eo.includes("boq") || eo.includes("xlsx") || eo.includes("spreadsheet") || eo.includes("quantities")) outputBadges.push({ label: "BOQ", color: "#F59E0B" });
-                        if (eo.includes("description") || eo.includes("analysis") || eo.includes("brief")) outputBadges.push({ label: "Report", color: "#64748B" });
+                        if (eo.includes("floor plan") || eo.includes("svg")) outputBadges.push({ label: "Floor Plan", icon: "📐", color: "#14B8A6" });
+                        if (eo.includes("3d") || eo.includes("massing") || eo.includes("interactive")) outputBadges.push({ label: "3D Model", icon: "🧊", color: "#FFBF00" });
+                        if (eo.includes("render") || eo.includes("image") || eo.includes("concept")) outputBadges.push({ label: "Render", icon: "🖼", color: "#10B981" });
+                        if (eo.includes("video") || eo.includes("walkthrough") || eo.includes("cinematic")) outputBadges.push({ label: "Video", icon: "🎬", color: "#8B5CF6" });
+                        if (eo.includes("ifc") || eo.includes("bim")) outputBadges.push({ label: "IFC", icon: "📦", color: "#3B82F6" });
+                        if (eo.includes("boq") || eo.includes("xlsx") || eo.includes("spreadsheet") || eo.includes("quantities")) outputBadges.push({ label: "BOQ", icon: "💰", color: "#F59E0B" });
+
+                        // Pipeline flow: split name by →
+                        const pipelineSteps = wf.name.split("→").map(s => s.trim());
 
                         return (
                           <motion.div
                             key={wf.id}
                             className="template-card"
-                            initial={{ opacity: 0, y: 16 }}
+                            initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: (baseIndex + i) * 0.05, ease: "easeOut" }}
-                            whileHover={{ y: -6, transition: { duration: 0.25 } }}
+                            transition={{ duration: 0.35, delay: (baseIndex + i) * 0.06, ease: [0.22, 1, 0.36, 1] }}
+                            whileHover={{ y: -8, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
                             onClick={() => handleCardClick(wf)}
                             style={{
                               cursor: "pointer", position: "relative",
-                              borderRadius: 16, overflow: "hidden",
-                              background: "linear-gradient(165deg, rgba(18,19,32,0.98), rgba(12,13,22,0.99))",
-                              border: `1px solid rgba(${catRgb}, 0.12)`,
-                              boxShadow: "0 2px 12px rgba(0,0,0,0.2)",
-                              transition: "border-color 0.25s, box-shadow 0.25s, transform 0.25s",
+                              borderRadius: 18, overflow: "hidden",
+                              background: `linear-gradient(170deg, rgba(20,21,35,1) 0%, rgba(14,15,26,1) 100%)`,
+                              border: `1px solid rgba(${catRgb}, 0.1)`,
+                              boxShadow: `0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03)`,
+                              transition: "border-color 0.3s, box-shadow 0.3s",
                             }}
                             onMouseEnter={e => {
-                              (e.currentTarget as HTMLElement).style.borderColor = `rgba(${catRgb},0.35)`;
-                              (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 40px rgba(0,0,0,0.4), 0 0 30px rgba(${catRgb},0.08)`;
+                              (e.currentTarget as HTMLElement).style.borderColor = `rgba(${catRgb},0.4)`;
+                              (e.currentTarget as HTMLElement).style.boxShadow = `0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(${catRgb},0.1), inset 0 1px 0 rgba(255,255,255,0.05)`;
                             }}
                             onMouseLeave={e => {
-                              (e.currentTarget as HTMLElement).style.borderColor = `rgba(${catRgb},0.12)`;
-                              (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.2)";
+                              (e.currentTarget as HTMLElement).style.borderColor = `rgba(${catRgb},0.1)`;
+                              (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03)`;
                             }}
                           >
-                            {/* Preview area — taller for better visibility */}
-                            <div className="template-card-preview" style={{ position: "relative", height: 200, overflow: "hidden", background: `rgba(${catRgb}, 0.03)` }}>
-                              {/* Top accent line */}
-                              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${catColor}, ${catColor}60, transparent)`, zIndex: 3 }} />
+                            {/* ── Shine sweep overlay (CSS animated) ── */}
+                            <div className="card-shine" style={{ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none" }} />
+
+                            {/* ── Preview area ── */}
+                            <div className="template-card-preview" style={{
+                              position: "relative", height: 200, overflow: "hidden",
+                              background: `linear-gradient(180deg, rgba(${catRgb}, 0.05) 0%, rgba(${catRgb}, 0.01) 100%)`,
+                            }}>
+                              {/* Accent top border with glow */}
+                              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent 5%, ${catColor} 50%, transparent 95%)`, zIndex: 3, opacity: 0.7 }} />
 
                               {preview?.type === "video" ? (
                                 <video
@@ -866,16 +874,14 @@ export default function TemplatesPage() {
                                   onMouseEnter={e => { e.currentTarget.play().catch(() => {}); }}
                                   onMouseLeave={e => { e.currentTarget.pause(); e.currentTarget.currentTime = preview.start; }}
                                   className="template-card-video"
-                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "transform 0.4s ease" }}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "transform 0.5s cubic-bezier(0.22,1,0.36,1)" }}
                                 />
                               ) : preview?.type === "image" ? (
                                 /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
-                                  src={preview.url}
-                                  alt={wf.name}
-                                  loading="lazy"
+                                  src={preview.url} alt={wf.name} loading="lazy"
                                   className="template-card-img"
-                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "transform 0.4s ease" }}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "transform 0.5s cubic-bezier(0.22,1,0.36,1)" }}
                                 />
                               ) : preview?.type === "svg" ? (
                                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -887,16 +893,16 @@ export default function TemplatesPage() {
                                 </div>
                               )}
 
-                              {/* Bottom gradient — shorter, less aggressive */}
-                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "35%", background: "linear-gradient(transparent, rgba(12,13,22,0.9))", pointerEvents: "none" }} />
+                              {/* Bottom gradient — subtle */}
+                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", background: "linear-gradient(transparent, rgba(14,15,26,0.95))", pointerEvents: "none" }} />
 
-                              {/* Category badge — top left for better visibility */}
+                              {/* Category badge — top left */}
                               <div style={{
-                                position: "absolute", top: 10, left: 10, zIndex: 2,
+                                position: "absolute", top: 10, left: 10, zIndex: 4,
                                 display: "inline-flex", alignItems: "center", gap: 5,
                                 padding: "4px 10px", borderRadius: 8,
-                                background: "rgba(0,0,0,0.65)", backdropFilter: "blur(12px)",
-                                border: `1px solid rgba(${catRgb}, 0.25)`,
+                                background: "rgba(0,0,0,0.6)", backdropFilter: "blur(12px)",
+                                border: `1px solid rgba(${catRgb}, 0.3)`,
                               }}>
                                 {CATEGORY_ICONS[wf.category] && <span style={{ color: catColor, display: "flex" }}>{CATEGORY_ICONS[wf.category]}</span>}
                                 <span style={{ fontSize: 9, fontWeight: 700, color: catColor, letterSpacing: "0.06em", textTransform: "uppercase" }}>
@@ -904,54 +910,111 @@ export default function TemplatesPage() {
                                 </span>
                               </div>
 
-                              {/* Output type badges — bottom right */}
+                              {/* "You get" output badges — bottom */}
                               {outputBadges.length > 0 && (
                                 <div style={{
-                                  position: "absolute", bottom: 10, right: 10, zIndex: 2,
-                                  display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end",
+                                  position: "absolute", bottom: 10, left: 12, right: 12, zIndex: 4,
+                                  display: "flex", gap: 5, flexWrap: "wrap",
                                 }}>
-                                  {outputBadges.slice(0, 3).map(b => (
+                                  {outputBadges.slice(0, 4).map(b => (
                                     <span key={b.label} style={{
-                                      fontSize: 8, fontWeight: 700, color: b.color,
-                                      padding: "3px 7px", borderRadius: 5,
-                                      background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
-                                      border: `1px solid ${b.color}30`,
-                                      letterSpacing: "0.04em", textTransform: "uppercase",
+                                      fontSize: 9, fontWeight: 700, color: b.color,
+                                      padding: "3px 8px", borderRadius: 6,
+                                      background: `rgba(0,0,0,0.55)`, backdropFilter: "blur(8px)",
+                                      border: `1px solid ${b.color}35`,
+                                      letterSpacing: "0.03em",
+                                      display: "flex", alignItems: "center", gap: 3,
                                     }}>
+                                      <span style={{ fontSize: 10 }}>{b.icon}</span>
                                       {b.label}
                                     </span>
                                   ))}
                                 </div>
                               )}
+
+                              {/* Hover CTA overlay — slides up */}
+                              <div className="card-cta-overlay" style={{
+                                position: "absolute", inset: 0, zIndex: 6,
+                                background: `linear-gradient(180deg, rgba(${catRgb},0.05) 0%, rgba(${catRgb},0.15) 100%)`,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                opacity: 0, transition: "opacity 0.3s ease",
+                                pointerEvents: "none",
+                              }}>
+                                <div style={{
+                                  display: "flex", alignItems: "center", gap: 8,
+                                  padding: "10px 24px", borderRadius: 12,
+                                  background: `rgba(${catRgb}, 0.15)`, backdropFilter: "blur(16px)",
+                                  border: `1px solid rgba(${catRgb}, 0.4)`,
+                                  boxShadow: `0 8px 32px rgba(${catRgb}, 0.2)`,
+                                }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
+                                    Use Template
+                                  </span>
+                                  <ArrowRight size={14} style={{ color: catColor }} />
+                                </div>
+                              </div>
                             </div>
 
-                            {/* Content — brighter, more readable */}
+                            {/* ── Content ── */}
                             <div style={{ padding: "16px 18px 18px" }}>
-                              <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F5F9", marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.35 }}>
+                              {/* Title */}
+                              <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F5F9", marginBottom: 8, letterSpacing: "-0.01em", lineHeight: 1.35 }}>
                                 {wf.name}
                               </div>
+
+                              {/* Pipeline mini-flow */}
+                              {pipelineSteps.length >= 2 && (
+                                <div style={{
+                                  display: "flex", alignItems: "center", gap: 6,
+                                  marginBottom: 10, padding: "6px 10px",
+                                  borderRadius: 8, background: "rgba(255,255,255,0.02)",
+                                  border: "1px solid rgba(255,255,255,0.04)",
+                                  overflow: "hidden",
+                                }}>
+                                  {pipelineSteps.map((step, si) => (
+                                    <span key={si} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                      {si > 0 && (
+                                        <span style={{ color: catColor, fontSize: 10, opacity: 0.6 }}>→</span>
+                                      )}
+                                      <span style={{
+                                        fontSize: 10, fontWeight: 600,
+                                        color: si === pipelineSteps.length - 1 ? catColor : "#8B9DB5",
+                                        whiteSpace: "nowrap",
+                                      }}>
+                                        {step}
+                                      </span>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Description */}
                               <div style={{ fontSize: 12, color: "#8B9DB5", lineHeight: 1.6, marginBottom: 14, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
                                 {wf.description}
                               </div>
 
-                              {/* Meta row — brighter, more visible */}
-                              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "#7B8FA3", fontFamily: "var(--font-jetbrains), monospace" }}>
-                                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: wf.complexity === "simple" ? "#10B981" : "#F59E0B", boxShadow: wf.complexity === "simple" ? "0 0 6px #10B98140" : "0 0 6px #F59E0B40" }} />
-                                  {wf.complexity === "simple" ? t('dash.simpleLabel') : t('dash.advancedLabel')}
-                                </span>
-                                <span style={{ color: "#3D4A5C" }}>·</span>
-                                <span>{nodeCount} {t('dash.nodes')}</span>
-                                <span style={{ color: "#3D4A5C" }}>·</span>
-                                <span>{wf.estimatedRunTime}</span>
+                              {/* Meta row */}
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "#7B8FA3", fontFamily: "var(--font-jetbrains), monospace" }}>
+                                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: wf.complexity === "simple" ? "#10B981" : "#F59E0B", boxShadow: wf.complexity === "simple" ? "0 0 8px #10B98150" : "0 0 8px #F59E0B50" }} />
+                                    {wf.complexity === "simple" ? t('dash.simpleLabel') : t('dash.advancedLabel')}
+                                  </span>
+                                  <span style={{ color: "#3D4A5C" }}>·</span>
+                                  <span>{nodeCount} {t('dash.nodes')}</span>
+                                  <span style={{ color: "#3D4A5C" }}>·</span>
+                                  <span>{wf.estimatedRunTime}</span>
+                                </div>
+                                {/* Subtle arrow on right */}
+                                <ArrowRight size={14} className="card-arrow" style={{ color: `rgba(${catRgb}, 0.3)`, transition: "color 0.3s, transform 0.3s" }} />
                               </div>
                             </div>
 
                             {/* Lock overlay */}
                             {isLocked && (
                               <div style={{
-                                position: "absolute", inset: 0, zIndex: 10, borderRadius: 16,
-                                background: "rgba(8,10,18,0.35)", backdropFilter: "blur(2px)",
+                                position: "absolute", inset: 0, zIndex: 10, borderRadius: 18,
+                                background: "rgba(8,10,18,0.4)", backdropFilter: "blur(2px)",
                                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
                               }}>
                                 <div style={{
@@ -971,11 +1034,43 @@ export default function TemplatesPage() {
                       })}
                     </div>
 
-                    {/* Card hover styles */}
+                    {/* Card interaction styles */}
                     <style>{`
+                      /* Preview zoom on hover */
                       .template-card:hover .template-card-video,
                       .template-card:hover .template-card-img {
-                        transform: scale(1.05);
+                        transform: scale(1.08);
+                      }
+                      /* Show CTA overlay on hover */
+                      .template-card:hover .card-cta-overlay {
+                        opacity: 1 !important;
+                      }
+                      /* Animate arrow on hover */
+                      .template-card:hover .card-arrow {
+                        color: rgba(255,255,255,0.6) !important;
+                        transform: translateX(3px);
+                      }
+                      /* Shine sweep effect */
+                      .card-shine::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: -120%;
+                        width: 60%;
+                        height: 100%;
+                        background: linear-gradient(
+                          105deg,
+                          transparent 40%,
+                          rgba(255,255,255,0.03) 45%,
+                          rgba(255,255,255,0.05) 50%,
+                          rgba(255,255,255,0.03) 55%,
+                          transparent 60%
+                        );
+                        transition: left 0.6s cubic-bezier(0.22,1,0.36,1);
+                        pointer-events: none;
+                      }
+                      .template-card:hover .card-shine::before {
+                        left: 120%;
                       }
                     `}</style>
                   </div>
