@@ -1607,6 +1607,65 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         );
       }
 
+      // ── Merge supplementary IFC data (structural, MEP) if provided ──
+      let hasStructuralFoundation = false;
+      let hasMEPData = false;
+
+      const structParsed = inputData?.structuralIFCParsed as { divisions?: Array<{ categories: Array<{ elements: Array<{ type: string; name: string; storey: string; quantities: Record<string, unknown> }> }> }> } | undefined;
+      if (structParsed?.divisions) {
+        console.log("[TR-007] Structural IFC data found — merging foundation/beam quantities");
+        for (const div of structParsed.divisions) {
+          for (const cat of div.categories) {
+            for (const elem of cat.elements) {
+              if (elem.type === "IfcFooting" || elem.type === "IfcPile") hasStructuralFoundation = true;
+              const vol = Number(((elem.quantities as Record<string, unknown>).volume as Record<string, unknown>)?.base ?? 0);
+              const area = Number(((elem.quantities as Record<string, unknown>).area as Record<string, unknown>)?.gross ?? 0);
+              const qty = area > 0 ? area : vol > 0 ? vol : 1;
+              const unit = area > 0 ? "m²" : vol > 0 ? "m³" : "EA";
+              const desc = elem.type.replace("Ifc", "");
+              elements.push({
+                description: desc, category: "Substructure (Structural IFC)", quantity: qty, unit,
+                grossArea: area || undefined, totalVolume: vol || undefined,
+                storey: elem.storey || "Foundation", elementCount: 1,
+                // dataSource passed as extra field for Excel transparency
+              });
+              rows.push(["Substructure", desc, (area || 0).toFixed(2), "0.00", (area || 0).toFixed(2), (vol || 0).toFixed(2), qty.toFixed(2), unit]);
+            }
+          }
+        }
+        parseSummary += ` | Structural IFC merged (foundation data)`;
+      }
+
+      const mepParsed = inputData?.mepIFCParsed as typeof structParsed | undefined;
+      if (mepParsed?.divisions) {
+        console.log("[TR-007] MEP IFC data found — merging pipe/duct/fixture quantities");
+        hasMEPData = true;
+        for (const div of mepParsed.divisions) {
+          for (const cat of div.categories) {
+            for (const elem of cat.elements) {
+              const len = Number((elem.quantities as Record<string, unknown>).length ?? 0);
+              const area = Number(((elem.quantities as Record<string, unknown>).area as Record<string, unknown>)?.gross ?? 0);
+              const qty = len > 0 ? len : area > 0 ? area : 1;
+              const unit = len > 0 ? "m" : area > 0 ? "m²" : "EA";
+              const desc = elem.type.replace("Ifc", "");
+              // Classify MEP element
+              const mepCat = elem.type.includes("Pipe") ? "Plumbing (MEP IFC)"
+                : elem.type.includes("Duct") ? "HVAC (MEP IFC)"
+                : elem.type.includes("Cable") ? "Electrical (MEP IFC)"
+                : "MEP Services (MEP IFC)";
+              elements.push({
+                description: desc, category: mepCat, quantity: qty, unit,
+                grossArea: area || undefined, totalVolume: undefined,
+                storey: elem.storey || "MEP", elementCount: 1,
+                // dataSource passed as extra field for Excel transparency
+              });
+              rows.push([mepCat.split(" (")[0], desc, "0.00", "0.00", "0.00", "0.00", qty.toFixed(2), unit]);
+            }
+          }
+        }
+        parseSummary += ` | MEP IFC merged (pipe/duct/fixture data)`;
+      }
+
       artifact = {
         id: generateId(),
         executionId: executionId ?? "local",
@@ -1616,12 +1675,16 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           label: "Extracted Quantities (IFC)",
           headers: ["Category", "Element", "Gross Area (m²)", "Opening Area (m²)", "Net Area (m²)", "Volume (m³)", "Qty", "Unit"],
           rows,
-          _elements: elements, // Required for TR-008 compatibility
+          _elements: elements,
+          _hasStructuralFoundation: hasStructuralFoundation,
+          _hasMEPData: hasMEPData,
           content: parseSummary,
         },
         metadata: {
           model: "ifc-parser-v2",
           real: true,
+          hasStructuralIFC: !!structParsed,
+          hasMEPIFC: !!mepParsed,
         },
         createdAt: new Date(),
       };
@@ -2103,6 +2166,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       boqLines.push(...derivedLines);
 
       // ── Provisional Sums: MEP, Foundation, External Works ──
+      // Skip provisional estimates when real data from structural/MEP IFC is available
       const { estimateMEPCosts, estimateFoundationCosts, estimateExternalWorksCosts, checkQuantitySanity } = await import("@/services/boq-intelligence");
       const gfaForProvisional = elements.reduce((sum: number, e: unknown) => {
         const el = e as Record<string, unknown>;
@@ -2111,11 +2175,21 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const floorCountForProv = new Set(elements.map((e: unknown) => (e as Record<string, unknown>).storey).filter(Boolean)).size || 1;
       const cityTierForProv = indianPricing?.cityTier ?? "city";
 
-      const mepSums = estimateMEPCosts(gfaForProvisional, projectTypeInfo.type, floorCountForProv, cityTierForProv, isIndianProject);
-      // Extract soil type and plot area from location data
+      // Check flags from TR-007 multi-IFC merge
+      const hasStructuralFoundation = !!(inputData?._hasStructuralFoundation);
+      const hasMEPData = !!(inputData?._hasMEPData);
+
+      // MEP: skip provisional if real MEP IFC data exists
+      const mepSums = hasMEPData ? [] : estimateMEPCosts(gfaForProvisional, projectTypeInfo.type, floorCountForProv, cityTierForProv, isIndianProject);
+      if (hasMEPData) console.log("[TR-008] MEP IFC data found — skipping provisional MEP sums");
+
+      // Foundation: skip provisional if real structural IFC data exists
       const soilType = locationData?.soilType as string | undefined;
       const plotArea = locationData?.plotArea ? Number(locationData.plotArea) : undefined;
-      const foundSums = estimateFoundationCosts(gfaForProvisional, floorCountForProv, projectTypeInfo.type, cityTierForProv, isIndianProject, soilType || undefined);
+      const foundSums = hasStructuralFoundation ? [] : estimateFoundationCosts(gfaForProvisional, floorCountForProv, projectTypeInfo.type, cityTierForProv, isIndianProject, soilType || undefined);
+      if (hasStructuralFoundation) console.log("[TR-008] Structural IFC data found — skipping provisional foundation sums");
+
+      // External works always provisional (rarely in IFC)
       const extSums = estimateExternalWorksCosts(gfaForProvisional, floorCountForProv, cityTierForProv, isIndianProject, (plotArea && plotArea > 0) ? plotArea : undefined);
 
       const allProvisional = [...foundSums, ...mepSums, ...extSums];
@@ -2838,10 +2912,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         const boqHeaders = hasIS1200
           ? ["IS 1200 Code", "Division", "Description", "Unit", "Base Qty", "Waste %", "Adj Qty",
              "Mat Rate", "Lab Rate", "Eqp Rate", "Unit Rate",
-             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST"]
+             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST", "Data Source"]
           : ["Division", "Description", "Unit", "Base Qty", "Waste %", "Adj Qty",
              "Mat Rate", "Lab Rate", "Eqp Rate", "Unit Rate",
-             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST"];
+             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST", "Data Source"];
 
         const boqTableRows: (string | number)[][] = [];
         let grandTotalInclGST = 0;
@@ -2856,7 +2930,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         }
 
         for (const [divName, lines] of divGroups) {
-          const emptyCols = hasIS1200 ? 17 : 16;
+          const emptyCols = hasIS1200 ? 18 : 17;
           boqTableRows.push([divName.toUpperCase(), ...Array(emptyCols).fill("")]);
 
           let divMat = 0, divLab = 0, divEqp = 0, divSub = 0, divGST = 0, divTotal = 0;
@@ -2870,17 +2944,25 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             const gstAmt = Math.round(l.materialCost * gstRate * 100) / 100; // GST on material only
             const totalInclGST = Math.round((subtotal + gstAmt) * 100) / 100;
 
+            // Determine data source for transparency column
+            const dataSource = l.division.includes("Structural IFC") ? "Structural IFC"
+              : l.division.includes("MEP IFC") ? "MEP IFC"
+              : l.division.includes("PROVISIONAL") ? "Provisional"
+              : l.division.includes("Formwork") || l.division.includes("Rebar") || l.division.includes("Plaster") || l.division.includes("Reinforcement") ? "IFC Derived"
+              : l.csiCode?.startsWith("IS1200") ? "IFC Geometry"
+              : "Benchmark";
+
             const row: (string | number)[] = hasIS1200
               ? [l.is1200Code ?? "", "", `${l.description}${countLabel}`, l.unit,
                  l.quantity, wasteStr, adjQty,
                  l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
                  l.materialCost, l.laborCost, l.equipmentCost, subtotal,
-                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST]
+                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST, dataSource]
               : ["", `${l.description}${countLabel}`, l.unit,
                  l.quantity, wasteStr, adjQty,
                  l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
                  l.materialCost, l.laborCost, l.equipmentCost, subtotal,
-                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST];
+                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST, dataSource];
 
             boqTableRows.push(row);
             divMat += l.materialCost; divLab += l.laborCost; divEqp += l.equipmentCost;
@@ -2890,12 +2972,12 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           const subRow = hasIS1200
             ? ["", "", `${divName} SUBTOTAL`, "", "", "", "",
                "", "", "", "", Math.round(divMat), Math.round(divLab), Math.round(divEqp),
-               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal)]
+               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal), ""]
             : ["", `${divName} SUBTOTAL`, "", "", "", "",
                "", "", "", "", Math.round(divMat), Math.round(divLab), Math.round(divEqp),
-               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal)];
+               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal), ""];
           boqTableRows.push(subRow);
-          boqTableRows.push(Array(hasIS1200 ? 18 : 17).fill(""));
+          boqTableRows.push(Array(hasIS1200 ? 19 : 18).fill(""));
           grandTotalInclGST += divTotal;
           totalGST += divGST;
         }
@@ -2905,11 +2987,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           ? ["", "", "GRAND TOTAL", "", "", "", "", "", "", "", "",
              Math.round(boqData?.subtotalMaterial ?? 0), Math.round(boqData?.subtotalLabor ?? 0),
              Math.round(boqData?.subtotalEquipment ?? 0), Math.round(hardTotal),
-             "", Math.round(totalGST), Math.round(grandTotalInclGST)]
+             "", Math.round(totalGST), Math.round(grandTotalInclGST), ""]
           : ["", "GRAND TOTAL", "", "", "", "", "", "", "", "",
              Math.round(boqData?.subtotalMaterial ?? 0), Math.round(boqData?.subtotalLabor ?? 0),
              Math.round(boqData?.subtotalEquipment ?? 0), Math.round(hardTotal),
-             "", Math.round(totalGST), Math.round(grandTotalInclGST)];
+             "", Math.round(totalGST), Math.round(grandTotalInclGST), ""];
         boqTableRows.push(gtRow);
 
         const boqSheet = XLSX.utils.aoa_to_sheet([boqHeaders, ...boqTableRows]);
