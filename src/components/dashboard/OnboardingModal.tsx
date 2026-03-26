@@ -68,7 +68,8 @@ export function OnboardingModal() {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             style={{
               width: "100%", maxWidth: 460,
-              maxHeight: "calc(100vh - 48px)", overflowY: "auto" as const,
+              maxHeight: "calc(100vh - 48px)",
+              display: "flex", flexDirection: "column" as const,
               background: "#111120", borderRadius: 20,
               border: "1px solid rgba(255,255,255,0.06)",
               boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 60px rgba(79,138,255,0.05)",
@@ -106,7 +107,7 @@ export function OnboardingModal() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
-                style={{ padding: "32px 28px 24px" }}
+                style={{ padding: "32px 28px 24px", flex: 1, overflowY: "auto" as const }}
               >
                 <div style={{
                   width: 56, height: 56, borderRadius: 16,
@@ -134,10 +135,12 @@ export function OnboardingModal() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Footer */}
+            {/* Footer — always pinned at bottom */}
             <div style={{
               padding: "16px 28px 24px",
               display: "flex", alignItems: "center", justifyContent: "space-between",
+              flexShrink: 0,
+              borderTop: "1px solid rgba(255,255,255,0.04)",
             }}>
               {/* Step dots */}
               <div style={{ display: "flex", gap: 6 }}>

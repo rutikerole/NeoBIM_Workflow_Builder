@@ -307,6 +307,10 @@
     display: none !important;
   }
 
+  .dashboard-header .profile-name-text {
+    display: none !important;
+  }
+
   .dashboard-header h1 {
     font-size: 16px !important;
   }

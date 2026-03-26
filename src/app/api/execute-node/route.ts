@@ -111,6 +111,7 @@ function cleanupRateLimitCache() {
 // Allow up to 180s for heavy GPT-4o vision + 3D AI Studio generation + conversion chains
 export const maxDuration = 180;
 
+
 export async function POST(req: NextRequest) {
   const session = await auth();
 
@@ -1345,6 +1346,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       }> = [];
       let parseSummary = "";
 
+      // Normalize IFC storey names — fixes typos like "Grond floor" → "Ground Floor"
+      const normalizeStorey = (s: string): string => {
+        if (!s) return s;
+        return s
+          .replace(/\bGrond\b/gi, "Ground")
+          .replace(/\bgrond\b/g, "ground")
+          .replace(/\b(\w)/g, (_, c) => c.toUpperCase()); // Title case
+      };
+
       // ── Mode 1: Pre-parsed IFC result from /api/parse-ifc (large files) ──
       // The InputNode uploaded the file to R2 and pre-parsed it via /api/parse-ifc.
       // We skip re-parsing and use the result directly.
@@ -1374,7 +1384,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
           // Use same aggregation logic as inline parsing (below)
           const typeAggregates = new Map<string, {
-            count: number; grossArea: number; netArea: number; openingArea: number; volume: number;
+            count: number; grossArea: number; netArea: number; openingArea: number; volume: number; length: number;
             divisionName: string; storey: string; elementType: string;
             materialLayers?: Array<{name: string; thickness: number}>;
             coveringType?: string;
@@ -1383,14 +1393,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           for (const division of parseResult.divisions) {
             for (const category of division.categories) {
               for (const element of category.elements) {
-                // IfcCovering: use PredefinedType in key to distinguish flooring/ceiling/cladding
                 const coveringType = element.type === "IfcCovering" && (element as unknown as Record<string, unknown>).properties
                   ? String(((element as unknown as Record<string, unknown>).properties as Record<string, unknown>)?.PredefinedType ?? "")
                   : "";
-                const key = `${element.type}${coveringType ? ":" + coveringType : ""}|${element.storey}`;
+                const key = `${element.type}${coveringType ? ":" + coveringType : ""}|${normalizeStorey(element.storey)}`;
                 const existing = typeAggregates.get(key) || {
-                  count: 0, grossArea: 0, netArea: 0, openingArea: 0, volume: 0,
-                  divisionName: division.name, storey: element.storey, elementType: element.type,
+                  count: 0, grossArea: 0, netArea: 0, openingArea: 0, volume: 0, length: 0,
+                  divisionName: division.name, storey: normalizeStorey(element.storey), elementType: element.type,
                   coveringType,
                 };
                 existing.count += element.quantities.count ?? 1;
@@ -1398,6 +1407,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 existing.netArea += element.quantities.area?.net ?? 0;
                 existing.openingArea += element.quantities.openingArea ?? 0;
                 existing.volume += element.quantities.volume?.base ?? 0;
+                existing.length += (element.quantities as Record<string, unknown>).length as number ?? 0;
+                if (element.type === "IfcRailing" && !((element.quantities as Record<string, unknown>).length) && existing.length === 0) {
+                  existing.length += ((element.quantities as Record<string, unknown>).height as number) ?? 3.0;
+                }
                 if (!existing.materialLayers && element.materialLayers && element.materialLayers.length > 1) {
                   existing.materialLayers = element.materialLayers;
                 }
@@ -1406,15 +1419,27 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             }
           }
 
+          const LINEAR_TYPES_P = new Set(["IfcRailing", "IfcMember"]);
+
           for (const [, agg] of typeAggregates) {
             let description = agg.elementType.replace("Ifc", "");
-            // Add covering subtype for display
             if (agg.coveringType) {
               const ctLabel: Record<string, string> = { FLOORING: "Flooring", CEILING: "Ceiling", CLADDING: "Cladding", ROOFING: "Roof Covering" };
               description = ctLabel[agg.coveringType] ?? `Covering (${agg.coveringType})`;
             }
-            const primaryQty = agg.grossArea > 0 ? agg.grossArea : agg.volume > 0 ? agg.volume : agg.count;
-            const unit = agg.grossArea > 0 ? "m²" : agg.volume > 0 ? "m³" : "EA";
+            let primaryQty: number;
+            let unit: string;
+            if (LINEAR_TYPES_P.has(agg.elementType) && agg.length > 0.5) {
+              primaryQty = agg.length; unit = "Rmt";
+            } else if (LINEAR_TYPES_P.has(agg.elementType) && agg.count > 0) {
+              primaryQty = agg.count * (agg.elementType === "IfcRailing" ? 3.0 : 4.0); unit = "Rmt";
+            } else if (agg.grossArea > 0) {
+              primaryQty = agg.grossArea; unit = "m²";
+            } else if (agg.volume > 0) {
+              primaryQty = agg.volume; unit = "m³";
+            } else {
+              primaryQty = agg.count; unit = "EA";
+            }
             rows.push([agg.divisionName, description, agg.grossArea.toFixed(2), agg.openingArea.toFixed(2), agg.netArea.toFixed(2), agg.volume.toFixed(2), primaryQty.toFixed(2), unit]);
             elements.push({
               description, category: agg.divisionName, quantity: primaryQty, unit,
@@ -1456,7 +1481,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
           // Aggregate elements by type + storey for per-floor BOQ breakdown
           const typeAggregates = new Map<string, {
-            count: number; grossArea: number; netArea: number; openingArea: number; volume: number;
+            count: number; grossArea: number; netArea: number; openingArea: number; volume: number; length: number;
             divisionName: string; storey: string; elementType: string;
             materialLayers?: Array<{name: string; thickness: number}>;
             coveringType?: string;
@@ -1468,10 +1493,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 const coveringType = element.type === "IfcCovering" && (element as unknown as Record<string, unknown>).properties
                   ? String(((element as unknown as Record<string, unknown>).properties as Record<string, unknown>)?.PredefinedType ?? "")
                   : "";
-                const key = `${element.type}${coveringType ? ":" + coveringType : ""}|${element.storey}`;
+                const key = `${element.type}${coveringType ? ":" + coveringType : ""}|${normalizeStorey(element.storey)}`;
                 const existing = typeAggregates.get(key) || {
-                  count: 0, grossArea: 0, netArea: 0, openingArea: 0, volume: 0,
-                  divisionName: division.name, storey: element.storey, elementType: element.type,
+                  count: 0, grossArea: 0, netArea: 0, openingArea: 0, volume: 0, length: 0,
+                  divisionName: division.name, storey: normalizeStorey(element.storey), elementType: element.type,
                   coveringType,
                 };
                 existing.count += element.quantities.count ?? 1;
@@ -1479,6 +1504,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 existing.netArea += element.quantities.area?.net ?? 0;
                 existing.openingArea += element.quantities.openingArea ?? 0;
                 existing.volume += element.quantities.volume?.base ?? 0;
+                existing.length += element.quantities.length ?? 0;
+                // Railing fallback: if no length, estimate from height (vertical railing) or 3m default
+                if (element.type === "IfcRailing" && !(element.quantities.length) && existing.length === 0) {
+                  existing.length += element.quantities.height ?? 3.0; // 3m per railing segment default
+                }
                 if (!existing.materialLayers && element.materialLayers && element.materialLayers.length > 1) {
                   existing.materialLayers = element.materialLayers;
                 }
@@ -1487,14 +1517,35 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             }
           }
 
+          // Linear element types: use length (Rmt) as primary quantity
+          const LINEAR_TYPES = new Set(["IfcRailing", "IfcMember"]);
+
           for (const [, agg] of typeAggregates) {
             let description = agg.elementType.replace("Ifc", "");
             if (agg.coveringType) {
               const ctLabel: Record<string, string> = { FLOORING: "Flooring", CEILING: "Ceiling", CLADDING: "Cladding", ROOFING: "Roof Covering" };
               description = ctLabel[agg.coveringType] ?? `Covering (${agg.coveringType})`;
             }
-            const primaryQty = agg.grossArea > 0 ? agg.grossArea : agg.volume > 0 ? agg.volume : agg.count;
-            const unit = agg.grossArea > 0 ? "m²" : agg.volume > 0 ? "m³" : "EA";
+            // Railings and members: use length as primary quantity in Rmt
+            let primaryQty: number;
+            let unit: string;
+            if (LINEAR_TYPES.has(agg.elementType) && agg.length > 0.5) {
+              primaryQty = agg.length;
+              unit = "Rmt";
+            } else if (LINEAR_TYPES.has(agg.elementType) && agg.count > 0) {
+              // No usable length — estimate: 3m per railing, 4m per member
+              primaryQty = agg.count * (agg.elementType === "IfcRailing" ? 3.0 : 4.0);
+              unit = "Rmt";
+            } else if (agg.grossArea > 0) {
+              primaryQty = agg.grossArea;
+              unit = "m²";
+            } else if (agg.volume > 0) {
+              primaryQty = agg.volume;
+              unit = "m³";
+            } else {
+              primaryQty = agg.count;
+              unit = "EA";
+            }
 
             rows.push([
               agg.divisionName, description,
@@ -1564,6 +1615,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
     } else if (catalogueId === "TR-008") {
       // BOQ Cost Mapper — Professional QS-grade with waste, M/L/E breakdown, escalation, project type
+      // Diagnostic: what keys does TR-008 actually receive from upstream merge?
+      const inputKeys = Object.keys(inputData ?? {});
+      console.log(`[TR-008] Input keys (${inputKeys.length}): ${inputKeys.filter(k => k.startsWith("_")).join(", ")}`);
+      console.log(`[TR-008] _marketData: ${typeof inputData?._marketData} (${!!inputData?._marketData}), _elements: ${typeof inputData?._elements} (${!!inputData?._elements})`);
+      // If _marketData is missing, check if market data is nested under a different key
+      if (!inputData?._marketData) {
+        const mKeys = inputKeys.filter(k => k.toLowerCase().includes("market") || k.toLowerCase().includes("price") || k.toLowerCase().includes("steel"));
+        if (mKeys.length > 0) console.log(`[TR-008] Possible market data under: ${mKeys.join(", ")}`);
+      }
       const elements = inputData?._elements ?? inputData?.elements ?? inputData?.rows ?? [];
       const buildingDescription = inputData?.buildingDescription ?? inputData?.content ?? inputData?.prompt ?? "";
       let escalationMonths = Number(inputData?.escalationMonths ?? 6);
@@ -1956,18 +2016,22 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
         const applyDerived = (name: string, baseQty: number, rateUSD: number, dUnit: string, source: string, is1200Key: string) => {
           if (baseQty <= 0) return;
-          // For Indian projects, use CPWD rate directly if available
+          const ip = indianPricing;
+
+          // For Indian projects, use CPWD rate × state PWD category factor
           let adjRate: number;
           if (isIndianProject && is1200Key === "rebar" && is1200Module) {
             const rebarRate = is1200Module.getIS1200Rate("IS1200-P6-REBAR-500");
-            adjRate = rebarRate ? rebarRate.rate : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
+            const steelFactor = ip?.steel ?? ip?.overall ?? 1.0;
+            adjRate = rebarRate ? Math.round(rebarRate.rate * steelFactor * 100) / 100 : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
           } else if (isIndianProject && is1200Key.startsWith("formwork") && is1200Module) {
-            // Use CPWD formwork rates (already in INR)
             const fwRates: Record<string, number> = { "formwork-wall": 400, "formwork-slab": 380, "formwork-column": 480, "formwork-beam": 420 };
-            adjRate = fwRates[is1200Key] ?? Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
+            const concFactor = ip?.concrete ?? ip?.overall ?? 1.0;
+            adjRate = Math.round((fwRates[is1200Key] ?? 400) * concFactor * 100) / 100;
           } else if (isIndianProject && (is1200Key === "plastering" || is1200Key === "ceiling-plaster") && is1200Module) {
             const plastRate = is1200Module.getIS1200Rate("IS1200-P8-PLASTER");
-            adjRate = plastRate ? plastRate.rate : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
+            const finFactor = ip?.finishing ?? ip?.overall ?? 1.0;
+            adjRate = plastRate ? Math.round(plastRate.rate * finFactor * 100) / 100 : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
           } else {
             adjRate = Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
           }
@@ -1993,7 +2057,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             equipmentRate: Math.round(adjRate * breakdown.equipment * 100) / 100,
             unitRate: adjRate, materialCost: matC, laborCost: labC, equipmentCost: eqpC, totalCost: total,
             storey: st || undefined, elementCount: undefined,
-            is1200Code: is1200Info?.code,
+            is1200Code: is1200Info?.code ?? (isIndianProject ? "IS1200-DERIVED" : undefined),
           });
         };
 
@@ -2071,22 +2135,23 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       });
       const quantityWarnings = checkQuantitySanity(sanitizedElements, gfaForProvisional, floorCountForProv);
 
-      // ── Market Intelligence: fetch live prices if available ──
-      let marketData: Awaited<ReturnType<typeof import("@/services/market-intelligence").fetchMarketPrices>> | null = null;
-      let marketAdjustments: Awaited<ReturnType<typeof import("@/services/market-intelligence").computeMarketAdjustments>> | null = null;
-      if (isIndianProject && locationData?.city && process.env.ANTHROPIC_API_KEY) {
+      // ── Market Intelligence: read from upstream TR-015 node (NOT fetched here) ──
+      // TR-015 runs as a separate pipeline node to avoid Vercel timeout.
+      // If TR-015 output is connected, use its prices. Otherwise skip (use static rates).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let marketData: any = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let marketAdjustments: any = null;
+      const upstreamMarket = inputData?._marketData as Record<string, unknown> | undefined;
+      if (upstreamMarket && upstreamMarket.steel_per_tonne) {
+        marketData = upstreamMarket;
         try {
-          const { fetchMarketPrices, computeMarketAdjustments } = await import("@/services/market-intelligence");
-          marketData = await fetchMarketPrices(
-            locationData.city,
-            locationData.state || "",
-            projectTypeInfo.type
-          );
+          const { computeMarketAdjustments } = await import("@/services/market-intelligence");
           marketAdjustments = computeMarketAdjustments(marketData);
-          console.log(`[TR-008] Market Intelligence: ${marketData.agent_status} — steel adj: ${marketAdjustments.steelAdjustment}x, cement adj: ${marketAdjustments.cementAdjustment}x`);
-        } catch (miErr) {
-          console.error("[TR-008] Market Intelligence failed (non-fatal):", miErr);
-        }
+          console.log(`[TR-008] Using upstream market data: ${marketData.agent_status} — steel adj: ${marketAdjustments.steelAdjustment}x`);
+        } catch { /* non-fatal */ }
+      } else if (isIndianProject) {
+        console.log("[TR-008] No upstream market data from TR-015 — using static CPWD rates. Add Market Intelligence node (TR-015) to pipeline for live prices.");
       }
 
       // Rebuild rows grouped by storey (if storey data available)
@@ -2257,6 +2322,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             grandTotal: costSummary.totalCost,
             disclaimer: COST_DISCLAIMERS.full,
           },
+          _gfa: gfaForProvisional,
           _benchmark: benchmarkResult,
           ...(marketData && { _marketIntelligence: {
             status: marketData.agent_status,
@@ -2270,6 +2336,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             cementBrand: marketData.cement_per_bag.brand,
             cementSource: marketData.cement_per_bag.source,
             cementConfidence: marketData.cement_per_bag.confidence,
+            labor: marketData.labor,
             sources: marketData.sources_summary,
             fetchedAt: marketData.fetched_at,
             searchCount: marketData.search_count,
@@ -2316,6 +2383,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               sandPerCft: marketData.sand_per_cft.value,
               sandType: marketData.sand_per_cft.type,
               sandSource: marketData.sand_per_cft.source,
+              labor: marketData.labor,
               sources: marketData.sources_summary,
               fetchedAt: marketData.fetched_at,
               searchCount: marketData.search_count,
@@ -2331,33 +2399,47 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // Market Intelligence Agent — live construction material prices via web search
       const { fetchMarketPrices, computeMarketAdjustments } = await import("@/services/market-intelligence");
 
-      // Extract location from input
-      let miCity = "Mumbai";
-      let miState = "Maharashtra";
+      // Extract location from all possible input paths
+      let miCity = "";
+      let miState = "";
       let miBuildingType = "commercial";
-      for (const field of [inputData?.content, inputData?.prompt, inputData?.location]) {
-        if (typeof field === "string" && field.startsWith("{")) {
-          try {
-            const loc = JSON.parse(field);
-            if (loc.city) miCity = loc.city;
-            if (loc.state) miState = loc.state;
-            if (loc.buildingType) miBuildingType = loc.buildingType;
-            break;
-          } catch { /* not JSON */ }
-        } else if (typeof field === "string" && field.length > 2) {
-          // Try "City, State" format
-          const parts = field.split(",").map(s => s.trim());
-          if (parts.length >= 2) {
-            miCity = parts[0];
-            miState = parts[1];
-          } else if (parts[0]) {
-            miCity = parts[0];
+
+      // Log raw input for debugging
+      console.log(`[TR-015] Raw inputData keys: ${Object.keys(inputData ?? {}).join(", ")}`);
+
+      // Path 1: Direct fields (from IN-006 JSON parse)
+      if (inputData?.city) miCity = String(inputData.city);
+      if (inputData?.state) miState = String(inputData.state);
+      if (inputData?.country && !miState) miState = String(inputData.country);
+
+      // Path 2: JSON string in content/prompt/location/inputValue fields
+      if (!miCity) {
+        for (const field of [inputData?.content, inputData?.prompt, inputData?.location, inputData?.inputValue]) {
+          if (typeof field === "string" && field.includes("{")) {
+            try {
+              const loc = JSON.parse(field);
+              if (loc.city) miCity = loc.city;
+              if (loc.state) miState = loc.state;
+              if (loc.buildingType) miBuildingType = loc.buildingType;
+              break;
+            } catch { /* not JSON */ }
+          } else if (typeof field === "string" && field.length > 2 && !field.startsWith("{")) {
+            const parts = field.split(",").map(s => s.trim());
+            if (parts.length >= 2) { miCity = parts[0]; miState = parts[1]; }
+            else if (parts[0]) { miCity = parts[0]; }
           }
         }
       }
+
       if (inputData?.buildingType) miBuildingType = String(inputData.buildingType);
 
-      console.log(`[TR-015] Market Intelligence: ${miCity}, ${miState} — ${miBuildingType}`);
+      // If still no city found — warn loudly
+      if (!miCity && !miState) {
+        console.error("[TR-015] No location data found in input — cannot fetch market prices");
+        miCity = "Delhi"; miState = "Delhi NCR"; // national default
+      }
+
+      console.log(`[TR-015] Resolved location: ${miCity}, ${miState} — ${miBuildingType}`);
 
       const marketData = await fetchMarketPrices(miCity, miState, miBuildingType);
       const adjustments = computeMarketAdjustments(marketData);
@@ -2394,6 +2476,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           new Date().toISOString().split("T")[0],
           marketData.benchmark_per_sqft.value > 0 ? "MEDIUM" : "LOW",
         ],
+        // Labor rates
+        ["── LABOR ──", "", "", "", ""],
+        ["Mason (skilled)", `₹${marketData.labor.mason.value}/day`, marketData.labor.mason.source, marketData.labor.mason.date, marketData.labor.mason.confidence],
+        ["Helper (unskilled)", `₹${marketData.labor.helper.value}/day`, marketData.labor.helper.source, marketData.labor.helper.date, marketData.labor.helper.confidence],
+        ["Carpenter", `₹${marketData.labor.carpenter.value}/day`, marketData.labor.carpenter.source, marketData.labor.carpenter.date, marketData.labor.carpenter.confidence],
+        ["Electrician", `₹${marketData.labor.electrician.value}/day`, marketData.labor.electrician.source, marketData.labor.electrician.date, marketData.labor.electrician.confidence],
+        ["Plumber", `₹${marketData.labor.plumber.value}/day`, marketData.labor.plumber.source, marketData.labor.plumber.date, marketData.labor.plumber.confidence],
       ];
 
       // Build the formatted text report
@@ -2595,16 +2684,40 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         ["Seasonal Adjustment:", "", String(pricingInfo?.seasonalNotes ?? "Standard"), ""],
         ["Confidence Level:", "", String(pricingInfo?.confidence ?? "MEDIUM"), ""],
         [""],
-        // ── Labor rates ──
-        ["LABOR RATES (daily)", "", "₹/day", ""],
-        ["Mason (skilled):", "", 800, ""],
-        ["Helper (unskilled):", "", 450, ""],
-        ["Carpenter:", "", 900, ""],
-        ["Steel Fixer:", "", 750, ""],
-        ["Painter:", "", 650, ""],
-        ["Electrician:", "", 1000, ""],
-        ["Plumber:", "", 850, ""],
       );
+
+      // ── Labor rates (live from market agent → city-tier fallback → CPWD static) ──
+      {
+        const ct = String(pricingInfo?.cityTier ?? "tier-2").toLowerCase();
+        const laborMult = ct === "metro" ? 1.35 : ct === "tier-1" ? 1.15 : ct === "tier-2" ? 1.00 : (ct === "tier-3" || ct === "town") ? 0.85 : 0.70;
+        const tier = ct === "metro" ? "Metro" : ct === "tier-1" ? "Tier-1" : ct === "tier-2" ? "Tier-2" : (ct === "tier-3" || ct === "town") ? "Tier-3" : "Rural";
+        // Use live labor rates from market intelligence if available
+        const ml = upstreamMI?.labor as Record<string, { value?: number; source?: string; confidence?: string }> | undefined;
+        const lr = (role: string, base: number): [number, string] => {
+          const live = ml?.[role];
+          if (live?.value && live.value > 0 && live.confidence !== "LOW") {
+            return [live.value, `${live.source ?? "AI"} (${live.confidence})`];
+          }
+          return [Math.round(base * laborMult), `₹${base} base × ${laborMult} (${tier})`];
+        };
+        const [mason, masonSrc] = lr("mason", 800);
+        const [helper, helperSrc] = lr("helper", 450);
+        const [carpenter, carpSrc] = lr("carpenter", 900);
+        const [steelFixer, sfSrc] = lr("steelFixer", 750);
+        const [electrician, elecSrc] = lr("electrician", 1000);
+        const [plumber, plumbSrc] = lr("plumber", 850);
+        const laborSource = ml?.mason?.confidence !== "LOW" ? "Live (AI-sourced)" : `${tier} tier (${laborMult}x)`;
+        cpRows.push(
+          ["LABOR RATES (daily)", "", "₹/day", laborSource],
+          ["Mason (skilled):", "", mason, masonSrc],
+          ["Helper (unskilled):", "", helper, helperSrc],
+          ["Carpenter:", "", carpenter, carpSrc],
+          ["Steel Fixer:", "", steelFixer, sfSrc],
+          ["Painter:", "", Math.round(650 * laborMult), `₹650 base × ${laborMult} (${tier})`],
+          ["Electrician:", "", electrician, elecSrc],
+          ["Plumber:", "", plumber, plumbSrc],
+        );
+      }
 
       // Find actual row indices for cement and steel "Selected" rows (dynamic due to market intel/benchmark sections)
       const cpSheet = XLSX.utils.aoa_to_sheet(cpRows);
@@ -2681,16 +2794,24 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         const hasIS1200 = boqLines.some(l => l.is1200Code);
 
         // GST rates by subcategory
+        // All BOQ line items are WORKS CONTRACTS (supply + apply) → 18% GST
+        // Exception: raw material procurement (cement bags as goods → 28%, sand/aggregate → 5%)
+        // In a BOQ, concrete/plaster/tile work is a works contract, not goods sale
         const getGSTRate = (desc: string, division: string): number => {
           const d = (desc + " " + division).toLowerCase();
+          // Works contracts (supply + labour + apply) — 18% GST
+          if (d.includes("concrete") || d.includes("rcc") || d.includes("pcc")) return 0.18;
           if (d.includes("steel") || d.includes("rebar") || d.includes("metal")) return 0.18;
-          if (d.includes("cement") || d.includes("concrete") || d.includes("rcc") || d.includes("pcc")) return 0.28;
-          if (d.includes("brick") || d.includes("block") || d.includes("sand") || d.includes("aggregate") || d.includes("masonry")) return 0.05;
-          if (d.includes("tile") || d.includes("flooring") || d.includes("marble")) return 0.18;
-          if (d.includes("paint") || d.includes("plaster")) return 0.18;
+          if (d.includes("plaster") || d.includes("paint")) return 0.18;
+          if (d.includes("tile") || d.includes("flooring") || d.includes("marble") || d.includes("granite")) return 0.18;
           if (d.includes("door") || d.includes("window") || d.includes("curtain") || d.includes("aluminium")) return 0.18;
-          if (d.includes("formwork")) return 0.18;
-          return 0.18; // default
+          if (d.includes("formwork") || d.includes("centering")) return 0.18;
+          if (d.includes("waterproof")) return 0.18;
+          // Raw materials as goods (used in Rate Card, not in BOQ line items)
+          if (d.includes("brick") || d.includes("block") || d.includes("sand") || d.includes("aggregate") || d.includes("masonry")) return 0.12;
+          // Labour-only contracts (pure labour supply)
+          if (d.includes("labour") || d.includes("labor")) return 0.18;
+          return 0.18; // default for works contracts
         };
 
         const boqHeaders = hasIS1200
@@ -2780,7 +2901,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         // ═════════════════════════════════════════════════════════════════════
         // SHEET 4: COST SUMMARY
         // ═════════════════════════════════════════════════════════════════════
-        const gfa = Number(inputData?._gfa ?? 0) || (hardTotal > 0 ? hardTotal / 35000 : 100); // estimate if missing
+        // GFA from TR-008 (sum of slab areas) — never use hardcoded ₹35,000 fallback
+        const gfa = Number(inputData?._gfa ?? 0) || 100; // 100m² absolute minimum fallback
         const costPerSqm = hardTotal > 0 ? Math.round(hardTotal / gfa) : 0;
         const costPerSqmInclGST = grandTotalInclGST > 0 ? Math.round(grandTotalInclGST / gfa) : 0;
         const contingencyAmt = Math.round(hardTotal * 0.10);
@@ -2821,7 +2943,12 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           ["COST PER m² GFA", "", `${currencySymbol}${costPerSqm.toLocaleString()}`, "excl GST"],
           ["COST PER m² (incl GST)", "", `${currencySymbol}${costPerSqmInclGST.toLocaleString()}`, "incl GST"],
           [""],
-          isINR ? ["BENCHMARK", "", "₹35,000 - ₹70,000 /m²", "Typical range for commercial in India"] : [""],
+          isINR && upstreamBenchmark ? [
+            "BENCHMARK",
+            "",
+            `₹${Number(upstreamBenchmark.rangeLow ?? 35000).toLocaleString()} - ₹${Number(upstreamBenchmark.rangeHigh ?? 70000).toLocaleString()} /m²`,
+            `${projectType} in ${String(pricingInfo?.cityTier ?? "India")} — ${String(upstreamBenchmark.status ?? "within range")}`,
+          ] : isINR ? ["BENCHMARK", "", `₹35,000 - ₹70,000 /m²`, "Default range (no city-specific data)"] : [""],
           [""],
           ["DISCLAIMER"],
           [COST_DISCLAIMERS.full],
@@ -2897,7 +3024,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         isINR ? ["Rate Basis:", `${pricingInfo?.statePWD ?? "CPWD"} SOR + IS 1200`] : ["Rate Basis:", "RSMeans 2024/25 + CSI MasterFormat"],
         [""],
         ["Total Cost:", `${currencySymbol}${Math.round(boqData?.grandTotal ?? 0).toLocaleString()} ${currencyCode}`],
-        ["Cost/m² GFA:", `${currencySymbol}${Math.round(hardTotal / Math.max(1, Number(inputData?._gfa ?? hardTotal / 35000))).toLocaleString()}`],
+        ["Cost/m² GFA:", `${currencySymbol}${Math.round(hardTotal / Math.max(1, Number(inputData?._gfa ?? 100))).toLocaleString()}`],
         [""],
         [""],
         ["This estimate is for preliminary budgeting only."],

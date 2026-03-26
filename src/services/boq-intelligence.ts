@@ -273,6 +273,7 @@ export function estimateMEPCosts(
       amount: Math.round(totalGFA * rate * fx), unit: "m²", rate: Math.round(rate * fx),
       quantity: Math.round(totalGFA),
       basis: `₹${rate}/m² GFA (${buildingType} profile, ${cityTier} tier)`,
+      is1200Code: "IS1200-P17-HVAC",
       confidence: "benchmark",
     });
   } else if (btLower === "residential" && floorCount > 3) {
@@ -284,6 +285,7 @@ export function estimateMEPCosts(
       amount: Math.round(totalGFA * 0.2 * rate * fx), unit: "m²", rate: Math.round(rate * fx),
       quantity: Math.round(totalGFA * 0.2),
       basis: `₹${rate}/m² × 20% common area`,
+      is1200Code: "IS1200-P17-VENT",
       confidence: "estimated",
     });
   }
@@ -300,6 +302,7 @@ export function estimateMEPCosts(
         amount: Math.round(totalGFA * rate * fx), unit: "m²", rate: Math.round(rate * fx),
         quantity: Math.round(totalGFA),
         basis: `₹${rate}/m² GFA (${buildingType} profile)`,
+        is1200Code: "IS1200-P15-FIRE",
         confidence: "benchmark",
       });
     }
@@ -314,6 +317,7 @@ export function estimateMEPCosts(
       amount: Math.round(totalGFA * rate * fx), unit: "m²", rate: Math.round(rate * fx),
       quantity: Math.round(totalGFA),
       basis: `₹${rate}/m² GFA (${buildingType})`,
+      is1200Code: "IS1200-P16-BMS",
       confidence: "estimated",
     });
   }
@@ -328,6 +332,7 @@ export function estimateMEPCosts(
       amount: Math.round(liftsNeeded * liftCost * fx), unit: "EA", rate: Math.round(liftCost * fx),
       quantity: liftsNeeded,
       basis: `${liftsNeeded} lifts × ₹${(liftCost / 100000).toFixed(1)} lakh each (${buildingType})`,
+      is1200Code: "IS1200-P16-LIFT",
       confidence: "estimated",
     });
   }
@@ -379,9 +384,29 @@ const BENCHMARK_CITY_FACTORS: Record<string, number> = {
   "tier-2": 1.00, // Nagpur, Jaipur, Lucknow
   "tier-3": 0.85, // Smaller towns
   "town": 0.85,
-  "rural": 0.75,
+  "rural": 0.80,  // Even rural India has minimum construction costs
   "city": 1.00,
   "state-avg": 1.00,
+};
+
+// Absolute minimum cost floors (INR/m²) — no building can cost less than this
+// regardless of state SOR factor or city tier. Prevents unrealistic estimates.
+const MINIMUM_COST_FLOORS: Record<string, number> = {
+  "residential": 15000,
+  "commercial": 22000,
+  "retail": 20000,
+  "healthcare": 35000,
+  "hospital": 35000,
+  "hospitality": 30000,
+  "hotel": 30000,
+  "industrial": 10000,
+  "warehouse": 8000,
+  "educational": 18000,
+  "wellness": 28000,
+  "spa": 28000,
+  "datacenter": 45000,
+  "laboratory": 40000,
+  "mixed-use": 20000,
 };
 
 /**
@@ -410,14 +435,21 @@ export function validateBenchmark(
     : BENCHMARK_RANGES["commercial"]); // default
 
   const cityFactor = BENCHMARK_CITY_FACTORS[cityTier] ?? 1.0;
-  const adjLow = Math.round(range.low * cityFactor);
+  // Apply city factor but enforce minimum floor — no building type can go below its floor
+  const minFloor = MINIMUM_COST_FLOORS[btLower] ?? MINIMUM_COST_FLOORS["commercial"] ?? 22000;
+  const adjLow = Math.max(Math.round(range.low * cityFactor), minFloor);
   const adjHigh = Math.round(range.high * cityFactor);
 
   let status: BenchmarkResult["status"] = "within";
   let severity: BenchmarkResult["severity"] = "ok";
   let message = `Estimated cost ₹${Math.round(costPerM2).toLocaleString()}/m² is within the typical range (₹${adjLow.toLocaleString()}–${adjHigh.toLocaleString()}/m²) for ${buildingType} in ${cityTier} city.`;
 
-  if (costPerM2 < adjLow * 0.7) {
+  // Check if estimate is below the absolute minimum floor
+  if (costPerM2 > 0 && costPerM2 < minFloor) {
+    status = "below";
+    severity = "critical";
+    message = `⚠️ ACCURACY WARNING: Estimated cost (₹${Math.round(costPerM2).toLocaleString()}/m²) is below the absolute minimum (₹${minFloor.toLocaleString()}/m²) for ${buildingType} construction in India. The estimate is unrealistically low — verify all costs are included.`;
+  } else if (costPerM2 < adjLow * 0.7) {
     status = "below";
     severity = "critical";
     message = `⚠️ ACCURACY WARNING: Estimated cost (₹${Math.round(costPerM2).toLocaleString()}/m²) is significantly below typical range (₹${adjLow.toLocaleString()}–${adjHigh.toLocaleString()}/m²) for ${buildingType} in ${cityTier} city. This may indicate missing elements — verify MEP, foundation, and finishing are included.`;
@@ -557,18 +589,18 @@ export function estimateExternalWorksCosts(
     {
       category: "PROVISIONAL — EXTERNAL WORKS",
       description: "Compound wall with gates (estimated perimeter)",
-      amount: Math.round(perimeter * 4500 * tierMult * fx), // ₹4,500/Rmt
+      amount: Math.round(perimeter * 4500 * tierMult * fx),
       unit: "Rmt", rate: Math.round(4500 * tierMult * fx), quantity: Math.round(perimeter),
       basis: `Est. perimeter ${Math.round(perimeter)}m × ₹4,500/Rmt`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P3-EXT", confidence: "estimated",
     },
     {
       category: "PROVISIONAL — EXTERNAL WORKS",
       description: "Internal roads, parking & paving",
-      amount: Math.round(openArea * 0.4 * 2200 * tierMult * fx), // 40% of open area paved
+      amount: Math.round(openArea * 0.4 * 2200 * tierMult * fx),
       unit: "m²", rate: Math.round(2200 * tierMult * fx), quantity: Math.round(openArea * 0.4),
       basis: `40% of open area (${Math.round(openArea * 0.4)}m²) × ₹2,200/m²`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P13-PAV", confidence: "estimated",
     },
     {
       category: "PROVISIONAL — EXTERNAL WORKS",
@@ -576,15 +608,15 @@ export function estimateExternalWorksCosts(
       amount: Math.round(totalGFA * 250 * tierMult * fx),
       unit: "LS", rate: Math.round(totalGFA * 250 * tierMult * fx), quantity: 1,
       basis: `Lump sum: ₹250/m² GFA × ${Math.round(totalGFA)}m²`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P14-DRN", confidence: "estimated",
     },
     {
       category: "PROVISIONAL — EXTERNAL WORKS",
       description: "Landscaping & softscape",
-      amount: Math.round(openArea * 0.3 * 800 * tierMult * fx), // 30% of open area landscaped
+      amount: Math.round(openArea * 0.3 * 800 * tierMult * fx),
       unit: "m²", rate: Math.round(800 * tierMult * fx), quantity: Math.round(openArea * 0.3),
       basis: `30% of open area (${Math.round(openArea * 0.3)}m²) × ₹800/m²`,
-      confidence: "estimated",
+      is1200Code: "IS1200-EXT-LAND", confidence: "estimated",
     },
   ];
 }

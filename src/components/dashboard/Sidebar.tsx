@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   Workflow,
@@ -14,23 +14,17 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  LogOut,
   History,
   CreditCard,
   BarChart3,
   Menu,
   X,
-  Sparkles,
   Crown,
   FlaskConical,
   MessageSquareHeart,
 } from "lucide-react";
 import { PREBUILT_WORKFLOWS } from "@/constants/prebuilt-workflows";
 import { useLocale } from "@/hooks/useLocale";
-import { useAvatar } from "@/hooks/useAvatar";
-import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
-import { ReferralCard } from "@/components/referral/ReferralCard";
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
@@ -38,7 +32,6 @@ export function Sidebar() {
   const { t } = useLocale();
   const pathname = usePathname();
   const { data: session } = useSession();
-  const avatarSrc = useAvatar(session?.user?.image);
 
   const PRIMARY_NAV = [
     { href: "/dashboard",           label: t("nav.dashboard"),   icon: LayoutDashboard, exact: true },
@@ -363,110 +356,19 @@ export function Sidebar() {
           </div>
         </nav>
 
-        {/* ── Bottom user section ─────────────────────────────────── */}
+        {/* ── Bottom: upgrade only ─────────────────────────────────── */}
         {effectiveShowLabels && (
           <div style={{ marginTop: "auto", flexShrink: 0, position: "relative", zIndex: 1 }}>
-            {/* Top border gradient */}
             <div style={{
               height: 1,
               background: "linear-gradient(90deg, transparent 0%, rgba(184,115,51,0.12) 30%, rgba(255,191,0,0.12) 70%, transparent 100%)",
             }} />
-
             <div style={{ padding: "14px 12px 12px" }}>
-              {session?.user ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                  {/* User card — enhanced — clickable to settings/profile */}
-                  <Link href="/dashboard/settings" className="sb-user-card" style={{ borderRadius: "12px 12px 0 0", borderBottom: "none", textDecoration: "none", cursor: "pointer" }}>
-                    {/* Ambient glow behind avatar */}
-                    <div style={{
-                      position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)",
-                      width: 40, height: 40, borderRadius: "50%",
-                      background: "radial-gradient(circle, rgba(0,245,255,0.1) 0%, transparent 70%)",
-                      pointerEvents: "none",
-                    }} />
-
-                    {/* Avatar */}
-                    <div className="sb-avatar">
-                      {avatarSrc ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={avatarSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <span>{(session.user.name ?? session.user.email ?? "U")[0].toUpperCase()}</span>
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 13, fontWeight: 700, color: "#E8ECF8",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        lineHeight: 1.3,
-                      }}>
-                        {session.user.name ?? "User"}
-                      </div>
-                      <div style={{
-                        fontSize: 10, color: "rgba(255,255,255,0.3)",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        fontFamily: "var(--font-jetbrains), monospace",
-                        lineHeight: 1.4,
-                      }}>
-                        {session.user.email}
-                      </div>
-                    </div>
-                  </Link>
-
-                  {/* Quick actions row — language + sign out in one line */}
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "8px 12px",
-                    background: "rgba(255,255,255,0.02)",
-                    borderTop: "1px solid rgba(255,255,255,0.03)",
-                    borderRight: "1px solid rgba(255,255,255,0.05)",
-                    borderBottom: "1px solid rgba(255,255,255,0.05)",
-                    borderLeft: "1px solid rgba(255,255,255,0.05)",
-                    borderRadius: "0 0 12px 12px",
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <LanguageSwitcher />
-                    </div>
-                    <button onClick={() => signOut({ callbackUrl: "/login" })}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 4,
-                        padding: "5px 10px", borderRadius: 6,
-                        border: "1px solid rgba(255,255,255,0.06)",
-                        background: "rgba(255,255,255,0.02)",
-                        cursor: "pointer", transition: "all 0.15s ease",
-                        fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 500,
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)"; e.currentTarget.style.color = "#EF4444"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.3)"; }}
-                    >
-                      <LogOut size={10} />
-                      {t("nav.signOut")}
-                    </button>
-                  </div>
-
-                  {/* Referral Card — compact in sidebar */}
-                  {!isEffectivelyCollapsed && (
-                    <div style={{ marginTop: 10 }}>
-                      <ReferralCard compact />
-                    </div>
-                  )}
-
-                  {/* Upgrade — standalone with more space */}
-                  <div style={{ marginTop: 10 }}>
-                    <Link href="/dashboard/billing" className="sb-upgrade-btn" style={{ textDecoration: "none" }}>
-                      <span className="sb-upgrade-shimmer" />
-                      <Crown size={12} style={{ position: "relative", zIndex: 1 }} />
-                      <span style={{ position: "relative", zIndex: 1 }}>{t("nav.upgrade")}</span>
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                <Link href="/login" style={{ display: "block", textAlign: "center", fontSize: 12, color: "#5B9AFF", textDecoration: "none", padding: 8, borderRadius: 8 }}>
-                  {t("nav.signIn")}
-                </Link>
-              )}
+              <Link href="/dashboard/billing" className="sb-upgrade-btn" style={{ textDecoration: "none" }}>
+                <span className="sb-upgrade-shimmer" />
+                <Crown size={12} style={{ position: "relative", zIndex: 1 }} />
+                <span style={{ position: "relative", zIndex: 1 }}>{t("nav.upgrade")}</span>
+              </Link>
             </div>
           </div>
         )}

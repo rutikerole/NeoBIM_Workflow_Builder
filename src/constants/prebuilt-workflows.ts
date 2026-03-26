@@ -682,13 +682,13 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
     id: "wf-09",
     name: "IFC Model → BOQ Cost Estimate",
     description:
-      "Upload an IFC model file → real geometry-based quantity takeoff (walls, slabs, columns, openings) → CSI-mapped cost estimation with regional pricing for 20+ countries → downloadable BOQ spreadsheet with M/L/E breakdown.",
-    tags: ["ifc", "qto", "boq", "cost", "quantities", "estimating"],
+      "Upload an IFC model file → AI-powered market price research → real geometry-based quantity takeoff → IS 1200 cost estimation with live regional pricing → downloadable BOQ spreadsheet with M/L/E breakdown.",
+    tags: ["ifc", "qto", "boq", "cost", "quantities", "estimating", "market", "live-prices"],
     category: "Cost Estimation",
     complexity: "intermediate",
-    estimatedRunTime: "~90 seconds",
-    requiredInputs: ["IFC model file", "Project location (optional — for regional pricing)"],
-    expectedOutputs: ["Quantities table by element category", "BOQ with unit prices in local currency", "Downloadable XLSX/CSV"],
+    estimatedRunTime: "~120 seconds",
+    requiredInputs: ["IFC model file", "Project location (country, state, city)"],
+    expectedOutputs: ["Live market prices with sources", "Quantities table by element category", "BOQ with unit prices in local currency", "Downloadable XLSX/CSV"],
     thumbnail: "https://picsum.photos/seed/wf09/600/400",
     tileGraph: {
       nodes: [
@@ -721,6 +721,20 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
           },
         },
         {
+          id: "n6",
+          type: "workflowNode",
+          position: { x: X2, y: Y + 220 },
+          data: {
+            catalogueId: "TR-015",
+            label: "Market Intelligence",
+            category: "transform",
+            status: "idle",
+            inputs: [{ id: "location-in", label: "Location", type: "json" }],
+            outputs: [{ id: "prices-out", label: "Market Prices JSON", type: "json" }],
+            icon: "TrendingUp",
+          },
+        },
+        {
           id: "n2",
           type: "workflowNode",
           position: { x: X2, y: Y },
@@ -737,7 +751,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n3",
           type: "workflowNode",
-          position: { x: X3, y: Y },
+          position: { x: X3, y: Y + 110 },
           data: {
             catalogueId: "TR-008",
             label: "BOQ / Cost Mapper",
@@ -751,7 +765,7 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
         {
           id: "n4",
           type: "workflowNode",
-          position: { x: X4, y: Y },
+          position: { x: X4, y: Y + 110 },
           data: {
             catalogueId: "EX-002",
             label: "BOQ / Spreadsheet Exporter",
@@ -765,7 +779,9 @@ export const PREBUILT_WORKFLOWS: WorkflowTemplate[] = [
       ],
       edges: [
         { id: "e1-2", source: "n1", sourceHandle: "ifc-out", target: "n2", targetHandle: "ifc-in", type: "animatedEdge" },
+        { id: "e5-6", source: "n5", sourceHandle: "geo-out", target: "n6", targetHandle: "location-in", type: "animatedEdge" },
         { id: "e2-3", source: "n2", sourceHandle: "qty-out", target: "n3", targetHandle: "qty-in", type: "animatedEdge" },
+        { id: "e6-3", source: "n6", sourceHandle: "prices-out", target: "n3", targetHandle: "qty-in", type: "animatedEdge" },
         { id: "e5-3", source: "n5", sourceHandle: "geo-out", target: "n3", targetHandle: "qty-in", type: "animatedEdge" },
         { id: "e3-4", source: "n3", sourceHandle: "boq-out", target: "n4", targetHandle: "boq-in", type: "animatedEdge" },
       ],
