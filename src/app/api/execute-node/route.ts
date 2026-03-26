@@ -2038,15 +2038,6 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         }
       }
 
-      // ── Rate Benchmark Validator ──
-      const { validateBenchmark } = await import("@/services/boq-intelligence");
-      const benchmarkResult = validateBenchmark(
-        hardCostSubtotal,
-        gfaForProvisional,
-        projectTypeInfo.type,
-        indianPricing?.cityTier ?? cityTierForProv
-      );
-
       // Rebuild rows grouped by storey (if storey data available)
       const hasStoreyData = boqLines.some(l => l.storey && l.storey !== "Unassigned");
       if (hasStoreyData) {
@@ -2127,6 +2118,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           costSummary.totalCost += contingencyItem.amount - oldAmt;
         }
       }
+      // ── Rate Benchmark Validator (uses total project cost including soft costs) ──
+      const { validateBenchmark } = await import("@/services/boq-intelligence");
+      const benchmarkResult = validateBenchmark(
+        costSummary.totalCost,
+        gfaForProvisional,
+        projectTypeInfo.type,
+        indianPricing?.cityTier ?? cityTierForProv
+      );
+
       rows.push(["", "", "", "", "", "", "", "", "", ""]);
       rows.push(["SOFT COSTS", "", "", "", "", "", "", "", "", ""]);
 

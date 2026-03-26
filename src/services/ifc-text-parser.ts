@@ -373,7 +373,7 @@ export function parseIFCText(text: string): TextParseResult {
 
   // Step 2: Extract property sets and their property refs
   const propertySets = new Map<number, { name: string; propIds: number[] }>();
-  const psetRegex = /^#(\d+)=\s*IFCPROPERTYSET\('[^']*',#\d+,'([^']*)'[^,]*,\(([^)]+)\)\)/gmi;
+  const psetRegex = /^#(\d+)=\s*IFCPROPERTYSET\('[^']*',#\d+,'([^']*)',[^,]*,\(([^)]+)\)\)/gmi;
   let psetMatch;
   while ((psetMatch = psetRegex.exec(text)) !== null) {
     const propIds = [...psetMatch[3].matchAll(/#(\d+)/g)].map(m => parseInt(m[1]));

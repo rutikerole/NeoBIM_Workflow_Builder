@@ -384,13 +384,17 @@ const BENCHMARK_CITY_FACTORS: Record<string, number> = {
   "state-avg": 1.00,
 };
 
+/**
+ * @param totalProjectCost Total project cost (hard + escalation + soft costs incl. contingency).
+ *   Industry benchmarks include all costs except land.
+ */
 export function validateBenchmark(
-  totalStructuralCost: number,
+  totalProjectCost: number,
   totalGFA: number,
   buildingType: string,
   cityTier: string,
 ): BenchmarkResult {
-  const costPerM2 = totalGFA > 0 ? totalStructuralCost / totalGFA : 0;
+  const costPerM2 = totalGFA > 0 ? totalProjectCost / totalGFA : 0;
   const btLower = buildingType.toLowerCase();
 
   // Find matching benchmark range

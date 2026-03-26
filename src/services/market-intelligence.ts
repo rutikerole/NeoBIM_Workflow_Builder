@@ -157,7 +157,7 @@ Search for:
 For each, find the most recent price with a verifiable source.`;
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 2048,
       system: systemPrompt,
       tools: [
@@ -273,8 +273,14 @@ For each, find the most recent price with a verifiable source.`;
     }
 
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    // Capture detailed error info from Anthropic API errors
+    let msg = err instanceof Error ? err.message : String(err);
+    const apiErr = err as { status?: number; error?: { type?: string; message?: string } };
+    if (apiErr.status && apiErr.error) {
+      msg = `API ${apiErr.status}: ${apiErr.error.type} — ${apiErr.error.message}`;
+    }
     result.agent_notes.push(`Market intelligence agent error: ${msg}`);
+    console.error("[Market Intelligence] Agent error:", msg);
     // Graceful degradation — result already has static fallbacks
   }
 
