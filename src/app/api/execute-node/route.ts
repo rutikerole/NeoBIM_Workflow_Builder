@@ -1579,9 +1579,17 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         || currencyCode === "INR"
         || locationLabel.toLowerCase().includes("india");
       let is1200Module: typeof import("@/constants/is1200-rates") | null = null;
+      let indianPricing: Awaited<ReturnType<typeof import("@/constants/indian-pricing-factors").calculateIndianPricingAdjustment>> | null = null;
       if (isIndianProject) {
         is1200Module = await import("@/constants/is1200-rates");
-        console.log("[TR-008] Indian project detected — using IS 1200 codes + CPWD DSR rates in INR");
+        const { calculateIndianPricingAdjustment } = await import("@/constants/indian-pricing-factors");
+        const currentMonth = new Date().getMonth() + 1;
+        indianPricing = calculateIndianPricingAdjustment(
+          locationData?.state || "",
+          locationData?.city || "",
+          currentMonth
+        );
+        console.log(`[TR-008] Indian project: ${locationData?.city || "?"}, ${locationData?.state || "?"} | State PWD: ${indianPricing.stateFactor?.state ?? "N/A"} | Overall: ${indianPricing.overall.toFixed(3)}x | Season: ${indianPricing.seasonal.notes} | Confidence: ${indianPricing.confidence}`);
       }
 
       // Expand elements with material layers into separate line items per layer
@@ -1659,17 +1667,24 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 : 0.08;
               const adjQty = Math.round(qty * (1 + wasteFactor) * 100) / 100;
 
-              // Apply city tier factor (within India) but NOT country factor (rates already in INR)
-              const cityFactor = locationData?.city
-                ? (({ metro: 1.15, city: 0.95, town: 0.80, rural: 0.70 } as Record<string, number>)[
-                    (() => { const c = (locationData.city || "").toLowerCase(); return ["mumbai","delhi","bangalore","bengaluru","chennai","hyderabad","kolkata"].includes(c) ? "metro" : ["pune","ahmedabad","jaipur","lucknow","chandigarh","kochi","indore","nagpur","surat"].includes(c) ? "city" : "town"; })()
-                  ] ?? 1.0)
-                : 1.0;
+              // Apply state PWD + city tier + seasonal adjustment (category-specific)
+              const ip = indianPricing;
+              let categoryFactor = ip?.overall ?? 1.0;
+              if (ip) {
+                // Select the right category factor based on rate subcategory
+                if (rate.subcategory === "Concrete") categoryFactor = ip.concrete;
+                else if (rate.subcategory === "Steel") categoryFactor = ip.steel;
+                else if (rate.subcategory === "Masonry") categoryFactor = ip.masonry;
+                else if (rate.subcategory === "Finishes" || rate.subcategory === "Doors & Windows") categoryFactor = ip.finishing;
+                else categoryFactor = ip.overall;
+              }
 
-              const adjRate = Math.round(rate.rate * cityFactor * 100) / 100;
-              const matCost = Math.round(adjQty * rate.material * cityFactor * 100) / 100;
-              const labCost = Math.round(adjQty * rate.labour * cityFactor * 100) / 100;
-              const eqpCost = Math.round(adjQty * (rate.rate - rate.material - rate.labour) * cityFactor * 100) / 100;
+              // Apply category factor to material rate, labor factor to labour rate
+              const laborFactor = ip?.labor ?? categoryFactor;
+              const adjRate = Math.round(rate.rate * categoryFactor * 100) / 100;
+              const matCost = Math.round(adjQty * rate.material * categoryFactor * 100) / 100;
+              const labCost = Math.round(adjQty * rate.labour * laborFactor * 100) / 100;
+              const eqpCost = Math.round(adjQty * (rate.rate - rate.material - rate.labour) * categoryFactor * 100) / 100;
               const lineTot = Math.round(adjQty * adjRate * 100) / 100;
 
               hardCostSubtotal += lineTot;
@@ -1694,9 +1709,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 quantity: qty,
                 wasteFactor,
                 adjustedQty: adjQty,
-                materialRate: Math.round(rate.material * cityFactor * 100) / 100,
-                laborRate: Math.round(rate.labour * cityFactor * 100) / 100,
-                equipmentRate: Math.round((rate.rate - rate.material - rate.labour) * cityFactor * 100) / 100,
+                materialRate: Math.round(rate.material * categoryFactor * 100) / 100,
+                laborRate: Math.round(rate.labour * laborFactor * 100) / 100,
+                equipmentRate: Math.round((rate.rate - rate.material - rate.labour) * categoryFactor * 100) / 100,
                 unitRate: adjRate,
                 materialCost: matCost,
                 laborCost: labCost,
@@ -2041,7 +2056,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         tileInstanceId,
         type: "table",
         data: {
-          label: `Bill of Quantities${isIndianProject ? " (IS 1200 / CPWD DSR)" : ""} — ${projectTypeInfo.type} (${activeRegion})`,
+          label: `Bill of Quantities${isIndianProject ? ` (IS 1200 / ${indianPricing?.stateFactor?.state ?? "CPWD"} SOR)` : ""} — ${projectTypeInfo.type} (${activeRegion})`,
           headers,
           rows,
           _currency: currencyCode,
@@ -2069,9 +2084,19 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           },
         },
         metadata: {
-          model: "cost-database-v2",
+          model: isIndianProject ? "is1200-cpwd-v2" : "cost-database-v2",
           real: true,
           warnings: warnings.length > 0 ? warnings : undefined,
+          ...(indianPricing && {
+            pricingIntelligence: {
+              statePWD: indianPricing.stateFactor?.state ?? "CPWD National",
+              cityTier: indianPricing.cityTier,
+              overallFactor: indianPricing.overall,
+              seasonalNotes: indianPricing.seasonal.notes,
+              confidence: indianPricing.confidence,
+              adjustmentNotes: indianPricing.notes,
+            },
+          }),
         },
         createdAt: new Date(),
       };
