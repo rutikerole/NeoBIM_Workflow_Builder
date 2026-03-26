@@ -197,6 +197,44 @@ async function executeNode(
         ...(previousArtifact?.data as Record<string, unknown> ?? { prompt: inputValue ?? "" }),
         ...nodeConfig,
       };
+
+      // ── Safety net: Large IFC files must be uploaded to R2 first ──
+      // If fileData is > 2MB base64, it will exceed Vercel's 4.5MB body limit.
+      // Upload to R2 via /api/parse-ifc and replace inline data with URL + parsed result.
+      const fileData = inputData.fileData as string | undefined;
+      const fileName = inputData.fileName as string | undefined;
+      const isLargeIFC = fileData && typeof fileData === "string" && fileData.length > 2 * 1024 * 1024
+        && fileName?.toLowerCase().endsWith(".ifc");
+
+      if (isLargeIFC && !inputData.ifcParsed && !inputData.ifcUrl) {
+        console.log(`[exec] Large IFC detected (${(fileData.length / 1024 / 1024).toFixed(1)}MB base64) — uploading to R2 first`);
+        try {
+          // Convert base64 back to File for FormData upload
+          const binaryStr = atob(fileData);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+          const blob = new Blob([bytes], { type: "application/octet-stream" });
+          const file = new File([blob], fileName || "model.ifc");
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const uploadRes = await fetch("/api/parse-ifc", { method: "POST", body: formData });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            // Replace large base64 with R2 URL + pre-parsed result
+            inputData.ifcUrl = uploadData.meta?.ifcUrl ?? null;
+            inputData.ifcParsed = uploadData.result ?? null;
+            delete inputData.fileData; // Remove the 28MB blob
+            console.log(`[exec] IFC uploaded to R2, ${uploadData.result?.summary?.totalElements ?? 0} elements parsed`);
+          } else {
+            console.error("[exec] R2 upload failed:", uploadRes.status);
+          }
+        } catch (uploadErr) {
+          console.error("[exec] Failed to upload IFC to R2:", uploadErr);
+        }
+      }
+
       res = await fetch("/api/execute-node", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
