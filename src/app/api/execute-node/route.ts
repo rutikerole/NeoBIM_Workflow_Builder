@@ -2389,33 +2389,47 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // Market Intelligence Agent — live construction material prices via web search
       const { fetchMarketPrices, computeMarketAdjustments } = await import("@/services/market-intelligence");
 
-      // Extract location from input
-      let miCity = "Mumbai";
-      let miState = "Maharashtra";
+      // Extract location from all possible input paths
+      let miCity = "";
+      let miState = "";
       let miBuildingType = "commercial";
-      for (const field of [inputData?.content, inputData?.prompt, inputData?.location]) {
-        if (typeof field === "string" && field.startsWith("{")) {
-          try {
-            const loc = JSON.parse(field);
-            if (loc.city) miCity = loc.city;
-            if (loc.state) miState = loc.state;
-            if (loc.buildingType) miBuildingType = loc.buildingType;
-            break;
-          } catch { /* not JSON */ }
-        } else if (typeof field === "string" && field.length > 2) {
-          // Try "City, State" format
-          const parts = field.split(",").map(s => s.trim());
-          if (parts.length >= 2) {
-            miCity = parts[0];
-            miState = parts[1];
-          } else if (parts[0]) {
-            miCity = parts[0];
+
+      // Log raw input for debugging
+      console.log(`[TR-015] Raw inputData keys: ${Object.keys(inputData ?? {}).join(", ")}`);
+
+      // Path 1: Direct fields (from IN-006 JSON parse)
+      if (inputData?.city) miCity = String(inputData.city);
+      if (inputData?.state) miState = String(inputData.state);
+      if (inputData?.country && !miState) miState = String(inputData.country);
+
+      // Path 2: JSON string in content/prompt/location/inputValue fields
+      if (!miCity) {
+        for (const field of [inputData?.content, inputData?.prompt, inputData?.location, inputData?.inputValue]) {
+          if (typeof field === "string" && field.includes("{")) {
+            try {
+              const loc = JSON.parse(field);
+              if (loc.city) miCity = loc.city;
+              if (loc.state) miState = loc.state;
+              if (loc.buildingType) miBuildingType = loc.buildingType;
+              break;
+            } catch { /* not JSON */ }
+          } else if (typeof field === "string" && field.length > 2 && !field.startsWith("{")) {
+            const parts = field.split(",").map(s => s.trim());
+            if (parts.length >= 2) { miCity = parts[0]; miState = parts[1]; }
+            else if (parts[0]) { miCity = parts[0]; }
           }
         }
       }
+
       if (inputData?.buildingType) miBuildingType = String(inputData.buildingType);
 
-      console.log(`[TR-015] Market Intelligence: ${miCity}, ${miState} — ${miBuildingType}`);
+      // If still no city found — warn loudly
+      if (!miCity && !miState) {
+        console.error("[TR-015] No location data found in input — cannot fetch market prices");
+        miCity = "Delhi"; miState = "Delhi NCR"; // national default
+      }
+
+      console.log(`[TR-015] Resolved location: ${miCity}, ${miState} — ${miBuildingType}`);
 
       const marketData = await fetchMarketPrices(miCity, miState, miBuildingType);
       const adjustments = computeMarketAdjustments(marketData);

@@ -114,6 +114,10 @@ export async function fetchMarketPrices(
   const monthYear = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
   const yearStr = String(now.getFullYear());
 
+  // ── Diagnostic logging (visible in Vercel function logs) ──
+  console.log(`[TR-015] Starting market intelligence for: ${city}, ${state} (${buildingType})`);
+  console.log(`[TR-015] API key present: ${!!apiKey}, length: ${apiKey.length}, starts with sk-ant-api: ${apiKey.startsWith("sk-ant-api")}`);
+
   // Default result with static fallbacks
   const result: MarketIntelligenceResult = {
     steel_per_tonne: { ...STATIC_FALLBACKS.steel_per_tonne },
@@ -143,14 +147,16 @@ export async function fetchMarketPrices(
   };
 
   if (!apiKey) {
-    result.agent_notes.push("ANTHROPIC_API_KEY not configured — using static fallback rates.");
+    console.warn("[TR-015] ANTHROPIC_API_KEY is empty/missing — returning static rates");
+    result.agent_notes.push("⚠️ LIVE PRICES NOT FETCHED: ANTHROPIC_API_KEY not configured in environment. Using CPWD 2024 static fallback rates — may be inaccurate for your location. Set the key in Vercel Settings → Environment Variables.");
     return result;
   }
 
   if (!apiKey.startsWith("sk-ant-api")) {
+    console.warn(`[TR-015] ANTHROPIC_API_KEY has wrong format: starts with "${apiKey.slice(0, 10)}..." — not sk-ant-api`);
     result.agent_notes.push(
-      "ANTHROPIC_API_KEY must be an API key (starts with sk-ant-api03-), not an OAuth token. " +
-      "Get one from console.anthropic.com/settings/keys — using static fallback rates."
+      "⚠️ LIVE PRICES NOT FETCHED: ANTHROPIC_API_KEY is not a valid API key (must start with sk-ant-api03-). " +
+      "Get one from console.anthropic.com/settings/keys. Using static fallback rates."
     );
     return result;
   }
