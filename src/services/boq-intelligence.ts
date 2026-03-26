@@ -384,9 +384,29 @@ const BENCHMARK_CITY_FACTORS: Record<string, number> = {
   "tier-2": 1.00, // Nagpur, Jaipur, Lucknow
   "tier-3": 0.85, // Smaller towns
   "town": 0.85,
-  "rural": 0.75,
+  "rural": 0.80,  // Even rural India has minimum construction costs
   "city": 1.00,
   "state-avg": 1.00,
+};
+
+// Absolute minimum cost floors (INR/m²) — no building can cost less than this
+// regardless of state SOR factor or city tier. Prevents unrealistic estimates.
+const MINIMUM_COST_FLOORS: Record<string, number> = {
+  "residential": 15000,
+  "commercial": 22000,
+  "retail": 20000,
+  "healthcare": 35000,
+  "hospital": 35000,
+  "hospitality": 30000,
+  "hotel": 30000,
+  "industrial": 10000,
+  "warehouse": 8000,
+  "educational": 18000,
+  "wellness": 28000,
+  "spa": 28000,
+  "datacenter": 45000,
+  "laboratory": 40000,
+  "mixed-use": 20000,
 };
 
 /**
@@ -415,14 +435,21 @@ export function validateBenchmark(
     : BENCHMARK_RANGES["commercial"]); // default
 
   const cityFactor = BENCHMARK_CITY_FACTORS[cityTier] ?? 1.0;
-  const adjLow = Math.round(range.low * cityFactor);
+  // Apply city factor but enforce minimum floor — no building type can go below its floor
+  const minFloor = MINIMUM_COST_FLOORS[btLower] ?? MINIMUM_COST_FLOORS["commercial"] ?? 22000;
+  const adjLow = Math.max(Math.round(range.low * cityFactor), minFloor);
   const adjHigh = Math.round(range.high * cityFactor);
 
   let status: BenchmarkResult["status"] = "within";
   let severity: BenchmarkResult["severity"] = "ok";
   let message = `Estimated cost ₹${Math.round(costPerM2).toLocaleString()}/m² is within the typical range (₹${adjLow.toLocaleString()}–${adjHigh.toLocaleString()}/m²) for ${buildingType} in ${cityTier} city.`;
 
-  if (costPerM2 < adjLow * 0.7) {
+  // Check if estimate is below the absolute minimum floor
+  if (costPerM2 > 0 && costPerM2 < minFloor) {
+    status = "below";
+    severity = "critical";
+    message = `⚠️ ACCURACY WARNING: Estimated cost (₹${Math.round(costPerM2).toLocaleString()}/m²) is below the absolute minimum (₹${minFloor.toLocaleString()}/m²) for ${buildingType} construction in India. The estimate is unrealistically low — verify all costs are included.`;
+  } else if (costPerM2 < adjLow * 0.7) {
     status = "below";
     severity = "critical";
     message = `⚠️ ACCURACY WARNING: Estimated cost (₹${Math.round(costPerM2).toLocaleString()}/m²) is significantly below typical range (₹${adjLow.toLocaleString()}–${adjHigh.toLocaleString()}/m²) for ${buildingType} in ${cityTier} city. This may indicate missing elements — verify MEP, foundation, and finishing are included.`;

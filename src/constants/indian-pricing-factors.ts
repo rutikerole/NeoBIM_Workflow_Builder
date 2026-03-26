@@ -56,7 +56,7 @@ export const STATE_PWD_FACTORS: StatePWDFactor[] = [
   { state: "Chhattisgarh", code: "CG", overallFactor: 0.95, concreteFactor: 0.93, steelFactor: 0.90, masonryFactor: 0.95, finishingFactor: 0.95, laborFactor: 0.88, notes: "Steel-producing state (SAIL Bhilai). Lower steel transport costs." },
   // ── Eastern India ──
   { state: "West Bengal", code: "WB", overallFactor: 0.92, concreteFactor: 0.90, steelFactor: 0.88, masonryFactor: 0.92, finishingFactor: 0.95, laborFactor: 0.85, notes: "WBPWD SOR. Kolkata labor rates lower than Delhi/Mumbai." },
-  { state: "Bihar", code: "BR", overallFactor: 0.85, concreteFactor: 0.82, steelFactor: 0.88, masonryFactor: 0.80, finishingFactor: 0.85, laborFactor: 0.72, notes: "Lowest labor costs in major states. Material transport premium for remote areas." },
+  { state: "Bihar", code: "BR", overallFactor: 0.88, concreteFactor: 0.85, steelFactor: 0.90, masonryFactor: 0.85, finishingFactor: 0.88, laborFactor: 0.78, notes: "Low labor costs but material transport premium for remote areas. Floor: no factor below 0.78." },
   { state: "Jharkhand", code: "JH", overallFactor: 0.88, concreteFactor: 0.85, steelFactor: 0.82, masonryFactor: 0.88, finishingFactor: 0.90, laborFactor: 0.78, notes: "Steel/coal producing state. Lower industrial construction costs." },
   { state: "Odisha", code: "OR", overallFactor: 0.90, concreteFactor: 0.88, steelFactor: 0.85, masonryFactor: 0.90, finishingFactor: 0.92, laborFactor: 0.80, notes: "OPWD SOR. Growing infrastructure investment. Moderate costs." },
   // ── Northeast India ──
