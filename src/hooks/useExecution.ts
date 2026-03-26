@@ -372,6 +372,7 @@ async function executeNode(
 
             elements.push({
               description: `${description} (${agg.count} nr)`, category: agg.divisionName,
+              ifcType: agg.elementType, // Raw IFC type for rate mapping (e.g. "IfcWall", "IfcMember")
               quantity: primaryQty, unit,
               grossArea: agg.grossArea || undefined, netArea: agg.netArea || undefined,
               openingArea: agg.openingArea || undefined, totalVolume: agg.volume || undefined,

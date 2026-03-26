@@ -1619,8 +1619,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
         // ── IS 1200 path: use native Indian rates (INR) for Indian projects ──
         if (is1200Module && isIndianProject) {
-          // Determine IFC type from description (TR-007 strips "Ifc" prefix)
-          const ifcType = "Ifc" + description.replace(/\s+/g, "");
+          // Use raw IFC type from upstream TR-007 (e.g. "IfcWall", "IfcMember")
+          // DO NOT reconstruct from description — it contains storey labels and counts
+          const rawIfcType = typeof elem === "object" ? ((elem as Record<string, unknown>).ifcType as string) : undefined;
+          const ifcType = rawIfcType || ("Ifc" + description.replace(/\s*[—\-].*/g, "").replace(/\s*\(.*\)/g, "").replace(/\s+/g, ""));
           const materialHint = elemCategory || description;
           const is1200Rates = is1200Module.getIS1200RatesForElement(ifcType, materialHint);
           const is1200Label = is1200Module.getIS1200PartLabel(ifcType, materialHint);
@@ -1636,8 +1638,16 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               } else if (rate.unit === "m³") {
                 qty = sourceVolume > 0 ? sourceVolume : quantity;
               } else if (rate.unit === "kg") {
-                // Rebar/steel: kg from volume × density or count × estimate
-                qty = sourceVolume > 0 ? sourceVolume * 150 : quantity * 50; // rough steel estimate
+                // Steel: kg from volume × density (7850 kg/m³) or count × typical weight
+                // Rebar: estimated from concrete volume × kg/m³ ratio
+                const isStructSteel = rate.subcategory === "Steel" && !rate.is1200Code.includes("REBAR");
+                if (isStructSteel && sourceVolume > 0) {
+                  qty = sourceVolume * 7850; // steel density 7850 kg/m³
+                } else if (sourceVolume > 0) {
+                  qty = sourceVolume * 150; // rebar estimate from concrete volume
+                } else {
+                  qty = (elemCount || 1) * 50; // fallback: 50 kg per element
+                }
               } else if (rate.unit === "Rmt") {
                 qty = quantity; // linear measure
               } else {

@@ -522,6 +522,16 @@ export function parseIFCText(text: string): TextParseResult {
       }
     }
 
+    // ── Storey-based opening deduction fallback ──
+    // If this wall has no explicit IfcRelVoidsElement but doors exist on the same storey,
+    // distribute a fair share of door area across the wall.
+    // This catches cases where IFC exports don't create void relationships.
+    if ((elemType === "IFCWALL" || elemType === "IFCWALLSTANDARDCASE") && openingArea === 0 && grossArea > 0) {
+      // Count doors/windows on the same storey from elements already parsed
+      // (we'll do a post-processing pass after all elements are collected)
+      // For now, mark walls needing deduction for post-processing
+    }
+
     // ── Door/Window: estimate area from typical dimensions if no geometry ──
     if (grossArea === 0 && (elemType === "IFCDOOR" || elemType === "IFCWINDOW")) {
       // Try to get dimensions from the element name (common format: "Door:900x2100")
@@ -566,6 +576,46 @@ export function parseIFCText(text: string): TextParseResult {
       thickness,
       openingArea,
     });
+  }
+
+  // ── Post-processing: distribute unaccounted door/window area to walls by storey ──
+  // Some IFC files don't create IfcRelVoidsElement for all openings.
+  // Calculate total door/window area per storey, subtract already-deducted area,
+  // and distribute the remainder proportionally across walls on the same storey.
+  const doorAreaByStorey = new Map<string, number>();
+  const deductedByStorey = new Map<string, number>();
+  const wallsByStorey = new Map<string, TextParseElement[]>();
+
+  for (const elem of elements) {
+    const s = elem.storey;
+    if (elem.type === "IfcDoor" || elem.type === "IfcWindow" || elem.type === "IfcCurtainWall") {
+      doorAreaByStorey.set(s, (doorAreaByStorey.get(s) ?? 0) + elem.grossArea);
+    }
+    if ((elem.type === "IfcWall" || elem.type === "IfcWallStandardCase") && elem.grossArea > 0) {
+      if (!wallsByStorey.has(s)) wallsByStorey.set(s, []);
+      wallsByStorey.get(s)!.push(elem);
+      deductedByStorey.set(s, (deductedByStorey.get(s) ?? 0) + elem.openingArea);
+    }
+  }
+
+  for (const [storey, totalDoorArea] of doorAreaByStorey) {
+    const alreadyDeducted = deductedByStorey.get(storey) ?? 0;
+    const remaining = totalDoorArea - alreadyDeducted;
+    if (remaining <= 0) continue;
+
+    const walls = wallsByStorey.get(storey) ?? [];
+    // Only distribute to walls that have zero deductions (avoid double-counting)
+    const undeductedWalls = walls.filter(w => w.openingArea === 0);
+    if (undeductedWalls.length === 0) continue;
+
+    const totalWallArea = undeductedWalls.reduce((s, w) => s + w.grossArea, 0);
+    if (totalWallArea <= 0) continue;
+
+    // Distribute proportionally by wall area
+    for (const wall of undeductedWalls) {
+      const share = (wall.grossArea / totalWallArea) * remaining;
+      wall.openingArea = Math.round(share * 100) / 100;
+    }
   }
 
   // ── Aggregate into divisions ──
