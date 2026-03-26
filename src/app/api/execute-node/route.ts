@@ -1345,6 +1345,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       }> = [];
       let parseSummary = "";
 
+      // Normalize IFC storey names — fixes typos like "Grond floor" → "Ground Floor"
+      const normalizeStorey = (s: string): string => {
+        if (!s) return s;
+        return s
+          .replace(/\bGrond\b/gi, "Ground")
+          .replace(/\bgrond\b/g, "ground")
+          .replace(/\b(\w)/g, (_, c) => c.toUpperCase()); // Title case
+      };
+
       // ── Mode 1: Pre-parsed IFC result from /api/parse-ifc (large files) ──
       // The InputNode uploaded the file to R2 and pre-parsed it via /api/parse-ifc.
       // We skip re-parsing and use the result directly.
@@ -1387,10 +1396,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 const coveringType = element.type === "IfcCovering" && (element as unknown as Record<string, unknown>).properties
                   ? String(((element as unknown as Record<string, unknown>).properties as Record<string, unknown>)?.PredefinedType ?? "")
                   : "";
-                const key = `${element.type}${coveringType ? ":" + coveringType : ""}|${element.storey}`;
+                const key = `${element.type}${coveringType ? ":" + coveringType : ""}|${normalizeStorey(element.storey)}`;
                 const existing = typeAggregates.get(key) || {
                   count: 0, grossArea: 0, netArea: 0, openingArea: 0, volume: 0,
-                  divisionName: division.name, storey: element.storey, elementType: element.type,
+                  divisionName: division.name, storey: normalizeStorey(element.storey), elementType: element.type,
                   coveringType,
                 };
                 existing.count += element.quantities.count ?? 1;
@@ -1468,10 +1477,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 const coveringType = element.type === "IfcCovering" && (element as unknown as Record<string, unknown>).properties
                   ? String(((element as unknown as Record<string, unknown>).properties as Record<string, unknown>)?.PredefinedType ?? "")
                   : "";
-                const key = `${element.type}${coveringType ? ":" + coveringType : ""}|${element.storey}`;
+                const key = `${element.type}${coveringType ? ":" + coveringType : ""}|${normalizeStorey(element.storey)}`;
                 const existing = typeAggregates.get(key) || {
                   count: 0, grossArea: 0, netArea: 0, openingArea: 0, volume: 0,
-                  divisionName: division.name, storey: element.storey, elementType: element.type,
+                  divisionName: division.name, storey: normalizeStorey(element.storey), elementType: element.type,
                   coveringType,
                 };
                 existing.count += element.quantities.count ?? 1;
@@ -1956,18 +1965,22 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
         const applyDerived = (name: string, baseQty: number, rateUSD: number, dUnit: string, source: string, is1200Key: string) => {
           if (baseQty <= 0) return;
-          // For Indian projects, use CPWD rate directly if available
+          const ip = indianPricing;
+
+          // For Indian projects, use CPWD rate × state PWD category factor
           let adjRate: number;
           if (isIndianProject && is1200Key === "rebar" && is1200Module) {
             const rebarRate = is1200Module.getIS1200Rate("IS1200-P6-REBAR-500");
-            adjRate = rebarRate ? rebarRate.rate : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
+            const steelFactor = ip?.steel ?? ip?.overall ?? 1.0;
+            adjRate = rebarRate ? Math.round(rebarRate.rate * steelFactor * 100) / 100 : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
           } else if (isIndianProject && is1200Key.startsWith("formwork") && is1200Module) {
-            // Use CPWD formwork rates (already in INR)
             const fwRates: Record<string, number> = { "formwork-wall": 400, "formwork-slab": 380, "formwork-column": 480, "formwork-beam": 420 };
-            adjRate = fwRates[is1200Key] ?? Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
+            const concFactor = ip?.concrete ?? ip?.overall ?? 1.0;
+            adjRate = Math.round((fwRates[is1200Key] ?? 400) * concFactor * 100) / 100;
           } else if (isIndianProject && (is1200Key === "plastering" || is1200Key === "ceiling-plaster") && is1200Module) {
             const plastRate = is1200Module.getIS1200Rate("IS1200-P8-PLASTER");
-            adjRate = plastRate ? plastRate.rate : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
+            const finFactor = ip?.finishing ?? ip?.overall ?? 1.0;
+            adjRate = plastRate ? Math.round(plastRate.rate * finFactor * 100) / 100 : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
           } else {
             adjRate = Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
           }
@@ -1993,7 +2006,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             equipmentRate: Math.round(adjRate * breakdown.equipment * 100) / 100,
             unitRate: adjRate, materialCost: matC, laborCost: labC, equipmentCost: eqpC, totalCost: total,
             storey: st || undefined, elementCount: undefined,
-            is1200Code: is1200Info?.code,
+            is1200Code: is1200Info?.code ?? (isIndianProject ? "IS1200-DERIVED" : undefined),
           });
         };
 

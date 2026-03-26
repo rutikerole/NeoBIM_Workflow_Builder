@@ -273,7 +273,7 @@ export function estimateMEPCosts(
       amount: Math.round(totalGFA * rate * fx), unit: "m²", rate: Math.round(rate * fx),
       quantity: Math.round(totalGFA),
       basis: `₹${rate}/m² GFA (${buildingType} profile, ${cityTier} tier)`,
-      confidence: "benchmark",
+      is1200Code: "IS1200-P17-HVAC", confidence: "benchmark",
     });
   } else if (btLower === "residential" && floorCount > 3) {
     // Residential with >3 floors may need common area ventilation
@@ -284,7 +284,7 @@ export function estimateMEPCosts(
       amount: Math.round(totalGFA * 0.2 * rate * fx), unit: "m²", rate: Math.round(rate * fx),
       quantity: Math.round(totalGFA * 0.2),
       basis: `₹${rate}/m² × 20% common area`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P17-VENT", confidence: "estimated",
     });
   }
 
@@ -300,7 +300,7 @@ export function estimateMEPCosts(
         amount: Math.round(totalGFA * rate * fx), unit: "m²", rate: Math.round(rate * fx),
         quantity: Math.round(totalGFA),
         basis: `₹${rate}/m² GFA (${buildingType} profile)`,
-        confidence: "benchmark",
+        is1200Code: "IS1200-P15", confidence: "benchmark",
       });
     }
   }
@@ -314,7 +314,7 @@ export function estimateMEPCosts(
       amount: Math.round(totalGFA * rate * fx), unit: "m²", rate: Math.round(rate * fx),
       quantity: Math.round(totalGFA),
       basis: `₹${rate}/m² GFA (${buildingType})`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P16-BMS", confidence: "estimated",
     });
   }
 
@@ -328,7 +328,7 @@ export function estimateMEPCosts(
       amount: Math.round(liftsNeeded * liftCost * fx), unit: "EA", rate: Math.round(liftCost * fx),
       quantity: liftsNeeded,
       basis: `${liftsNeeded} lifts × ₹${(liftCost / 100000).toFixed(1)} lakh each (${buildingType})`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P16-LIFT", confidence: "estimated",
     });
   }
 
@@ -557,18 +557,18 @@ export function estimateExternalWorksCosts(
     {
       category: "PROVISIONAL — EXTERNAL WORKS",
       description: "Compound wall with gates (estimated perimeter)",
-      amount: Math.round(perimeter * 4500 * tierMult * fx), // ₹4,500/Rmt
+      amount: Math.round(perimeter * 4500 * tierMult * fx),
       unit: "Rmt", rate: Math.round(4500 * tierMult * fx), quantity: Math.round(perimeter),
       basis: `Est. perimeter ${Math.round(perimeter)}m × ₹4,500/Rmt`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P3-EXT-WALL", confidence: "estimated",
     },
     {
       category: "PROVISIONAL — EXTERNAL WORKS",
       description: "Internal roads, parking & paving",
-      amount: Math.round(openArea * 0.4 * 2200 * tierMult * fx), // 40% of open area paved
+      amount: Math.round(openArea * 0.4 * 2200 * tierMult * fx),
       unit: "m²", rate: Math.round(2200 * tierMult * fx), quantity: Math.round(openArea * 0.4),
       basis: `40% of open area (${Math.round(openArea * 0.4)}m²) × ₹2,200/m²`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P13-PAVING", confidence: "estimated",
     },
     {
       category: "PROVISIONAL — EXTERNAL WORKS",
@@ -576,15 +576,15 @@ export function estimateExternalWorksCosts(
       amount: Math.round(totalGFA * 250 * tierMult * fx),
       unit: "LS", rate: Math.round(totalGFA * 250 * tierMult * fx), quantity: 1,
       basis: `Lump sum: ₹250/m² GFA × ${Math.round(totalGFA)}m²`,
-      confidence: "estimated",
+      is1200Code: "IS1200-P14-DRAIN", confidence: "estimated",
     },
     {
       category: "PROVISIONAL — EXTERNAL WORKS",
       description: "Landscaping & softscape",
-      amount: Math.round(openArea * 0.3 * 800 * tierMult * fx), // 30% of open area landscaped
+      amount: Math.round(openArea * 0.3 * 800 * tierMult * fx),
       unit: "m²", rate: Math.round(800 * tierMult * fx), quantity: Math.round(openArea * 0.3),
       basis: `30% of open area (${Math.round(openArea * 0.3)}m²) × ₹800/m²`,
-      confidence: "estimated",
+      is1200Code: "IS1200-EXT-LANDSCAPE", confidence: "estimated",
     },
   ];
 }
