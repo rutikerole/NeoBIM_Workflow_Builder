@@ -113,20 +113,61 @@ export function FileUploadInput({ nodeId, data, accept, label, maxMB = 20, showP
     const currentNode = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
     if (!currentNode) return;
 
-    // Convert file to base64 so downstream nodes (TR-004, etc.) can access the data
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1]; // strip data:...;base64, prefix
-      const node = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
-      if (!node) return;
-      updateNode(nodeId, {
-        data: { ...node.data, inputValue: file.name, fileSize: file.size, fileData: base64, fileName: file.name, mimeType: file.type },
-      });
-    };
-    reader.readAsDataURL(file);
+    // IFC files: upload to R2 immediately (they're too large for inline base64 in JSON body)
+    // Other files: convert to base64 for inline transport
+    const isIFCFile = file.name.toLowerCase().endsWith(".ifc");
 
-    // Set filename immediately (base64 follows async)
-    updateNode(nodeId, { data: { ...currentNode.data, inputValue: file.name, fileSize: file.size } });
+    if (isIFCFile && file.size > 2 * 1024 * 1024) {
+      // Large IFC: upload to R2 via /api/parse-ifc, store URL only
+      updateNode(nodeId, { data: { ...currentNode.data, inputValue: file.name, fileSize: file.size, fileName: file.name, mimeType: file.type } });
+      const formData = new FormData();
+      formData.append("file", file);
+      toast.loading("Uploading IFC file...", { id: `ifc-upload-${nodeId}` });
+      fetch("/api/parse-ifc", { method: "POST", body: formData })
+        .then(async (res) => {
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: { message: "Upload failed" } }));
+            throw new Error(err.error?.message || "IFC upload failed");
+          }
+          return res.json();
+        })
+        .then((data) => {
+          const node = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
+          if (!node) return;
+          // Store R2 URL + parsed result — no base64 blob in node data
+          updateNode(nodeId, {
+            data: {
+              ...node.data,
+              inputValue: file.name,
+              fileSize: file.size,
+              fileName: file.name,
+              mimeType: file.type,
+              ifcUrl: data.meta?.ifcUrl || null,
+              ifcParsed: data.result || null, // Pre-parsed result from server
+              fileData: undefined, // Clear any base64 — use URL instead
+            },
+          });
+          toast.success(`IFC uploaded: ${data.result?.summary?.totalElements ?? 0} elements found`, { id: `ifc-upload-${nodeId}` });
+        })
+        .catch((err) => {
+          toast.error(`IFC upload failed: ${err.message}`, { id: `ifc-upload-${nodeId}`, duration: 6000 });
+        });
+    } else {
+      // Small files / non-IFC: convert to base64 for inline transport
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(",")[1]; // strip data:...;base64, prefix
+        const node = useWorkflowStore.getState().nodes.find(n => n.id === nodeId);
+        if (!node) return;
+        updateNode(nodeId, {
+          data: { ...node.data, inputValue: file.name, fileSize: file.size, fileData: base64, fileName: file.name, mimeType: file.type },
+        });
+      };
+      reader.readAsDataURL(file);
+
+      // Set filename immediately (base64 follows async)
+      updateNode(nodeId, { data: { ...currentNode.data, inputValue: file.name, fileSize: file.size } });
+    }
   }, [nodeId, updateNode, maxMB, t]);
 
   const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

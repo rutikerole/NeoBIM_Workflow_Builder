@@ -1258,12 +1258,19 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
     } else if (catalogueId === "TR-007") {
       // Quantity Extractor — Real IFC parsing with net area calculations
+      // Supports 3 input modes:
+      //   1. ifcParsed — pre-parsed result from /api/parse-ifc (large files uploaded to R2)
+      //   2. ifcUrl — R2 URL to fetch and parse server-side
+      //   3. fileData — inline base64 (small files only, <4MB)
       console.log(`[TR-007] inputData keys: ${Object.keys(inputData ?? {}).join(", ")}`);
-      console.log(`[TR-007] has fileData: ${!!inputData?.fileData}, type: ${typeof inputData?.fileData}, length: ${typeof inputData?.fileData === "string" ? (inputData.fileData as string).length : "N/A"}`);
-      console.log(`[TR-007] has ifcData: ${!!inputData?.ifcData}`);
+      const hasPreParsed = !!inputData?.ifcParsed;
+      const hasIfcUrl = !!inputData?.ifcUrl;
+      const hasFileData = !!inputData?.fileData;
+      console.log(`[TR-007] ifcParsed: ${hasPreParsed}, ifcUrl: ${hasIfcUrl}, fileData: ${hasFileData}`);
+
       let ifcData: Record<string, unknown> | null = (inputData?.ifcData as Record<string, unknown>) ?? null;
 
-      // IN-004 pass-through sends fileData as a base64 string — decode to buffer
+      // IN-004 pass-through sends fileData as a base64 string — decode to buffer (small files only)
       if (!ifcData && inputData?.fileData && typeof inputData.fileData === "string") {
         try {
           const binaryStr = atob(inputData.fileData as string);
@@ -1287,12 +1294,102 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       }> = [];
       let parseSummary = "";
 
-      if (ifcData && typeof ifcData === "object" && ifcData.buffer) {
-        // Real IFC file uploaded - parse it
+      // ── Mode 1: Pre-parsed IFC result from /api/parse-ifc (large files) ──
+      // The InputNode uploaded the file to R2 and pre-parsed it via /api/parse-ifc.
+      // We skip re-parsing and use the result directly.
+      const preParsed = inputData?.ifcParsed as Record<string, unknown> | undefined;
+      if (preParsed && typeof preParsed === "object" && (preParsed as Record<string, unknown>).divisions) {
+        console.log("[TR-007] Using pre-parsed IFC result from /api/parse-ifc");
+        try {
+          const parseResult = preParsed as {
+            divisions: Array<{
+              name: string;
+              categories: Array<{
+                elements: Array<{
+                  type: string; storey: string; name: string; material: string;
+                  materialLayers?: Array<{name: string; thickness: number}>;
+                  quantities: {
+                    count?: number;
+                    area?: { gross?: number; net?: number };
+                    volume?: { base?: number };
+                    openingArea?: number;
+                  };
+                }>;
+              }>;
+            }>;
+            summary?: { processedElements?: number; totalElements?: number; buildingStoreys?: number };
+            meta?: { ifcSchema?: string };
+          };
+
+          // Use same aggregation logic as inline parsing (below)
+          const typeAggregates = new Map<string, {
+            count: number; grossArea: number; netArea: number; openingArea: number; volume: number;
+            divisionName: string; storey: string; elementType: string;
+            materialLayers?: Array<{name: string; thickness: number}>;
+          }>();
+
+          for (const division of parseResult.divisions) {
+            for (const category of division.categories) {
+              for (const element of category.elements) {
+                const key = `${element.type}|${element.storey}`;
+                const existing = typeAggregates.get(key) || {
+                  count: 0, grossArea: 0, netArea: 0, openingArea: 0, volume: 0,
+                  divisionName: division.name, storey: element.storey, elementType: element.type,
+                };
+                existing.count += element.quantities.count ?? 1;
+                existing.grossArea += element.quantities.area?.gross ?? 0;
+                existing.netArea += element.quantities.area?.net ?? 0;
+                existing.openingArea += element.quantities.openingArea ?? 0;
+                existing.volume += element.quantities.volume?.base ?? 0;
+                if (!existing.materialLayers && element.materialLayers && element.materialLayers.length > 1) {
+                  existing.materialLayers = element.materialLayers;
+                }
+                typeAggregates.set(key, existing);
+              }
+            }
+          }
+
+          for (const [, agg] of typeAggregates) {
+            const description = agg.elementType.replace("Ifc", "");
+            const primaryQty = agg.grossArea > 0 ? agg.grossArea : agg.volume > 0 ? agg.volume : agg.count;
+            const unit = agg.grossArea > 0 ? "m²" : agg.volume > 0 ? "m³" : "EA";
+            rows.push([agg.divisionName, description, agg.grossArea.toFixed(2), agg.openingArea.toFixed(2), agg.netArea.toFixed(2), agg.volume.toFixed(2), primaryQty.toFixed(2), unit]);
+            elements.push({
+              description, category: agg.divisionName, quantity: primaryQty, unit,
+              grossArea: agg.grossArea || undefined, netArea: agg.netArea || undefined,
+              openingArea: agg.openingArea || undefined, totalVolume: agg.volume || undefined,
+              storey: agg.storey, elementCount: agg.count, materialLayers: agg.materialLayers,
+            });
+          }
+
+          parseSummary = `Parsed ${parseResult.summary?.processedElements ?? "?"} of ${parseResult.summary?.totalElements ?? "?"} elements from ${parseResult.summary?.buildingStoreys ?? "?"} storeys (${parseResult.meta?.ifcSchema ?? "IFC"}) — pre-parsed via R2 upload`;
+        } catch (preParseErr) {
+          console.error("[TR-007] Failed to process pre-parsed result:", preParseErr);
+          parseSummary = "⚠️ Pre-parsed IFC data was corrupted. Please re-upload the file.";
+        }
+      }
+
+      // ── Mode 2: Fetch from R2 URL and parse server-side ──
+      if (rows.length === 0 && inputData?.ifcUrl && typeof inputData.ifcUrl === "string") {
+        console.log(`[TR-007] Fetching IFC from R2 URL: ${(inputData.ifcUrl as string).slice(0, 80)}...`);
+        try {
+          const resp = await fetch(inputData.ifcUrl as string);
+          if (!resp.ok) throw new Error(`R2 fetch failed: ${resp.status}`);
+          const arrayBuf = await resp.arrayBuffer();
+          ifcData = { buffer: Array.from(new Uint8Array(arrayBuf)) };
+          console.log(`[TR-007] Fetched ${arrayBuf.byteLength} bytes from R2`);
+        } catch (fetchErr) {
+          console.error("[TR-007] Failed to fetch IFC from R2:", fetchErr);
+        }
+      }
+
+      // ── Mode 3: Parse from inline buffer (small files or R2-fetched) ──
+      if (rows.length === 0 && ifcData && typeof ifcData === "object" && ifcData.buffer) {
+        // Real IFC file — parse it
         try {
           const { parseIFCBuffer } = await import("@/services/ifc-parser");
           const buffer = new Uint8Array(ifcData.buffer as ArrayLike<number>);
-          const parseResult = await parseIFCBuffer(buffer, "uploaded.ifc");
+          const parseResult = await parseIFCBuffer(buffer, inputData?.fileName as string ?? "uploaded.ifc");
 
           // Aggregate elements by type + storey for per-floor BOQ breakdown
           const typeAggregates = new Map<string, {
