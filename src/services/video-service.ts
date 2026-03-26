@@ -547,19 +547,17 @@ export function buildRenovationExteriorPrompt(buildingDescription: string): stri
   const desc = buildingDescription.slice(0, 400);
 
   return (
-    `Fast-paced cinematic exterior sweep of this beautifully restored building with pristine walls. ` +
+    `Wide-angle cinematic sweep of this beautifully restored building with pristine, flawless walls. ` +
     `Show the ENTIRE building from end to end. NEVER zoom in, NEVER move closer. ` +
     `Building: ${desc.slice(0, 250)}. ` +
-    "CAMERA: FAST, dynamic LEFT-TO-RIGHT tracking shot that rapidly sweeps across the ENTIRE building. " +
-    "Start from far left corner — quickly pan across the full facade — end at the far right corner. " +
-    "The camera moves BRISKLY at high speed, covering the complete building width in the first 6 seconds. " +
-    "Then a quick upward tilt revealing the roofline and sky, followed by a fast reverse sweep RIGHT-TO-LEFT " +
-    "showing the building again from a slightly different angle. " +
-    "Fast, energetic camera movement — like a professional drone flyby. " +
-    "Wide-angle lens, camera far back showing full height from roofline to ground. " +
-    "All wall surfaces perfectly smooth, freshly painted, flawless. " +
-    "DO NOT zoom in, DO NOT move forward — only fast lateral and tilt movements. " +
-    "Ultra-realistic photography, natural daylight, real street scene, cinematic speed."
+    "CAMERA: Smooth LEFT-TO-RIGHT tracking shot that sweeps across the ENTIRE building " +
+    "in 10 seconds — starting from the far left edge and ending at the far right edge. " +
+    "The camera moves at a steady pace sideways, revealing the COMPLETE building " +
+    "from one end to the other. Show every section, every wing, the full facade. " +
+    "Wide-angle lens, camera positioned far back to show full height from roofline to ground. " +
+    "All wall surfaces are perfectly smooth, freshly painted, no scratches or damage. " +
+    "DO NOT zoom in, DO NOT move forward, DO NOT get closer — only lateral horizontal movement. " +
+    "Ultra-realistic photography, natural daylight, real street scene."
   );
 }
 
@@ -571,21 +569,20 @@ export function buildRenovationInteriorPrompt(buildingDescription: string): stri
   const desc = buildingDescription.slice(0, 400);
 
   return (
-    `Fast-paced cinematic interior walkthrough of a beautifully restored building. ` +
-    `The building has been renovated while keeping its original character. ` +
+    `Cinematic interior walkthrough of a beautifully restored building. ` +
+    `The building has been carefully renovated while keeping its original character and proportions. ` +
     `Building: ${desc.slice(0, 250)}. ` +
-    "Interior walkthrough (10 seconds) — FAST camera movement, cover many rooms quickly: " +
-    "Camera rushes through the restored main entrance into a bright lobby — quick pan showing " +
-    "polished floors, fresh paint, modern lighting. " +
-    "Camera moves BRISKLY through multiple rooms in rapid succession — " +
-    "quickly passing through corridors, sweeping through large open spaces with tall windows, " +
-    "fast glide through a renovated office or living area, quick turn into a modern kitchen, " +
-    "rapid pass through an elegant bathroom, then fast track down a long hallway. " +
-    "Cover as many rooms and spaces as possible — the camera never stops or lingers. " +
-    "Each room gets 1-2 seconds before moving to the next. " +
-    "Energetic, dynamic movement like a real estate showcase video. " +
-    "Natural daylight through windows, warm interior lighting, " +
-    "ultra-realistic photography, fast smooth cinematic camera, no distortion."
+    "Interior walkthrough (10 seconds): " +
+    "Camera enters through the restored main entrance into a bright, clean lobby area " +
+    "with well-maintained floors, fresh paint, and good lighting. " +
+    "Smooth walkthrough through renovated interior spaces that match the building's style and era: " +
+    "large windows letting in natural light, " +
+    "clean plastered walls, restored wood or tile flooring, " +
+    "well-proportioned rooms with tasteful furnishings appropriate to the building, " +
+    "clean modern bathrooms and functional kitchen areas. " +
+    "Spaces flow naturally through the building's original corridor and room layout. " +
+    "Natural daylight through restored windows blended with warm interior lighting, " +
+    "ultra-realistic photography style, smooth cinematic camera, no distortion, no CGI look."
   );
 }
 
