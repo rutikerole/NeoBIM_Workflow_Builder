@@ -2325,6 +2325,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             cementBrand: marketData.cement_per_bag.brand,
             cementSource: marketData.cement_per_bag.source,
             cementConfidence: marketData.cement_per_bag.confidence,
+            labor: marketData.labor,
             sources: marketData.sources_summary,
             fetchedAt: marketData.fetched_at,
             searchCount: marketData.search_count,
@@ -2371,6 +2372,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               sandPerCft: marketData.sand_per_cft.value,
               sandType: marketData.sand_per_cft.type,
               sandSource: marketData.sand_per_cft.source,
+              labor: marketData.labor,
               sources: marketData.sources_summary,
               fetchedAt: marketData.fetched_at,
               searchCount: marketData.search_count,
@@ -2449,6 +2451,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           new Date().toISOString().split("T")[0],
           marketData.benchmark_per_sqft.value > 0 ? "MEDIUM" : "LOW",
         ],
+        // Labor rates
+        ["── LABOR ──", "", "", "", ""],
+        ["Mason (skilled)", `₹${marketData.labor.mason.value}/day`, marketData.labor.mason.source, marketData.labor.mason.date, marketData.labor.mason.confidence],
+        ["Helper (unskilled)", `₹${marketData.labor.helper.value}/day`, marketData.labor.helper.source, marketData.labor.helper.date, marketData.labor.helper.confidence],
+        ["Carpenter", `₹${marketData.labor.carpenter.value}/day`, marketData.labor.carpenter.source, marketData.labor.carpenter.date, marketData.labor.carpenter.confidence],
+        ["Electrician", `₹${marketData.labor.electrician.value}/day`, marketData.labor.electrician.source, marketData.labor.electrician.date, marketData.labor.electrician.confidence],
+        ["Plumber", `₹${marketData.labor.plumber.value}/day`, marketData.labor.plumber.source, marketData.labor.plumber.date, marketData.labor.plumber.confidence],
       ];
 
       // Build the formatted text report
@@ -2652,20 +2661,36 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         [""],
       );
 
-      // ── Labor rates (location-aware) ──
+      // ── Labor rates (live from market agent → city-tier fallback → CPWD static) ──
       {
         const ct = String(pricingInfo?.cityTier ?? "tier-2").toLowerCase();
         const laborMult = ct === "metro" ? 1.35 : ct === "tier-1" ? 1.15 : ct === "tier-2" ? 1.00 : (ct === "tier-3" || ct === "town") ? 0.85 : 0.70;
         const tier = ct === "metro" ? "Metro" : ct === "tier-1" ? "Tier-1" : ct === "tier-2" ? "Tier-2" : (ct === "tier-3" || ct === "town") ? "Tier-3" : "Rural";
+        // Use live labor rates from market intelligence if available
+        const ml = upstreamMI?.labor as Record<string, { value?: number; source?: string; confidence?: string }> | undefined;
+        const lr = (role: string, base: number): [number, string] => {
+          const live = ml?.[role];
+          if (live?.value && live.value > 0 && live.confidence !== "LOW") {
+            return [live.value, `${live.source ?? "AI"} (${live.confidence})`];
+          }
+          return [Math.round(base * laborMult), `₹${base} base × ${laborMult} (${tier})`];
+        };
+        const [mason, masonSrc] = lr("mason", 800);
+        const [helper, helperSrc] = lr("helper", 450);
+        const [carpenter, carpSrc] = lr("carpenter", 900);
+        const [steelFixer, sfSrc] = lr("steelFixer", 750);
+        const [electrician, elecSrc] = lr("electrician", 1000);
+        const [plumber, plumbSrc] = lr("plumber", 850);
+        const laborSource = ml?.mason?.confidence !== "LOW" ? "Live (AI-sourced)" : `${tier} tier (${laborMult}x)`;
         cpRows.push(
-          ["LABOR RATES (daily)", "", "₹/day", `${tier} city (${laborMult}x)`],
-          ["Mason (skilled):", "", Math.round(800 * laborMult), `₹800 base × ${laborMult}`],
-          ["Helper (unskilled):", "", Math.round(450 * laborMult), `₹450 base × ${laborMult}`],
-          ["Carpenter:", "", Math.round(900 * laborMult), `₹900 base × ${laborMult}`],
-          ["Steel Fixer:", "", Math.round(750 * laborMult), `₹750 base × ${laborMult}`],
-          ["Painter:", "", Math.round(650 * laborMult), `₹650 base × ${laborMult}`],
-          ["Electrician:", "", Math.round(1000 * laborMult), `₹1,000 base × ${laborMult}`],
-          ["Plumber:", "", Math.round(850 * laborMult), `₹850 base × ${laborMult}`],
+          ["LABOR RATES (daily)", "", "₹/day", laborSource],
+          ["Mason (skilled):", "", mason, masonSrc],
+          ["Helper (unskilled):", "", helper, helperSrc],
+          ["Carpenter:", "", carpenter, carpSrc],
+          ["Steel Fixer:", "", steelFixer, sfSrc],
+          ["Painter:", "", Math.round(650 * laborMult), `₹650 base × ${laborMult} (${tier})`],
+          ["Electrician:", "", electrician, elecSrc],
+          ["Plumber:", "", plumber, plumbSrc],
         );
       }
 
