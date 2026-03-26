@@ -1945,6 +1945,57 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // Add derived lines to boqLines
       boqLines.push(...derivedLines);
 
+      // ── Provisional Sums: MEP, Foundation, External Works ──
+      const { estimateMEPCosts, estimateFoundationCosts, estimateExternalWorksCosts, checkQuantitySanity } = await import("@/services/boq-intelligence");
+      const gfaForProvisional = elements.reduce((sum: number, e: unknown) => {
+        const el = e as Record<string, unknown>;
+        return sum + (String(el.description ?? "").toLowerCase().includes("slab") ? Number(el.grossArea ?? 0) : 0);
+      }, 0) || 500;
+      const floorCountForProv = new Set(elements.map((e: unknown) => (e as Record<string, unknown>).storey).filter(Boolean)).size || 1;
+      const cityTierForProv = indianPricing?.cityTier ?? "city";
+
+      const mepSums = estimateMEPCosts(gfaForProvisional, projectTypeInfo.type, floorCountForProv, cityTierForProv, isIndianProject);
+      const foundSums = estimateFoundationCosts(gfaForProvisional, floorCountForProv, projectTypeInfo.type, cityTierForProv, isIndianProject);
+      const extSums = estimateExternalWorksCosts(gfaForProvisional, floorCountForProv, cityTierForProv, isIndianProject);
+
+      const allProvisional = [...foundSums, ...mepSums, ...extSums];
+      let provisionalTotal = 0;
+
+      for (const prov of allProvisional) {
+        provisionalTotal += prov.amount;
+        hardCostSubtotal += prov.amount;
+        totalMaterial += Math.round(prov.amount * 0.55);
+        totalLabor += Math.round(prov.amount * 0.40);
+        totalEquipment += Math.round(prov.amount * 0.05);
+
+        boqLines.push({
+          division: prov.category,
+          csiCode: prov.is1200Code ?? "PROV",
+          description: `${prov.description} [${prov.confidence.toUpperCase()}]`,
+          unit: prov.unit,
+          quantity: prov.quantity,
+          wasteFactor: 0,
+          adjustedQty: prov.quantity,
+          materialRate: Math.round(prov.rate * 0.55),
+          laborRate: Math.round(prov.rate * 0.40),
+          equipmentRate: Math.round(prov.rate * 0.05),
+          unitRate: prov.rate,
+          materialCost: Math.round(prov.amount * 0.55),
+          laborCost: Math.round(prov.amount * 0.40),
+          equipmentCost: Math.round(prov.amount * 0.05),
+          totalCost: prov.amount,
+          is1200Code: prov.is1200Code,
+        });
+      }
+      console.log(`[TR-008] Added ${allProvisional.length} provisional sums: ₹${provisionalTotal.toLocaleString()}`);
+
+      // ── Quantity Sanity Checker (results added to warnings array after it's declared below) ──
+      const sanitizedElements = elements.map((e: unknown) => {
+        const el = e as Record<string, unknown>;
+        return { description: String(el.description ?? ""), grossArea: Number(el.grossArea ?? 0), totalVolume: Number(el.totalVolume ?? 0), elementCount: Number(el.elementCount ?? 0), storey: String(el.storey ?? "") };
+      });
+      const quantityWarnings = checkQuantitySanity(sanitizedElements, gfaForProvisional, floorCountForProv);
+
       // Rebuild rows grouped by storey (if storey data available)
       const hasStoreyData = boqLines.some(l => l.storey && l.storey !== "Unassigned");
       if (hasStoreyData) {
@@ -2048,6 +2099,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       }
       if (estimatedItemsCount > 0) {
         warnings.push(`${estimatedItemsCount} items used estimated rates (not in cost database)`);
+      }
+      // Add quantity sanity check warnings
+      for (const w of quantityWarnings) {
+        warnings.push(`⚠️ ${w.element}: ${w.metric} = ${w.value} (expected ${w.expectedRange}). ${w.suggestion}`);
+      }
+      if (provisionalTotal > 0) {
+        warnings.push(`${allProvisional.length} provisional sums included for MEP, foundation, and external works (₹${provisionalTotal.toLocaleString()}). These are estimates — engage specialist consultants for detailed pricing.`);
       }
 
       artifact = {

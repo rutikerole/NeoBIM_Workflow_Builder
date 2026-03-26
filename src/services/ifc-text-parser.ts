@@ -23,6 +23,12 @@ export interface TextParseElement {
   volume: number;
   height: number;
   thickness: number;
+  // Pset-derived properties (affect rate selection)
+  isExternal?: boolean;
+  loadBearing?: boolean;
+  fireRating?: string;
+  concreteGrade?: string;
+  reference?: string; // Type reference (e.g. "CW 102-50-100p")
 }
 
 export interface TextParseResult {
@@ -338,29 +344,63 @@ export function parseIFCText(text: string): TextParseResult {
     }
   }
 
-  // ── Extract door/window dimensions from IfcPropertySingleValue ──
-  // Doors/windows often have OverallWidth/OverallHeight in property sets
-  const propSingleValues = new Map<number, Map<string, number>>();
-  const propSetRegex = /^#(\d+)=\s*IFCPROPERTYSET\('[^']*',#\d+,'([^']*)'[^,]*,\(([^)]+)\)\)/gmi;
-  let propSetMatch;
-  while ((propSetMatch = propSetRegex.exec(text)) !== null) {
-    const propIds = [...propSetMatch[3].matchAll(/#(\d+)/g)].map(m => parseInt(m[1]));
-    for (const pid of propIds) {
-      // Will link to property values below
+  // ── Full Property Set (Pset) Extraction ──────────────────────────────────
+  // Step 1: Extract ALL property values (IFCPROPERTYSINGLEVALUE)
+  const allPropertyValues = new Map<number, { name: string; value: string | number | boolean }>();
+  const propValRegex = /^#(\d+)=\s*IFCPROPERTYSINGLEVALUE\('([^']+)'[^,]*,[^,]*,(IFC[A-Z_]*(?:MEASURE|VALUE|NUMERIC)?\(([^)]*)\)|IFCBOOLEAN\(([^)]+)\)|IFCLABEL\('([^']*)'\)|IFCIDENTIFIER\('([^']*)'\)|IFCTEXT\('([^']*)'\))/gmi;
+  let pvMatch;
+  while ((pvMatch = propValRegex.exec(text)) !== null) {
+    const propId = parseInt(pvMatch[1]);
+    const propName = pvMatch[2];
+    // Resolve value by type
+    let value: string | number | boolean;
+    if (pvMatch[5] !== undefined) {
+      // Boolean: .T. or .F.
+      value = pvMatch[5].trim() === ".T.";
+    } else if (pvMatch[6] !== undefined) {
+      value = pvMatch[6]; // Label
+    } else if (pvMatch[7] !== undefined) {
+      value = pvMatch[7]; // Identifier
+    } else if (pvMatch[8] !== undefined) {
+      value = pvMatch[8]; // Text
+    } else if (pvMatch[4] !== undefined) {
+      value = parseFloat(pvMatch[4]) || 0; // Numeric measure
+    } else {
+      value = pvMatch[3] ?? ""; // Raw fallback
     }
+    allPropertyValues.set(propId, { name: propName, value });
   }
 
-  // Extract OverallWidth, OverallHeight, Width, Height from property values
-  // These come from IfcDoor/IfcWindow direct attributes or from Pset_*Common
-  const dimRegex = /^#(\d+)=\s*IFCPROPERTYSINGLEVALUE\('(Width|Height|OverallWidth|OverallHeight)'[^,]*,[^,]*,IFCPOSITIVELENGTHMEASURE\(([0-9.e+-]+)\)/gmi;
-  const propDimensions = new Map<number, { name: string; value: number }>();
-  let dimMatch;
-  while ((dimMatch = dimRegex.exec(text)) !== null) {
-    propDimensions.set(parseInt(dimMatch[1]), {
-      name: dimMatch[2],
-      value: parseFloat(dimMatch[3]),
-    });
+  // Step 2: Extract property sets and their property refs
+  const propertySets = new Map<number, { name: string; propIds: number[] }>();
+  const psetRegex = /^#(\d+)=\s*IFCPROPERTYSET\('[^']*',#\d+,'([^']*)'[^,]*,\(([^)]+)\)\)/gmi;
+  let psetMatch;
+  while ((psetMatch = psetRegex.exec(text)) !== null) {
+    const propIds = [...psetMatch[3].matchAll(/#(\d+)/g)].map(m => parseInt(m[1]));
+    propertySets.set(parseInt(psetMatch[1]), { name: psetMatch[2], propIds });
   }
+
+  // Step 3: Link elements to property sets via IFCRELDEFINESBYPROPERTIES
+  const elementProperties = new Map<number, Record<string, string | number | boolean>>();
+  const relDefRegex = /^#\d+=\s*IFCRELDEFINESBYPROPERTIES\([^,]*,[^,]*,[^,]*,[^,]*,\(([^)]+)\),#(\d+)\)/gmi;
+  let rdMatch;
+  while ((rdMatch = relDefRegex.exec(text)) !== null) {
+    const elemIds = [...rdMatch[1].matchAll(/#(\d+)/g)].map(m => parseInt(m[1]));
+    const psetId = parseInt(rdMatch[2]);
+    const pset = propertySets.get(psetId);
+    if (!pset) continue;
+
+    // Resolve properties
+    for (const elemId of elemIds) {
+      const existing = elementProperties.get(elemId) ?? {};
+      for (const propId of pset.propIds) {
+        const prop = allPropertyValues.get(propId);
+        if (prop) existing[prop.name] = prop.value;
+      }
+      elementProperties.set(elemId, existing);
+    }
+  }
+  console.log(`[IFC-Text] Extracted ${allPropertyValues.size} property values, ${propertySets.size} Psets, linked to ${elementProperties.size} elements`);
 
   // ── Extract building elements ──
   const elements: TextParseElement[] = [];
@@ -564,6 +604,14 @@ export function parseIFCText(text: string): TextParseResult {
       IFCMEMBER: "IfcMember", IFCPLATE: "IfcPlate", IFCCURTAINWALL: "IfcCurtainWall",
     };
 
+    // Extract Pset properties for this element
+    const props = elementProperties.get(elemId);
+    const isExternal = props?.IsExternal === true ? true : props?.IsExternal === false ? false : undefined;
+    const loadBearing = props?.LoadBearing === true ? true : props?.LoadBearing === false ? false : undefined;
+    const fireRating = typeof props?.FireRating === "string" ? props.FireRating : undefined;
+    const concreteGrade = typeof props?.ConcreteGrade === "string" ? props.ConcreteGrade : undefined;
+    const reference = typeof props?.Reference === "string" ? props.Reference : undefined;
+
     elements.push({
       id: elemId,
       type: typeNameMap[elemType] ?? elemType,
@@ -575,6 +623,11 @@ export function parseIFCText(text: string): TextParseResult {
       height,
       thickness,
       openingArea,
+      isExternal,
+      loadBearing,
+      fireRating,
+      concreteGrade,
+      reference,
     });
   }
 
@@ -669,6 +722,12 @@ export function parseIFCText(text: string): TextParseResult {
               ...(e.height > 0 ? { height: Math.round(e.height * 100) / 100 } : {}),
               ...(e.thickness > 0 ? { thickness: Math.round(e.thickness * 1000) / 1000 } : {}),
             },
+            // Pset properties for rate selection
+            ...(e.isExternal !== undefined ? { isExternal: e.isExternal } : {}),
+            ...(e.loadBearing !== undefined ? { loadBearing: e.loadBearing } : {}),
+            ...(e.fireRating ? { fireRating: e.fireRating } : {}),
+            ...(e.concreteGrade ? { concreteGrade: e.concreteGrade } : {}),
+            ...(e.reference ? { reference: e.reference } : {}),
           })),
         }],
       };
