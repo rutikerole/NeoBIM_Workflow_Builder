@@ -19,6 +19,7 @@ export interface TextParseElement {
   storey: string;
   material: string;
   grossArea: number;
+  openingArea: number;
   volume: number;
   height: number;
   thickness: number;
@@ -244,6 +245,60 @@ export function parseIFCText(text: string): TextParseResult {
     });
   }
 
+  // ── Resolve IfcMappedItem → IfcRepresentationMap → inner geometry ──
+  // Many elements (steel members, columns, plates) use MappedItem indirection:
+  // Element → ShapeRep → MappedItem → RepresentationMap → inner ShapeRep → Extrusion
+  const mappedItems = new Map<number, number>(); // mappedItemId → repMapId
+  const miRegex = /^#(\d+)=\s*IFCMAPPEDITEM\(#(\d+)/gmi;
+  let miMatch;
+  while ((miMatch = miRegex.exec(text)) !== null) {
+    mappedItems.set(parseInt(miMatch[1]), parseInt(miMatch[2]));
+  }
+
+  // RepresentationMap → inner ShapeRepresentation
+  const repMaps = new Map<number, number>(); // repMapId → inner shapeRepId
+  const rmRegex = /^#(\d+)=\s*IFCREPRESENTATIONMAP\(#\d+,#(\d+)\)/gmi;
+  let rmMatch;
+  while ((rmMatch = rmRegex.exec(text)) !== null) {
+    repMaps.set(parseInt(rmMatch[1]), parseInt(rmMatch[2]));
+  }
+
+  // ── Extract IfcRelVoidsElement (wall → opening deductions) ──
+  const wallOpenings = new Map<number, number[]>(); // wallId → [openingElementIds]
+  const rvRegex = /^#\d+=\s*IFCRELVOIDSELEMENT\([^,]*,[^,]*,[^,]*,[^,]*,#(\d+),#(\d+)\)/gmi;
+  let rvMatch;
+  while ((rvMatch = rvRegex.exec(text)) !== null) {
+    const wallId = parseInt(rvMatch[1]);
+    const openingId = parseInt(rvMatch[2]);
+    if (!wallOpenings.has(wallId)) wallOpenings.set(wallId, []);
+    wallOpenings.get(wallId)!.push(openingId);
+  }
+
+  // Extract opening element dimensions (IfcOpeningElement → extrusion geometry)
+  const openingAreas = new Map<number, number>(); // openingElementId → area in m²
+  const oeRegex = /^#(\d+)=\s*IFCOPENINGELEMENT\('[^']*',#\d+,'[^']*'[^)]*,#(\d+)\)/gmi;
+  let oeMatch;
+  while ((oeMatch = oeRegex.exec(text)) !== null) {
+    openingAreas.set(parseInt(oeMatch[1]), 0); // placeholder, resolved during wall processing
+  }
+
+  // ── Estimate IfcFacetedBrep volume from face count ──
+  // FacetedBreps are mesh geometry. We can't compute exact area from text,
+  // but we can estimate by counting faces (each face ≈ small triangle).
+  const facetedBrepFaceCount = new Map<number, number>(); // brepId → face count
+  const brepRegex = /^#(\d+)=\s*IFCFACETEDBREP\(#(\d+)\)/gmi;
+  let brepMatch;
+  while ((brepMatch = brepRegex.exec(text)) !== null) {
+    const brepId = parseInt(brepMatch[1]);
+    const shellId = parseInt(brepMatch[2]);
+    // Count faces in the closed shell
+    const shellLine = text.match(new RegExp(`#${shellId}=\\s*IFCCLOSEDSHELL\\(\\(([^)]+)\\)\\)`));
+    if (shellLine) {
+      const faceCount = (shellLine[1].match(/#/g) ?? []).length;
+      facetedBrepFaceCount.set(brepId, faceCount);
+    }
+  }
+
   // ── Extract shape representations (element → extrusion links) ──
   const shapeRepItems = new Map<number, number[]>(); // shapeRep → [item IDs]
   const shapeRepRegex = /^#(\d+)=\s*IFCSHAPEREPRESENTATION\([^,]*,[^,]*,[^,]*,\(([^)]+)\)\)/gmi;
@@ -344,11 +399,32 @@ export function parseIFCText(text: string): TextParseResult {
 
     // Find shape representation items for this element
     // The element references a ProductDefinitionShape which contains ShapeRepresentations
+    // Helper: resolve an item ID to an extrusion, following MappedItem chains
+    const resolveExtrusion = (itemId: number): { profileId: number; depth: number } | null => {
+      // Direct extrusion?
+      const ext = extrusions.get(itemId);
+      if (ext) return ext;
+
+      // MappedItem → RepresentationMap → inner ShapeRep → extrusion?
+      const repMapId = mappedItems.get(itemId);
+      if (repMapId) {
+        const innerSrId = repMaps.get(repMapId);
+        if (innerSrId) {
+          const innerItems = shapeRepItems.get(innerSrId) ?? [];
+          for (const innerItemId of innerItems) {
+            const innerExt = extrusions.get(innerItemId);
+            if (innerExt) return innerExt;
+          }
+        }
+      }
+      return null;
+    };
+
     const pdsIds = prodDefShapes.get(repRefId) ?? [];
     for (const srId of pdsIds) {
       const itemIds = shapeRepItems.get(srId) ?? [];
       for (const itemId of itemIds) {
-        const ext = extrusions.get(itemId);
+        const ext = resolveExtrusion(itemId);
         if (ext) {
           const profile = profileAreas.get(ext.profileId);
           if (profile) {
@@ -383,7 +459,7 @@ export function parseIFCText(text: string): TextParseResult {
           for (const srId of pdsShapeIds) {
             const itemIds = shapeRepItems.get(srId) ?? [];
             for (const itemId of itemIds) {
-              const ext = extrusions.get(itemId);
+              const ext = resolveExtrusion(itemId);
               if (ext) {
                 const profile = profileAreas.get(ext.profileId);
                 if (profile) {
@@ -405,6 +481,43 @@ export function parseIFCText(text: string): TextParseResult {
               }
             }
           }
+        }
+      }
+    }
+
+    // ── Wall opening deductions: subtract door/window openings from wall gross area ──
+    let openingArea = 0;
+    if ((elemType === "IFCWALL" || elemType === "IFCWALLSTANDARDCASE") && grossArea > 0) {
+      const openingIds = wallOpenings.get(elemId) ?? [];
+      for (const oId of openingIds) {
+        // Try to get opening geometry via the same extrusion chain
+        // Opening elements are also IfcElements with a PDS → ShapeRep → Extrusion
+        // For simplicity, estimate each opening as ~1.89m² (standard door) if geometry not extractable
+        // The opening element line format: #ID= IFCOPENINGELEMENT('guid',#owner,'name',...,#placement,#pds);
+        const oeLineMatch = text.match(new RegExp(`#${oId}=[^;]+;`));
+        if (oeLineMatch) {
+          const oeRefs = [...oeLineMatch[0].matchAll(/#(\d+)/g)].map(m => parseInt(m[1]));
+          const oePdsId = oeRefs[oeRefs.length - 1];
+          const oePdsShapes = prodDefShapes.get(oePdsId) ?? [];
+          let oArea = 0;
+          for (const srId of oePdsShapes) {
+            for (const itemId of (shapeRepItems.get(srId) ?? [])) {
+              const ext = resolveExtrusion(itemId);
+              if (ext) {
+                const profile = profileAreas.get(ext.profileId);
+                if (profile) {
+                  // Opening: profile area is the wall face area of the void
+                  // For a rectangular opening, xDim = width, depth = height
+                  oArea = (profile.xDim * ext.depth) / 1_000_000;
+                  break;
+                }
+              }
+            }
+            if (oArea > 0) break;
+          }
+          openingArea += oArea > 0 ? oArea : 1.89; // fallback to standard door
+        } else {
+          openingArea += 1.89; // can't find opening line, assume standard door
         }
       }
     }
@@ -451,6 +564,7 @@ export function parseIFCText(text: string): TextParseResult {
       volume,
       height,
       thickness,
+      openingArea,
     });
   }
 
@@ -499,7 +613,8 @@ export function parseIFCText(text: string): TextParseResult {
             material: e.material,
             quantities: {
               count: 1,
-              ...(e.grossArea > 0 ? { area: { gross: Math.round(e.grossArea * 100) / 100, net: Math.round(e.grossArea * 100) / 100, unit: "m²" } } : {}),
+              ...(e.grossArea > 0 ? { area: { gross: Math.round(e.grossArea * 100) / 100, net: Math.round(Math.max(0, e.grossArea - (e.openingArea ?? 0)) * 100) / 100, unit: "m²" } } : {}),
+              ...(e.openingArea > 0 ? { openingArea: Math.round(e.openingArea * 100) / 100 } : {}),
               ...(e.volume > 0 ? { volume: { base: Math.round(e.volume * 10000) / 10000, withWaste: Math.round(e.volume * (1 + div.waste) * 10000) / 10000, unit: "m³" } } : {}),
               ...(e.height > 0 ? { height: Math.round(e.height * 100) / 100 } : {}),
               ...(e.thickness > 0 ? { thickness: Math.round(e.thickness * 1000) / 1000 } : {}),
