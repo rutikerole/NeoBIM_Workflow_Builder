@@ -157,7 +157,7 @@ Search for:
 For each, find the most recent price with a verifiable source.`;
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-opus-4-6",
       max_tokens: 2048,
       system: systemPrompt,
       tools: [
