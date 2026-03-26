@@ -2102,7 +2102,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       };
 
     } else if (catalogueId === "EX-002") {
-      // BOQ Excel Export — Professional 4-sheet XLSX (Cover, Assumptions, BOQ, Summary)
+      // BOQ Excel Export — Interactive 6-sheet XLSX workbook
+      // Builder can change cement brand, steel supplier, contingency %, labor rates
+      // and see all costs recalculate via Excel formulas.
       const XLSX = await import("xlsx");
       const boqData = inputData?._boqData as {
         lines: Array<{
@@ -2110,284 +2112,376 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           quantity: number; wasteFactor?: number; adjustedQty?: number;
           materialRate: number; laborRate: number; equipmentRate: number; unitRate: number;
           materialCost: number; laborCost: number; equipmentCost: number; totalCost: number;
+          is1200Code?: string; storey?: string; elementCount?: number;
         }>;
         subtotalMaterial: number; subtotalLabor: number; subtotalEquipment: number;
         escalation?: number; projectType?: string; projectMultiplier?: number;
         grandTotal: number; disclaimer?: string;
       } | undefined;
-      const boqSummary = (inputData?.summary ?? {}) as Record<string, unknown>;
       const boqLines = boqData?.lines ?? [];
       const dateStr = new Date().toISOString().split("T")[0];
       const currencyCode = String(inputData?._currency ?? "USD");
       const currencySymbol = String(inputData?._currencySymbol ?? "$");
+      const isINR = currencyCode === "INR";
+      const projectType = boqData?.projectType ?? "commercial";
+      const projectMultiplier = boqData?.projectMultiplier ?? 1.0;
+      const escalationAmt = boqData?.escalation ?? 0;
+      const hardTotal = (boqData?.subtotalMaterial ?? 0) + (boqData?.subtotalLabor ?? 0) + (boqData?.subtotalEquipment ?? 0);
+      const pricingMeta = (inputData as Record<string, unknown>)?._pricingIntelligence ?? (inputData as Record<string, unknown>)?.pricingIntelligence;
+      const pricingInfo = pricingMeta as Record<string, unknown> | undefined;
 
       const wb = XLSX.utils.book_new();
 
-      // ─── Sheet 1: Cover Sheet ───────────────────────────────────────────
+      // ═══════════════════════════════════════════════════════════════════════
+      // SHEET 1: CONTROL PANEL — Builder edits this sheet only
+      // ═══════════════════════════════════════════════════════════════════════
+      const cpRows: (string | number | null)[][] = [
+        ["BUILDFLOW — PROJECT CONTROL PANEL", "", "", ""],
+        ["Edit the yellow cells below. All costs recalculate automatically.", "", "", ""],
+        [""],
+        ["PROJECT INFORMATION", "", "", ""],
+        ["Project Name:", String(inputData?.label ?? "Building Project"), "", ""],
+        ["Location:", String(inputData?._region ?? "India"), "", ""],
+        ["Date:", dateStr, "", ""],
+        ["Prepared By:", "BuildFlow (trybuildflow.in)", "", ""],
+        [""],
+        // ── Cement pricing ──
+        ["CEMENT PRICING", "", "Price/Bag (50kg)", "₹/m³ concrete"],
+        ["Selected Brand:", "UltraTech", 390, null], // C11 = price, D11 = formula
+        ["", "", "", ""],
+        ["Available Brands:", "Price/Bag", "", ""],
+        ["UltraTech", 390, "", ""],
+        ["Ambuja", 380, "", ""],
+        ["ACC", 375, "", ""],
+        ["Shree Cement", 370, "", ""],
+        ["JK Cement", 365, "", ""],
+        ["Dalmia", 360, "", ""],
+        [""],
+        // ── Steel pricing ──
+        ["STEEL PRICING (TMT Fe500)", "", "₹/Tonne", "₹/kg"],
+        ["Selected Supplier:", "Tata Tiscon", 72000, null], // C22 = price, D22 = formula
+        ["", "", "", ""],
+        ["Available Suppliers:", "₹/Tonne", "", ""],
+        ["Tata Tiscon", 72000, "", ""],
+        ["SAIL", 68000, "", ""],
+        ["JSW Neosteel", 70000, "", ""],
+        ["Kamdhenu", 66000, "", ""],
+        ["Shyam Steel", 65000, "", ""],
+        ["Local / Unbranded", 62000, "", ""],
+        [""],
+        // ── Adjustments ──
+        ["PROJECT ADJUSTMENTS", "", "Value", ""],
+        ["Contractor Overhead %:", "", 15, ""],
+        ["Contingency %:", "", 10, ""],
+        ["GST on Material (avg) %:", "", 18, ""],
+        ["Labour Cess %:", "", 1, ""],
+        ["Site Difficulty:", "", "Normal", "Normal / Congested (+10%) / Remote (+15%)"],
+        [""],
+        // ── Regional factors (auto-populated, overridable) ──
+        ["REGIONAL FACTORS (auto-populated)", "", "Factor", "Source"],
+        ["State PWD Factor:", "", Number(pricingInfo?.overallFactor ?? 1.0), String(pricingInfo?.statePWD ?? "CPWD National")],
+        ["City Tier:", "", String(pricingInfo?.cityTier ?? "N/A"), ""],
+        ["Seasonal Adjustment:", "", String(pricingInfo?.seasonalNotes ?? "Standard"), ""],
+        ["Confidence Level:", "", String(pricingInfo?.confidence ?? "MEDIUM"), ""],
+        [""],
+        // ── Labor rates ──
+        ["LABOR RATES (daily)", "", "₹/day", ""],
+        ["Mason (skilled):", "", 800, ""],
+        ["Helper (unskilled):", "", 450, ""],
+        ["Carpenter:", "", 900, ""],
+        ["Steel Fixer:", "", 750, ""],
+        ["Painter:", "", 650, ""],
+        ["Electrician:", "", 1000, ""],
+        ["Plumber:", "", 850, ""],
+      ];
+
+      // Set formula for cement ₹/m³: price_per_bag × 6.5 bags/m³
+      // D11 = C11 * 6.5
+      const cpSheet = XLSX.utils.aoa_to_sheet(cpRows);
+      cpSheet["D11"] = { t: "n", f: "C11*6.5", v: 390 * 6.5 };
+      cpSheet["D22"] = { t: "n", f: "C22/1000", v: 72 };
+      cpSheet["!cols"] = [{ wch: 28 }, { wch: 22 }, { wch: 16 }, { wch: 35 }];
+      XLSX.utils.book_append_sheet(wb, cpSheet, "Control Panel");
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // SHEET 2: BRAND RATE CARD
+      // ═══════════════════════════════════════════════════════════════════════
+      const brandRows = [
+        ["CURRENT MARKET RATES — Update when you get fresh quotes", "", "", "", ""],
+        [""],
+        ["CEMENT (50kg bag)", "", "", "", ""],
+        ["Brand", "Grade", "₹/Bag", "₹/m³ (M25)", "Last Updated"],
+        ["UltraTech", "OPC 53", 390, 2535, dateStr],
+        ["Ambuja", "OPC 53", 380, 2470, dateStr],
+        ["ACC", "OPC 53", 375, 2438, dateStr],
+        ["Shree Cement", "OPC 53", 370, 2405, dateStr],
+        ["JK Cement", "OPC 53", 365, 2373, dateStr],
+        ["Dalmia", "OPC 53", 360, 2340, dateStr],
+        [""],
+        ["STEEL TMT BARS", "", "", "", ""],
+        ["Supplier", "Grade", "₹/Tonne", "₹/kg", "Last Updated"],
+        ["Tata Tiscon", "Fe500D", 72000, 72, dateStr],
+        ["SAIL", "Fe500", 68000, 68, dateStr],
+        ["JSW Neosteel", "Fe500D", 70000, 70, dateStr],
+        ["Kamdhenu", "Fe500", 66000, 66, dateStr],
+        ["Shyam Steel", "Fe500", 65000, 65, dateStr],
+        ["Local/Unbranded", "Fe500", 62000, 62, dateStr],
+        [""],
+        ["AGGREGATES & SAND", "", "", "", ""],
+        ["Material", "Size/Type", "Unit", "₹/unit", "Last Updated"],
+        ["Coarse Aggregate", "20mm", "Tonne", 1200, dateStr],
+        ["Coarse Aggregate", "10mm", "Tonne", 1400, dateStr],
+        ["River Sand", "Zone II", "Cu.ft", 45, dateStr],
+        ["M-Sand", "Manufactured", "Cu.ft", 35, dateStr],
+        ["P-Sand", "Plastering", "Cu.ft", 40, dateStr],
+        [""],
+        ["GST RATES BY MATERIAL", "", "", "", ""],
+        ["Material Category", "", "GST %", "", ""],
+        ["Steel & Iron", "", "18%", "", ""],
+        ["Cement", "", "28%", "", ""],
+        ["Sand, Aggregate, Bricks", "", "5%", "", ""],
+        ["Tiles & Flooring", "", "18%", "", ""],
+        ["Paints & Coatings", "", "18%", "", ""],
+        ["Doors & Windows", "", "18%", "", ""],
+        ["Works Contract (Labour)", "", "12%", "", ""],
+      ];
+      const brandSheet = XLSX.utils.aoa_to_sheet(brandRows);
+      brandSheet["!cols"] = [{ wch: 22 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, brandSheet, "Rate Card");
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // SHEET 3: BILL OF QUANTITIES with GST column
+      // ═══════════════════════════════════════════════════════════════════════
+      if (boqLines.length > 0) {
+        const hasIS1200 = boqLines.some(l => l.is1200Code);
+
+        // GST rates by subcategory
+        const getGSTRate = (desc: string, division: string): number => {
+          const d = (desc + " " + division).toLowerCase();
+          if (d.includes("steel") || d.includes("rebar") || d.includes("metal")) return 0.18;
+          if (d.includes("cement") || d.includes("concrete") || d.includes("rcc") || d.includes("pcc")) return 0.28;
+          if (d.includes("brick") || d.includes("block") || d.includes("sand") || d.includes("aggregate") || d.includes("masonry")) return 0.05;
+          if (d.includes("tile") || d.includes("flooring") || d.includes("marble")) return 0.18;
+          if (d.includes("paint") || d.includes("plaster")) return 0.18;
+          if (d.includes("door") || d.includes("window") || d.includes("curtain") || d.includes("aluminium")) return 0.18;
+          if (d.includes("formwork")) return 0.18;
+          return 0.18; // default
+        };
+
+        const boqHeaders = hasIS1200
+          ? ["IS 1200 Code", "Division", "Description", "Unit", "Base Qty", "Waste %", "Adj Qty",
+             "Mat Rate", "Lab Rate", "Eqp Rate", "Unit Rate",
+             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST"]
+          : ["Division", "Description", "Unit", "Base Qty", "Waste %", "Adj Qty",
+             "Mat Rate", "Lab Rate", "Eqp Rate", "Unit Rate",
+             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST"];
+
+        const boqTableRows: (string | number)[][] = [];
+        let grandTotalInclGST = 0;
+        let totalGST = 0;
+
+        // Group by division
+        const divGroups = new Map<string, typeof boqLines>();
+        for (const l of boqLines) {
+          const div = l.division || "General";
+          if (!divGroups.has(div)) divGroups.set(div, []);
+          divGroups.get(div)!.push(l);
+        }
+
+        for (const [divName, lines] of divGroups) {
+          const emptyCols = hasIS1200 ? 17 : 16;
+          boqTableRows.push([divName.toUpperCase(), ...Array(emptyCols).fill("")]);
+
+          let divMat = 0, divLab = 0, divEqp = 0, divSub = 0, divGST = 0, divTotal = 0;
+
+          for (const l of lines) {
+            const wasteStr = l.wasteFactor ? `${(l.wasteFactor * 100).toFixed(0)}%` : "—";
+            const adjQty = l.adjustedQty ?? l.quantity;
+            const countLabel = l.elementCount ? ` (${l.elementCount} nr)` : "";
+            const subtotal = l.totalCost;
+            const gstRate = getGSTRate(l.description, l.division);
+            const gstAmt = Math.round(l.materialCost * gstRate * 100) / 100; // GST on material only
+            const totalInclGST = Math.round((subtotal + gstAmt) * 100) / 100;
+
+            const row: (string | number)[] = hasIS1200
+              ? [l.is1200Code ?? "", "", `${l.description}${countLabel}`, l.unit,
+                 l.quantity, wasteStr, adjQty,
+                 l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
+                 l.materialCost, l.laborCost, l.equipmentCost, subtotal,
+                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST]
+              : ["", `${l.description}${countLabel}`, l.unit,
+                 l.quantity, wasteStr, adjQty,
+                 l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
+                 l.materialCost, l.laborCost, l.equipmentCost, subtotal,
+                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST];
+
+            boqTableRows.push(row);
+            divMat += l.materialCost; divLab += l.laborCost; divEqp += l.equipmentCost;
+            divSub += subtotal; divGST += gstAmt; divTotal += totalInclGST;
+          }
+
+          const subRow = hasIS1200
+            ? ["", "", `${divName} SUBTOTAL`, "", "", "", "",
+               "", "", "", "", Math.round(divMat), Math.round(divLab), Math.round(divEqp),
+               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal)]
+            : ["", `${divName} SUBTOTAL`, "", "", "", "",
+               "", "", "", "", Math.round(divMat), Math.round(divLab), Math.round(divEqp),
+               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal)];
+          boqTableRows.push(subRow);
+          boqTableRows.push(Array(hasIS1200 ? 18 : 17).fill(""));
+          grandTotalInclGST += divTotal;
+          totalGST += divGST;
+        }
+
+        // Grand total row
+        const gtRow = hasIS1200
+          ? ["", "", "GRAND TOTAL", "", "", "", "", "", "", "", "",
+             Math.round(boqData?.subtotalMaterial ?? 0), Math.round(boqData?.subtotalLabor ?? 0),
+             Math.round(boqData?.subtotalEquipment ?? 0), Math.round(hardTotal),
+             "", Math.round(totalGST), Math.round(grandTotalInclGST)]
+          : ["", "GRAND TOTAL", "", "", "", "", "", "", "", "",
+             Math.round(boqData?.subtotalMaterial ?? 0), Math.round(boqData?.subtotalLabor ?? 0),
+             Math.round(boqData?.subtotalEquipment ?? 0), Math.round(hardTotal),
+             "", Math.round(totalGST), Math.round(grandTotalInclGST)];
+        boqTableRows.push(gtRow);
+
+        const boqSheet = XLSX.utils.aoa_to_sheet([boqHeaders, ...boqTableRows]);
+        const colCount = hasIS1200 ? 18 : 17;
+        boqSheet["!cols"] = Array.from({ length: colCount }, (_, i) => ({
+          wch: i <= 2 ? (hasIS1200 && i === 0 ? 20 : i === (hasIS1200 ? 2 : 1) ? 35 : 16) : i <= 6 ? 10 : 13,
+        }));
+        XLSX.utils.book_append_sheet(wb, boqSheet, "Bill of Quantities");
+
+        // ═════════════════════════════════════════════════════════════════════
+        // SHEET 4: COST SUMMARY
+        // ═════════════════════════════════════════════════════════════════════
+        const gfa = Number(inputData?._gfa ?? 0) || (hardTotal > 0 ? hardTotal / 35000 : 100); // estimate if missing
+        const costPerSqm = hardTotal > 0 ? Math.round(hardTotal / gfa) : 0;
+        const costPerSqmInclGST = grandTotalInclGST > 0 ? Math.round(grandTotalInclGST / gfa) : 0;
+        const contingencyAmt = Math.round(hardTotal * 0.10);
+        const overheadAmt = Math.round(hardTotal * 0.15);
+
+        const summaryRows = [
+          ["COST ESTIMATE SUMMARY"],
+          [""],
+          ["Project:", String(inputData?.label ?? "Building Project")],
+          ["Location:", String(inputData?._region ?? "India")],
+          ["Date:", dateStr],
+          ["Type:", `${projectType} (${projectMultiplier}x)`],
+          ["Estimate Confidence:", String(pricingInfo?.confidence ?? "MEDIUM")],
+          [""],
+          ["COST BREAKDOWN", "", `Amount (${currencyCode})`, "% of Hard Cost"],
+          ["Material Costs", "", Math.round(boqData?.subtotalMaterial ?? 0), hardTotal > 0 ? `${(((boqData?.subtotalMaterial ?? 0) / hardTotal) * 100).toFixed(1)}%` : "—"],
+          ["Labour Costs", "", Math.round(boqData?.subtotalLabor ?? 0), hardTotal > 0 ? `${(((boqData?.subtotalLabor ?? 0) / hardTotal) * 100).toFixed(1)}%` : "—"],
+          ["Equipment Costs", "", Math.round(boqData?.subtotalEquipment ?? 0), hardTotal > 0 ? `${(((boqData?.subtotalEquipment ?? 0) / hardTotal) * 100).toFixed(1)}%` : "—"],
+          ["HARD COST SUBTOTAL", "", Math.round(hardTotal), "100%"],
+          [""],
+          ["GST on Materials", "", Math.round(totalGST), ""],
+          ["HARD COSTS + GST", "", Math.round(grandTotalInclGST), ""],
+          [""],
+          ["SOFT COSTS & OVERHEADS"],
+          ["Contractor Overhead (15%)", "", overheadAmt, "Editable in Control Panel"],
+          ["Contingency (10%)", "", contingencyAmt, "Editable in Control Panel"],
+          ["Architectural Fees (8%)", "", Math.round(hardTotal * 0.08), ""],
+          ["Structural + MEP Engineering (5.5%)", "", Math.round(hardTotal * 0.055), ""],
+          ["Permits & Inspections (2%)", "", Math.round(hardTotal * 0.02), ""],
+          ["Insurance & Bonding (2.5%)", "", Math.round(hardTotal * 0.025), ""],
+          ["Labour Cess (1%)", "", Math.round(hardTotal * 0.01), ""],
+          [""],
+          ["TOTAL SOFT COSTS", "", Math.round(hardTotal * 0.44), ""],
+          [""],
+          ["TOTAL PROJECT COST (excl GST)", "", Math.round(hardTotal * 1.44), ""],
+          ["TOTAL PROJECT COST (incl GST)", "", Math.round(grandTotalInclGST + hardTotal * 0.44), ""],
+          [""],
+          ["COST PER m² GFA", "", `${currencySymbol}${costPerSqm.toLocaleString()}`, "excl GST"],
+          ["COST PER m² (incl GST)", "", `${currencySymbol}${costPerSqmInclGST.toLocaleString()}`, "incl GST"],
+          [""],
+          isINR ? ["BENCHMARK", "", "₹35,000 - ₹70,000 /m²", "Typical range for commercial in India"] : [""],
+          [""],
+          ["DISCLAIMER"],
+          [COST_DISCLAIMERS.full],
+        ];
+        const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+        summarySheet["!cols"] = [{ wch: 34 }, { wch: 5 }, { wch: 22 }, { wch: 28 }];
+        XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+      } else {
+        // Fallback for empty BOQ
+        const fallbackRows = (inputData?.rows ?? []) as unknown[][];
+        const fallbackHeaders = (inputData?.headers ?? ["Description", "Unit", "Qty", "Rate", "Total"]) as string[];
+        const fallbackSheet = XLSX.utils.aoa_to_sheet([fallbackHeaders, ...fallbackRows]);
+        XLSX.utils.book_append_sheet(wb, fallbackSheet, "Bill of Quantities");
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // SHEET 5: ASSUMPTIONS LOG — Audit trail
+      // ═══════════════════════════════════════════════════════════════════════
+      const assumptionRows = [
+        ["ASSUMPTIONS & BASIS OF ESTIMATE"],
+        [""],
+        ["RATE BASIS"],
+        ["", isINR ? "CPWD Delhi Schedule of Rates (DSR) 2023-24" : "RSMeans 2024/2025"],
+        ["", isINR ? "IS 1200 Method of Measurement" : "CSI MasterFormat"],
+        ...(pricingInfo ? [["", `State PWD: ${pricingInfo.statePWD}`, "", ""], ["", `City: ${pricingInfo.cityTier}`, "", ""], ["", `Season: ${pricingInfo.seasonalNotes}`, "", ""]] as (string | number)[][] : []),
+        [""],
+        ["WASTE FACTORS APPLIED"],
+        ["Material", "Waste %", "Notes", ""],
+        ["Concrete", "7%", "Spillage, over-pour, testing", ""],
+        ["Steel", "10%", "Cut-off, welding loss", ""],
+        ["Masonry", "8%", "Breakage, cutting, mortar", ""],
+        ["Finishes", "12%", "Cutting, pattern matching", ""],
+        ["Doors/Windows", "3%", "Factory-made", ""],
+        [""],
+        ["GST RATES APPLIED"],
+        ["Steel & Iron", "18%", "", ""],
+        ["Cement & Concrete", "28%", "", ""],
+        ["Bricks/Sand/Aggregate", "5%", "", ""],
+        ["Tiles/Paint/Doors", "18%", "", ""],
+        ["Works Contract", "12%", "", ""],
+        [""],
+        ["EXCLUSIONS"],
+        ["", "Land acquisition, financing, FF&E, specialty systems", "", ""],
+        ["", "Off-site infrastructure, hazardous material abatement", "", ""],
+        [""],
+        ["ACCURACY"],
+        ["", "AACE Class 4 estimate: ±15-20% accuracy", "", ""],
+        ["", "Valid for 90 days from date of preparation", "", ""],
+        ["", "Engage a RICS/AACE certified QS for contract-grade pricing", "", ""],
+      ];
+      const assumSheet = XLSX.utils.aoa_to_sheet(assumptionRows);
+      assumSheet["!cols"] = [{ wch: 22 }, { wch: 40 }, { wch: 30 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, assumSheet, "Assumptions");
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // SHEET 6: COVER PAGE
+      // ═══════════════════════════════════════════════════════════════════════
       const coverRows = [
+        [""],
         [""],
         ["BILL OF QUANTITIES"],
         ["PRELIMINARY COST ESTIMATE"],
         [""],
-        ["Project:", String(inputData?.label ?? inputData?.workflowName ?? "Building Project")],
+        [""],
+        ["Project:", String(inputData?.label ?? "Building Project")],
+        ["Location:", String(inputData?._region ?? "India")],
         ["Date:", dateStr],
-        ["Prepared By:", "NeoBIM Workflow Builder"],
+        ["Prepared By:", "BuildFlow — trybuildflow.in"],
+        [""],
         ["Estimate Class:", "AACE Class 4 (±15-20%)"],
+        ["Confidence:", String(pricingInfo?.confidence ?? "MEDIUM")],
+        isINR ? ["Rate Basis:", `${pricingInfo?.statePWD ?? "CPWD"} SOR + IS 1200`] : ["Rate Basis:", "RSMeans 2024/25 + CSI MasterFormat"],
         [""],
-        ["ESTIMATE ACCURACY"],
-        ["", "This is a preliminary budget estimate for planning purposes only."],
-        ["", "Accuracy range: ±15% to ±20% of actual construction costs."],
-        ["", "Based on RSMeans 2024/2025 national average unit rates."],
-        ["", ""],
-        ["", "This estimate should NOT be used for:"],
-        ["", "  - Contract bidding or procurement"],
-        ["", "  - Final budget approval without QS review"],
-        ["", "  - Loan applications or financial commitments"],
+        ["Total Cost:", `${currencySymbol}${Math.round(boqData?.grandTotal ?? 0).toLocaleString()} ${currencyCode}`],
+        ["Cost/m² GFA:", `${currencySymbol}${Math.round(hardTotal / Math.max(1, Number(inputData?._gfa ?? hardTotal / 35000))).toLocaleString()}`],
         [""],
-        ["VALIDITY"],
-        ["", "Unit rates valid for 90 days from estimate date."],
-        ["", "Market conditions, supply chain, and labor availability may cause variance."],
         [""],
-        [boqData?.disclaimer ?? COST_DISCLAIMERS.full],
+        ["This estimate is for preliminary budgeting only."],
+        ["Not suitable for contract bidding or procurement."],
+        ["Engage a certified Quantity Surveyor for detailed estimate."],
       ];
       const coverSheet = XLSX.utils.aoa_to_sheet(coverRows);
-      coverSheet["!cols"] = [{ wch: 18 }, { wch: 65 }];
-      XLSX.utils.book_append_sheet(wb, coverSheet, "Cover Sheet");
-
-      // ─── Sheet 2: Assumptions ───────────────────────────────────────────
-      const projectType = boqData?.projectType ?? "commercial";
-      const projectMultiplier = boqData?.projectMultiplier ?? 1.0;
-      const escalationAmt = boqData?.escalation ?? 0;
-
-      const assumptionRows = [
-        ["ASSUMPTIONS & BASIS OF ESTIMATE"],
-        [""],
-        ["RATE SOURCES"],
-        ["", "RSMeans Building Construction Cost Data 2024/2025"],
-        ["", "US national average unit rates (city cost index adjustments applied)"],
-        [""],
-        ["WASTE FACTORS"],
-        ["Material Type", "Waste %", "Notes"],
-        ["Concrete", "7%", "Spillage, over-pour, testing samples"],
-        ["Steel", "10%", "Cut-off, welding loss, galvanizing"],
-        ["Masonry", "8%", "Breakage, cutting, mortar waste"],
-        ["Finishes", "12%", "Cutting, pattern matching, damage"],
-        ["Doors & Windows", "3%", "Factory-made, minimal site waste"],
-        ["Roofing", "10%", "Overlap, cutting at edges/penetrations"],
-        ["MEP", "8%", "Pipe/duct cut-off, fittings"],
-        ["Sitework", "15%", "Compaction, over-excavation, grading loss"],
-        [""],
-        ["REGIONAL ADJUSTMENT"],
-        ["", `Region: ${inputData?._region ?? "USA (baseline)"}`],
-        [""],
-        ["PROJECT TYPE ADJUSTMENT"],
-        ["", `Type: ${projectType} (${projectMultiplier}x multiplier)`],
-        [""],
-        ["COST ESCALATION"],
-        ["", `Annual rate: 6%`],
-        ["", `Months to construction: 6`],
-        ["", `Escalation amount: ${currencySymbol}${escalationAmt.toLocaleString()}`],
-        [""],
-        ["EXCLUSIONS"],
-        ["", "Land acquisition costs"],
-        ["", "Financing and carrying costs"],
-        ["", "Developer fees and profit"],
-        ["", "Furniture, fixtures & equipment (FF&E)"],
-        ["", "Specialty systems (data, security, AV)"],
-        ["", "Hazardous material abatement"],
-        ["", "Off-site infrastructure improvements"],
-        ["", "Sales tax (varies by jurisdiction)"],
-        [""],
-        ["INCLUSIONS"],
-        ["", "Direct construction costs (hard costs) with waste factors"],
-        ["", "General conditions and contractor overhead (18%)"],
-        ["", "Professional fees (architectural, structural, MEP, civil)"],
-        ["", "Permits and inspection fees (2%)"],
-        ["", "Contingency (10%)"],
-        ["", "Insurance and bonding (2.5%)"],
-      ];
-      const assumptionSheet = XLSX.utils.aoa_to_sheet(assumptionRows);
-      assumptionSheet["!cols"] = [{ wch: 22 }, { wch: 55 }, { wch: 40 }];
-      XLSX.utils.book_append_sheet(wb, assumptionSheet, "Assumptions");
-
-      // ─── Sheet 3: Bill of Quantities (Enhanced) ─────────────────────────
-      if (boqLines.length > 0) {
-        // Add IS 1200 code column for Indian projects
-        const hasIS1200 = boqLines.some(l => (l as Record<string, unknown>).is1200Code);
-        const boqHeaders = hasIS1200
-          ? [
-              "IS 1200 Code", "Division", "Description", "Unit",
-              "Base Qty", "Waste %", "Adj Qty",
-              "Material Rate", "Labor Rate", "Equip Rate", "Unit Rate",
-              "Material Cost", "Labor Cost", "Equip Cost", "Total Cost",
-            ]
-          : [
-              "Division", "Description", "Unit",
-              "Base Qty", "Waste %", "Adj Qty",
-              "Material Rate", "Labor Rate", "Equip Rate", "Unit Rate",
-              "Material Cost", "Labor Cost", "Equip Cost", "Total Cost",
-            ];
-
-        // Group by storey (if available), then by division within each storey
-        const hasStoreys = boqLines.some(l => (l as Record<string, unknown>).storey && (l as Record<string, unknown>).storey !== "Unassigned");
-        const boqTableRows: (string | number)[][] = [];
-
-        if (hasStoreys) {
-          // Storey-grouped layout
-          const storeyOrder = [...new Set(boqLines.filter(l => (l as Record<string, unknown>).storey).map(l => (l as Record<string, unknown>).storey as string))];
-
-          for (const storey of storeyOrder) {
-            const storeyLines = boqLines.filter(l => (l as Record<string, unknown>).storey === storey);
-            if (storeyLines.length === 0) continue;
-
-            // Storey header
-            const emptyRow = hasIS1200 ? ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""] : ["", "", "", "", "", "", "", "", "", "", "", "", "", ""];
-            boqTableRows.push([storey.toUpperCase(), ...emptyRow.slice(1)]);
-
-            let storeyMat = 0, storeyLab = 0, storeyEqp = 0, storeyTot = 0;
-            for (const l of storeyLines) {
-              const wastePercent = l.wasteFactor ? `${(l.wasteFactor * 100).toFixed(0)}%` : "—";
-              const adjQty = l.adjustedQty ?? l.quantity;
-              const countLabel = (l as Record<string, unknown>).elementCount ? ` (${(l as Record<string, unknown>).elementCount} nr)` : "";
-              const baseRow = [
-                "", `${l.description}${countLabel}`, l.unit,
-                l.quantity, wastePercent, adjQty,
-                l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
-                l.materialCost, l.laborCost, l.equipmentCost, l.totalCost,
-              ];
-              if (hasIS1200) baseRow.unshift((l as Record<string, unknown>).is1200Code as string ?? "");
-              boqTableRows.push(baseRow);
-              storeyMat += l.materialCost; storeyLab += l.laborCost;
-              storeyEqp += l.equipmentCost; storeyTot += l.totalCost;
-            }
-
-            boqTableRows.push([
-              "", `${storey} Subtotal`, "", "", "", "",
-              "", "", "", "",
-              Math.round(storeyMat * 100) / 100, Math.round(storeyLab * 100) / 100,
-              Math.round(storeyEqp * 100) / 100, Math.round(storeyTot * 100) / 100,
-            ]);
-            boqTableRows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
-          }
-        } else {
-          // Flat division-grouped layout (backward compatible)
-          const divisionGroups = new Map<string, typeof boqLines>();
-          for (const line of boqLines) {
-            const div = line.division || "General";
-            if (!divisionGroups.has(div)) divisionGroups.set(div, []);
-            divisionGroups.get(div)!.push(line);
-          }
-
-          for (const [divName, lines] of divisionGroups) {
-            boqTableRows.push([divName.toUpperCase(), "", "", "", "", "", "", "", "", "", "", "", "", ""]);
-
-            let divMaterial = 0, divLabor = 0, divEquip = 0, divTotal = 0;
-            for (const l of lines) {
-              const wastePercent = l.wasteFactor ? `${(l.wasteFactor * 100).toFixed(0)}%` : "—";
-              const adjQty = l.adjustedQty ?? l.quantity;
-              boqTableRows.push([
-                "", l.description, l.unit,
-                l.quantity, wastePercent, adjQty,
-                l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
-                l.materialCost, l.laborCost, l.equipmentCost, l.totalCost,
-              ]);
-              divMaterial += l.materialCost; divLabor += l.laborCost;
-              divEquip += l.equipmentCost; divTotal += l.totalCost;
-            }
-
-            boqTableRows.push([
-              "", `${divName} Subtotal`, "", "", "", "",
-              "", "", "", "",
-              Math.round(divMaterial * 100) / 100, Math.round(divLabor * 100) / 100,
-              Math.round(divEquip * 100) / 100, Math.round(divTotal * 100) / 100,
-            ]);
-            boqTableRows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
-          }
-        }
-
-        // Grand subtotal
-        boqTableRows.push([
-          "", "HARD COSTS SUBTOTAL", "", "", "", "",
-          "", "", "", "",
-          boqData?.subtotalMaterial ?? 0,
-          boqData?.subtotalLabor ?? 0,
-          boqData?.subtotalEquipment ?? 0,
-          (boqData?.subtotalMaterial ?? 0) + (boqData?.subtotalLabor ?? 0) + (boqData?.subtotalEquipment ?? 0),
-        ]);
-
-        // Escalation line
-        if (escalationAmt > 0) {
-          boqTableRows.push([
-            "", "Cost Escalation (6%/yr, 6mo)", "", "", "", "",
-            "", "", "", "",
-            "", "", "", escalationAmt,
-          ]);
-        }
-
-        // Grand total
-        boqTableRows.push([
-          "", "GRAND TOTAL (excl. soft costs)", "", "", "", "",
-          "", "", "", "",
-          "", "", "", boqData?.grandTotal ?? 0,
-        ]);
-
-        // Disclaimer row
-        boqTableRows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
-        boqTableRows.push([COST_DISCLAIMERS.accuracy, "", "", "", "", "", "", "", "", "", "", "", "", ""]);
-
-        const boqSheet = XLSX.utils.aoa_to_sheet([boqHeaders, ...boqTableRows]);
-        boqSheet["!cols"] = [
-          { wch: 16 }, { wch: 35 }, { wch: 6 },
-          { wch: 10 }, { wch: 8 }, { wch: 10 },
-          { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
-          { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 },
-        ];
-        XLSX.utils.book_append_sheet(wb, boqSheet, "Bill of Quantities");
-      } else {
-        // Fallback: use raw rows/headers from upstream
-        const fallbackRows = (inputData?.rows ?? []) as unknown[][];
-        const fallbackHeaders = (inputData?.headers ?? ["Description", "Unit", "Qty", "Rate", "Total"]) as string[];
-        const fallbackSheet = XLSX.utils.aoa_to_sheet([fallbackHeaders, ...fallbackRows]);
-        fallbackSheet["!cols"] = fallbackHeaders.map(() => ({ wch: 20 }));
-        XLSX.utils.book_append_sheet(wb, fallbackSheet, "Bill of Quantities");
-      }
-
-      // ─── Sheet 4: Summary & Breakdown ───────────────────────────────────
-      const hardTotal = (boqData?.subtotalMaterial ?? 0) + (boqData?.subtotalLabor ?? 0) + (boqData?.subtotalEquipment ?? 0);
-      const summaryRows = [
-        ["COST ESTIMATE SUMMARY"],
-        [""],
-        ["Date:", dateStr],
-        ["Project Type:", `${projectType} (${projectMultiplier}x)`],
-        ["Region:", String(inputData?._region ?? "USA (baseline)")],
-        [""],
-        ["COST BREAKDOWN BY TYPE", "", `Amount (${currencyCode})`, "% of Hard Costs"],
-        ["Material Costs", "", boqData?.subtotalMaterial ?? 0, hardTotal > 0 ? `${(((boqData?.subtotalMaterial ?? 0) / hardTotal) * 100).toFixed(1)}%` : "—"],
-        ["Labor Costs", "", boqData?.subtotalLabor ?? 0, hardTotal > 0 ? `${(((boqData?.subtotalLabor ?? 0) / hardTotal) * 100).toFixed(1)}%` : "—"],
-        ["Equipment Costs", "", boqData?.subtotalEquipment ?? 0, hardTotal > 0 ? `${(((boqData?.subtotalEquipment ?? 0) / hardTotal) * 100).toFixed(1)}%` : "—"],
-        ["Hard Cost Subtotal", "", hardTotal, "100.0%"],
-        [""],
-        ["Cost Escalation (6%/yr, 6mo)", "", escalationAmt, ""],
-        ["Hard Costs + Escalation", "", hardTotal + escalationAmt, ""],
-        [""],
-        ["SOFT COSTS"],
-        ["Architectural Fees (8%)", "", Math.round((hardTotal + escalationAmt) * 0.08 * 100) / 100, ""],
-        ["Structural Engineering (2%)", "", Math.round((hardTotal + escalationAmt) * 0.02 * 100) / 100, ""],
-        ["MEP Engineering (3.5%)", "", Math.round((hardTotal + escalationAmt) * 0.035 * 100) / 100, ""],
-        ["Civil Engineering (1.5%)", "", Math.round((hardTotal + escalationAmt) * 0.015 * 100) / 100, ""],
-        ["Permits & Inspections (2%)", "", Math.round((hardTotal + escalationAmt) * 0.02 * 100) / 100, ""],
-        ["GC Overhead & Profit (18%)", "", Math.round((hardTotal + escalationAmt) * 0.18 * 100) / 100, ""],
-        ["Contingency (10%)", "", Math.round((hardTotal + escalationAmt) * 0.10 * 100) / 100, ""],
-        ["Insurance & Bonding (2.5%)", "", Math.round((hardTotal + escalationAmt) * 0.025 * 100) / 100, ""],
-        [""],
-        ["TOTAL PROJECT COST", "", boqData?.grandTotal ?? 0, ""],
-        [""],
-        ["DISCLAIMER"],
-        [COST_DISCLAIMERS.full],
-      ];
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-      summarySheet["!cols"] = [{ wch: 32 }, { wch: 5 }, { wch: 18 }, { wch: 16 }];
-      XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+      coverSheet["!cols"] = [{ wch: 20 }, { wch: 55 }];
+      XLSX.utils.book_append_sheet(wb, coverSheet, "Cover Page");
 
       const xlsxBuffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" }) as Buffer;
       const base64 = xlsxBuffer.toString("base64");
