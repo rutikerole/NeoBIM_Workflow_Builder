@@ -1992,40 +1992,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 gradeMult = is1200Module.getConcreteGradeMultiplier(elemGrade);
               }
 
-              // Fix 2: For steel items, use market TMT price × ratio instead of static rate
-              const STRUCTURAL_STEEL_MULTIPLIER = 1.55; // section rolling + fabrication premium over TMT
-              const _md = inputData?._marketData as Record<string, unknown> | undefined;
-              const _steelVal = _md?.steel_per_tonne ? Number((_md.steel_per_tonne as Record<string, unknown>).value ?? 0) : 0;
-              const marketTMTkg = _steelVal / 1000;
-              let effectiveRate = rate.rate;
-              let effectiveMat = rate.material;
-              let effectiveLab = rate.labour;
-              if (rate.subcategory === "Steel" && marketTMTkg > 0) {
-                if (rate.is1200Code?.includes("REBAR") || rate.is1200Code?.includes("P6")) {
-                  // Rebar: TMT price + labor
-                  effectiveRate = marketTMTkg + 18; // ₹18/kg rebar labor
-                  effectiveMat = marketTMTkg;
-                  effectiveLab = 18;
-                } else {
-                  // Structural steel: TMT × multiplier
-                  effectiveRate = Math.round(marketTMTkg * STRUCTURAL_STEEL_MULTIPLIER + 25); // +₹25 fabrication labor
-                  effectiveMat = Math.round(marketTMTkg * STRUCTURAL_STEEL_MULTIPLIER);
-                  effectiveLab = 25;
-                }
-              }
-
+              // Apply category factor to material rate, labor factor to labour rate
               const laborFactor = ip?.labor ?? categoryFactor;
-              const steelUsesMarket = rate.subcategory === "Steel" && marketTMTkg > 0;
-              // For market-derived steel rates, don't apply category factor (already city-specific)
-              const adjRate = steelUsesMarket
-                ? Math.round(effectiveRate * gradeMult * 100) / 100
-                : Math.round(rate.rate * categoryFactor * gradeMult * 100) / 100;
-              const matCost = steelUsesMarket
-                ? Math.round(adjQty * effectiveMat * gradeMult * 100) / 100
-                : Math.round(adjQty * rate.material * categoryFactor * gradeMult * 100) / 100;
-              const labCost = steelUsesMarket
-                ? Math.round(adjQty * effectiveLab * gradeMult * 100) / 100
-                : Math.round(adjQty * rate.labour * laborFactor * gradeMult * 100) / 100;
+              const adjRate = Math.round(rate.rate * categoryFactor * gradeMult * 100) / 100;
+              const matCost = Math.round(adjQty * rate.material * categoryFactor * gradeMult * 100) / 100;
+              const labCost = Math.round(adjQty * rate.labour * laborFactor * gradeMult * 100) / 100;
               const eqpCost = Math.round(adjQty * (rate.rate - rate.material - rate.labour) * categoryFactor * gradeMult * 100) / 100;
               const lineTot = Math.round(adjQty * adjRate * 100) / 100;
 
@@ -2287,16 +2258,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
           // For Indian projects, use CPWD rate × state PWD category factor
           let adjRate: number;
-          if (isIndianProject && is1200Key === "rebar") {
-            // Fix 1: Use market TMT price from TR-015, not static table
-            const marketTMTPerKg = Number(marketData?.steel_per_tonne?.value ?? 0) / 1000; // ₹/tonne → ₹/kg
-            const staticRebarRate = is1200Module?.getIS1200Rate("IS1200-P6-REBAR-500");
-            // Market TMT includes material only — add ₹14-20/kg for cutting/bending/placing labor
-            const REBAR_LABOR_PER_KG = 18; // engineering constant: cutting, bending, placing, tying
-            const rebarAllIn = marketTMTPerKg > 0
-              ? Math.round((marketTMTPerKg + REBAR_LABOR_PER_KG) * 100) / 100
-              : (staticRebarRate?.rate ?? 88); // static fallback only if no market data
-            adjRate = Math.round(rebarAllIn * 100) / 100;
+          if (isIndianProject && is1200Key === "rebar" && is1200Module) {
+            const rebarRate = is1200Module.getIS1200Rate("IS1200-P6-REBAR-500");
+            const steelFactor = ip?.steel ?? ip?.overall ?? 1.0;
+            adjRate = rebarRate ? Math.round(rebarRate.rate * steelFactor * 100) / 100 : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
           } else if (isIndianProject && is1200Key.startsWith("formwork") && is1200Module) {
             const fwRates: Record<string, number> = { "formwork-wall": 400, "formwork-slab": 380, "formwork-column": 480, "formwork-beam": 420 };
             const concFactor = ip?.concrete ?? ip?.overall ?? 1.0;
