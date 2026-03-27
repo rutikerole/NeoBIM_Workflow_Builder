@@ -31,7 +31,7 @@ const BUCKET_NAME = process.env.R2_BUCKET_NAME || process.env.R2_BUCKET || "buil
 const PUBLIC_URL = process.env.R2_PUBLIC_URL ?? ""; // e.g. https://files.yourdomain.com
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB cap for PDFs/XLSX
-const MAX_IFC_SIZE = 50 * 1024 * 1024; // 50MB cap for IFC files
+const MAX_IFC_SIZE = 100 * 1024 * 1024; // 100MB cap for IFC files
 const CLEANUP_DAYS_FILES = 25; // PDFs & XLSX
 const CLEANUP_DAYS_IFC = 3;   // IFC files (session-like, short-lived)
 

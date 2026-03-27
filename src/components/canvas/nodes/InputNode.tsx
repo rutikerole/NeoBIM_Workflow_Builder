@@ -929,7 +929,7 @@ export function InputNodeContent({ nodeId, data }: { nodeId: string; data: Workf
     case "IN-004":
       return (
         <>
-          <FileUploadInput nodeId={nodeId} data={data} accept=".ifc" label="an IFC file" maxMB={50} />
+          <FileUploadInput nodeId={nodeId} data={data} accept=".ifc" label="an IFC file" maxMB={100} />
           <SupplementaryIFCUpload nodeId={nodeId} />
         </>
       );

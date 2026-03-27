@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(formatErrorResponse({ title: "Empty file", message: "The uploaded file is empty. Please select a valid .ifc file.", code: "VAL_001" }), { status: 400 });
     }
 
-    const MAX_IFC_SIZE = 50 * 1024 * 1024; // 50MB
+    const MAX_IFC_SIZE = 100 * 1024 * 1024; // 100MB
     if (file.size > MAX_IFC_SIZE) {
-      return NextResponse.json(formatErrorResponse({ title: "File too large", message: "File too large. Maximum size is 50MB.", code: "VAL_001" }), { status: 413 });
+      return NextResponse.json(formatErrorResponse({ title: "File too large", message: "File too large. Maximum size is 100MB.", code: "VAL_001" }), { status: 413 });
     }
 
     // Validate IFC file header
@@ -48,15 +48,9 @@ export async function POST(req: NextRequest) {
 
     const buffer = new Uint8Array(await file.arrayBuffer());
 
-    // Upload IFC to R2 first (non-blocking for response, but we want the URL)
-    let ifcUrl: string | null = null;
-    const r2Result = await uploadIFCToR2(buffer, file.name).catch((err) => {
-      console.warn("[parse-ifc] R2 upload failed:", err);
-      return null;
-    });
-    if (r2Result) {
-      ifcUrl = r2Result.url;
-    }
+    // IFC files are NOT stored in R2 to save storage costs.
+    // The file is parsed in-memory and only the extracted quantities are saved.
+    const ifcUrl: string | null = null;
 
     // ── Parse IFC: Try web-ifc WASM first, fall back to text parser ──
     let result;

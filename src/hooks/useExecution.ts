@@ -328,7 +328,7 @@ async function executeNode(
               clearTimeout(timeoutId);
               const msg = uploadErr instanceof Error ? uploadErr.message : "IFC upload/parse failed";
               console.error("[TR-007] Client-side IFC processing failed:", msg);
-              throw new Error(`IFC file processing failed: ${msg}. The file may be too large or corrupted. Try a smaller IFC file (<50MB).`);
+              throw new Error(`IFC file processing failed: ${msg}. The file may be too large or corrupted. Try a smaller IFC file (<100MB).`);
             }
           }
 
