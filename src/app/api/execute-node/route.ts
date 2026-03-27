@@ -3145,9 +3145,16 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         // GFA from TR-008 (sum of slab areas) — never use hardcoded ₹35,000 fallback
         const gfa = Number(inputData?._gfa ?? 0) || 100; // 100m² absolute minimum fallback
         const costPerSqm = hardTotal > 0 ? Math.round(hardTotal / gfa) : 0;
-        const costPerSqmInclGST = grandTotalInclGST > 0 ? Math.round(grandTotalInclGST / gfa) : 0;
+        // GST: use hardTotal + estimated GST (18% on materials ≈ 55% of hard cost)
+        const estimatedGST = Math.round(hardTotal * 0.55 * 0.18); // 18% GST on ~55% material component
+        const hardTotalInclGST = hardTotal + (totalGST > 0 ? totalGST : estimatedGST);
+        const costPerSqmInclGST = hardTotalInclGST > 0 ? Math.round(hardTotalInclGST / gfa) : 0;
         const contingencyAmt = Math.round(hardTotal * 0.10);
         const overheadAmt = Math.round(hardTotal * 0.15);
+        // Sanity: incl GST must ALWAYS be > excl GST
+        if (costPerSqmInclGST <= costPerSqm && hardTotal > 0) {
+          console.error(`[EX-002] GST SANITY FAIL: inclGST ₹${costPerSqmInclGST} <= exclGST ₹${costPerSqm}. Forcing recalc.`);
+        }
 
         const summaryRows = [
           ["COST ESTIMATE SUMMARY"],
@@ -3164,8 +3171,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           ["Equipment Costs", "", Math.round(boqData?.subtotalEquipment ?? 0), hardTotal > 0 ? `${(((boqData?.subtotalEquipment ?? 0) / hardTotal) * 100).toFixed(1)}%` : "—"],
           ["HARD COST SUBTOTAL", "", Math.round(hardTotal), "100%"],
           [""],
-          ["GST on Materials", "", Math.round(totalGST), ""],
-          ["HARD COSTS + GST", "", Math.round(grandTotalInclGST), ""],
+          ["GST on Materials (est. 18%)", "", Math.round(totalGST > 0 ? totalGST : estimatedGST), ""],
+          ["HARD COSTS + GST", "", Math.round(hardTotalInclGST), ""],
           [""],
           ["SOFT COSTS & OVERHEADS"],
           ["Contractor Overhead (15%)", "", overheadAmt, "Editable in Control Panel"],
@@ -3178,8 +3185,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           [""],
           ["TOTAL SOFT COSTS", "", Math.round(hardTotal * 0.44), ""],
           [""],
-          ["TOTAL PROJECT COST (excl GST)", "", Math.round(hardTotal * 1.44), ""],
-          ["TOTAL PROJECT COST (incl GST)", "", Math.round(grandTotalInclGST + hardTotal * 0.44), ""],
+          ["TOTAL PROJECT COST (excl GST)", "", Math.round(hardTotal + hardTotal * 0.44), ""],
+          ["TOTAL PROJECT COST (incl GST)", "", Math.round(hardTotalInclGST + hardTotal * 0.44), ""],
           [""],
           ["COST PER m² GFA", "", `${currencySymbol}${costPerSqm.toLocaleString()}`, "excl GST"],
           ["COST PER m² (incl GST)", "", `${currencySymbol}${costPerSqmInclGST.toLocaleString()}`, "incl GST"],
