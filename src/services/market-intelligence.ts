@@ -70,6 +70,12 @@ export interface MarketIntelligenceResult {
   mep_percentage: number;           // MEP as % of hard cost (wellness=35%, office=25%)
   benchmark_label: string;          // Human-readable: "wellness in Tier-2 Durg, March 2026"
 
+  // Smart MEP breakdown with reasoning
+  mep_breakdown?: {
+    plumbing_pct: number; electrical_pct: number; hvac_pct: number;
+    fire_pct: number; lifts_pct: number; reasoning: string;
+  };
+
   // Dynamic state factor (replaces hardcoded STATE_PWD_FACTORS table)
   state_pwd_factor: number;           // 0.80-1.40, relative to CPWD national average
   absolute_minimum_cost: number;      // Absolute minimum ₹/m² to build anything in this state
@@ -308,6 +314,14 @@ Use the tool to report your reasoned prices.`;
         minimum_cost_per_m2: { type: "number" as const, description: "Absolute minimum cost in INR per SQUARE METRE (m²) to build this building type in this city. Must be > 10000 for any Indian city." },
         building_type_factor: { type: "number" as const },
         mep_percentage: { type: "number" as const },
+        mep_breakdown: { type: "object" as const, properties: {
+          plumbing_pct: { type: "number" as const, description: "Plumbing % of hard cost" },
+          electrical_pct: { type: "number" as const, description: "Electrical % of hard cost" },
+          hvac_pct: { type: "number" as const, description: "HVAC % of hard cost" },
+          fire_pct: { type: "number" as const, description: "Fire fighting % of hard cost" },
+          lifts_pct: { type: "number" as const, description: "Lifts % of hard cost" },
+          reasoning: { type: "string" as const, description: "One-line reasoning for the MEP split" },
+        } },
         state_pwd_factor: { type: "number" as const },
         absolute_minimum_cost: { type: "number" as const },
       },
@@ -469,6 +483,9 @@ Use the tool to report your reasoned prices.`;
         // Dynamic benchmarks — apply ensurePerM2 to ALL cost/m² fields
         if (p.minimum_cost_per_m2 > 0) {
           result.minimum_cost_per_m2 = ensurePerM2(p.minimum_cost_per_m2, "minimum_cost");
+        }
+        if (p.mep_breakdown?.plumbing_pct > 0) {
+          result.mep_breakdown = p.mep_breakdown;
         }
         if (p.building_type_factor > 0) {
           result.building_type_factor = p.building_type_factor;

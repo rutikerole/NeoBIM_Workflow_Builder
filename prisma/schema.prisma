@@ -481,3 +481,26 @@ model QuantityCorrection {
   @@index([createdAt])
   @@map("quantity_corrections")
 }
+
+// BOQ run analytics — every successful BOQ improves future estimates
+model BOQAnalytics {
+  id              String   @id @default(cuid())
+  city            String
+  state           String
+  buildingType    String
+  gfa             Float
+  floors          Int
+  costPerM2       Float
+  materialRatio   Float
+  laborRatio      Float
+  masonRate       Float
+  steelRate       Float
+  cementRate      Float
+  ifcQuality      String
+  provisionalPct  Float
+  createdAt       DateTime @default(now())
+
+  @@index([state, buildingType])
+  @@index([createdAt])
+  @@map("boq_analytics")
+}

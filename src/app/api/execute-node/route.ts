@@ -1717,6 +1717,21 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           _elements: elements,
           _hasStructuralFoundation: hasStructuralFoundation,
           _hasMEPData: hasMEPData,
+          _ifcContext: (() => {
+            const slabArea = elements.reduce((s: number, e: unknown) => s + (String((e as Record<string, unknown>).description ?? "").toLowerCase().includes("slab") ? Number((e as Record<string, unknown>).grossArea ?? 0) : 0), 0);
+            const wallArea = elements.reduce((s: number, e: unknown) => s + (String((e as Record<string, unknown>).description ?? "").toLowerCase().includes("wall") ? Number((e as Record<string, unknown>).grossArea ?? 0) : 0), 0);
+            const openingArea = elements.reduce((s: number, e: unknown) => s + Number((e as Record<string, unknown>).openingArea ?? 0), 0);
+            const floors = new Set(elements.map((e: unknown) => (e as Record<string, unknown>).storey).filter(Boolean)).size || 1;
+            const hasSteelMembers = elements.some((e: unknown) => String((e as Record<string, unknown>).description ?? "").toLowerCase().includes("member") || String((e as Record<string, unknown>).description ?? "").toLowerCase().includes("plate"));
+            return {
+              totalFloors: floors,
+              totalGFA: Math.round(slabArea),
+              estimatedHeight: Math.round(floors * 3.2),
+              dominantStructure: hasSteelMembers ? "steel frame" : "RCC frame",
+              openingRatio: wallArea > 0 ? Math.round((openingArea / wallArea) * 100) / 100 : 0,
+              slabToWallRatio: wallArea > 0 ? Math.round((slabArea / wallArea) * 100) / 100 : 0,
+            };
+          })(),
           content: parseSummary,
         },
         metadata: {
@@ -2550,6 +2565,23 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         warnings.push(`✅ Quality Check: all ratios within expected ranges`);
       }
 
+      // ── Upgrade 7: Store analytics for learning (fire-and-forget) ──
+      try {
+        const { prisma: analyticsDb } = await import("@/lib/db");
+        analyticsDb.bOQAnalytics.create({
+          data: {
+            city: locationData?.city || "", state: locationData?.state || "",
+            buildingType: projectTypeInfo.type, gfa: gfaForProvisional, floors: floorCountForProv,
+            costPerM2: gfaForProvisional > 0 ? Math.round(costSummary.totalCost / gfaForProvisional) : 0,
+            materialRatio: matRatio, laborRatio: labRatio,
+            masonRate: Number(marketData?.labor?.mason?.value ?? 0),
+            steelRate: Number(marketData?.steel_per_tonne?.value ?? 0),
+            cementRate: Number(marketData?.cement_per_bag?.value ?? 0),
+            ifcQuality: `${geometryPct}%`, provisionalPct: hardCostSubtotal > 0 ? Math.round((provisionalTotal / hardCostSubtotal) * 100) : 0,
+          },
+        }).catch(() => {}); // non-fatal
+      } catch { /* non-fatal */ }
+
       // ── Upgrade 8: Natural Language Summary ──
       const costPerM2 = gfaForProvisional > 0 ? Math.round(costSummary.totalCost / gfaForProvisional) : 0;
       const provPct = hardCostSubtotal > 0 ? Math.round((provisionalTotal / hardCostSubtotal) * 100) : 0;
@@ -2709,9 +2741,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         miCity = "Delhi"; miState = "Delhi NCR"; // national default
       }
 
-      console.log(`[TR-015] Resolved location: ${miCity}, ${miState} — ${miBuildingType}`);
+      // Include IFC context in building type for smarter pricing
+      const ifcCtx = inputData?._ifcContext as Record<string, unknown> | undefined;
+      let buildingDesc = miBuildingType;
+      if (ifcCtx) {
+        buildingDesc = `${miBuildingType} (${ifcCtx.totalFloors ?? "?"} floors, ${ifcCtx.totalGFA ?? "?"}m² GFA, ${ifcCtx.dominantStructure ?? "RCC"}, ~${ifcCtx.estimatedHeight ?? "?"}m height)`;
+      }
+      console.log(`[TR-015] Resolved location: ${miCity}, ${miState} — ${buildingDesc}`);
 
-      const marketData = await fetchMarketPrices(miCity, miState, miBuildingType);
+      const marketData = await fetchMarketPrices(miCity, miState, buildingDesc);
       const adjustments = computeMarketAdjustments(marketData);
       const durationSec = (marketData.duration_ms / 1000).toFixed(1);
 
@@ -3084,10 +3122,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         const boqHeaders = hasIS1200
           ? ["IS 1200 Code", "Division", "Description", "Unit", "Base Qty", "Waste %", "Adj Qty",
              "Mat Rate", "Lab Rate", "Eqp Rate", "Unit Rate",
-             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST", "Data Source"]
+             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST", "Data Source", "Confidence"]
           : ["Division", "Description", "Unit", "Base Qty", "Waste %", "Adj Qty",
              "Mat Rate", "Lab Rate", "Eqp Rate", "Unit Rate",
-             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST", "Data Source"];
+             "Material ₹", "Labour ₹", "Equip ₹", "Subtotal ₹", "GST %", "GST ₹", "Total incl GST", "Data Source", "Confidence"];
 
         const boqTableRows: (string | number)[][] = [];
         let grandTotalInclGST = 0;
@@ -3102,7 +3140,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         }
 
         for (const [divName, lines] of divGroups) {
-          const emptyCols = hasIS1200 ? 18 : 17;
+          const emptyCols = hasIS1200 ? 20 : 19;
           boqTableRows.push([divName.toUpperCase(), ...Array(emptyCols).fill("")]);
 
           let divMat = 0, divLab = 0, divEqp = 0, divSub = 0, divGST = 0, divTotal = 0;
@@ -3123,18 +3161,24 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               : l.division.includes("Formwork") || l.division.includes("Rebar") || l.division.includes("Plaster") || l.division.includes("Reinforcement") ? "IFC Derived"
               : l.csiCode?.startsWith("IS1200") ? "IFC Geometry"
               : "Benchmark";
+            const confidence = dataSource === "IFC Geometry" ? "HIGH 90%"
+              : dataSource === "Structural IFC" ? "HIGH 88%"
+              : dataSource === "MEP IFC" ? "HIGH 85%"
+              : dataSource === "IFC Derived" ? "MED 72%"
+              : dataSource === "Provisional" ? "LOW 45%"
+              : "MED 60%";
 
             const row: (string | number)[] = hasIS1200
               ? [l.is1200Code ?? "", "", `${l.description}${countLabel}`, l.unit,
                  l.quantity, wasteStr, adjQty,
                  l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
                  l.materialCost, l.laborCost, l.equipmentCost, subtotal,
-                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST, dataSource]
+                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST, dataSource, confidence]
               : ["", `${l.description}${countLabel}`, l.unit,
                  l.quantity, wasteStr, adjQty,
                  l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
                  l.materialCost, l.laborCost, l.equipmentCost, subtotal,
-                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST, dataSource];
+                 `${(gstRate * 100).toFixed(0)}%`, gstAmt, totalInclGST, dataSource, confidence];
 
             boqTableRows.push(row);
             divMat += l.materialCost; divLab += l.laborCost; divEqp += l.equipmentCost;
@@ -3144,12 +3188,12 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           const subRow = hasIS1200
             ? ["", "", `${divName} SUBTOTAL`, "", "", "", "",
                "", "", "", "", Math.round(divMat), Math.round(divLab), Math.round(divEqp),
-               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal), ""]
+               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal), "", ""]
             : ["", `${divName} SUBTOTAL`, "", "", "", "",
                "", "", "", "", Math.round(divMat), Math.round(divLab), Math.round(divEqp),
-               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal), ""];
+               Math.round(divSub), "", Math.round(divGST), Math.round(divTotal), "", ""];
           boqTableRows.push(subRow);
-          boqTableRows.push(Array(hasIS1200 ? 19 : 18).fill(""));
+          boqTableRows.push(Array(hasIS1200 ? 21 : 20).fill(""));
           grandTotalInclGST += divTotal;
           totalGST += divGST;
         }
@@ -3159,11 +3203,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           ? ["", "", "GRAND TOTAL", "", "", "", "", "", "", "", "",
              Math.round(boqData?.subtotalMaterial ?? 0), Math.round(boqData?.subtotalLabor ?? 0),
              Math.round(boqData?.subtotalEquipment ?? 0), Math.round(hardTotal),
-             "", Math.round(totalGST), Math.round(grandTotalInclGST), ""]
+             "", Math.round(totalGST), Math.round(grandTotalInclGST), "", ""]
           : ["", "GRAND TOTAL", "", "", "", "", "", "", "", "",
              Math.round(boqData?.subtotalMaterial ?? 0), Math.round(boqData?.subtotalLabor ?? 0),
              Math.round(boqData?.subtotalEquipment ?? 0), Math.round(hardTotal),
-             "", Math.round(totalGST), Math.round(grandTotalInclGST), ""];
+             "", Math.round(totalGST), Math.round(grandTotalInclGST), "", ""];
         boqTableRows.push(gtRow);
 
         const boqSheet = XLSX.utils.aoa_to_sheet([boqHeaders, ...boqTableRows]);
