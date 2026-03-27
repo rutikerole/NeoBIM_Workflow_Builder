@@ -1778,8 +1778,13 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         if (mKeys.length > 0) console.log(`[TR-008] Possible market data under: ${mKeys.join(", ")}`);
       }
       // ── Steel market rate — derived from TR-015 market data (safe scoping: all let at top) ──
-      let marketTMTPerKg: number | null = null;       // TMT Fe500 rebar rate ₹/kg from market
-      let marketStructSteelPerKg: number | null = null; // Structural steel ₹/kg (TMT × 1.55 section premium)
+      // Market TMT price is MATERIAL ONLY. Labor for cutting/bending/placing is added on top.
+      // IS 1200 reference: material ₹68 + labour ₹20 = ₹88/kg total.
+      // Market: material ₹62 + labour ₹20 = ₹82/kg total.
+      let marketSteelMaterialPerKg: number | null = null;  // Material-only price ₹/kg
+      let marketSteelLabourPerKg = 20;                      // IS 1200 labour rate for rebar (constant)
+      let marketTMTPerKg: number | null = null;             // Total rate ₹/kg (material + labour)
+      let marketStructSteelPerKg: number | null = null;     // Structural steel total ₹/kg (TMT × 1.55)
       let steelFromMarket = false;
       try {
         const earlyMarket = inputData?._marketData as Record<string, unknown> | undefined;
@@ -1791,10 +1796,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           steelPerTonne = steelVal.value;
         }
         if (steelPerTonne > 10000) { // sanity: must be > ₹10,000/tonne
-          marketTMTPerKg = Math.round(steelPerTonne / 1000 * 100) / 100; // ₹/tonne → ₹/kg
-          marketStructSteelPerKg = Math.round(marketTMTPerKg * 1.55 * 100) / 100; // structural section premium
+          marketSteelMaterialPerKg = Math.round(steelPerTonne / 1000 * 100) / 100; // ₹/tonne → ₹/kg (material only)
+          marketTMTPerKg = Math.round((marketSteelMaterialPerKg + marketSteelLabourPerKg) * 100) / 100; // total: mat + lab
+          marketStructSteelPerKg = Math.round(marketSteelMaterialPerKg * 1.55 + 40) / 1; // structural: higher mat + fab labour ₹40
           steelFromMarket = true;
-          console.log(`[TR-008] Steel from market: TMT ₹${marketTMTPerKg}/kg, Structural ₹${marketStructSteelPerKg}/kg (from ₹${steelPerTonne}/tonne)`);
+          console.log(`[TR-008] Steel from market: Mat ₹${marketSteelMaterialPerKg}/kg + Lab ₹${marketSteelLabourPerKg}/kg = TMT ₹${marketTMTPerKg}/kg | Structural ₹${marketStructSteelPerKg}/kg (from ₹${steelPerTonne}/tonne)`);
         }
       } catch (steelErr) {
         console.warn("[TR-008] Could not extract steel rate from market data:", steelErr);
@@ -2028,32 +2034,46 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               const laborFactor = ip?.labor ?? categoryFactor;
               let adjRate = Math.round(rate.rate * categoryFactor * gradeMult * 100) / 100;
 
-              // FIX 1: Override steel rates with market TMT price when available
+              // Market rate override for steel — market rates are ALREADY city-specific
+              // DO NOT apply PWD/regional/category factors on top of market rates
+              let isMarketRate = false;
               if (steelFromMarket && rate.subcategory === "Steel") {
-                const isStructSteel2 = !rate.is1200Code.includes("REBAR");
-                const mktRate = isStructSteel2 ? marketStructSteelPerKg : marketTMTPerKg;
-                if (mktRate !== null) {
-                  adjRate = Math.round(mktRate * 100) / 100;
-                  console.log(`[TR-008] Steel rate override: ${rate.is1200Code} → ₹${adjRate}/kg (market)`);
+                const isRebar = rate.is1200Code.includes("REBAR");
+                const isRailing = rate.is1200Code.includes("RAILING");
+                if (isRebar && marketTMTPerKg !== null) {
+                  adjRate = marketTMTPerKg; // material + labour, no PWD factor
+                  isMarketRate = true;
+                } else if (!isRebar && !isRailing && marketStructSteelPerKg !== null) {
+                  adjRate = marketStructSteelPerKg;
+                  isMarketRate = true;
+                } else if (isRailing && marketStructSteelPerKg !== null) {
+                  // Railing uses structural steel rate (already has fab premium)
+                  adjRate = marketStructSteelPerKg;
+                  isMarketRate = true;
+                }
+                if (isMarketRate) {
+                  console.log(`[TR-008] Steel MARKET rate: ${rate.is1200Code} → ₹${adjRate}/kg (no PWD/regional adjustment)`);
                 }
               }
-              // FIX 6: Round Qty and Rate first, then multiply — so displayed math checks out
+
               const roundedAdjQty = Math.round(adjQty * 100) / 100;
               const roundedAdjRate = Math.round(adjRate);
               const lineTot = Math.round(roundedAdjQty * roundedAdjRate * 100) / 100;
 
-              // M/L/E breakdown: use market split for market-overridden steel, else IS 1200 split
+              // M/L/E breakdown: market steel uses actual mat/lab split, else IS 1200 split
               let matCost: number;
               let labCost: number;
               let eqpCost: number;
-              if (steelFromMarket && rate.subcategory === "Steel" && marketTMTPerKg !== null) {
-                matCost = Math.round(lineTot * 0.85 * 100) / 100;
-                labCost = Math.round(lineTot * 0.10 * 100) / 100;
-                eqpCost = Math.round((lineTot - matCost - labCost) * 100) / 100; // remainder — guarantees sum = lineTot
+              if (isMarketRate && marketSteelMaterialPerKg !== null) {
+                // Market: we know the exact material price; lab + eqp fill the rest
+                const matRatio = marketSteelMaterialPerKg / adjRate; // e.g. 62/82 = 0.756
+                matCost = Math.round(lineTot * matRatio * 100) / 100;
+                labCost = Math.round(lineTot * (1 - matRatio) * 0.90 * 100) / 100; // 90% of remainder is labor
+                eqpCost = Math.round((lineTot - matCost - labCost) * 100) / 100;
               } else {
                 matCost = Math.round(adjQty * rate.material * categoryFactor * gradeMult * 100) / 100;
                 labCost = Math.round(adjQty * rate.labour * laborFactor * gradeMult * 100) / 100;
-                eqpCost = Math.round((lineTot - matCost - labCost) * 100) / 100; // remainder — guarantees sum = lineTot
+                eqpCost = Math.round((lineTot - matCost - labCost) * 100) / 100;
               }
 
               hardCostSubtotal += lineTot;
@@ -2084,14 +2104,14 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
                 quantity: qty,
                 wasteFactor,
                 adjustedQty: adjQty,
-                materialRate: (steelFromMarket && rate.subcategory === "Steel" && marketTMTPerKg !== null)
-                  ? Math.round(adjRate * 0.85 * 100) / 100
+                materialRate: isMarketRate && marketSteelMaterialPerKg !== null
+                  ? marketSteelMaterialPerKg  // Show actual market material price (₹62/kg)
                   : Math.round(rate.material * categoryFactor * 100) / 100,
-                laborRate: (steelFromMarket && rate.subcategory === "Steel" && marketTMTPerKg !== null)
-                  ? Math.round(adjRate * 0.10 * 100) / 100
+                laborRate: isMarketRate
+                  ? Math.round((adjRate - (marketSteelMaterialPerKg ?? adjRate * 0.85)) * 100) / 100
                   : Math.round(rate.labour * laborFactor * 100) / 100,
-                equipmentRate: (steelFromMarket && rate.subcategory === "Steel" && marketTMTPerKg !== null)
-                  ? Math.round(adjRate * 0.05 * 100) / 100
+                equipmentRate: isMarketRate
+                  ? 0  // Steel: negligible equipment for placing
                   : Math.round((rate.rate - rate.material - rate.labour) * categoryFactor * 100) / 100,
                 unitRate: adjRate,
                 materialCost: matCost,
@@ -2326,10 +2346,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           // For Indian projects, use CPWD rate × state PWD category factor
           let adjRate: number;
           if (isIndianProject && is1200Key === "rebar" && is1200Module) {
-            // FIX 1: Use market TMT rate when available, else fall back to IS 1200 static
+            // Market rate: use directly, NO PWD/regional factor (already city-specific)
             if (steelFromMarket && marketTMTPerKg !== null) {
-              adjRate = marketTMTPerKg;
+              adjRate = marketTMTPerKg; // material ₹62 + labour ₹20 = ₹82/kg
             } else {
+              // Static fallback: apply PWD factor to IS 1200 rate
               const rebarRate = is1200Module.getIS1200Rate("IS1200-P6-REBAR-500");
               const steelFactor = ip?.steel ?? ip?.overall ?? 1.0;
               adjRate = rebarRate ? Math.round(rebarRate.rate * steelFactor * 100) / 100 : Math.round(rateUSD * locationFactor * exchangeRate * 100) / 100;
@@ -2364,14 +2385,23 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           totalMaterial += matC; totalLabor += labC; totalEquipment += eqpC;
 
           const is1200Info = isIndianProject ? DERIVED_IS1200[is1200Key] : null;
+          // For market-sourced rebar, show actual market material price (not % split)
+          const derivedMatRate = (isRebarOrSteel && steelFromMarket && marketSteelMaterialPerKg !== null)
+            ? marketSteelMaterialPerKg  // ₹62/kg — actual market material price
+            : Math.round(adjRate * breakdown.material * 100) / 100;
+          const derivedLabRate = (isRebarOrSteel && steelFromMarket && marketSteelMaterialPerKg !== null)
+            ? Math.round(adjRate - marketSteelMaterialPerKg)  // ₹20/kg — labour remainder
+            : Math.round(adjRate * breakdown.labor * 100) / 100;
+          const derivedEqpRate = Math.round(adjRate - derivedMatRate - derivedLabRate);
+
           derivedLines.push({
             division: is1200Info?.division ?? source,
             csiCode: is1200Info?.code ?? "00 00 00",
             description: name, unit: dUnit,
             quantity: Math.round(baseQty * 100) / 100, wasteFactor: waste, adjustedQty: adjQty,
-            materialRate: Math.round(adjRate * breakdown.material * 100) / 100,
-            laborRate: Math.round(adjRate * breakdown.labor * 100) / 100,
-            equipmentRate: Math.round(adjRate * breakdown.equipment * 100) / 100,
+            materialRate: derivedMatRate,
+            laborRate: derivedLabRate,
+            equipmentRate: Math.max(0, derivedEqpRate),
             unitRate: adjRate, materialCost: matC, laborCost: labC, equipmentCost: eqpC, totalCost: total,
             storey: st || undefined, elementCount: undefined,
             is1200Code: is1200Info?.code ?? (isIndianProject ? "IS1200-DERIVED" : undefined),
