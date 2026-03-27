@@ -2039,10 +2039,42 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             pathIS1200++;
             continue; // Skip the USD rate path for this element
           }
-          // If no IS 1200 rate found, fall through to USD path below
+          // If no IS 1200 rate found → for Indian projects, use a generic IS 1200 rate
+          // NEVER fall to USD path for Indian projects (the 0.266 factor produces nonsense)
+          if (isIndianProject && is1200Module) {
+            const genericRate = is1200Module.getIS1200Rate("IS1200-P2-RCC-WALL"); // generic RCC rate as fallback
+            if (genericRate) {
+              const ip = indianPricing;
+              const cf = ip?.overall ?? 1.0;
+              const waste = 0.08;
+              const qty2 = sourceArea > 0 ? sourceArea : sourceVolume > 0 ? sourceVolume : quantity;
+              const unit2 = sourceArea > 0 ? "m²" : sourceVolume > 0 ? "m³" : "EA";
+              const adjQty2 = Math.round(qty2 * (1 + waste) * 100) / 100;
+              const adjRate2 = Math.round(genericRate.rate * cf * 100) / 100;
+              const lineTot2 = Math.round(adjQty2 * adjRate2 * 100) / 100;
+              const matC2 = Math.round(lineTot2 * 0.55 * 100) / 100;
+              const labC2 = Math.round(lineTot2 * 0.40 * 100) / 100;
+              const eqpC2 = Math.round(lineTot2 * 0.05 * 100) / 100;
+              hardCostSubtotal += lineTot2;
+              totalMaterial += matC2; totalLabor += labC2; totalEquipment += eqpC2;
+              pathIS1200++; costIS1200 += lineTot2;
+              rows.push([`${description} (generic rate)`, unit2, qty2.toFixed(2), `${(waste * 100).toFixed(0)}%`, adjQty2.toFixed(2), `₹${adjRate2.toFixed(2)}`, `₹${matC2.toFixed(2)}`, `₹${labC2.toFixed(2)}`, `₹${eqpC2.toFixed(2)}`, `₹${lineTot2.toFixed(2)}`]);
+              boqLines.push({
+                division: "IS 1200 Part 2 — General (unmapped)", csiCode: "IS1200-P2-GENERIC",
+                description: `${description} (generic IS 1200 rate)`, unit: unit2,
+                quantity: qty2, wasteFactor: waste, adjustedQty: adjQty2,
+                materialRate: Math.round(adjRate2 * 0.55 * 100) / 100, laborRate: Math.round(adjRate2 * 0.40 * 100) / 100,
+                equipmentRate: Math.round(adjRate2 * 0.05 * 100) / 100, unitRate: adjRate2,
+                materialCost: matC2, laborCost: labC2, equipmentCost: eqpC2, totalCost: lineTot2,
+                storey: elemStorey || undefined, elementCount: elemCount || undefined,
+                is1200Code: "IS1200-P2-GENERIC",
+              });
+              continue; // Skip USD path
+            }
+          }
         }
 
-        // ── Standard path: USD rates with regional factor conversion ──
+        // ── Standard path: USD rates with regional factor conversion (non-Indian projects only) ──
         // Build specific search: try "Concrete Wall" before generic "Wall"
         // Material/category context from TR-007 helps disambiguate rate matching
         const specificDesc = elemCategory && !description.toLowerCase().includes(elemCategory.toLowerCase())

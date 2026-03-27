@@ -36,7 +36,8 @@ import {
   IFCRELVOIDSELEMENT,
 } from "web-ifc";
 
-// ─── MEP IFC type constants (not exported by web-ifc) ───────────────────────
+// ─── Additional IFC type constants (not directly exported) ──────────────────
+const IFCREINFORCINGBAR = 979691226;
 const IFCDUCTSEGMENT = 3518393246;
 const IFCPIPESEGMENT = 3612865200;
 const IFCCABLESEGMENT = 4217484030;
@@ -320,6 +321,13 @@ function getCSIMapping(
       codeName: "Metal Fabrications",
       wasteFactor: DEFAULT_WASTE_FACTORS["05"],
     },
+    IfcReinforcingBar: {
+      division: "03",
+      divisionName: "Concrete",
+      code: "03 21 00",
+      codeName: "Reinforcement Bars",
+      wasteFactor: 0.10, // 10% waste for rebar cutting
+    },
     IfcCurtainWall: {
       division: "08",
       divisionName: "Openings",
@@ -420,6 +428,8 @@ const IFC_TYPES = [
   { typeId: IFCPLATE, label: "IfcPlate" },
   // Curtain walls (glass facades)
   { typeId: IFCCURTAINWALL, label: "IfcCurtainWall" },
+  // Reinforcing bars (when modeled in structural IFC — gives exact rebar weight)
+  { typeId: IFCREINFORCINGBAR, label: "IfcReinforcingBar" },
   // ── MEP — HVAC (Division 23) ──
   { typeId: IFCDUCTSEGMENT, label: "IfcDuctSegment" },
   { typeId: IFCDUCTFITTING, label: "IfcDuctFitting" },
@@ -680,6 +690,23 @@ function extractQuantities(
     ) {
       if (!quantities.area) quantities.area = { unit: "m²" };
       quantities.area.gross = quantities.width * quantities.height;
+    }
+
+    // For IfcReinforcingBar: calculate weight from NominalDiameter × Length
+    // Weight = (π/4) × d² × length × 7850 kg/m³
+    if (ifcType === "IfcReinforcingBar") {
+      const diam = quantities.width ?? 0; // NominalDiameter often mapped to width
+      const barLength = quantities.length ?? 0;
+      if (diam > 0 && barLength > 0) {
+        // diam may be in mm, convert to m for calculation
+        const d_m = diam > 1 ? diam / 1000 : diam; // if >1 likely mm
+        const weight = (Math.PI / 4) * d_m * d_m * barLength * 7850; // kg
+        if (!quantities.volume) quantities.volume = { base: 0, withWaste: 0, unit: "m³" };
+        quantities.volume.base = weight; // Store weight in volume.base for downstream (unit: kg)
+        quantities.rebarWeight = weight;
+        quantities.rebarDiameter = diam > 1 ? diam : diam * 1000; // store in mm
+        quantities.rebarSource = "extracted";
+      }
     }
 
     // Ensure area struct exists for area-based element types

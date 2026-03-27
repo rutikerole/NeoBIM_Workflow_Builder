@@ -315,9 +315,9 @@ describe("R2 Storage — 50 Scenarios", () => {
       expect(result).not.toBeNull();
     });
 
-    it("Scenario 32: Rejects IFC over 50MB", async () => {
+    it("Scenario 32: Rejects IFC over 100MB", async () => {
       const { uploadIFCToR2 } = await freshImport();
-      const result = await uploadIFCToR2(Buffer.alloc(50 * 1024 * 1024 + 1), "huge.ifc");
+      const result = await uploadIFCToR2(Buffer.alloc(100 * 1024 * 1024 + 1), "huge.ifc");
       expect(result).toBeNull();
     });
 

@@ -186,6 +186,12 @@ export const IS1200_MAPPINGS: IS1200Mapping[] = [
     is1200PartName: "Structural Steel",
     defaultRateCodes: ["IS1200-P7-STRUCT-STEEL"],
   },
+  {
+    ifcType: "IfcReinforcingBar",
+    is1200Part: "Part 6",
+    is1200PartName: "Reinforcement Steel",
+    defaultRateCodes: ["IS1200-P6-REBAR-500"],
+  },
   // ── MEP — Plumbing (Part 14) ──
   {
     ifcType: "IfcPipeSegment",
