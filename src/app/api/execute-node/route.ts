@@ -2214,6 +2214,21 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // For Indian projects, use CPWD rates directly with IS 1200 codes.
       // For non-Indian, use DERIVED_RATES from regional-factors.ts.
       const { DERIVED_RATES } = await import("@/constants/regional-factors");
+
+      // Fix 4: Plaster dedup — find storeys that already have plaster from IFC Geometry extraction
+      // (IfcCovering CEILING/FLOORING or explicit plaster elements). Skip derived plaster for those.
+      const storeysWithPlaster = new Set<string>();
+      const storeysWithCeiling = new Set<string>();
+      for (const line of boqLines) {
+        const d = line.description.toLowerCase();
+        const s = line.storey || "";
+        if (d.includes("plaster") && !d.includes("formwork") && !d.includes("rebar")) {
+          storeysWithPlaster.add(s);
+        }
+        if (d.includes("ceiling") && !d.includes("formwork")) {
+          storeysWithCeiling.add(s);
+        }
+      }
       const derivedLines: typeof boqLines = [];
 
       // IS 1200 codes for derived quantities
@@ -2287,11 +2302,17 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         if (descLower.includes("wall")) {
           applyDerived(`Formwork — ${desc}`, area * 2, DERIVED_RATES.formwork.wall.rate, "m²", "Formwork (Measured)", "formwork-wall");
           applyDerived(`Rebar — ${desc} (Est.)`, vol * DERIVED_RATES.rebar.wall.kgPerM3, DERIVED_RATES.rebar.wall.rate, "kg", "Rebar (Estimated)", "rebar");
-          applyDerived(`Plastering — ${desc}`, area * 2, DERIVED_RATES.finishing.plastering.rate, "m²", "Finishing (Measured)", "plastering");
+          // Fix 4: Skip derived plaster if IFC already has plaster for this storey
+          if (!storeysWithPlaster.has(st)) {
+            applyDerived(`Plastering — ${desc}`, area * 2, DERIVED_RATES.finishing.plastering.rate, "m²", "Finishing (Measured)", "plastering");
+          }
         } else if (descLower.includes("slab")) {
           applyDerived(`Formwork — ${desc}`, area, DERIVED_RATES.formwork.slab.rate, "m²", "Formwork (Measured)", "formwork-slab");
           applyDerived(`Rebar — ${desc} (Est.)`, vol * DERIVED_RATES.rebar.slab.kgPerM3, DERIVED_RATES.rebar.slab.rate, "kg", "Rebar (Estimated)", "rebar");
-          applyDerived(`Ceiling Plaster — ${desc}`, area, DERIVED_RATES.finishing.ceilingPlaster.rate, "m²", "Finishing (Measured)", "ceiling-plaster");
+          // Fix 4: Skip derived ceiling plaster if IFC already has ceiling for this storey
+          if (!storeysWithCeiling.has(st)) {
+            applyDerived(`Ceiling Plaster — ${desc}`, area, DERIVED_RATES.finishing.ceilingPlaster.rate, "m²", "Finishing (Measured)", "ceiling-plaster");
+          }
         } else if (descLower.includes("column")) {
           const colHeight = Number(e.totalVolume ?? 0) > 0 ? 3.5 : 0;
           const colRadius = vol > 0 && colHeight > 0 ? Math.sqrt(vol / (Math.PI * colHeight)) : 0.3;
