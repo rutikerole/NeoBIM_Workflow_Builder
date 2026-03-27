@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef } from "react";
+import { toast } from "sonner";
 import { BOQHeader } from "./BOQHeader";
 import { HeroStats } from "./HeroStats";
 import { PriceControls } from "./PriceControls";
@@ -79,15 +80,22 @@ export function BOQVisualizerPage({ data, executionId }: BOQVisualizerPageProps)
     flashTimer.current = setTimeout(() => setRecalculated(false), 600);
   }, []);
 
-  // Export handlers
+  // Export handlers — use pre-generated artifact URLs from EX-002/EX-003
   const handleExportExcel = useCallback(() => {
-    // Trigger download via the existing EX-002 node execution
-    window.open(`/api/execute-node?export=excel&executionId=${executionId}`, "_blank");
-  }, [executionId]);
+    if (data.excelUrl) {
+      window.open(data.excelUrl, "_blank");
+    } else {
+      toast.error("Excel not available", { description: "Run the BOQ Spreadsheet Exporter (EX-002) node in your workflow to generate the Excel file." });
+    }
+  }, [data.excelUrl]);
 
   const handleExportPDF = useCallback(() => {
-    window.open(`/api/execute-node?export=pdf&executionId=${executionId}`, "_blank");
-  }, [executionId]);
+    if (data.pdfUrl) {
+      window.open(data.pdfUrl, "_blank");
+    } else {
+      toast.error("PDF not available", { description: "Run the PDF Report Exporter (EX-003) node in your workflow to generate the PDF." });
+    }
+  }, [data.pdfUrl]);
 
   const handleExportCSV = useCallback(() => {
     // Generate CSV from current recalculated lines

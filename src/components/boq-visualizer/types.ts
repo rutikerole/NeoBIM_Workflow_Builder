@@ -102,6 +102,10 @@ export interface BOQData {
   // NL Summary
   summary: string;
   disclaimer: string;
+
+  // Download URLs (from EX-002/EX-003 artifacts)
+  excelUrl?: string;
+  pdfUrl?: string;
 }
 
 export interface PriceOverrides {

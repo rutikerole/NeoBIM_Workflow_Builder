@@ -15,21 +15,39 @@ export default function BOQVisualizerRoute() {
   const artifacts = useExecutionStore((s) => s.artifacts);
 
   useEffect(() => {
-    // Try to find BOQ artifact in the store
+    // Scan all artifacts for BOQ table data + Excel/PDF download URLs
     let found = false;
+    let excelUrl: string | undefined;
+    let pdfUrl: string | undefined;
 
     for (const [, artifact] of artifacts) {
+      // Find Excel/PDF file artifacts from EX-002/EX-003
+      if (artifact.type === "file" && artifact.data) {
+        const fd = artifact.data as Record<string, unknown>;
+        const name = (fd.name as string) || (fd.fileName as string) || "";
+        const url = (fd.downloadUrl as string) || "";
+        if (name.endsWith(".xlsx") && url) excelUrl = url;
+        if (name.endsWith(".pdf") && url) pdfUrl = url;
+      }
+
+      // Find BOQ table artifact from TR-008
       if (artifact.type === "table" && artifact.data) {
         const data = artifact.data as Record<string, unknown>;
         if (data._boqData || data._totalCost) {
           const parsed = parseArtifactToBOQ(data);
           if (parsed && parsed.lines.length > 0) {
+            parsed.excelUrl = excelUrl;
+            parsed.pdfUrl = pdfUrl;
             setBOQData(parsed);
             found = true;
-            break;
           }
         }
       }
+    }
+
+    // Attach URLs found after the BOQ artifact (second pass)
+    if (found && (excelUrl || pdfUrl)) {
+      setBOQData(prev => prev ? { ...prev, excelUrl: prev.excelUrl || excelUrl, pdfUrl: prev.pdfUrl || pdfUrl } : prev);
     }
 
     // If not in store, try fetching from API
@@ -40,14 +58,30 @@ export default function BOQVisualizerRoute() {
           return res.json();
         })
         .then((exec) => {
-          // Search through tileResults for BOQ artifact
           const results = exec.tileResults || [];
+          let apiExcelUrl: string | undefined;
+          let apiPdfUrl: string | undefined;
+
+          // First pass: find file URLs
+          for (const result of results) {
+            if (result.artifact?.type === "file" && result.artifact?.data) {
+              const fd = result.artifact.data;
+              const name = fd.name || fd.fileName || "";
+              const url = fd.downloadUrl || "";
+              if (name.endsWith(".xlsx") && url) apiExcelUrl = url;
+              if (name.endsWith(".pdf") && url) apiPdfUrl = url;
+            }
+          }
+
+          // Second pass: find BOQ table
           for (const result of results) {
             if (result.artifact?.type === "table" && result.artifact?.data) {
               const data = result.artifact.data;
               if (data._boqData || data._totalCost) {
                 const parsed = parseArtifactToBOQ(data);
                 if (parsed && parsed.lines.length > 0) {
+                  parsed.excelUrl = apiExcelUrl;
+                  parsed.pdfUrl = apiPdfUrl;
                   setBOQData(parsed);
                   found = true;
                   break;
@@ -56,24 +90,14 @@ export default function BOQVisualizerRoute() {
             }
           }
 
-          if (!found) {
-            // Use mock data for development
-            setBOQData(getMockBOQData());
-          }
+          if (!found) setBOQData(getMockBOQData());
         })
-        .catch(() => {
-          // Fallback to mock data
-          setBOQData(getMockBOQData());
-        })
+        .catch(() => setBOQData(getMockBOQData()))
         .finally(() => setLoading(false));
       return;
     }
 
-    // Demo mode or no artifact found — use mock
-    if (!found) {
-      setBOQData(getMockBOQData());
-    }
-
+    if (!found) setBOQData(getMockBOQData());
     setLoading(false);
   }, [executionId, artifacts]);
 
