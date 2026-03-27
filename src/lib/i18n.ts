@@ -1205,7 +1205,7 @@ const en = {
   'artifact.artifact': 'artifact',
   'artifact.estimate': 'estimate',
   'artifact.aaceClass4': 'AACE Class 4',
-  'artifact.preliminaryEstimate': 'Preliminary estimate (±15-20% accuracy). Based on RSMeans 2024/2025. Valid 90 days. Not for contract pricing.',
+  'artifact.preliminaryEstimate': 'Preliminary estimate (±25-30% accuracy). Based on IS 1200 / CPWD DSR with AI market intelligence. Valid 90 days. Not for contract pricing.',
   'artifact.sourceImage': 'Source Image (DALL-E 3)',
   'artifact.model3dSam': '3D Model (SAM 3D)',
   'artifact.model3d': '3D Model',

@@ -832,12 +832,12 @@ export const INSULATION_RATES: UnitRate[] = [
 // =============================================================================
 
 export const COST_DISCLAIMERS = {
-  accuracy: "Estimate accuracy: ±15-20% (Class 4 AACE). Not suitable for contract pricing.",
+  accuracy: "Estimate accuracy: ±25-30% (AACE Class 4). Not suitable for contract pricing.",
   validity: "Cost rates valid for 90 days from generation date. Market volatility may affect pricing.",
-  basis: "Based on RSMeans 2024/2025 national average unit rates with regional adjustment factors.",
+  basis: "Based on IS 1200 method of measurement, CPWD DSR 2023-24, with state PWD SOR and AI market intelligence adjustment.",
   exclusions: "Excludes: land acquisition, financing costs, developer fees, furniture/fixtures/equipment (FF&E), specialty systems, hazardous material abatement.",
   recommendation: "Recommend engaging a certified Quantity Surveyor (RICS/AACE) for detailed estimate at design development stage.",
-  full: "DISCLAIMER: This estimate is for preliminary budgeting purposes only (±15-20% accuracy, AACE Class 4). Rates based on RSMeans 2024/2025 data with regional factors. Valid for 90 days. Excludes land, financing, FF&E, and specialty systems. Engage a certified QS for contract-grade pricing.",
+  full: "DISCLAIMER: Preliminary estimate only (AACE Class 4, ±25-30%). Rates based on IS 1200 method of measurement, CPWD DSR 2023-24, and state PWD Schedule of Rates with AI market intelligence. Valid for 90 days. Excludes land, financing, FF&E, and specialty systems. Engage a certified QS for contract-grade pricing.",
 };
 
 // =============================================================================

@@ -2620,6 +2620,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           _projectType: projectTypeInfo.type,
           _projectMultiplier: projectTypeInfo.multiplier,
           _disclaimer: COST_DISCLAIMERS.full,
+          _aaceClass: (hasStructuralFoundation && hasMEPData) ? "Class 3" : "Class 4",
           content: nlSummary,
           _boqData: {
             lines: boqLines,
@@ -3368,8 +3369,20 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               : dataSource === "Provisional" ? "LOW 45%"
               : "MED 60%";
 
+            // Derive short division name for the Division column
+            const divShort = l.division.includes("Concrete") || l.division.includes("Part 2") ? "Structural"
+              : l.division.includes("Masonry") || l.division.includes("Part 3") ? "Masonry"
+              : l.division.includes("Steel") || l.division.includes("Part 6") || l.division.includes("Part 7") ? "Steel"
+              : l.division.includes("Plaster") || l.division.includes("Part 8") || l.division.includes("Paint") || l.division.includes("Part 10") || l.division.includes("Flooring") || l.division.includes("Part 13") ? "Finishes"
+              : l.division.includes("MEP") || l.division.includes("Part 14") || l.division.includes("Part 15") || l.division.includes("Part 16") || l.division.includes("Part 17") ? "MEP"
+              : l.division.includes("SUBSTRUCTURE") || l.division.includes("Part 1") ? "Foundation"
+              : l.division.includes("EXTERNAL") ? "External"
+              : l.division.includes("Formwork") || l.division.includes("Part 5") ? "Formwork"
+              : l.division.includes("Reinforcement") ? "Rebar"
+              : l.division.split("—")[0]?.trim().slice(0, 15) || "General";
+
             const row: (string | number)[] = hasIS1200
-              ? [l.is1200Code ?? "", "", `${l.description}${countLabel}`, l.unit,
+              ? [l.is1200Code ?? "", divShort, `${l.description}${countLabel}`, l.unit,
                  l.quantity, wasteStr, adjQty,
                  l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
                  l.materialCost, l.laborCost, l.equipmentCost, subtotal,
@@ -3523,19 +3536,21 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         ["Finishes", "12%", "Cutting, pattern matching", ""],
         ["Doors/Windows", "3%", "Factory-made", ""],
         [""],
-        ["GST RATES APPLIED"],
-        ["Steel & Iron", "18%", "", ""],
-        ["Cement & Concrete", "28%", "", ""],
-        ["Bricks/Sand/Aggregate", "5%", "", ""],
-        ["Tiles/Paint/Doors", "18%", "", ""],
-        ["Works Contract", "12%", "", ""],
+        ["GST RATES APPLIED (all BOQ items are works contracts)"],
+        ["Steel & Iron works", "18%", "Works contract rate", ""],
+        ["Concrete works (RCC, PCC)", "18%", "Works contract rate", ""],
+        ["Masonry (bricks, blocks)", "12%", "Composite supply", ""],
+        ["Finishes (tiles, paint, plaster)", "18%", "Works contract rate", ""],
+        ["MEP works", "18%", "Works contract rate", ""],
         [""],
         ["EXCLUSIONS"],
         ["", "Land acquisition, financing, FF&E, specialty systems", "", ""],
         ["", "Off-site infrastructure, hazardous material abatement", "", ""],
         [""],
         ["ACCURACY"],
-        ["", "AACE Class 4 estimate: ±15-20% accuracy", "", ""],
+        ["", !!(inputData?._hasStructuralFoundation) && !!(inputData?._hasMEPData)
+          ? "AACE Class 3 estimate: ±15-20% accuracy (structural + MEP IFC provided)"
+          : "AACE Class 4 estimate: ±25-30% accuracy (architectural IFC only)", "", ""],
         ["", "Valid for 90 days from date of preparation", "", ""],
         ["", "Engage a RICS/AACE certified QS for contract-grade pricing", "", ""],
       ];
@@ -3558,9 +3573,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         ["Date:", dateStr],
         ["Prepared By:", "BuildFlow — trybuildflow.in"],
         [""],
-        ["Estimate Class:", "AACE Class 4 (±15-20%)"],
+        ["Estimate Class:", !!(inputData?._hasStructuralFoundation) && !!(inputData?._hasMEPData) ? "AACE Class 3 (±15-20%)" : "AACE Class 4 (±25-30%)"],
         ["Confidence:", String(pricingInfo?.confidence ?? "MEDIUM")],
-        isINR ? ["Rate Basis:", `${pricingInfo?.statePWD ?? "CPWD"} SOR + IS 1200`] : ["Rate Basis:", "RSMeans 2024/25 + CSI MasterFormat"],
+        isINR ? ["Rate Basis:", `IS 1200 / CPWD DSR 2023-24 + ${pricingInfo?.statePWD ?? "State"} PWD SOR + AI market intelligence`] : ["Rate Basis:", "CSI MasterFormat + regional factors"],
         [""],
         ["Total Cost:", `${currencySymbol}${Math.round(boqData?.grandTotal ?? 0).toLocaleString()} ${currencyCode}`],
         ["Cost/m² GFA:", `${currencySymbol}${Math.round(hardTotal / Math.max(1, Number(inputData?._gfa ?? 100))).toLocaleString()}`],

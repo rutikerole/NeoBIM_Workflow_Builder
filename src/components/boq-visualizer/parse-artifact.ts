@@ -244,7 +244,7 @@ export function parseArtifactToBOQ(artifactData: any): BOQData | null {
     ifcQuality,
     mepBreakdown,
 
-    aaceClass: data._aaceClass || "Class 3",
+    aaceClass: data._aaceClass || "Class 4",
     confidenceLevel: confLevel,
 
     summary: data.content || data._summary || "",
