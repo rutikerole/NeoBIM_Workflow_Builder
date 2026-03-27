@@ -147,9 +147,11 @@ async function setCachedResult(cacheKey: string, data: MarketIntelligenceResult)
 
 // ─── Sanity Utilities ───────────────────────────────────────────────────────
 
-/** Auto-convert sqft→m² for Indian construction costs. Indian sqft = ₹1,000-8,000, m² = ₹10,000-100,000+ */
+/** Auto-convert sqft→m² for Indian construction costs.
+ * Indian sqft costs: ₹1,500-8,000. Indian m² costs: ₹15,000-100,000+.
+ * If value < 10,000 → definitely sqft (no Indian city has m² cost below ₹10,000) */
 function ensurePerM2(value: number, field: string): number {
-  if (value > 0 && value < 8000) {
+  if (value > 0 && value < 10000) {
     const converted = Math.round(value * 10.764);
     console.log(`[TR-015] Auto-converting ${field}: ₹${value}/sqft → ₹${converted}/m²`);
     return converted;
@@ -256,43 +258,43 @@ export async function fetchMarketPrices(
   const startTime = Date.now();
   const client = new Anthropic({ apiKey });
 
-  // ── Prompt: ask Claude for city-specific construction cost knowledge ──
-  // Primary: plain Claude (fast, 3-8s, works on any plan)
-  // Claude knows Indian city-level price differences from training data
-  const userPrompt = `You are an Indian construction cost expert. Provide current market rates for ${city}, ${state}, India as of ${monthYear}. Building type: ${buildingType}.
+  // ── Reasoning-based prompt: Claude thinks like a senior QS, not a database ──
+  const userPrompt = `You are a senior Quantity Surveyor with 20 years of Indian construction experience. REASON through each price — do not just recall averages.
 
-IMPORTANT RULES:
-- Return ALL costs in INR per SQUARE METRE (m²), NOT per square foot.
-- Return ONLY valid JSON. No markdown. No backticks. No explanation.
-- Start your response with { and end with }. Nothing else.
-- Do not use special characters or line breaks in string values.
+Location: ${city}, ${state}, India. Date: ${monthYear}. Building type: ${buildingType}.
 
-Give CITY-SPECIFIC estimates for ${city} (NOT national averages):
-1. TMT Steel Fe500 price per tonne in ${state}
-2. Cement price per 50kg bag in ${city} (UltraTech or Ambuja)
-3. M-sand or construction sand per cft in ${city}/${state}
-4. Mason (skilled) daily wage in ${city}
-5. Typical ${buildingType} construction cost per m² in ${city} (${yearStr}) — give range in ₹/m²
-6. Minimum possible cost per m² for ${buildingType} in ${city} (below this is impossible) — in ₹/m²
-7. What premium multiplier does ${buildingType} have vs generic commercial? (e.g. wellness=1.35x, hospital=1.6x)
-8. What % of total hard cost is MEP for ${buildingType}? (e.g. wellness=35%, office=25%)
-9. ${state} PWD Schedule of Rates factor relative to CPWD national average (0.80-1.40). Consider local labor, materials, transport.
-10. Absolute minimum cost per m² to build ANY structure in ${state} (just materials + basic labor, no finishes) — in ₹/m²
+REASON THROUGH THESE STEPS:
 
-Return ONLY this JSON:
-{"steel_per_tonne":{"value":0,"source":"","date":"${monthYear}","confidence":"MEDIUM"},"cement_per_bag":{"value":0,"brand":"","source":"","date":"${monthYear}","confidence":"MEDIUM"},"sand_per_cft":{"value":0,"type":"M-sand","source":"","date":"${monthYear}","confidence":"MEDIUM"},"mason":{"value":0,"source":"","date":"${monthYear}","confidence":"MEDIUM"},"benchmark":{"value":0,"range_low":0,"range_high":0,"source":""},"minimum_cost_per_m2":0,"building_type_factor":1.0,"mep_percentage":25,"state_pwd_factor":1.0,"absolute_minimum_cost":18000,"sources":[]}`;
+STEP 1 — Classify: Is ${city} a metro, district HQ, or small town? What are ${state}'s economic characteristics?
+
+STEP 2 — Market factors for ${state}:
+- Nearby steel plants? (Jamshedpur/Bhilai/Visakhapatnam → cheaper steel)
+- Nearby cement plants? (Rajasthan/MP/Gujarat → cheaper cement; Kerala/NE → expensive, must import)
+- Labor-surplus or labor-scarce? (Bihar/UP/Odisha → surplus → cheap; Kerala/Goa → scarce → expensive)
+- Remote/hill/island logistics? (NE states +20-35%; Andaman +50-80%)
+
+STEP 3 — Derive prices with brief reasoning in the "source" field. Example: "Near Bhilai Steel Plant, cheapest steel belt in India" or "Kerala imports cement, ~15% above national average".
+
+STEP 4 — Cross-validate before returning:
+- Steel: national range ₹55,000-75,000/tonne (lower near plants, higher in NE/islands)
+- Cement: national range ₹360-540/bag (lower in producing states, higher in Kerala/NE)
+- Mason: national range ₹400-1,400/day (lowest Bihar/UP, highest Kerala/Goa/Mumbai)
+- ALL benchmark and cost values MUST be in INR per SQUARE METRE (m²). NOT sqft.
+  If you think in sqft, multiply by 10.764. Commercial m² costs are always > 15,000.
+
+Use the tool to report your reasoned prices.`;
 
   // ── Tool definition forces structured JSON output — no parse errors ever ──
   const priceTool = {
     name: "report_construction_prices",
-    description: "Report current construction material prices, labor rates, and benchmarks for a specific Indian city",
+    description: "Report reasoned construction prices for an Indian city. The source field should explain WHY this price, not just where from.",
     input_schema: {
       type: "object" as const,
       properties: {
-        steel_per_tonne: { type: "object" as const, properties: { value: { type: "number" as const }, source: { type: "string" as const }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
-        cement_per_bag: { type: "object" as const, properties: { value: { type: "number" as const }, brand: { type: "string" as const }, source: { type: "string" as const }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
-        sand_per_cft: { type: "object" as const, properties: { value: { type: "number" as const }, type: { type: "string" as const }, source: { type: "string" as const }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
-        mason: { type: "object" as const, properties: { value: { type: "number" as const }, source: { type: "string" as const }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
+        steel_per_tonne: { type: "object" as const, properties: { value: { type: "number" as const, description: "TMT Fe500 price in INR per tonne" }, source: { type: "string" as const, description: "Brief reasoning WHY this price. E.g. 'Near Bhilai Steel Plant, lowest in India' or 'NE import premium +25%'" }, date: { type: "string" as const }, confidence: { type: "string" as const, description: "HIGH if near production center, MEDIUM otherwise, LOW if very uncertain" } }, required: ["value", "source"] },
+        cement_per_bag: { type: "object" as const, properties: { value: { type: "number" as const, description: "OPC 53 cement price in INR per 50kg bag" }, brand: { type: "string" as const }, source: { type: "string" as const, description: "Brief reasoning. E.g. 'UltraTech plant in Rajpura, local supply' or 'Kerala imports all cement, premium market'" }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value", "source"] },
+        sand_per_cft: { type: "object" as const, properties: { value: { type: "number" as const }, type: { type: "string" as const }, source: { type: "string" as const, description: "Brief reasoning about sand availability" }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
+        mason: { type: "object" as const, properties: { value: { type: "number" as const, description: "Skilled mason daily wage in INR" }, source: { type: "string" as const, description: "Brief reasoning. E.g. 'Bihar labor surplus, workers migrate out' or 'Kerala severe labor scarcity, highest in India'" }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value", "source"] },
         benchmark: { type: "object" as const, properties: {
           value: { type: "number" as const, description: "Typical construction cost in INR per SQUARE METRE (m²). NOT per sqft. If you know sqft, multiply by 10.764." },
           range_low: { type: "number" as const, description: "Minimum typical cost in INR per SQUARE METRE (m²). Example: commercial in tier-3 = 18000-25000. NOT sqft values like 1800-2500." },
