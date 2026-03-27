@@ -236,8 +236,11 @@ export async function fetchMarketPrices(
   // Claude knows Indian city-level price differences from training data
   const userPrompt = `You are an Indian construction cost expert. Provide current market rates for ${city}, ${state}, India as of ${monthYear}. Building type: ${buildingType}.
 
-IMPORTANT: Return ALL construction costs in INR per SQUARE METRE (m²), NOT per square foot.
-Example: commercial in Delhi = ₹45,000-80,000 per m² (not ₹4,000-7,500 per sqft).
+IMPORTANT RULES:
+- Return ALL costs in INR per SQUARE METRE (m²), NOT per square foot.
+- Return ONLY valid JSON. No markdown. No backticks. No explanation.
+- Start your response with { and end with }. Nothing else.
+- Do not use special characters or line breaks in string values.
 
 Give CITY-SPECIFIC estimates for ${city} (NOT national averages):
 1. TMT Steel Fe500 price per tonne in ${state}
@@ -302,12 +305,32 @@ Return ONLY this JSON:
     }
   }
 
-  // ── Parse response ──
+  // ── Parse response (robust: handles malformed Claude output) ──
   if (jsonText) {
     const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let p: any;
       try {
-        const p = JSON.parse(jsonMatch[0]);
+        p = JSON.parse(jsonMatch[0]);
+      } catch (firstErr) {
+        // Attempt repair: strip control chars, fix common JSON issues
+        try {
+          const cleaned = jsonMatch[0]
+            .replace(/[\x00-\x1F\x7F]/g, " ")  // strip control characters
+            .replace(/,\s*}/g, "}")              // trailing commas
+            .replace(/,\s*]/g, "]")
+            .replace(/'/g, '"')                  // single → double quotes
+            .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":'); // unquoted keys
+          p = JSON.parse(cleaned);
+          console.log("[TR-015] JSON repaired after initial parse failure");
+        } catch {
+          console.error(`[TR-015] JSON parse failed even after repair. Raw (first 500): ${jsonText.slice(0, 500)}`);
+          result.agent_notes.push(`Failed to parse AI response: ${String(firstErr)}`);
+          p = null as unknown as Record<string, unknown>;
+        }
+      }
+      if (p) try {
         const src = usedWebSearch ? "Web search" : `Claude AI estimate (${monthYear})`;
         const conf = usedWebSearch ? "HIGH" : "MEDIUM";
 
@@ -436,7 +459,7 @@ Return ONLY this JSON:
         }
 
       } catch (parseErr) {
-        result.agent_notes.push(`Failed to parse AI response: ${String(parseErr)}`);
+        result.agent_notes.push(`Failed to process AI response fields: ${String(parseErr)}`);
       }
     } else {
       result.agent_notes.push("AI response did not contain valid JSON.");

@@ -2405,6 +2405,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           industrial: 12000, warehouse: 8000, datacenter: 45000,
         };
         const btKey = projectTypeInfo.type.toLowerCase();
+        console.log(`[TR-008] Building type detected: "${btKey}" (multiplier ${projectTypeInfo.multiplier}) — floor: ${STATIC_FLOORS[btKey] ?? STATIC_FLOORS.commercial}`);
         // Prefer dynamic minimum from market intelligence (city-specific, year-specific)
         let dynamicMin = Number(marketData?.minimum_cost_per_m2 ?? 0);
         // Sanity: if Claude returned per-sqft instead of per-m², convert (1 m² ≈ 10.76 sqft)
