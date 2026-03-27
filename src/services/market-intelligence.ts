@@ -257,47 +257,81 @@ Give CITY-SPECIFIC estimates for ${city} (NOT national averages):
 Return ONLY this JSON:
 {"steel_per_tonne":{"value":0,"source":"","date":"${monthYear}","confidence":"MEDIUM"},"cement_per_bag":{"value":0,"brand":"","source":"","date":"${monthYear}","confidence":"MEDIUM"},"sand_per_cft":{"value":0,"type":"M-sand","source":"","date":"${monthYear}","confidence":"MEDIUM"},"mason":{"value":0,"source":"","date":"${monthYear}","confidence":"MEDIUM"},"benchmark":{"value":0,"range_low":0,"range_high":0,"source":""},"minimum_cost_per_m2":0,"building_type_factor":1.0,"mep_percentage":25,"state_pwd_factor":1.0,"absolute_minimum_cost":18000,"sources":[]}`;
 
-  let jsonText = "";
-  let usedWebSearch = false;
+  // ── Tool definition forces structured JSON output — no parse errors ever ──
+  const priceTool = {
+    name: "report_construction_prices",
+    description: "Report current construction material prices, labor rates, and benchmarks for a specific Indian city",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        steel_per_tonne: { type: "object" as const, properties: { value: { type: "number" as const }, source: { type: "string" as const }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
+        cement_per_bag: { type: "object" as const, properties: { value: { type: "number" as const }, brand: { type: "string" as const }, source: { type: "string" as const }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
+        sand_per_cft: { type: "object" as const, properties: { value: { type: "number" as const }, type: { type: "string" as const }, source: { type: "string" as const }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
+        mason: { type: "object" as const, properties: { value: { type: "number" as const }, source: { type: "string" as const }, date: { type: "string" as const }, confidence: { type: "string" as const } }, required: ["value"] },
+        benchmark: { type: "object" as const, properties: { value: { type: "number" as const }, range_low: { type: "number" as const }, range_high: { type: "number" as const }, source: { type: "string" as const } }, required: ["value", "range_low", "range_high"] },
+        minimum_cost_per_m2: { type: "number" as const },
+        building_type_factor: { type: "number" as const },
+        mep_percentage: { type: "number" as const },
+        state_pwd_factor: { type: "number" as const },
+        absolute_minimum_cost: { type: "number" as const },
+      },
+      required: ["steel_per_tonne", "cement_per_bag", "sand_per_cft", "mason", "benchmark"],
+    },
+  };
 
-  // ── Primary: Plain Claude Haiku (fast, 3-8s, any API plan) ──
+  let jsonText = "";
+  const usedWebSearch = false;
+
+  // ── Primary: Claude Haiku with tool_use (guaranteed valid JSON) ──
   try {
-    console.log("[TR-015] Calling Claude Haiku for price estimates...");
+    console.log("[TR-015] Calling Claude Haiku with structured tool output...");
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20_000);
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
+      max_tokens: 2048,
+      tools: [priceTool],
+      tool_choice: { type: "tool", name: "report_construction_prices" },
       messages: [{ role: "user", content: userPrompt }],
     }, { signal: controller.signal });
     clearTimeout(timer);
+
+    // Extract structured data from tool_use block (guaranteed valid JSON)
     for (const block of response.content) {
-      if (block.type === "text") jsonText += block.text;
+      if (block.type === "tool_use" && block.name === "report_construction_prices") {
+        jsonText = JSON.stringify(block.input);
+        break;
+      }
     }
-    result.search_count = 5;
+    result.search_count = 10;
     result.agent_notes.push("AI-estimated prices based on Indian construction market data. Accuracy: ±15-25%. Verify with local suppliers for contracts.");
-    console.log(`[TR-015] Claude Haiku responded in ${Date.now() - startTime}ms`);
+    console.log(`[TR-015] Claude Haiku (structured) responded in ${Date.now() - startTime}ms`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[TR-015] Claude Haiku failed:", msg);
 
-    // ── Fallback: try Sonnet if Haiku unavailable ──
+    // ── Fallback: Sonnet with tool_use ──
     try {
-      console.log("[TR-015] Trying Sonnet fallback...");
+      console.log("[TR-015] Trying Sonnet fallback (structured)...");
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30_000);
       const response = await client.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 1024,
+        max_tokens: 2048,
+        tools: [priceTool],
+        tool_choice: { type: "tool", name: "report_construction_prices" },
         messages: [{ role: "user", content: userPrompt }],
       }, { signal: controller.signal });
       clearTimeout(timer);
       for (const block of response.content) {
-        if (block.type === "text") jsonText += block.text;
+        if (block.type === "tool_use" && block.name === "report_construction_prices") {
+          jsonText = JSON.stringify(block.input);
+          break;
+        }
       }
-      result.search_count = 5;
+      result.search_count = 10;
       result.agent_notes.push("AI-estimated prices based on Indian construction market data. Accuracy: ±15-25%. Verify with local suppliers for contracts.");
-      console.log(`[TR-015] Sonnet responded in ${Date.now() - startTime}ms`);
+      console.log(`[TR-015] Sonnet (structured) responded in ${Date.now() - startTime}ms`);
     } catch (fallbackErr) {
       const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
       result.agent_notes.push(`Claude API error: ${fbMsg}`);
@@ -305,7 +339,7 @@ Return ONLY this JSON:
     }
   }
 
-  // ── Parse response (robust: handles malformed Claude output) ──
+  // ── Parse response (tool_use gives guaranteed valid JSON) ──
   if (jsonText) {
     const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -313,22 +347,10 @@ Return ONLY this JSON:
       let p: any;
       try {
         p = JSON.parse(jsonMatch[0]);
-      } catch (firstErr) {
-        // Attempt repair: strip control chars, fix common JSON issues
-        try {
-          const cleaned = jsonMatch[0]
-            .replace(/[\x00-\x1F\x7F]/g, " ")  // strip control characters
-            .replace(/,\s*}/g, "}")              // trailing commas
-            .replace(/,\s*]/g, "]")
-            .replace(/'/g, '"')                  // single → double quotes
-            .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":'); // unquoted keys
-          p = JSON.parse(cleaned);
-          console.log("[TR-015] JSON repaired after initial parse failure");
-        } catch {
-          console.error(`[TR-015] JSON parse failed even after repair. Raw (first 500): ${jsonText.slice(0, 500)}`);
-          result.agent_notes.push(`Failed to parse AI response: ${String(firstErr)}`);
-          p = null as unknown as Record<string, unknown>;
-        }
+      } catch (parseErr) {
+        console.error(`[TR-015] JSON parse failed (unexpected with tool_use). Raw: ${jsonText.slice(0, 300)}`);
+        result.agent_notes.push(`Failed to parse response: ${String(parseErr)}`);
+        p = null;
       }
       if (p) try {
         const src = usedWebSearch ? "Web search" : `Claude AI estimate (${monthYear})`;
