@@ -145,6 +145,9 @@ export function parseArtifactToBOQ(artifactData: any): BOQData | null {
       steelSensitivity: 0,
       cementSensitivity: 0,
       masonSensitivity: 0,
+      bricksSensitivity: 0,
+      sandSensitivity: 0,
+      timberSensitivity: 0,
     };
   });
 

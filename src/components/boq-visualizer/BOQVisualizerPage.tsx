@@ -25,12 +25,18 @@ export function BOQVisualizerPage({ data, executionId }: BOQVisualizerPageProps)
     steel: data.market?.steelPerTonne ?? DEFAULT_PRICES.steel,
     cement: data.market?.cementPerBag ?? DEFAULT_PRICES.cement,
     mason: data.market?.masonRate ?? DEFAULT_PRICES.mason,
+    bricks: DEFAULT_PRICES.bricks,
+    sand: DEFAULT_PRICES.sand,
+    timber: DEFAULT_PRICES.timber,
   }));
 
   const basePrices = useRef<PriceOverrides>({
     steel: data.market?.steelPerTonne ?? DEFAULT_PRICES.steel,
     cement: data.market?.cementPerBag ?? DEFAULT_PRICES.cement,
     mason: data.market?.masonRate ?? DEFAULT_PRICES.mason,
+    bricks: DEFAULT_PRICES.bricks,
+    sand: DEFAULT_PRICES.sand,
+    timber: DEFAULT_PRICES.timber,
   });
 
   // Rate override state

@@ -134,7 +134,16 @@ export function BOQTable({ lines, rateOverrides, onRateOverride }: BOQTableProps
         border: "1px solid rgba(255, 255, 255, 0.06)",
       }}
     >
-      {/* Tabs + Source Filter */}
+      {/* Hint + Tabs + Source Filter */}
+      <div
+        className="flex items-center justify-between px-5 py-3"
+        style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}
+      >
+        <div className="flex items-center gap-1.5 mr-3">
+          <Pencil size={9} color="#5C5C78" />
+          <span className="text-[10px]" style={{ color: "#5C5C78" }}>Click any Rate cell to override</span>
+        </div>
+      </div>
       <div
         className="flex items-center justify-between px-5 py-3"
         style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}

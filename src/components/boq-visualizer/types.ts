@@ -25,6 +25,9 @@ export interface BOQLineItem {
   steelSensitivity: number;
   cementSensitivity: number;
   masonSensitivity: number;
+  bricksSensitivity: number;
+  sandSensitivity: number;
+  timberSensitivity: number;
 }
 
 export interface BOQData {
@@ -105,6 +108,9 @@ export interface PriceOverrides {
   steel: number; // ₹/tonne
   cement: number; // ₹/bag
   mason: number; // ₹/day
+  bricks: number; // ₹/nos
+  sand: number; // ₹/cft
+  timber: number; // ₹/m²
 }
 
 export interface RateOverride {
