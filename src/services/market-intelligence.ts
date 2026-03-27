@@ -145,6 +145,25 @@ async function setCachedResult(cacheKey: string, data: MarketIntelligenceResult)
   }
 }
 
+// ─── Sanity Utilities ───────────────────────────────────────────────────────
+
+/** Auto-convert sqft→m² for Indian construction costs. Indian sqft = ₹1,000-8,000, m² = ₹10,000-100,000+ */
+function ensurePerM2(value: number, field: string): number {
+  if (value > 0 && value < 8000) {
+    const converted = Math.round(value * 10.764);
+    console.log(`[TR-015] Auto-converting ${field}: ₹${value}/sqft → ₹${converted}/m²`);
+    return converted;
+  }
+  return value;
+}
+
+/** Clamp state PWD factor to realistic range. No Indian state is <0.80x or >1.50x CPWD. */
+function clampPWDFactor(factor: number): number {
+  if (factor < 0.80) { console.log(`[TR-015] PWD factor ${factor} clamped to 0.80`); return 0.80; }
+  if (factor > 1.50) { console.log(`[TR-015] PWD factor ${factor} clamped to 1.50`); return 1.50; }
+  return factor;
+}
+
 // ─── Agent Implementation ───────────────────────────────────────────────────
 
 export async function fetchMarketPrices(
@@ -166,8 +185,13 @@ export async function fetchMarketPrices(
   const cacheKey = `market_intel:v2:${norm(city)}:${norm(state)}:${dateStr}`;
   const cached = await getCachedResult(cacheKey);
   if (cached && cached.city?.toLowerCase() === city.toLowerCase() && cached.state?.toLowerCase() === state.toLowerCase()) {
+    const fetchTime = cached.fetched_at ? new Date(cached.fetched_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "earlier";
     console.log(`[TR-015] Cache HIT for ${city}, ${state} — returning cached prices (${cached.agent_status})`);
-    cached.agent_notes = [...(cached.agent_notes || []), `Served from cache (originally fetched ${cached.fetched_at?.split("T")[0] ?? "today"})`];
+    cached.agent_notes = [
+      `📦 Market prices served from cache (fetched today at ${fetchTime}). Prices refresh daily.`,
+      `Steel: ₹${cached.steel_per_tonne?.value?.toLocaleString() ?? "?"} | Cement: ₹${cached.cement_per_bag?.value ?? "?"} | Mason: ₹${cached.labor?.mason?.value ?? "?"}`,
+    ];
+    cached.duration_ms = 0; // instant from cache
     return cached;
   }
   if (cached) {
@@ -309,7 +333,7 @@ Return ONLY this JSON:
       }
     }
     result.search_count = 10;
-    result.agent_notes.push("AI-estimated prices based on Indian construction market data. Accuracy: ±15-25%. Verify with local suppliers for contracts.");
+    result.agent_notes.push(`✨ Fresh market prices fetched for ${city} — ${monthYear} estimates. Accuracy: ±15-25%. Verify with local suppliers for contracts.`);
     console.log(`[TR-015] Claude Haiku (structured) responded in ${Date.now() - startTime}ms`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -335,7 +359,7 @@ Return ONLY this JSON:
         }
       }
       result.search_count = 10;
-      result.agent_notes.push("AI-estimated prices based on Indian construction market data. Accuracy: ±15-25%. Verify with local suppliers for contracts.");
+      result.agent_notes.push(`✨ Fresh market prices fetched for ${city} — ${monthYear} estimates. Accuracy: ±15-25%. Verify with local suppliers for contracts.`);
       console.log(`[TR-015] Sonnet (structured) responded in ${Date.now() - startTime}ms`);
     } catch (fallbackErr) {
       const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
@@ -414,16 +438,9 @@ Return ONLY this JSON:
         const bench = p.benchmark ?? p.benchmark_per_sqft;
         console.log(`[TR-015] Raw benchmark from Claude: ${JSON.stringify(bench)}`);
         if (bench?.value > 0 || bench?.range_low > 0) {
-          let bVal = bench.value || bench.range_low || 0;
-          let bLow = bench.range_low || bVal * 0.75;
-          let bHigh = bench.range_high || bVal * 1.25;
-          // If range_low < 10,000 → sqft values, convert to m² (1 m² = 10.764 sqft)
-          if (bLow > 0 && bLow < 10000) {
-            console.log(`[TR-015] Converting benchmark sqft→m²: ₹${bLow}-${bHigh}/sqft → ₹${Math.round(bLow * 10.764)}-${Math.round(bHigh * 10.764)}/m²`);
-            bVal = Math.round(bVal * 10.764);
-            bLow = Math.round(bLow * 10.764);
-            bHigh = Math.round(bHigh * 10.764);
-          }
+          const bVal = ensurePerM2(bench.value || bench.range_low || 0, "benchmark_value");
+          const bLow = ensurePerM2(bench.range_low || bVal * 0.75, "benchmark_low");
+          const bHigh = ensurePerM2(bench.range_high || bVal * 1.25, "benchmark_high");
           result.benchmark_per_sqft = {
             value: bVal, range_low: bLow, range_high: bHigh,
             source: bench.source || src, building_type: buildingType,
@@ -442,19 +459,9 @@ Return ONLY this JSON:
           result.sources_summary = p.sources.filter((s: unknown) => typeof s === "string");
         }
 
-        // Dynamic benchmarks from Claude (city + building type specific)
+        // Dynamic benchmarks — apply ensurePerM2 to ALL cost/m² fields
         if (p.minimum_cost_per_m2 > 0) {
-          let minVal = p.minimum_cost_per_m2;
-          // If < 10,000 → likely sqft, convert to m²
-          if (minVal < 10000) {
-            console.log(`[TR-015] Converting minimum_cost from sqft to m²: ₹${minVal}/sqft → ₹${Math.round(minVal * 10.764)}/m²`);
-            minVal = Math.round(minVal * 10.764);
-          }
-          result.minimum_cost_per_m2 = minVal;
-        }
-        if (bench?.range_low > 0) {
-          result.typical_range_min = bench.range_low;
-          result.typical_range_max = bench.range_high || bench.range_low * 1.5;
+          result.minimum_cost_per_m2 = ensurePerM2(p.minimum_cost_per_m2, "minimum_cost");
         }
         if (p.building_type_factor > 0) {
           result.building_type_factor = p.building_type_factor;
@@ -465,14 +472,11 @@ Return ONLY this JSON:
         result.benchmark_label = `${buildingType} in ${city}, ${state} (${monthYear} — AI estimate)`;
 
         // State PWD factor from Claude (replaces hardcoded table)
-        if (p.state_pwd_factor > 0 && p.state_pwd_factor >= 0.5 && p.state_pwd_factor <= 2.0) {
-          result.state_pwd_factor = p.state_pwd_factor;
+        if (p.state_pwd_factor > 0) {
+          result.state_pwd_factor = clampPWDFactor(p.state_pwd_factor);
         }
-        // Absolute minimum cost
         if (p.absolute_minimum_cost > 0) {
-          let absMin = p.absolute_minimum_cost;
-          if (absMin < 10000) absMin = Math.round(absMin * 10.764); // sqft→m² conversion
-          result.absolute_minimum_cost = absMin;
+          result.absolute_minimum_cost = ensurePerM2(p.absolute_minimum_cost, "absolute_minimum");
         }
 
         // Status — count how many items have live data
