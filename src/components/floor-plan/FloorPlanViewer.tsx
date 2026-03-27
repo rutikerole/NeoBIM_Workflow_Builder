@@ -80,15 +80,15 @@ export function FloorPlanViewer({ initialGeometry, initialPrompt, initialProject
     const store = useFloorPlanStore.getState();
     store.startGeneration(prompt);
 
-    // Simulate generation steps
+    // Simulate generation steps — snappy 3-4s total
     const steps = [
-      { step: "analyzing", progress: 10, delay: 800 },
-      { step: "generating", progress: 25, delay: 1200 },
-      { step: "placing_walls", progress: 45, delay: 1000 },
-      { step: "adding_rooms", progress: 60, delay: 1000 },
-      { step: "doors_windows", progress: 75, delay: 800 },
-      { step: "vastu_check", progress: 85, delay: 600 },
-      { step: "finalizing", progress: 95, delay: 500 },
+      { step: "analyzing", progress: 10, delay: 350 },
+      { step: "generating", progress: 25, delay: 400 },
+      { step: "placing_walls", progress: 45, delay: 400 },
+      { step: "adding_rooms", progress: 60, delay: 400 },
+      { step: "doors_windows", progress: 75, delay: 350 },
+      { step: "vastu_check", progress: 85, delay: 350 },
+      { step: "finalizing", progress: 95, delay: 300 },
     ];
 
     let cumDelay = 0;
@@ -97,11 +97,19 @@ export function FloorPlanViewer({ initialGeometry, initialPrompt, initialProject
       setTimeout(() => store.updateGenerationStep(s.step, s.progress), cumDelay);
     }
 
-    // Complete with sample data (in production, this would call the AI pipeline)
+    // Show "complete" step briefly, then load the floor plan and dismiss loader
+    cumDelay += 300;
+    setTimeout(() => {
+      store.updateGenerationStep("complete", 100);
+    }, cumDelay);
+
+    // After showing "Floor plan ready!" for 800ms, load data and transition to editor
+    cumDelay += 800;
     setTimeout(() => {
       store.loadSample();
-      store.updateGenerationStep("complete", 100);
-    }, cumDelay + 500);
+      // loadSample sets project but doesn't clear isGenerating — clear it now
+      useFloorPlanStore.setState({ isGenerating: false });
+    }, cumDelay);
   }, []);
 
   const handleImportFile = useCallback(async () => {
