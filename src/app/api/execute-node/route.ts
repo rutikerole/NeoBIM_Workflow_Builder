@@ -2062,6 +2062,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             totalCost: lineTot,
             storey: elemStorey || undefined,
             elementCount: elemCount || undefined,
+            is1200Code: isIndianProject ? "IS1200-CSI-MAPPED" : undefined,
           });
         } else {
           // Fallback for unknown items — estimate with default waste
@@ -2106,6 +2107,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             laborCost: Math.round(lineTotal * breakdown.labor * 100) / 100,
             equipmentCost: Math.round(lineTotal * breakdown.equipment * 100) / 100,
             totalCost: Math.round(lineTotal * 100) / 100,
+            is1200Code: isIndianProject ? "IS1200-EST" : undefined,
           });
         }
       }
