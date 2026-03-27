@@ -2506,15 +2506,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       if (benchmarkResult.severity !== "ok") {
         warnings.unshift(benchmarkResult.message); // Put at top for visibility
       }
-      // Add market intelligence notes
-      if (marketAdjustments?.priceNotes?.length) {
-        for (const note of marketAdjustments.priceNotes) {
-          warnings.push(`📊 ${note}`);
-        }
-      }
+      // Market intelligence summary (informational, not warnings)
       if (marketData?.agent_notes?.length) {
         for (const note of marketData.agent_notes) {
-          warnings.push(`ℹ️ ${note}`);
+          warnings.push(note); // Already formatted with ✨ or 💾 icons
         }
       }
 
@@ -2718,29 +2713,26 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         ["Plumber", `₹${marketData.labor.plumber.value}/day`, marketData.labor.plumber.source, marketData.labor.plumber.date, marketData.labor.plumber.confidence],
       ];
 
-      // Build the formatted text report
+      // Build clean card-style report
+      const isCached = marketData.duration_ms === 0;
+      const icon = isCached ? "💾" : "✨";
+      const statusLine = isCached
+        ? `From cache · fetched today · Prices refresh daily`
+        : `Just fetched · ${durationSec}s · Claude AI`;
+
       const reportLines = [
-        `Market Intelligence Report — ${miCity}, ${miState} (${new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })})`,
-        "",
-        "STEEL",
-        `  Fe500 TMT: ₹${marketData.steel_per_tonne.value.toLocaleString()}/tonne`,
-        `  Source: ${marketData.steel_per_tonne.source} — ${marketData.steel_per_tonne.confidence} confidence`,
-        "",
-        "CEMENT",
-        `  ${marketData.cement_per_bag.brand}: ₹${marketData.cement_per_bag.value}/bag`,
-        `  Source: ${marketData.cement_per_bag.source} — ${marketData.cement_per_bag.confidence} confidence`,
-        "",
-        "SAND",
-        `  ${marketData.sand_per_cft.type}: ₹${marketData.sand_per_cft.value}/cft`,
-        `  Source: ${marketData.sand_per_cft.source} — ${marketData.sand_per_cft.confidence} confidence`,
-        "",
-        "BENCHMARK",
-        `  ${miBuildingType} construction ${miCity}: ₹${marketData.benchmark_per_sqft.range_low.toLocaleString()}-${marketData.benchmark_per_sqft.range_high.toLocaleString()}/m²`,
-        `  Source: ${marketData.benchmark_per_sqft.source}`,
-        "",
-        `Searches run: ${marketData.search_count} | Time: ${durationSec}s | Fallbacks used: ${marketData.fallbacks_used}`,
-        ...(marketData.sources_summary.length > 0 ? ["", "Sources:", ...marketData.sources_summary.map(s => `  ${s}`)] : []),
-        ...(marketData.agent_notes.length > 0 ? ["", "Notes:", ...marketData.agent_notes.map(n => `  ${n}`)] : []),
+        `${icon} Market Intelligence`,
+        `${miCity}, ${miState} · ${new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}`,
+        `────────────────────────────────`,
+        `🔩 Steel      ₹${marketData.steel_per_tonne.value.toLocaleString()}/tonne    ${marketData.steel_per_tonne.confidence}`,
+        `🏗️ Cement     ${marketData.cement_per_bag.brand} ₹${marketData.cement_per_bag.value}/bag    ${marketData.cement_per_bag.confidence}`,
+        `👷 Mason      ₹${marketData.labor.mason.value.toLocaleString()}/day     ${marketData.labor.mason.confidence}`,
+        `🏜️ Sand       ₹${marketData.sand_per_cft.value}/cft     ${marketData.sand_per_cft.confidence}`,
+        `────────────────────────────────`,
+        `📊 Benchmark  ₹${marketData.benchmark_per_sqft.range_low.toLocaleString()}-${marketData.benchmark_per_sqft.range_high.toLocaleString()}/m² (${miBuildingType})`,
+        `────────────────────────────────`,
+        statusLine,
+        `Accuracy ±15-25% · Verify with local suppliers`,
       ];
 
       artifact = {
@@ -2749,7 +2741,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         tileInstanceId,
         type: "table",
         data: {
-          label: `Market Intelligence — ${miCity}, ${miState} (${new Date().toLocaleDateString("en-IN")})`,
+          label: `${icon} Market Intelligence — ${miCity}, ${miState}`,
           headers: miHeaders,
           rows: miRows,
           content: reportLines.join("\n"),

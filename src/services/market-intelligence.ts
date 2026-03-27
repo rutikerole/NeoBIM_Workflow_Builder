@@ -188,8 +188,9 @@ export async function fetchMarketPrices(
     const fetchTime = cached.fetched_at ? new Date(cached.fetched_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "earlier";
     console.log(`[TR-015] Cache HIT for ${city}, ${state} — returning cached prices (${cached.agent_status})`);
     cached.agent_notes = [
-      `📦 Market prices served from cache (fetched today at ${fetchTime}). Prices refresh daily.`,
-      `Steel: ₹${cached.steel_per_tonne?.value?.toLocaleString() ?? "?"} | Cement: ₹${cached.cement_per_bag?.value ?? "?"} | Mason: ₹${cached.labor?.mason?.value ?? "?"}`,
+      `💾 Market Intelligence — ${city}, ${state} (cached, fetched today at ${fetchTime})`,
+      `Steel ₹${cached.steel_per_tonne?.value?.toLocaleString() ?? "?"}/t · Cement ₹${cached.cement_per_bag?.value ?? "?"}/bag · Mason ₹${cached.labor?.mason?.value ?? "?"}/day · Sand ₹${cached.sand_per_cft?.value ?? "?"}/cft`,
+      `Prices refresh daily at midnight IST`,
     ];
     cached.duration_ms = 0; // instant from cache
     return cached;
@@ -333,7 +334,7 @@ Return ONLY this JSON:
       }
     }
     result.search_count = 10;
-    result.agent_notes.push(`✨ Fresh market prices fetched for ${city} — ${monthYear} estimates. Accuracy: ±15-25%. Verify with local suppliers for contracts.`);
+    result.agent_notes.push(`✨ Market Intelligence — ${city}, ${state} · ${monthYear} · Just fetched · Claude AI · Accuracy ±15-25%`);
     console.log(`[TR-015] Claude Haiku (structured) responded in ${Date.now() - startTime}ms`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -359,7 +360,7 @@ Return ONLY this JSON:
         }
       }
       result.search_count = 10;
-      result.agent_notes.push(`✨ Fresh market prices fetched for ${city} — ${monthYear} estimates. Accuracy: ±15-25%. Verify with local suppliers for contracts.`);
+      result.agent_notes.push(`✨ Market Intelligence — ${city}, ${state} · ${monthYear} · Just fetched · Claude AI · Accuracy ±15-25%`);
       console.log(`[TR-015] Sonnet (structured) responded in ${Date.now() - startTime}ms`);
     } catch (fallbackErr) {
       const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
@@ -489,8 +490,11 @@ Return ONLY this JSON:
           result.agent_status = "success";
         } else if (liveCount >= 1) {
           result.agent_status = "partial";
-          if (!usedWebSearch) result.agent_notes.push("Prices from AI training data — verify against current market.");
         }
+        // Add price summary line
+        result.agent_notes.push(
+          `Steel ₹${result.steel_per_tonne.value.toLocaleString()}/t · Cement ₹${result.cement_per_bag.value}/bag · Mason ₹${result.labor.mason.value}/day · Sand ₹${result.sand_per_cft.value}/cft`
+        );
 
       } catch (parseErr) {
         result.agent_notes.push(`Failed to process AI response fields: ${String(parseErr)}`);
