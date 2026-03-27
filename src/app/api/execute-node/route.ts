@@ -1731,6 +1731,20 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
     } else if (catalogueId === "TR-008") {
       // BOQ Cost Mapper — Professional QS-grade with waste, M/L/E breakdown, escalation, project type
+
+      // Normalize storey names in ALL element descriptions received from upstream
+      // Belt-and-suspenders: catches "Grond" even if TR-007 path missed it
+      const fixStoreyInDesc = (s: string): string => s.replace(/\bGrond\b/gi, "Ground").replace(/\bGroung\b/gi, "Ground");
+      if (inputData?._elements && Array.isArray(inputData._elements)) {
+        for (const el of inputData._elements) {
+          if (typeof el === "object" && el !== null) {
+            const elem = el as Record<string, unknown>;
+            if (typeof elem.description === "string") elem.description = fixStoreyInDesc(elem.description);
+            if (typeof elem.storey === "string") elem.storey = fixStoreyInDesc(elem.storey);
+          }
+        }
+      }
+
       // Diagnostic: what keys does TR-008 actually receive from upstream merge?
       const inputKeys = Object.keys(inputData ?? {});
       console.log(`[TR-008] Input keys (${inputKeys.length}): ${inputKeys.filter(k => k.startsWith("_")).join(", ")}`);
@@ -2216,6 +2230,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const floorCountForProv = new Set(elements.map((e: unknown) => (e as Record<string, unknown>).storey).filter(Boolean)).size || 1;
       const cityTierForProv = indianPricing?.cityTier ?? "city";
 
+      // Diagnostic: cost per m² tracing
+      console.log(`[TR-008] GFA from slabs: ${gfaForProvisional}m² | Floors: ${floorCountForProv} | City tier: ${cityTierForProv} | Indian pricing overall: ${indianPricing?.overall?.toFixed(3)} | Location: ${locationLabel}`);
+
       // Check flags from TR-007 multi-IFC merge
       const hasStructuralFoundation = !!(inputData?._hasStructuralFoundation);
       const hasMEPData = !!(inputData?._hasMEPData);
@@ -2338,6 +2355,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       const cs = currencySymbol;
       rows.push(["", "", "", "", "", "", "", "", "", ""]);
       rows.push(["HARD COSTS SUBTOTAL", "", "", "", "", "", `${cs}${totalMaterial.toFixed(2)}`, `${cs}${totalLabor.toFixed(2)}`, `${cs}${totalEquipment.toFixed(2)}`, `${cs}${hardCostSubtotal.toFixed(2)}`]);
+      console.log(`[TR-008] COST TRACE: Hard costs ₹${hardCostSubtotal.toLocaleString()} / GFA ${gfaForProvisional}m² = ₹${Math.round(hardCostSubtotal / gfaForProvisional).toLocaleString()}/m² | Elements: ${elements.length} | City: ${locationLabel} | Tier: ${cityTierForProv}`);
 
       // Project type multiplier info
       if (projectTypeInfo.multiplier !== 1.0) {
