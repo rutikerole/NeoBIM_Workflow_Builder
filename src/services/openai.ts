@@ -2124,14 +2124,19 @@ RESPOND WITH JSON:
           role: "user",
           content: `Design a floor plan for: ${typology}
 Building footprint: ${fpWidthM}m × ${fpHeightM}m = ${floorPlate} m²
-Program requirements: ${programDetail}
+
+REQUIRED ROOMS (generate ALL of these, EXACTLY as listed):
+${d.program && Array.isArray(d.program) && d.program.length > 0
+  ? d.program.map((p, i) => `  ${i + 1}. "${p.space}" — ${p.area_m2 ? `${p.area_m2} m²` : "auto-size"}`).join("\n")
+  : `Program: ${programDetail}`}
 ${narrativeContext ? `\nDescription: ${narrativeContext.substring(0, 500)}` : ""}
 ${programSummaryContext ? `\nSummary: ${programSummaryContext}` : ""}
 
-IMPORTANT:
+CRITICAL CONSTRAINTS:
+- Output EXACTLY ${d.program?.length ?? "the listed"} rooms — no more, no less
+- Use the EXACT room names listed above (e.g. "Master Bedroom", "Bedroom 2", etc.)
 - Rooms MUST perfectly tile the ${fpWidthM}m × ${fpHeightM}m rectangle with NO gaps and NO overlaps
 - x + width ≤ ${fpWidthM} and y + depth ≤ ${fpHeightM} for ALL rooms
-- Follow the room list EXACTLY — no extra rooms, no renamed rooms
 - Room areas MUST sum to approximately ${floorPlate} m²`,
         },
       ],
@@ -2147,6 +2152,36 @@ IMPORTANT:
 
     if (!aiResult.rooms || aiResult.rooms.length === 0) {
       throw new Error("AI returned no rooms for floor plan");
+    }
+
+    // ── Post-generation room validation ────────────────────────────
+    // Ensure AI didn't drop required rooms (especially bedrooms)
+    if (d.program && Array.isArray(d.program) && d.program.length > 0) {
+      const aiRoomNames = new Set(aiResult.rooms.map(r => r.name.toLowerCase().trim()));
+      const missing: Array<{ space: string; area_m2?: number }> = [];
+      for (const req of d.program) {
+        const reqName = req.space.toLowerCase().trim();
+        // Check for exact match or close match
+        const found = aiRoomNames.has(reqName) ||
+          [...aiRoomNames].some(n => n.includes(reqName) || reqName.includes(n));
+        if (!found) missing.push(req);
+      }
+      // If bedrooms or other key rooms are missing, inject them
+      if (missing.length > 0) {
+        console.warn(`[generateFloorPlan] AI missed ${missing.length} rooms: ${missing.map(m => m.space).join(", ")}. Injecting.`);
+        for (const m of missing) {
+          const area = m.area_m2 ?? 12;
+          const w = snap(Math.sqrt(area * 1.3));
+          const h = snap(area / w);
+          aiResult.rooms.push({
+            name: m.space,
+            area,
+            type: detectRoomType(m.space),
+            // Positions will be fixed by validateLayout
+            x: 0, y: 0, width: w, depth: h,
+          });
+        }
+      }
     }
 
     const title = aiResult.title ?? `${typology} — Floor Plan`;

@@ -19,6 +19,7 @@ import { ProgramPanel } from "./panels/ProgramPanel";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { GenerationLoader } from "./GenerationLoader";
 import { getProjectIndex, importProjectFile } from "@/lib/floor-plan/project-persistence";
+import { getSampleProjectForPrompt } from "@/lib/floor-plan/sample-layouts";
 import { FloorPlanErrorBoundary } from "./ErrorBoundary";
 
 interface FloorPlanViewerProps {
@@ -87,64 +88,101 @@ export function FloorPlanViewer({ initialGeometry, initialPrompt, initialProject
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!project]); // Re-check when project presence changes
 
-  // TODO: Replace with real AI generation API call (POST /api/generate-floor-plan)
-  // Currently loads sample data with simulated progress steps.
-  // Real implementation should: 1) POST prompt to API, 2) poll for progress,
-  // 3) load returned Floor data. See pipeline-adapter.ts for data format.
-  const generationTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [fallbackBanner, setFallbackBanner] = React.useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Clean up generation timers on unmount
+  // Clean up on unmount
   useEffect(() => {
-    return () => {
-      for (const t of generationTimers.current) clearTimeout(t);
-      generationTimers.current = [];
-    };
+    return () => { abortRef.current?.abort(); };
   }, []);
 
-  const handleGenerateFromPrompt = useCallback((prompt: string) => {
-    // Clear any pending timers from previous generation
-    for (const t of generationTimers.current) clearTimeout(t);
-    generationTimers.current = [];
+  const handleGenerateFromPrompt = useCallback(async (prompt: string) => {
+    // Abort any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     const store = useFloorPlanStore.getState();
     store.startGeneration(prompt);
+    setFallbackBanner(null);
 
-    // Simulate generation steps — snappy 3-4s total
+    // Show progress steps while API call runs
+    const stepTimers: ReturnType<typeof setTimeout>[] = [];
     const steps = [
-      { step: "analyzing", progress: 10, delay: 350 },
-      { step: "generating", progress: 25, delay: 400 },
-      { step: "placing_walls", progress: 45, delay: 400 },
-      { step: "adding_rooms", progress: 60, delay: 400 },
-      { step: "doors_windows", progress: 75, delay: 350 },
-      { step: "vastu_check", progress: 85, delay: 350 },
-      { step: "finalizing", progress: 95, delay: 300 },
+      { step: "analyzing", progress: 10, delay: 300 },
+      { step: "generating", progress: 25, delay: 500 },
+      { step: "placing_walls", progress: 40, delay: 600 },
+      { step: "adding_rooms", progress: 55, delay: 700 },
+      { step: "doors_windows", progress: 70, delay: 800 },
     ];
-
-    let cumDelay = 0;
+    let cum = 0;
     for (const s of steps) {
-      cumDelay += s.delay;
-      generationTimers.current.push(
-        setTimeout(() => store.updateGenerationStep(s.step, s.progress), cumDelay)
-      );
+      cum += s.delay;
+      stepTimers.push(setTimeout(() => store.updateGenerationStep(s.step, s.progress), cum));
     }
 
-    // Show "complete" step briefly, then load the floor plan and dismiss loader
-    cumDelay += 300;
-    generationTimers.current.push(
-      setTimeout(() => {
-        store.updateGenerationStep("complete", 100);
-      }, cumDelay)
-    );
+    try {
+      const res = await fetch("/api/generate-floor-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+        signal: controller.signal,
+      });
 
-    // After showing "Floor plan ready!" for 800ms, load data and transition to editor
-    cumDelay += 800;
-    generationTimers.current.push(
-      setTimeout(() => {
-        store.loadSample();
-        // loadSample sets project but doesn't clear isGenerating — clear it now
-        useFloorPlanStore.setState({ isGenerating: false });
-      }, cumDelay)
-    );
+      // Clear animation timers
+      for (const t of stepTimers) clearTimeout(t);
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      store.updateGenerationStep("finalizing", 90);
+
+      // Brief pause to show finalizing step
+      await new Promise((r) => setTimeout(r, 400));
+      store.updateGenerationStep("complete", 100);
+      await new Promise((r) => setTimeout(r, 600));
+
+      // Load the AI-generated project
+      store.setProject(data.project);
+      useFloorPlanStore.setState({
+        isGenerating: false,
+        dataSource: "pipeline",
+        originalPrompt: prompt,
+        projectModified: false,
+      });
+    } catch (err) {
+      // Clear animation timers
+      for (const t of stepTimers) clearTimeout(t);
+
+      if (controller.signal.aborted) return; // User navigated away
+
+      console.warn("[FloorPlanViewer] AI generation failed, using BHK-matched sample:", err);
+
+      // Fallback: load BHK-matched sample data instead of always 2BHK
+      store.updateGenerationStep("finalizing", 90);
+      await new Promise((r) => setTimeout(r, 300));
+      store.updateGenerationStep("complete", 100);
+      await new Promise((r) => setTimeout(r, 500));
+
+      const fallbackProject = getSampleProjectForPrompt(prompt);
+      store.setProject(fallbackProject);
+      useFloorPlanStore.setState({
+        isGenerating: false,
+        dataSource: "sample",
+        originalPrompt: prompt,
+        projectModified: false,
+      });
+
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === "NO_API_KEY") {
+        setFallbackBanner("AI generation unavailable (no API key configured). Showing sample layout.");
+      } else {
+        setFallbackBanner(`AI generation failed: ${message}. Showing sample layout.`);
+      }
+    }
   }, []);
 
   const handleImportFile = useCallback(async () => {
@@ -340,6 +378,22 @@ export function FloorPlanViewer({ initialGeometry, initialPrompt, initialProject
 
   return (
     <div className="flex h-screen flex-col bg-white overflow-hidden select-none print:overflow-visible">
+      {/* Fallback warning banner */}
+      {fallbackBanner && (
+        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700 print:hidden">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0">
+            <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span className="truncate">{fallbackBanner}</span>
+          <button
+            onClick={() => setFallbackBanner(null)}
+            className="ml-auto shrink-0 text-amber-500 hover:text-amber-700"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* "Generated from" banner */}
       {dataSource === "pipeline" && originalPrompt && (
         <div className="flex items-center gap-2 border-b border-blue-100 bg-blue-50 px-3 py-1.5 text-[11px] text-blue-700 print:hidden">
