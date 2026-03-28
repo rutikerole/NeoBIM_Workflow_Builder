@@ -347,20 +347,28 @@ Rules:
 
 Use the report_construction_prices tool to return your findings.`;
 
-  // ── Primary: Claude Sonnet with web_search + structured output ──
+  // ── Primary: Claude Sonnet with web_search — SHORT prompt for speed ──
+  // The long reasoning prompt was causing 40s+ timeouts on Vercel.
+  // Web search results provide the context — no need for reasoning steps in prompt.
+  const webSearchPrompt = `Search for current construction material prices in ${city}, ${state}, India (${monthYear}).
+Search: "TMT steel price ${city} ${state} today" and "cement price ${city} today".
+Then use the report_construction_prices tool with your findings.
+Building type: ${buildingType}. All benchmark values in INR per SQUARE METRE (m²), not sqft.
+Steel range: ₹52,000-78,000/tonne. Cement: ₹340-560/bag. Mason: ₹500-1200/day.`;
+
   try {
-    console.log("[TR-015] Calling Sonnet with web_search (40s timeout)...");
+    console.log("[TR-015] Calling Sonnet with web_search (25s timeout, short prompt)...");
     const ctrl1 = new AbortController();
-    const t1 = setTimeout(() => ctrl1.abort(), 40_000);
+    const t1 = setTimeout(() => ctrl1.abort(), 25_000);
     const resp = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 4096,
+      max_tokens: 2048,
       tools: [
         { type: "web_search_20250305", name: "web_search", max_uses: 3 },
         priceTool,
       ],
       tool_choice: { type: "auto" },
-      messages: [{ role: "user", content: userPrompt }],
+      messages: [{ role: "user", content: webSearchPrompt }],
     }, { signal: ctrl1.signal });
     clearTimeout(t1);
 
@@ -381,9 +389,42 @@ Use the report_construction_prices tool to return your findings.`;
     console.log(`[TR-015] Sonnet done in ${Date.now() - startTime}ms (web: ${usedWebSearch})`);
   } catch (err) {
     const sonnetMs = Date.now() - startTime;
-    console.error(`[TR-015] Sonnet failed after ${sonnetMs}ms:`, err instanceof Error ? err.message : err);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const errAny = err as any;
+    const errDetail = err instanceof Error
+      ? { name: err.name, message: err.message, cause: errAny.cause, status: errAny.status }
+      : err;
+    console.error(`[TR-015] Sonnet+web failed after ${sonnetMs}ms:`, JSON.stringify(errDetail));
 
-    // ── Fallback: Haiku with SHORT prompt, forced tool_use, 12s timeout ──
+    // ── Fallback 1: Sonnet WITHOUT web_search — uses reasoning prompt, forced tool ──
+    // Tested at 1.4s locally. Has better price reasoning than Haiku.
+    try {
+      console.log("[TR-015] Sonnet fallback (no web search, 15s timeout, reasoning prompt)...");
+      const sonnetFbStart = Date.now();
+      const ctrl1b = new AbortController();
+      const t1b = setTimeout(() => ctrl1b.abort(), 15_000);
+      const resp1b = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        tools: [priceTool],
+        tool_choice: { type: "tool", name: "report_construction_prices" },
+        messages: [{ role: "user", content: userPrompt }],
+      }, { signal: ctrl1b.signal });
+      clearTimeout(t1b);
+      for (const block of resp1b.content) {
+        if (block.type === "tool_use" && block.name === "report_construction_prices") {
+          jsonText = JSON.stringify(block.input);
+          break;
+        }
+      }
+      result.search_count = 0;
+      result.agent_notes.push(`✨ Market Intelligence — ${city}, ${state} · ${monthYear} · Claude AI (Sonnet reasoning) · ±15-25%`);
+      console.log(`[TR-015] Sonnet (no web) done in ${Date.now() - sonnetFbStart}ms (total: ${Date.now() - startTime}ms)`);
+    } catch (fallback1Err) {
+      const fb1Msg = fallback1Err instanceof Error ? fallback1Err.message : String(fallback1Err);
+      console.error(`[TR-015] Sonnet fallback also failed: ${fb1Msg}`);
+
+    // ── Fallback 2: Haiku with SHORT prompt, forced tool_use, 12s timeout ──
     try {
       console.log("[TR-015] Haiku fallback (12s timeout, short prompt)...");
       const haikuStart = Date.now();
@@ -410,9 +451,10 @@ Use the report_construction_prices tool to return your findings.`;
       const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
       const totalMs = Date.now() - startTime;
       result.agent_notes.push(`Using CPWD 2024 static rates (AI unavailable — ${fbMsg})`);
-      console.error(`[TR-015] Both attempts failed after ${totalMs}ms: ${fbMsg}`);
+      console.error(`[TR-015] All 3 attempts failed after ${totalMs}ms: ${fbMsg}`);
     }
-  }
+    } // close fallback1Err catch
+  } // close Sonnet+web_search catch
 
   // ── Parse response (tool_use gives guaranteed valid JSON) ──
   if (jsonText) {
