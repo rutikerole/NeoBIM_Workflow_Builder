@@ -22,9 +22,27 @@ function FloorPlanPageInner() {
   const initialProjectId = searchParams.get("projectId") ?? undefined;
   const source = searchParams.get("source"); // "pipeline" | "saved"
 
+  // FloorPlanProject can be passed via sessionStorage (from "Open Full Editor" button)
+  const initialProject = useMemo(() => {
+    if (source === "pipeline" && typeof window !== "undefined") {
+      try {
+        const raw = sessionStorage.getItem("floorPlanProject");
+        if (raw) {
+          sessionStorage.removeItem("floorPlanProject");
+          const parsed = JSON.parse(raw);
+          // Validate: must be a FloorPlanProject (has floors array + settings)
+          if (parsed && Array.isArray(parsed.floors) && parsed.floors.length > 0 && parsed.settings) {
+            return parsed;
+          }
+        }
+      } catch { /* ignore malformed data */ }
+    }
+    return undefined;
+  }, [source]);
+
   // Geometry can be passed via sessionStorage (too large for URL params)
   const initialGeometry = useMemo(() => {
-    if (source === "pipeline" && typeof window !== "undefined") {
+    if (source === "pipeline" && !initialProject && typeof window !== "undefined") {
       try {
         const raw = sessionStorage.getItem("fp-editor-geometry");
         if (raw) {
@@ -38,7 +56,7 @@ function FloorPlanPageInner() {
       } catch { /* ignore malformed data */ }
     }
     return undefined;
-  }, [source]);
+  }, [source, initialProject]);
 
   const initialPrompt = useMemo(() => {
     if (typeof window !== "undefined") {
@@ -55,6 +73,7 @@ function FloorPlanPageInner() {
 
   return (
     <FloorPlanViewer
+      initialProject={initialProject}
       initialGeometry={initialGeometry}
       initialPrompt={initialPrompt}
       initialProjectId={initialProjectId}
