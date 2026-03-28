@@ -113,20 +113,54 @@ function isFloorPlanProject(data: Record<string, unknown>): boolean {
 }
 
 function extractGeometry(data: Record<string, unknown>): FloorPlanGeometry | null {
-  // TR-004 nests geometry under data.geometry
+  // TR-004 / GN-004 nests geometry under data.geometry
   const geo = data.geometry as Record<string, unknown> | undefined;
   if (geo && Array.isArray(geo.rooms) && geo.rooms.length > 0) {
     const footprint = (geo.footprint as { width: number; depth: number }) ?? {
       width: (geo.buildingWidth as number) ?? 12,
       depth: (geo.buildingDepth as number) ?? 10,
     };
+
+    // Prefer positionedRooms (has x/y) over rooms (may lack position data)
+    const rawRooms = (Array.isArray(geo.positionedRooms) && geo.positionedRooms.length > 0)
+      ? geo.positionedRooms as Array<Record<string, unknown>>
+      : geo.rooms as Array<Record<string, unknown>>;
+
+    // Ensure each room has center, x, y fields required by FloorPlanRoom
+    const rooms: FloorPlanRoom[] = rawRooms.map((r) => {
+      const name = (r.name as string) ?? "Room";
+      const type = (r.type as FloorPlanRoom["type"]) ?? "other";
+      const width = (r.width as number) ?? 4;
+      const depth = (r.depth as number) ?? 3;
+      const x = (r.x as number) ?? undefined;
+      const y = (r.y as number) ?? undefined;
+      const center = r.center as [number, number] | undefined;
+
+      // Compute center from x/y if not provided
+      const resolvedCenter: [number, number] = center
+        ?? (x != null && y != null ? [x + width / 2, y + depth / 2] : [width / 2, depth / 2]);
+      const resolvedX = x ?? (center ? center[0] - width / 2 : 0);
+      const resolvedY = y ?? (center ? center[1] - depth / 2 : 0);
+
+      return {
+        name,
+        center: resolvedCenter,
+        width,
+        depth,
+        type,
+        x: resolvedX,
+        y: resolvedY,
+        area: (r.area as number) ?? width * depth,
+      };
+    });
+
     return {
       footprint,
       wallHeight: (geo.wallHeight as number) ?? 3.0,
       walls: (geo.walls as FloorPlanGeometry["walls"]) ?? [],
       doors: (geo.doors as FloorPlanGeometry["doors"]) ?? [],
       windows: (geo.windows as FloorPlanGeometry["windows"]) ?? [],
-      rooms: geo.rooms as FloorPlanRoom[],
+      rooms,
     };
   }
 
@@ -174,21 +208,29 @@ function extractRooms(data: Record<string, unknown>): FloorPlanRoom[] | null {
     }
   }
 
-  // GN-004 outputs roomList at top level (array of {name, area, type})
+  // GN-004 outputs roomList at top level (array of {name, area, type, ...})
+  // Mock GN-004 includes x, y, width, depth; real GN-004 may only have name+area
   if (Array.isArray(data.roomList)) {
     const roomList = data.roomList as Array<Record<string, unknown>>;
     if (roomList.length > 0 && typeof roomList[0].name === "string") {
       return roomList.map((r, i) => {
+        const name = (r.name as string) ?? `Room ${i + 1}`;
         const area = (r.area as number) ?? 16;
-        const side = Math.sqrt(area);
+        // Use actual width/depth if provided, otherwise estimate from area
+        const hasPosition = typeof r.width === "number" && typeof r.depth === "number";
+        const w = hasPosition ? (r.width as number) : Math.round(Math.sqrt(area) * 10) / 10;
+        const d = hasPosition ? (r.depth as number) : Math.round(Math.sqrt(area) * 10) / 10;
+        const x = typeof r.x === "number" ? (r.x as number) : 0;
+        const y = typeof r.y === "number" ? (r.y as number) : 0;
         return {
-          name: (r.name as string) ?? `Room ${i + 1}`,
-          center: [side / 2, side / 2] as [number, number],
-          width: Math.round(side * 10) / 10,
-          depth: Math.round(side * 10) / 10,
-          type: guessRoomType((r.name as string) ?? ""),
-          x: 0,
-          y: 0,
+          name,
+          center: [x + w / 2, y + d / 2] as [number, number],
+          width: w,
+          depth: d,
+          type: (r.type as FloorPlanRoom["type"]) ?? guessRoomType(name),
+          x,
+          y,
+          area,
         };
       });
     }

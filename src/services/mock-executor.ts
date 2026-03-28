@@ -4,8 +4,10 @@
  */
 
 import type { ExecutionArtifact, ArtifactType } from "@/types/execution";
+import type { FloorPlanGeometry, FloorPlanRoom } from "@/types/floor-plan";
 import { generateId } from "@/lib/utils";
 import { calculateBOQ } from "@/constants/unit-rates";
+import { convertGeometryToProject } from "@/lib/floor-plan/pipeline-adapter";
 
 const ARCHITECTURAL_IMAGES = [
   "https://picsum.photos/seed/arch1/600/400",
@@ -805,12 +807,57 @@ export async function executeNode(
       ];
       const totalArea012 = mockRooms012.reduce((s, r) => s + r.area_sqm, 0);
 
+      // Build valid FloorPlanProject from mock rooms
+      const geoRooms012: FloorPlanRoom[] = [
+        { name: "Living Room",  type: "living",   x: 0,   y: 0,   width: 5.1, depth: 5.0, center: [2.55, 2.5]  },
+        { name: "Bedroom 1",    type: "bedroom",  x: 5.1, y: 0,   width: 4.0, depth: 4.0, center: [7.1, 2.0]   },
+        { name: "Bathroom 1",   type: "bathroom", x: 9.1, y: 0,   width: 2.5, depth: 1.8, center: [10.35, 0.9] },
+        { name: "Bathroom 2",   type: "bathroom", x: 9.1, y: 1.8, width: 2.0, depth: 1.75, center: [10.1, 2.675] },
+        { name: "Bedroom 2",    type: "bedroom",  x: 5.1, y: 4.0, width: 4.0, depth: 3.0, center: [7.1, 5.5]   },
+        { name: "Kitchen",      type: "kitchen",  x: 0,   y: 5.0, width: 4.0, depth: 3.0, center: [2.0, 6.5]   },
+        { name: "Hallway",      type: "hallway",  x: 4.0, y: 5.0, width: 6.0, depth: 1.0, center: [7.0, 5.5]   },
+        { name: "Balcony",      type: "balcony",  x: 0,   y: 8.0, width: 5.0, depth: 1.0, center: [2.5, 8.5]   },
+      ];
+      const mockGeometry012: FloorPlanGeometry = {
+        footprint: { width: 11.6, depth: 9.0 },
+        wallHeight: 3.0,
+        walls: [
+          { start: [0, 0], end: [11.6, 0], thickness: 0.23, type: "exterior" },
+          { start: [11.6, 0], end: [11.6, 9.0], thickness: 0.23, type: "exterior" },
+          { start: [11.6, 9.0], end: [0, 9.0], thickness: 0.23, type: "exterior" },
+          { start: [0, 9.0], end: [0, 0], thickness: 0.23, type: "exterior" },
+          { start: [5.1, 0], end: [5.1, 7.0], thickness: 0.15, type: "interior" },
+          { start: [9.1, 0], end: [9.1, 3.55], thickness: 0.15, type: "interior" },
+          { start: [0, 5.0], end: [10.0, 5.0], thickness: 0.15, type: "interior" },
+          { start: [4.0, 5.0], end: [4.0, 6.0], thickness: 0.15, type: "interior" },
+        ],
+        doors: [
+          { position: [2.5, 5.0], width: 0.9, wallId: 6, type: "single" },
+          { position: [5.1, 2.0], width: 0.9, wallId: 4, type: "single" },
+          { position: [5.1, 5.5], width: 0.9, wallId: 4, type: "single" },
+          { position: [9.1, 0.9], width: 0.75, wallId: 5, type: "single" },
+          { position: [9.1, 2.7], width: 0.75, wallId: 5, type: "single" },
+          { position: [2.0, 5.0], width: 0.9, wallId: 6, type: "single" },
+          { position: [5.5, 0], width: 1.05, wallId: 0, type: "single" },
+        ],
+        windows: [
+          { position: [2.5, 0], width: 1.5, height: 1.2, sillHeight: 0.9 },
+          { position: [7.1, 0], width: 1.5, height: 1.2, sillHeight: 0.9 },
+          { position: [0, 2.5], width: 1.5, height: 1.2, sillHeight: 0.9 },
+          { position: [0, 6.5], width: 1.2, height: 1.2, sillHeight: 0.9 },
+          { position: [11.6, 5.0], width: 1.2, height: 1.0, sillHeight: 1.0 },
+          { position: [2.5, 9.0], width: 1.5, height: 1.2, sillHeight: 0.9 },
+        ],
+        rooms: geoRooms012,
+      };
+      const mockProject012 = convertGeometryToProject(mockGeometry012, "2BHK Apartment — Mock");
+
       return mockArtifact(executionId, tileInstanceId, "json", {
         label: "Floor Plan Editor — 2BHK Apartment (Mock)",
         interactive: true,
-        sourceType: "fallback",
+        sourceType: "tr004",
         warnings: ["Mock mode — using sample floor plan data"],
-        floorPlanProject: null, // Full project not available in mock
+        floorPlanProject: mockProject012,
         boqQuantities: {
           walls: {
             exterior: { length_m: 38.2, area_sqm: 114.6, volume_cum: 26.36, material: "brick_230mm" },
