@@ -868,6 +868,20 @@ export async function executeNode(
         _currencySymbol: "₹",
         _region: "India",
         _gfa: Math.round(totalArea012 * 100) / 100,
+        _totalCost: 757832,
+        // EX-002 validation: rows + headers table format
+        headers: ["Division", "CSI Code", "Description", "Unit", "Qty", "Material Rate", "Labor Rate", "Equip Rate", "Unit Rate", "Material Cost", "Labor Cost", "Equip Cost", "Total Cost"],
+        rows: [
+          ["04 — Masonry", "04 21 13", "Exterior brick masonry (230mm)", "cum", 26.36, 5500, 2500, 500, 8500, 152240, 69200, 13840, 235280],
+          ["04 — Masonry", "04 21 13", "Interior brick masonry (150mm)", "cum", 10.13, 5200, 2400, 400, 8000, 55328, 25536, 4256, 85120],
+          ["03 — Concrete", "03 30 00", "RCC slab (M25 grade)", "cum", 12.68, 4800, 1800, 600, 7200, 62688, 23508, 7836, 94032],
+          ["09 — Finishes", "09 24 00", "Interior wall plaster (12mm cement)", "sqm", 135.0, 280, 150, 20, 450, 39690, 21263, 2835, 63788],
+          ["09 — Finishes", "09 30 00", "Vitrified tile flooring (600×600)", "sqm", 84.5, 850, 280, 70, 1200, 77571, 25553, 6388, 109512],
+          ["09 — Finishes", "09 91 00", "Interior wall painting (2 coats emulsion)", "sqm", 230.0, 110, 80, 10, 200, 26565, 19320, 2415, 48300],
+          ["08 — Openings", "08 11 13", "Main / Entrance door (single swing, 1050×2100mm)", "nos", 1, 16000, 4500, 500, 21000, 16000, 4500, 500, 21000],
+          ["08 — Openings", "08 11 13", "Room door (single swing, 900×2100mm)", "nos", 4, 9000, 3200, 500, 12700, 36000, 12800, 2000, 50800],
+          ["08 — Openings", "08 51 13", "Sliding window (1500×1200mm)", "nos", 4, 7500, 3750, 1250, 12500, 30000, 15000, 5000, 50000],
+        ],
         summary: {
           totalRooms: mockRooms012.length,
           totalArea_sqm: Math.round(totalArea012 * 100) / 100,

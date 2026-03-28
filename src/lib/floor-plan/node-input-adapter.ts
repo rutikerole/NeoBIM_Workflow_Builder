@@ -174,6 +174,26 @@ function extractRooms(data: Record<string, unknown>): FloorPlanRoom[] | null {
     }
   }
 
+  // GN-004 outputs roomList at top level (array of {name, area, type})
+  if (Array.isArray(data.roomList)) {
+    const roomList = data.roomList as Array<Record<string, unknown>>;
+    if (roomList.length > 0 && typeof roomList[0].name === "string") {
+      return roomList.map((r, i) => {
+        const area = (r.area as number) ?? 16;
+        const side = Math.sqrt(area);
+        return {
+          name: (r.name as string) ?? `Room ${i + 1}`,
+          center: [side / 2, side / 2] as [number, number],
+          width: Math.round(side * 10) / 10,
+          depth: Math.round(side * 10) / 10,
+          type: guessRoomType((r.name as string) ?? ""),
+          x: 0,
+          y: 0,
+        };
+      });
+    }
+  }
+
   return null;
 }
 

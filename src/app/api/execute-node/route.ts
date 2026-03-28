@@ -5005,7 +5005,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       // structured outputs for downstream nodes (BOQ, IFC, reports).
       // The actual interactive editing happens client-side in the result showcase.
       const { adaptNodeInput } = await import("@/lib/floor-plan/node-input-adapter");
-      const { computeBOQQuantities, extractRoomSchedule, formatBOQForExporter } = await import("@/lib/floor-plan/node-output-adapter");
+      const { computeBOQQuantities, extractRoomSchedule, formatBOQForExporter, formatBOQAsTable } = await import("@/lib/floor-plan/node-output-adapter");
       const { convertFloorPlanToMassing } = await import("@/lib/floor-plan/floorplan-to-massing");
       const { exportFloorToSvg } = await import("@/lib/floor-plan/export-svg");
 
@@ -5014,10 +5014,15 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         : typeof inputData?.prompt === "string" ? inputData.prompt
         : undefined;
 
-      const adapted = adaptNodeInput(
-        (inputData?._raw ?? inputData ?? {}) as Record<string, unknown>,
-        designBrief,
-      );
+      // When GN-012 receives merged data from multiple upstream nodes (GN-004 + TR-003),
+      // _raw comes from TR-003 (text brief) and geometry comes from GN-004 (at top level).
+      // Prefer the full merged inputData when it has geometry, so we don't lose GN-004's data.
+      const hasUpstreamGeometry = inputData?.geometry && typeof inputData.geometry === "object";
+      const hasUpstreamRoomList = Array.isArray(inputData?.roomList);
+      const adaptInput = (hasUpstreamGeometry || hasUpstreamRoomList)
+        ? (inputData ?? {}) as Record<string, unknown>
+        : (inputData?._raw ?? inputData ?? {}) as Record<string, unknown>;
+      const adapted = adaptNodeInput(adaptInput, designBrief);
       const project = adapted.project;
       const floor = project.floors[0];
       if (!floor) throw new Error("FloorPlanProject has no floors");
@@ -5039,8 +5044,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       } catch { /* SVG export is non-critical */ }
 
       const totalArea = floor.rooms.reduce((s, r) => s + r.area_sqm, 0);
-
-      const totalGfa = floor.rooms.reduce((s, r) => s + r.area_sqm, 0);
+      const boqTable = formatBOQAsTable(boqExporterData);
 
       artifact = {
         id: `art_${generateId()}`,
@@ -5062,12 +5066,17 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           massingGeometry,
           svgContent,
 
-          // EX-002 compatible BOQ data (top-level for downstream consumption)
+          // EX-002 compatible: _boqData for XLSX generation
           _boqData: boqExporterData,
           _currency: "INR",
           _currencySymbol: "₹",
           _region: "India",
-          _gfa: Math.round(totalGfa * 100) / 100,
+          _gfa: Math.round(totalArea * 100) / 100,
+
+          // EX-002 compatible: rows + headers for validation
+          rows: boqTable.rows,
+          headers: boqTable.headers,
+          _totalCost: boqExporterData.grandTotal,
 
           // Summary metrics
           summary: {
@@ -5093,7 +5102,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               _currency: "INR",
               _currencySymbol: "₹",
               _region: "India",
-              _gfa: Math.round(totalGfa * 100) / 100,
+              _gfa: Math.round(totalArea * 100) / 100,
+              rows: boqTable.rows,
+              headers: boqTable.headers,
             },
             "svg-out": svgContent,
           },

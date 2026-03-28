@@ -395,6 +395,27 @@ export function formatBOQForExporter(
   };
 }
 
+/**
+ * Generates a table-format (rows + headers) from BOQExporterData
+ * for EX-002 validation compatibility (expects top-level rows/headers).
+ */
+export function formatBOQAsTable(boqData: BOQExporterData): {
+  headers: string[];
+  rows: (string | number)[][];
+} {
+  const headers = [
+    "Division", "CSI Code", "Description", "Unit", "Qty",
+    "Material Rate", "Labor Rate", "Equip Rate", "Unit Rate",
+    "Material Cost", "Labor Cost", "Equip Cost", "Total Cost",
+  ];
+  const rows = boqData.lines.map(l => [
+    l.division, l.csiCode, l.description, l.unit, l.quantity,
+    l.materialRate, l.laborRate, l.equipmentRate, l.unitRate,
+    l.materialCost, l.laborCost, l.equipmentCost, l.totalCost,
+  ]);
+  return { headers, rows };
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // All-in-one output builder
 // ────────────────────────────────────────────────────────────────────────────
