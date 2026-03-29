@@ -36,7 +36,7 @@ interface WinShape {
   glass2?: [{ x: number; y: number }, { x: number; y: number }];
 }
 
-export function WindowRenderer({ windows, walls, viewport, viewMode }: WindowRendererProps) {
+function WindowRendererBase({ windows, walls, viewport, viewMode }: WindowRendererProps) {
   const zoom = viewport.zoom;
 
   const windowShapes = useMemo(() => {
@@ -165,3 +165,5 @@ export function WindowRenderer({ windows, walls, viewport, viewMode }: WindowRen
     </>
   );
 }
+
+export const WindowRenderer = React.memo(WindowRendererBase);

@@ -14,7 +14,7 @@ interface WallRendererProps {
   selectedIds: string[];
 }
 
-export function WallRenderer({ walls, viewport, viewMode, selectedIds }: WallRendererProps) {
+function WallRendererBase({ walls, viewport, viewMode, selectedIds }: WallRendererProps) {
   const zoom = viewport.zoom;
 
   // Compute wall polygons
@@ -189,3 +189,5 @@ export function WallRenderer({ walls, viewport, viewMode, selectedIds }: WallRen
     </>
   );
 }
+
+export const WallRenderer = React.memo(WallRendererBase);

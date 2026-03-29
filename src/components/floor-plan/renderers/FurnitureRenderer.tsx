@@ -15,7 +15,7 @@ interface FurnitureRendererProps {
   showClearances?: boolean;
 }
 
-export function FurnitureRenderer({
+function FurnitureRendererBase({
   floor,
   viewport,
   selectedIds,
@@ -162,3 +162,5 @@ function parseSimplePath(d: string, scale: number, zoom: number): number[] {
 
   return points;
 }
+
+export const FurnitureRenderer = React.memo(FurnitureRendererBase);

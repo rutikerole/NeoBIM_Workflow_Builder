@@ -24,7 +24,7 @@ interface SelectionRendererProps {
 const SEL_COLOR = "#3B82F6";
 const HANDLE_SIZE = 8; // px
 
-export function SelectionRenderer({ selectedIds, floor, viewport }: SelectionRendererProps) {
+function SelectionRendererBase({ selectedIds, floor, viewport }: SelectionRendererProps) {
   const elements = useMemo(() => {
     if (selectedIds.length === 0) return [];
     return selectedIds.map((id) => {
@@ -249,3 +249,5 @@ function RoomSelection({ room, viewport }: { room: any; viewport: Viewport }) {
     </Group>
   );
 }
+
+export const SelectionRenderer = React.memo(SelectionRendererBase);

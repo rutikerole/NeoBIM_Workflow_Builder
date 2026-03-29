@@ -46,7 +46,7 @@ interface DoorGeom {
   travelEnd?: { x: number; y: number };
 }
 
-export function DoorRenderer({ doors, walls, viewport, viewMode }: DoorRendererProps) {
+function DoorRendererBase({ doors, walls, viewport, viewMode }: DoorRendererProps) {
   const zoom = viewport.zoom;
 
   const doorShapes = useMemo(() => {
@@ -345,3 +345,5 @@ export function DoorRenderer({ doors, walls, viewport, viewMode }: DoorRendererP
     </>
   );
 }
+
+export const DoorRenderer = React.memo(DoorRendererBase);
