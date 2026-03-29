@@ -108,7 +108,13 @@ function extractIfcQuality(data: any): BOQData["ifcQuality"] | undefined {
 export function parseArtifactToBOQ(artifactData: any): BOQData | null {
   if (!artifactData) return null;
 
-  const data = typeof artifactData === "string" ? JSON.parse(artifactData) : artifactData;
+  let data: Record<string, unknown>;
+  if (typeof artifactData === "string") {
+    try { data = JSON.parse(artifactData); }
+    catch { return null; }
+  } else {
+    data = artifactData;
+  }
 
   // Extract from TR-008 _boqData structure
   const boqData = data._boqData || data.boqData || data;
