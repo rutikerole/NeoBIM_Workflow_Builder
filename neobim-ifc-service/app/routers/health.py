@@ -5,7 +5,7 @@ import time
 import ifcopenshell
 from fastapi import APIRouter
 
-from app.main import get_uptime
+from app.state import get_uptime
 
 router = APIRouter(tags=["health"])
 

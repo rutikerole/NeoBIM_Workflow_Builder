@@ -1,6 +1,5 @@
 """FastAPI application entry point."""
 
-import time
 from contextlib import asynccontextmanager
 
 import structlog
@@ -9,18 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth import ApiKeyMiddleware
 from app.config import settings
-from app.routers import health, export
+from app.state import init_start_time
 
 log = structlog.get_logger()
-
-# Track service start time for uptime reporting
-_start_time: float = 0.0
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _start_time
-    _start_time = time.time()
+    init_start_time()
 
     structlog.configure(
         wrapper_class=structlog.make_filtering_bound_logger(
@@ -59,10 +54,8 @@ app.add_middleware(
 # API key auth (skips /health, /ready)
 app.add_middleware(ApiKeyMiddleware)
 
-# Routers
+# Routers (imported here to avoid circular imports)
+from app.routers import health, export  # noqa: E402
+
 app.include_router(health.router)
 app.include_router(export.router, prefix="/api/v1")
-
-
-def get_uptime() -> float:
-    return time.time() - _start_time
