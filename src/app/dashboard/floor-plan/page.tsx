@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
+import { useFloorPlanStore } from "@/stores/floor-plan-store";
 
 const FloorPlanViewer = dynamic(
   () => import("@/components/floor-plan/FloorPlanViewer").then((m) => m.FloorPlanViewer),
@@ -21,6 +22,15 @@ function FloorPlanPageInner() {
 
   const initialProjectId = searchParams.get("projectId") ?? undefined;
   const source = searchParams.get("source"); // "pipeline" | "saved"
+
+  // When navigating from sidebar (no source param, no projectId), reset store
+  // so the welcome screen always shows instead of stale data
+  useEffect(() => {
+    if (!source && !initialProjectId) {
+      useFloorPlanStore.getState().resetToWelcome();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // FloorPlanProject can be passed via sessionStorage (from "Open Full Editor" button)
   const initialProject = useMemo(() => {

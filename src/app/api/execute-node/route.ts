@@ -5000,30 +5000,125 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       };
 
     } else if (catalogueId === "GN-012") {
-      // ── Floor Plan Editor (Interactive CAD) ──────────────────────────
-      // Converts upstream geometry into a FloorPlanProject and produces
-      // structured outputs for downstream nodes (BOQ, IFC, reports).
-      // The actual interactive editing happens client-side in the result showcase.
+      // ── Floor Plan Editor (Interactive CAD) — 3-Stage AI Pipeline ──
+      // Stage 1: AI Room Programming (GPT-4o-mini) → rooms + adjacency + zones
+      // Stage 2: AI Spatial Layout (GPT-4o) → positioned rooms + validation + retry
+      // Stage 3: Architectural Detailing → walls, doors, windows (pipeline-adapter)
+      // Falls back to adaptNodeInput() if AI generation fails entirely.
+
       const { adaptNodeInput } = await import("@/lib/floor-plan/node-input-adapter");
+      const { convertGeometryToProject } = await import("@/lib/floor-plan/pipeline-adapter");
       const { computeBOQQuantities, extractRoomSchedule, formatBOQForExporter, formatBOQAsTable } = await import("@/lib/floor-plan/node-output-adapter");
       const { convertFloorPlanToMassing } = await import("@/lib/floor-plan/floorplan-to-massing");
       const { exportFloorToSvg } = await import("@/lib/floor-plan/export-svg");
 
+      // ── Extract text sources ──
+      const originalPrompt = (typeof inputData?._originalPrompt === "string" ? inputData._originalPrompt : "")
+        || (typeof inputData?.prompt === "string" ? inputData.prompt : "")
+        || (typeof (inputData?._raw as Record<string, unknown>)?._originalPrompt === "string"
+            ? (inputData._raw as Record<string, unknown>)._originalPrompt as string : "");
       const designBrief = typeof inputData?.brief === "string" ? inputData.brief
         : typeof inputData?.content === "string" ? inputData.content
-        : typeof inputData?.prompt === "string" ? inputData.prompt
-        : undefined;
+        : typeof (inputData?._raw as Record<string, unknown>)?.content === "string"
+          ? (inputData._raw as Record<string, unknown>).content as string
+        : originalPrompt || undefined;
 
-      // When GN-012 receives merged data from multiple upstream nodes (GN-004 + TR-003),
-      // _raw comes from TR-003 (text brief) and geometry comes from GN-004 (at top level).
-      // Prefer the full merged inputData when it has geometry, so we don't lose GN-004's data.
-      const hasUpstreamGeometry = inputData?.geometry && typeof inputData.geometry === "object";
-      const hasUpstreamRoomList = Array.isArray(inputData?.roomList);
-      const adaptInput = (hasUpstreamGeometry || hasUpstreamRoomList)
-        ? (inputData ?? {}) as Record<string, unknown>
-        : (inputData?._raw ?? inputData ?? {}) as Record<string, unknown>;
-      const adapted = adaptNodeInput(adaptInput, designBrief);
-      const project = adapted.project;
+      let project: import("@/types/floor-plan-cad").FloorPlanProject | null = null;
+      let sourceType: string = "ai-generated";
+      const warnings: string[] = [];
+
+      if (designBrief || originalPrompt) {
+        const floorPlanApiKey = apiKey ?? process.env.OPENAI_API_KEY;
+        if (floorPlanApiKey) {
+          try {
+            const promptForAI = originalPrompt || designBrief || "";
+
+            // Stage 1: AI Room Programming (adjacency + zones)
+            const { programRooms, programRoomsFallback, programToDescription } = await import("@/lib/floor-plan/ai-room-programmer");
+            let roomProgram: import("@/lib/floor-plan/ai-room-programmer").EnhancedRoomProgram;
+            try {
+              roomProgram = await programRooms(promptForAI, floorPlanApiKey);
+              console.log(`[GN-012] Stage 1: ${roomProgram.rooms.length} rooms, ${roomProgram.totalAreaSqm}sqm, ${roomProgram.adjacency.length} adjacencies`);
+            } catch (parseErr) {
+              console.warn("[GN-012] Stage 1 AI failed, using regex fallback:", parseErr);
+              roomProgram = programRoomsFallback(promptForAI);
+            }
+
+            const description = programToDescription(roomProgram);
+
+            // Stage 2: AI Spatial Layout (GPT-4o with validation + retry)
+            const floorPlan = await generateFloorPlan(description, floorPlanApiKey, roomProgram);
+
+            // Stage 3: Build geometry → FloorPlanProject
+            const positionedRooms = floorPlan.positionedRooms;
+            const roomList = floorPlan.roomList;
+
+            const rooms = positionedRooms
+              ? positionedRooms.map((r: Record<string, unknown>) => ({
+                  name: r.name as string,
+                  type: (r.type as string ?? "other") as "living" | "bedroom" | "kitchen" | "dining" | "bathroom" | "hallway" | "entrance" | "utility" | "balcony" | "other",
+                  x: r.x as number, y: r.y as number,
+                  width: r.width as number, depth: r.depth as number,
+                  center: [(r.x as number) + (r.width as number) / 2, (r.y as number) + (r.depth as number) / 2] as [number, number],
+                  area: r.area as number,
+                }))
+              : roomList.map((r: Record<string, unknown>) => {
+                  const area = (r.area as number) ?? 16;
+                  const w = Math.round(Math.sqrt(area * 1.2) * 10) / 10;
+                  const d = Math.round((area / w) * 10) / 10;
+                  return {
+                    name: r.name as string,
+                    type: ((r.type as string) ?? "other") as "living" | "bedroom" | "kitchen" | "dining" | "bathroom" | "other",
+                    x: 0, y: 0, width: w, depth: d,
+                    center: [w / 2, d / 2] as [number, number],
+                    area,
+                  };
+                });
+
+            // Compute footprint from actual room bounding box (layout engine may
+            // expand footprint beyond totalArea to fit corridor/zones)
+            let bW: number, bD: number;
+            if (positionedRooms && positionedRooms.length > 0) {
+              bW = Math.round(Math.max(...positionedRooms.map((r: Record<string, unknown>) => (r.x as number) + (r.width as number))) * 10) / 10;
+              bD = Math.round(Math.max(...positionedRooms.map((r: Record<string, unknown>) => (r.y as number) + (r.depth as number))) * 10) / 10;
+            } else {
+              const fpArea = floorPlan.totalArea / Math.max(floorPlan.floors, 1);
+              const aspect = 1.33;
+              bW = Math.round(Math.sqrt(fpArea * aspect) * 10) / 10;
+              bD = Math.round((fpArea / bW) * 10) / 10;
+            }
+
+            const geometry: import("@/types/floor-plan").FloorPlanGeometry = {
+              footprint: { width: bW, depth: bD },
+              wallHeight: 3.0,
+              walls: [], doors: [], windows: [],
+              rooms,
+            };
+
+            project = convertGeometryToProject(geometry, description.projectName, designBrief);
+            sourceType = "ai-generated";
+          } catch (aiErr) {
+            console.warn("[GN-012] AI generation failed:", aiErr);
+            warnings.push(`AI generation failed (${aiErr instanceof Error ? aiErr.message : String(aiErr)}), using fallback.`);
+          }
+        } else {
+          warnings.push("No OpenAI API key — using upstream geometry or sample layout.");
+        }
+      }
+
+      // ── Fallback: parse upstream geometry via adaptNodeInput ──
+      if (!project) {
+        const hasUpstreamGeometry = inputData?.geometry && typeof inputData.geometry === "object";
+        const hasUpstreamRoomList = Array.isArray(inputData?.roomList);
+        const adaptInput = (hasUpstreamGeometry || hasUpstreamRoomList)
+          ? (inputData ?? {}) as Record<string, unknown>
+          : (inputData?._raw ?? inputData ?? {}) as Record<string, unknown>;
+        const adapted = adaptNodeInput(adaptInput, designBrief);
+        project = adapted.project;
+        sourceType = adapted.sourceType;
+        warnings.push(...adapted.warnings);
+      }
+
       const floor = project.floors[0];
       if (!floor) throw new Error("FloorPlanProject has no floors");
 
@@ -5054,8 +5149,8 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         data: {
           label: `Floor Plan Editor — ${project.name}`,
           interactive: true,
-          sourceType: adapted.sourceType,
-          warnings: adapted.warnings,
+          sourceType,
+          warnings,
 
           // Full project for the interactive editor
           floorPlanProject: project,

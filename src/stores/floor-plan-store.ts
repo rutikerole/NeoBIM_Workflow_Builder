@@ -150,6 +150,7 @@ interface FloorPlanState {
 
   // Project
   setProject: (project: FloorPlanProject) => void;
+  resetToWelcome: () => void;
   setActiveFloor: (floorId: string) => void;
   getActiveFloor: () => Floor | null;
 
@@ -361,6 +362,22 @@ export const useFloorPlanStore = create<FloorPlanState>()((set, get) => ({
     activeFloorId: project.floors[0]?.id ?? null,
     layers: [...DEFAULT_LAYERS],
     projectModified: true,
+  }),
+
+  resetToWelcome: () => set({
+    project: null,
+    activeFloorId: null,
+    dataSource: null,
+    originalPrompt: null,
+    isGenerating: false,
+    generationStep: "",
+    generationProgress: 0,
+    projectModified: false,
+    selectedIds: [],
+    hoveredId: null,
+    _history: [],
+    _historyIndex: -1,
+    activeTool: "select",
   }),
 
   setActiveFloor: (floorId) => set({ activeFloorId: floorId }),

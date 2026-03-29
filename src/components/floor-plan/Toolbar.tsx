@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useFloorPlanStore } from "@/stores/floor-plan-store";
 import type { ViewMode } from "@/types/floor-plan-cad";
 import { ExportMenu } from "./ExportMenu";
@@ -41,6 +42,14 @@ export function Toolbar() {
   const toggleVastuOverlay = useFloorPlanStore((s) => s.toggleVastuOverlay);
   const projectModified = useFloorPlanStore((s) => s.projectModified);
   const saveToStorage = useFloorPlanStore((s) => s.saveToStorage);
+  const resetToWelcome = useFloorPlanStore((s) => s.resetToWelcome);
+  const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    // Reset store state so the welcome screen shows when user returns
+    resetToWelcome();
+    router.push("/dashboard");
+  }, [resetToWelcome, router]);
 
   if (!project) return null;
 
@@ -52,7 +61,7 @@ export function Toolbar() {
     <div className="flex h-11 items-center border-b border-gray-200 bg-white px-3 gap-2 text-sm print:hidden">
       {/* Back button */}
       <button
-        onClick={() => window.history.back()}
+        onClick={handleBack}
         className="flex items-center gap-1 rounded px-2 py-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

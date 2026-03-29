@@ -2,101 +2,23 @@
  * POST /api/generate-floor-plan
  *
  * Standalone floor plan generation from a text prompt.
- * Used by the /dashboard/floor-plan page when user types a prompt.
+ * Uses the 3-STAGE AI PIPELINE:
  *
- * Calls GPT-4o to generate room positions, then converts through
- * the pipeline adapter to produce a full FloorPlanProject.
+ * Stage 1: AI Room Programming (GPT-4o-mini) — prompt → structured rooms with adjacency/zones
+ * Stage 2: AI Spatial Layout (GPT-4o) — rooms → positioned layout with validation + retry
+ * Stage 3: Architectural Detailing (code) — geometry → FloorPlanProject (walls, doors, windows)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { generateFloorPlan } from "@/services/openai";
+import {
+  programRooms,
+  programRoomsFallback,
+  programToDescription,
+} from "@/lib/floor-plan/ai-room-programmer";
+import type { EnhancedRoomProgram } from "@/lib/floor-plan/ai-room-programmer";
 import { convertGeometryToProject } from "@/lib/floor-plan/pipeline-adapter";
 import type { FloorPlanGeometry } from "@/types/floor-plan";
-
-// Simple prompt → BuildingDescription parser
-function parsePrompt(prompt: string) {
-  const p = prompt.toLowerCase().trim();
-
-  // Extract BHK count
-  let bhk = 2;
-  const bhkMatch = p.match(/(\d)\s*bhk/);
-  if (bhkMatch) bhk = parseInt(bhkMatch[1], 10);
-
-  // Extract building type
-  let buildingType = "Residential Apartment";
-  if (p.includes("villa")) buildingType = "Residential Villa";
-  else if (p.includes("bungalow")) buildingType = "Residential Bungalow";
-  else if (p.includes("house")) buildingType = "Residential House";
-  else if (p.includes("office")) buildingType = "Commercial Office";
-  else if (p.includes("studio")) buildingType = "Studio Apartment";
-  else if (p.includes("penthouse")) buildingType = "Penthouse";
-  else if (p.includes("duplex")) buildingType = "Duplex";
-
-  // Estimate area based on BHK
-  const areaPerBhk: Record<number, number> = {
-    1: 55, 2: 90, 3: 140, 4: 200, 5: 280,
-  };
-  const totalArea = areaPerBhk[bhk] ?? bhk * 45 + 20;
-
-  // Build room program based on BHK count
-  const program: Array<{ space: string; area_m2?: number }> = [];
-
-  // Living + Dining
-  if (bhk <= 2) {
-    program.push({ space: "Living + Dining Room", area_m2: Math.round(totalArea * 0.22) });
-  } else {
-    program.push({ space: "Living Room", area_m2: Math.round(totalArea * 0.15) });
-    program.push({ space: "Dining Room", area_m2: Math.round(totalArea * 0.08) });
-  }
-
-  // Kitchen
-  program.push({ space: "Kitchen", area_m2: Math.max(7, Math.round(totalArea * 0.08)) });
-
-  // Bedrooms
-  if (bhk >= 1) program.push({ space: "Master Bedroom", area_m2: Math.max(14, Math.round(totalArea * 0.14)) });
-  for (let i = 2; i <= bhk; i++) {
-    program.push({ space: `Bedroom ${i}`, area_m2: Math.max(10, Math.round(totalArea * 0.10)) });
-  }
-
-  // Bathrooms (1 per bedroom, min 1)
-  const numBath = Math.max(1, bhk);
-  for (let i = 1; i <= numBath; i++) {
-    const name = numBath === 1 ? "Bathroom" : `Bathroom ${i}`;
-    program.push({ space: name, area_m2: i === 1 ? 5 : 4 });
-  }
-
-  // Corridor/Hallway for 2+ BHK
-  if (bhk >= 2) {
-    program.push({ space: "Corridor", area_m2: Math.round(totalArea * 0.06) });
-  }
-
-  // Utility for 3+ BHK
-  if (bhk >= 3) {
-    program.push({ space: "Utility", area_m2: 4 });
-  }
-
-  // Balcony for villa/bungalow
-  if (p.includes("villa") || p.includes("bungalow") || p.includes("house")) {
-    program.push({ space: "Verandah", area_m2: Math.round(totalArea * 0.06) });
-  }
-
-  const programSummary = `${bhk}BHK ${buildingType} with ${program.map(p => p.space).join(", ")}`;
-
-  return {
-    buildingType,
-    totalArea,
-    floors: 1,
-    program,
-    programSummary,
-    narrative: `A modern ${bhk}BHK ${buildingType.toLowerCase()} designed for comfortable family living. Features ${bhk} bedroom${bhk > 1 ? "s" : ""}, spacious living areas, and well-planned service zones with natural ventilation per NBC India guidelines.`,
-    structure: "RCC frame",
-    facade: "Contemporary",
-    sustainabilityFeatures: ["Natural ventilation", "Cross ventilation"],
-    estimatedCost: "",
-    constructionDuration: "",
-    projectName: `${bhk}BHK ${buildingType.split(" ").pop()}`,
-  };
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -112,30 +34,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "NO_API_KEY" }, { status: 503 });
     }
 
-    // Parse prompt into structured description
-    const description = parsePrompt(prompt);
+    // ── Stage 1: AI Room Programming ──────────────────────────────────
+    // Primary: AI parsing (GPT-4o-mini) with adjacency + zones
+    // Fallback: regex parsing (offline, no API key needed)
+    let roomProgram: EnhancedRoomProgram;
+    try {
+      roomProgram = await programRooms(prompt, apiKey);
+      console.log(`[generate-floor-plan] Stage 1: ${roomProgram.rooms.length} rooms, ${roomProgram.totalAreaSqm}sqm, type=${roomProgram.buildingType}, adjacencies=${roomProgram.adjacency.length}`);
+    } catch (parseErr) {
+      console.warn("[generate-floor-plan] Stage 1 AI failed, using regex fallback:", parseErr);
+      roomProgram = programRoomsFallback(prompt);
+    }
 
-    // Call GPT-4o to generate floor plan
-    const floorPlan = await generateFloorPlan(description, apiKey);
+    // Convert to BuildingDescription for Stage 2
+    const description = programToDescription(roomProgram);
 
-    // Build FloorPlanGeometry from the result
+    // ── Stage 2: AI Spatial Layout ────────────────────────────────────
+    // GPT-4o positions rooms with zone-aware placement + validation + retry
+    const floorPlan = await generateFloorPlan(description, apiKey, roomProgram);
+
+    // ── Stage 3: Architectural Detailing ──────────────────────────────
+    // Build FloorPlanGeometry → convertGeometryToProject (walls, doors, windows)
     const positionedRooms = floorPlan.positionedRooms;
     const roomList = floorPlan.roomList;
-
-    // Estimate footprint
-    const fpArea = floorPlan.totalArea / Math.max(floorPlan.floors, 1);
-    const aspect = 1.33;
-    const bW = Math.round(Math.sqrt(fpArea * aspect) * 10) / 10;
-    const bD = Math.round((fpArea / bW) * 10) / 10;
 
     const rooms = positionedRooms
       ? positionedRooms.map(r => ({
           name: r.name,
           type: r.type as "living" | "bedroom" | "kitchen" | "dining" | "bathroom" | "hallway" | "entrance" | "utility" | "balcony" | "other",
-          x: r.x,
-          y: r.y,
-          width: r.width,
-          depth: r.depth,
+          x: r.x, y: r.y, width: r.width, depth: r.depth,
           center: [r.x + r.width / 2, r.y + r.depth / 2] as [number, number],
           area: r.area,
         }))
@@ -146,32 +73,35 @@ export async function POST(req: NextRequest) {
           return {
             name: r.name,
             type: ((r as Record<string, unknown>).type as string ?? "other") as "living" | "bedroom" | "kitchen" | "dining" | "bathroom" | "other",
-            x: 0,
-            y: 0,
-            width: w,
-            depth: d,
+            x: 0, y: 0, width: w, depth: d,
             center: [w / 2, d / 2] as [number, number],
             area,
           };
         });
 
+    // Compute footprint from actual room bounding box (layout engine may
+    // expand footprint beyond totalArea to fit corridor/zones)
+    let bW: number, bD: number;
+    if (positionedRooms && positionedRooms.length > 0) {
+      bW = Math.round(Math.max(...positionedRooms.map(r => r.x + r.width)) * 10) / 10;
+      bD = Math.round(Math.max(...positionedRooms.map(r => r.y + r.depth)) * 10) / 10;
+    } else {
+      const fpArea = floorPlan.totalArea / Math.max(floorPlan.floors, 1);
+      const aspect = 1.33;
+      bW = Math.round(Math.sqrt(fpArea * aspect) * 10) / 10;
+      bD = Math.round((fpArea / bW) * 10) / 10;
+    }
+
     const geometry: FloorPlanGeometry = {
       footprint: { width: bW, depth: bD },
       wallHeight: 3.0,
-      walls: [],
-      doors: [],
-      windows: [],
+      walls: [], doors: [], windows: [],
       rooms,
     };
 
-    // Convert to full FloorPlanProject
     const project = convertGeometryToProject(geometry, description.projectName, prompt);
 
-    return NextResponse.json({
-      project,
-      geometry,
-      svg: floorPlan.svg,
-    });
+    return NextResponse.json({ project, geometry, svg: floorPlan.svg });
   } catch (err) {
     console.error("[generate-floor-plan] Error:", err);
     const message = err instanceof Error ? err.message : String(err);
