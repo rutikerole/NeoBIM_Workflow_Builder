@@ -17,10 +17,10 @@ log = structlog.get_logger()
 async def lifespan(app: FastAPI):
     init_start_time()
 
+    import logging
+    level = getattr(logging, settings.log_level.upper(), logging.INFO)
     structlog.configure(
-        wrapper_class=structlog.make_filtering_bound_logger(
-            structlog.get_level_from_name(settings.log_level)
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(level),
     )
     log.info(
         "ifc_service_starting",
