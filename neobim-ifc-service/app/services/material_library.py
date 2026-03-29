@@ -179,26 +179,25 @@ def create_material_layer_set(
     preset: MaterialPreset,
 ) -> ifcopenshell.entity_instance:
     """Create an IfcMaterialLayerSet from a preset definition."""
-    layers = []
+    ifc_layers = []
     for layer_def in preset.layers:
         material = api.run("material.add_material", model, name=layer_def.name)
         if layer_def.category:
             material.Category = layer_def.category
-        layer = api.run(
-            "material.add_layer",
-            model,
-            layer_set=None,  # will be assigned below
-            material=material,
+
+        ifc_layer = model.create_entity(
+            "IfcMaterialLayer",
+            Material=material,
+            LayerThickness=layer_def.thickness,
+            Name=layer_def.name,
         )
-        layer.LayerThickness = layer_def.thickness
-        layer.Name = layer_def.name
         if layer_def.category:
-            layer.Category = layer_def.category
-        layers.append(layer)
+            ifc_layer.Category = layer_def.category
+        ifc_layers.append(ifc_layer)
 
     layer_set = model.create_entity(
         "IfcMaterialLayerSet",
-        MaterialLayers=layers,
+        MaterialLayers=ifc_layers,
         LayerSetName=preset.name,
     )
     return layer_set
