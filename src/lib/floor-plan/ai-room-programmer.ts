@@ -245,7 +245,7 @@ export async function programRooms(
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userMessage },
       ],
-    }, { timeout: isComplex ? 90_000 : 45_000 });
+    });
 
     const content = completion.choices[0]?.message?.content;
     if (!content) throw new Error("AI returned empty response for room program");
@@ -266,7 +266,7 @@ export async function programRooms(
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: retryMessage },
           ],
-        }, { timeout: 90_000 });
+        });
         const content2 = completion2.choices[0]?.message?.content;
         if (content2) {
           raw = JSON.parse(content2) as EnhancedRoomProgram;
@@ -276,7 +276,7 @@ export async function programRooms(
       }
     }
 
-    if (!raw) throw firstErr as Error;
+    if (!raw) throw firstErr instanceof Error ? firstErr : new Error(String(firstErr));
   }
 
   // ── Validate & sanitize ──
@@ -465,8 +465,8 @@ export function extractMentionedRooms(prompt: string): string[] {
     if (!seen.has(name)) { seen.add(name); found.push(name); }
   }
 
-  // Detect BHK patterns: "4bhk" implies N bedrooms
-  const bhkMatch = p.match(/(\d)\s*[-]?\s*bhk/);
+  // Detect BHK patterns: "4bhk", "10bhk" etc. implies N bedrooms
+  const bhkMatch = p.match(/(\d+)\s*[-]?\s*bhk/);
   if (bhkMatch) {
     const count = parseInt(bhkMatch[1], 10);
     // Only add generic bedrooms if specific ones weren't found
@@ -595,7 +595,7 @@ function inferDefaultArea(name: string): number {
     { pattern: /corridor|hallway/, area: 8 },
     { pattern: /staircase/, area: 12 },
     { pattern: /pooja|prayer|puja|mandir/, area: 3 },
-    { pattern: /utility(?:\s+room)?$/, area: 4 },
+    { pattern: /utility(?:\s+room)?\s*$/, area: 4 },
     { pattern: /utility\s+balcony/, area: 5 },
     { pattern: /servant\s+quarter/, area: 8 },
     { pattern: /servant\s+toilet/, area: 2.5 },
@@ -607,7 +607,7 @@ function inferDefaultArea(name: string): number {
     { pattern: /terrace/, area: 15 },
     { pattern: /study/, area: 11 },
     { pattern: /family\s+lounge|tv\s+lounge|lounge/, area: 15 },
-    { pattern: /home\s+theat/, area: 20 },
+    { pattern: /home\s+theat(?:er|re)\b/, area: 20 },
     { pattern: /pool/, area: 30 },
     { pattern: /gym/, area: 15 },
     { pattern: /store/, area: 4 },
@@ -626,7 +626,7 @@ function inferDefaultArea(name: string): number {
 function inferRoomTypeAndZone(name: string): { type: string; zone: RoomSpec["zone"]; exterior: boolean } {
   const MAPPING: Array<{ pattern: RegExp; type: string; zone: RoomSpec["zone"]; exterior: boolean }> = [
     { pattern: /bed(?:room)?|master\s+bed|kids?\s+bed|guest\s+bed/, type: "bedroom", zone: "private", exterior: true },
-    { pattern: /bath(?:room)?|toilet|powder|wc/, type: "bathroom", zone: "service", exterior: false },
+    { pattern: /bath(?:room)?|toilet|powder|\bwc\b/, type: "bathroom", zone: "service", exterior: false },
     { pattern: /living|lounge|family\s+room|tv\s+lounge/, type: "living", zone: "public", exterior: true },
     { pattern: /dining/, type: "dining", zone: "public", exterior: true },
     { pattern: /kitchen/, type: "kitchen", zone: "service", exterior: true },
@@ -643,7 +643,7 @@ function inferRoomTypeAndZone(name: string): { type: string; zone: RoomSpec["zon
     { pattern: /pool/, type: "other", zone: "public", exterior: true },
     { pattern: /gym|fitness/, type: "other", zone: "private", exterior: true },
     { pattern: /store|storage/, type: "storage", zone: "service", exterior: false },
-    { pattern: /home\s+theat/, type: "other", zone: "private", exterior: false },
+    { pattern: /home\s+theat(?:er|re)\b/, type: "other", zone: "private", exterior: false },
     { pattern: /reception|waiting/, type: "other", zone: "public", exterior: false },
     { pattern: /meeting|conference/, type: "office", zone: "public", exterior: true },
   ];
@@ -651,7 +651,7 @@ function inferRoomTypeAndZone(name: string): { type: string; zone: RoomSpec["zon
   for (const { pattern, type, zone, exterior } of MAPPING) {
     if (pattern.test(name)) return { type, zone, exterior };
   }
-  return { type: "other", zone: "service", exterior: false };
+  return { type: "other", zone: "public", exterior: false };
 }
 
 function inferFloor(name: string, prompt: string, isMultiFloor: boolean): number | undefined {
@@ -705,9 +705,10 @@ export function programToDescription(program: EnhancedRoomProgram): {
     program: program.rooms.map(r => ({ space: r.name, area_m2: Math.round(r.areaSqm) })),
     programSummary: `${program.projectName} with ${program.rooms.map(r => r.name).join(", ")}`,
     narrative: program.circulationNotes || `AI-generated room program for ${program.buildingType}`,
-    structure: "RCC frame",
-    facade: "Contemporary",
-    sustainabilityFeatures: ["Natural ventilation", "Cross ventilation"],
+    structure: program.totalAreaSqm > 200 || program.numFloors > 1 ? "RCC frame" : "Load bearing masonry",
+    facade: /traditional|heritage|colonial|vernacular/i.test(program.buildingType) ? "Traditional" :
+            /modern|contemporary|minimalist/i.test(program.buildingType) ? "Contemporary" : "Mixed contemporary",
+    sustainabilityFeatures: ["Natural ventilation", "Cross ventilation", "Daylight optimization"],
     estimatedCost: "",
     constructionDuration: "",
     projectName: program.projectName,
@@ -720,19 +721,23 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
   const p = prompt.toLowerCase().trim();
 
   let bhk = 0;
-  const bhkMatch = p.match(/(\d)\s*[-]?\s*bhk/);
+  const bhkMatch = p.match(/(\d+)\s*[-]?\s*bhk/);
   if (bhkMatch) bhk = parseInt(bhkMatch[1], 10);
   if (!bhk) {
     const bedroomMatch = p.match(/(\d+)\s*[-]?\s*bed(?:room)?s?\b/);
     if (bedroomMatch) bhk = parseInt(bedroomMatch[1], 10);
   }
   if (!bhk) {
-    const wordNums: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 };
-    const wordMatch = p.match(/(one|two|three|four|five)\s*[-]?\s*bed(?:room)?s?\b/);
+    const wordNums: Record<string, number> = {
+      one: 1, two: 2, three: 3, four: 4, five: 5,
+      six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+      eleven: 11, twelve: 12,
+    };
+    const wordMatch = p.match(/(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*[-]?\s*bed(?:room)?s?\b/);
     if (wordMatch) bhk = wordNums[wordMatch[1]] ?? 0;
   }
   if (!bhk) bhk = 2;
-  bhk = Math.max(1, Math.min(bhk, 9));
+  bhk = Math.max(1, Math.min(bhk, 20));
 
   // Detect multi-floor
   let numFloors = 1;
@@ -786,7 +791,8 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
   }
 
   // Service zone - bathrooms
-  const numBath = Math.max(1, bhk);
+  // Indian standard: 1 common + attached for master. 3BHK→2-3, 4BHK→3, 5BHK→4
+  const numBath = bhk <= 2 ? bhk : Math.ceil(bhk * 0.75);
   for (let i = 1; i <= numBath; i++) {
     const name = numBath === 1 ? "Bathroom" : `Bathroom ${i}`;
     rooms.push({ name, type: "bathroom", areaSqm: i === 1 ? 5 : 4, zone: "service", mustHaveExteriorWall: false, adjacentTo: [], preferNear: [] });
@@ -815,10 +821,11 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
       if (room.zone === "public" || room.type === "kitchen") {
         room.floor = 0;
       } else if (room.type === "bedroom") {
-        room.floor = 1;
+        // Distribute bedrooms across upper floors
+        room.floor = Math.min(1, numFloors - 1);
       } else if (room.type === "bathroom") {
-        // First bathroom on ground floor (powder room), rest follow bedrooms
-        room.floor = bathIdx === 0 ? 0 : 1;
+        // First bathroom on ground floor (powder room), rest on same floor as paired bedroom
+        room.floor = bathIdx === 0 ? 0 : Math.min(1, numFloors - 1);
         bathIdx++;
       } else if (room.zone === "circulation") {
         room.floor = 0;

@@ -55,9 +55,11 @@ export function validateBuildingCode(
 
   // ---- Window / Ventilation Checks ----
   totalChecks += checkWindows(floor, violations);
+  totalChecks += checkVentilationRatio(floor, violations);
 
   // ---- Stair Checks ----
   totalChecks += checkStairs(floor, violations);
+  totalChecks += checkStairFormula(floor, violations);
 
   // ---- Ceiling Height Checks ----
   totalChecks += checkCeilingHeight(floor, violations);
@@ -318,7 +320,7 @@ function checkWindows(floor: Floor, violations: CodeViolation[]): number {
       // Find windows on walls bounding this room
       const roomWallIds = new Set(room.wall_ids);
       const roomWindows = floor.windows.filter((w) => roomWallIds.has(w.wall_id));
-      const FRAME_FACTOR = 0.8; // ~20% frame deduction for glazed area
+      const FRAME_FACTOR = 0.7; // ~30% frame deduction for glazed area (double-hung standard)
       const totalWindowArea = roomWindows.reduce(
         (sum, w) => sum + (w.width_mm * w.height_mm * FRAME_FACTOR) / 1_000_000,
         0
@@ -466,7 +468,9 @@ function checkCeilingHeight(floor: Floor, violations: CodeViolation[]): number {
 
   checks++;
   const minH = rule.parameters.min_height_mm as number;
-  const ceilingHeight = floor.floor_to_floor_height_mm - floor.slab_thickness_mm;
+  // Clear ceiling height = floor-to-floor minus slab thickness minus floor finishes (~50mm)
+  const FLOOR_FINISH_MM = 50;
+  const ceilingHeight = floor.floor_to_floor_height_mm - floor.slab_thickness_mm - FLOOR_FINISH_MM;
 
   if (ceilingHeight < minH) {
     violations.push({
@@ -533,21 +537,22 @@ function checkBathroomWaterproofing(floor: Floor, violations: CodeViolation[]): 
   const rule = ALL_BUILDING_CODE_RULES.find((r) => r.id === "NBC-WV-006");
   if (!rule) return 0;
 
+  // Waterproofing is a construction detail, not a plan-level geometry check.
+  // Only flag once as a general note if bathrooms exist, not per-bathroom.
   const bathrooms = floor.rooms.filter((r) => ["bathroom", "toilet", "wc"].includes(r.type));
-  for (const bath of bathrooms) {
+  if (bathrooms.length > 0) {
     checks++;
-    // Always flag as info — this is a specification reminder, not a geometry check
     violations.push({
       rule_id: rule.id,
       rule,
       entity_type: "room",
-      entity_id: bath.id,
-      entity_name: bath.name,
+      entity_id: bathrooms[0].id,
+      entity_name: `${bathrooms.length} bathroom(s)`,
       severity: "info",
-      message: `${bath.name} requires waterproofing treatment per NBC specification.`,
-      actual_value: "Not verified in plan",
+      message: `${bathrooms.length} bathroom(s) require waterproofing treatment per NBC specification — include in construction notes.`,
+      actual_value: "Construction specification",
       required_value: "Waterproofing up to 150mm above FFL",
-      suggestion: "Specify waterproofing in construction notes for all bathroom floors and walls up to 150mm.",
+      suggestion: "Add waterproofing note to construction drawing for all wet areas.",
     });
   }
   return checks;
@@ -562,18 +567,19 @@ function checkBalconyRailing(floor: Floor, violations: CodeViolation[]): number 
   const rule = ALL_BUILDING_CODE_RULES.find((r) => r.id === "NBC-FS-003");
   if (!rule) return 0;
 
+  // Railing is a construction detail — flag once as a general note if balconies exist.
   const balconies = floor.rooms.filter((r) => ["balcony", "terrace"].includes(r.type));
-  for (const balcony of balconies) {
+  if (balconies.length > 0) {
     checks++;
     violations.push({
       rule_id: rule.id,
       rule,
       entity_type: "room",
-      entity_id: balcony.id,
-      entity_name: balcony.name,
+      entity_id: balconies[0].id,
+      entity_name: `${balconies.length} balcony/terrace(s)`,
       severity: "info",
-      message: `${balcony.name} requires railing of minimum 1.05 m height.`,
-      actual_value: "Not specified in plan",
+      message: `${balconies.length} balcony/terrace(s) require railing of minimum 1.05 m height — include in detail drawing.`,
+      actual_value: "Construction specification",
       required_value: "≥ 1050 mm railing height",
       suggestion: "Add railing specification to balcony/terrace detail drawing.",
     });
@@ -636,18 +642,20 @@ function checkNaturalLightRatio(floor: Floor, violations: CodeViolation[]): numb
     const ratio = floorArea > 0 ? totalWindowArea / floorArea : 0;
     const minRatio = rule.parameters.min_ratio as number;
 
-    if (ratio < minRatio) {
+    // Only flag if room already passes the minimum 1/10 check (NBC-WV-001)
+    // to avoid double-flagging rooms that fail both
+    if (ratio < minRatio && ratio >= 0.10) {
       violations.push({
         rule_id: rule.id,
         rule,
         entity_type: "room",
         entity_id: room.id,
         entity_name: room.name,
-        severity: rule.severity,
-        message: `${room.name} natural light ratio (${(ratio * 100).toFixed(1)}%) is below recommended 1/6th (16.7%).`,
+        severity: "info",
+        message: `${room.name} meets minimum ventilation (${(ratio * 100).toFixed(1)}%) but is below recommended daylighting 1/6th (16.7%).`,
         actual_value: `${(ratio * 100).toFixed(1)}%`,
-        required_value: `≥ ${(minRatio * 100).toFixed(1)}%`,
-        suggestion: `Add approximately ${((minRatio * floorArea - totalWindowArea)).toFixed(2)} sq.m more window area.`,
+        required_value: `≥ ${(minRatio * 100).toFixed(1)}% (recommended)`,
+        suggestion: `Add approximately ${((minRatio * floorArea - totalWindowArea)).toFixed(2)} sq.m more window area for optimal natural light.`,
       });
     }
   }
@@ -665,28 +673,86 @@ function checkFireEgressDistance(floor: Floor, violations: CodeViolation[]): num
 
   const maxDist = rule.parameters.max_travel_distance_mm as number;
 
-  // Simplified: check if the farthest room centroid from any exit door exceeds threshold
   const exitDoors = floor.doors.filter((d) => d.type === "main_entrance" || d.type === "fire_rated");
   if (exitDoors.length === 0) return 0;
 
-  // Get exit positions
-  const exitPositions: { x: number; y: number }[] = [];
-  for (const door of exitDoors) {
-    const wall = floor.walls.find((w) => w.id === door.wall_id);
-    if (!wall) continue;
-    const dir = lineDirection(wall.centerline);
-    const pos = addPoints(wall.centerline.start, scalePoint(dir, door.position_along_wall_mm + door.width_mm / 2));
-    exitPositions.push(pos);
+  // Build room adjacency graph from doors for BFS path distance
+  const doorConnections = new Map<string, Set<string>>();
+  for (const room of floor.rooms) doorConnections.set(room.id, new Set());
+  for (const door of floor.doors) {
+    const [a, b] = door.connects_rooms;
+    if (a && b) {
+      doorConnections.get(a)?.add(b);
+      doorConnections.get(b)?.add(a);
+    }
   }
 
+  // Find rooms directly connected to exit doors
+  const exitRoomIds = new Set<string>();
+  for (const door of exitDoors) {
+    for (const rid of door.connects_rooms) {
+      if (rid) exitRoomIds.add(rid);
+    }
+  }
+
+  // Room centroids for distance calculation
+  const centroids = new Map<string, { x: number; y: number }>();
+  for (const room of floor.rooms) {
+    centroids.set(room.id, polygonCentroid(room.boundary.points));
+  }
+
+  // BFS from each room to nearest exit room, summing centroid-to-centroid distances
   for (const room of floor.rooms) {
     checks++;
-    const centroid = polygonCentroid(room.boundary.points);
-    const minDist = Math.min(
-      ...exitPositions.map((ep) => Math.sqrt((centroid.x - ep.x) ** 2 + (centroid.y - ep.y) ** 2))
-    );
+    if (exitRoomIds.has(room.id)) continue; // Room is directly at an exit
 
-    if (minDist > maxDist) {
+    // BFS to find shortest path distance through rooms to an exit room
+    const visited = new Map<string, number>(); // roomId → cumulative distance
+    const queue: Array<{ id: string; dist: number }> = [{ id: room.id, dist: 0 }];
+    visited.set(room.id, 0);
+    let minPathDist = Infinity;
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (exitRoomIds.has(current.id)) {
+        minPathDist = Math.min(minPathDist, current.dist);
+        continue;
+      }
+      const neighbors = doorConnections.get(current.id);
+      if (!neighbors) continue;
+      for (const neighborId of neighbors) {
+        const fromC = centroids.get(current.id);
+        const toC = centroids.get(neighborId);
+        if (!fromC || !toC) continue;
+        const segDist = Math.sqrt((fromC.x - toC.x) ** 2 + (fromC.y - toC.y) ** 2);
+        const newDist = current.dist + segDist;
+        if (!visited.has(neighborId) || visited.get(neighborId)! > newDist) {
+          visited.set(neighborId, newDist);
+          queue.push({ id: neighborId, dist: newDist });
+        }
+      }
+    }
+
+    // Fallback to straight-line if no path found (disconnected rooms)
+    if (minPathDist === Infinity) {
+      const centroid = centroids.get(room.id);
+      if (centroid) {
+        const exitPositions: { x: number; y: number }[] = [];
+        for (const door of exitDoors) {
+          const wall = floor.walls.find((w) => w.id === door.wall_id);
+          if (!wall) continue;
+          const dir = lineDirection(wall.centerline);
+          exitPositions.push(addPoints(wall.centerline.start, scalePoint(dir, door.position_along_wall_mm + door.width_mm / 2)));
+        }
+        if (exitPositions.length > 0) {
+          minPathDist = Math.min(...exitPositions.map((ep) =>
+            Math.sqrt((centroid.x - ep.x) ** 2 + (centroid.y - ep.y) ** 2)
+          ));
+        }
+      }
+    }
+
+    if (minPathDist > maxDist) {
       violations.push({
         rule_id: rule.id,
         rule,
@@ -694,10 +760,97 @@ function checkFireEgressDistance(floor: Floor, violations: CodeViolation[]): num
         entity_id: room.id,
         entity_name: room.name,
         severity: rule.severity,
-        message: `${room.name} is ${(minDist / 1000).toFixed(1)} m from nearest exit (max ${(maxDist / 1000).toFixed(1)} m).`,
-        actual_value: `${(minDist / 1000).toFixed(1)} m`,
+        message: `${room.name} is ${(minPathDist / 1000).toFixed(1)} m from nearest exit via path (max ${(maxDist / 1000).toFixed(1)} m).`,
+        actual_value: `${(minPathDist / 1000).toFixed(1)} m`,
         required_value: `≤ ${(maxDist / 1000).toFixed(1)} m`,
         suggestion: "Consider adding a secondary exit or fire escape route closer to this room.",
+      });
+    }
+  }
+  return checks;
+}
+
+// ============================================================
+// STAIR COMFORT FORMULA (NBC-ST-006)
+// ============================================================
+
+function checkStairFormula(floor: Floor, violations: CodeViolation[]): number {
+  let checks = 0;
+  const rule = ALL_BUILDING_CODE_RULES.find((r) => r.id === "NBC-ST-006");
+  if (!rule) return 0;
+
+  const minFormula = rule.parameters.min_formula as number;
+  const maxFormula = rule.parameters.max_formula as number;
+
+  for (const stair of floor.stairs) {
+    checks++;
+    const formulaValue = 2 * stair.riser_height_mm + stair.tread_depth_mm;
+
+    if (formulaValue < minFormula || formulaValue > maxFormula) {
+      const isBelow = formulaValue < minFormula;
+      violations.push({
+        rule_id: rule.id,
+        rule,
+        entity_type: "stair",
+        entity_id: stair.id,
+        entity_name: `Staircase (${stair.type})`,
+        severity: rule.severity,
+        message: `Stair comfort formula 2R+T = ${formulaValue} mm is ${isBelow ? "below" : "above"} the acceptable range (${minFormula}–${maxFormula} mm).`,
+        actual_value: `2×${stair.riser_height_mm} + ${stair.tread_depth_mm} = ${formulaValue} mm`,
+        required_value: `${minFormula}–${maxFormula} mm (ideal 600 mm)`,
+        suggestion: isBelow
+          ? `Increase tread depth or riser height to bring 2R+T above ${minFormula} mm.`
+          : `Decrease riser height or increase tread depth to bring 2R+T below ${maxFormula} mm.`,
+      });
+    }
+  }
+  return checks;
+}
+
+// ============================================================
+// VENTILATION RATIO (NBC-WV-002)
+// ============================================================
+
+function checkVentilationRatio(floor: Floor, violations: CodeViolation[]): number {
+  let checks = 0;
+  const rule = ALL_BUILDING_CODE_RULES.find((r) => r.id === "NBC-WV-002");
+  if (!rule) return 0;
+
+  const minRatio = rule.parameters.min_ratio as number;
+  const OPERABLE_FACTOR = 0.5; // 50% of window area counts as effective ventilation opening
+
+  const applicableRooms = floor.rooms.filter(
+    (r) => rule.room_types.length === 0 || rule.room_types.includes(r.type)
+  );
+
+  for (const room of applicableRooms) {
+    checks++;
+    const roomWallIds = new Set(room.wall_ids);
+    const roomWindows = floor.windows.filter((w) => roomWallIds.has(w.wall_id));
+
+    // Only operable windows contribute to ventilation; use 50% of their area
+    const totalVentArea = roomWindows
+      .filter((w) => w.operable)
+      .reduce(
+        (sum, w) => sum + (w.width_mm * w.height_mm * OPERABLE_FACTOR) / 1_000_000,
+        0
+      );
+
+    const floorArea = room.area_sqm;
+    const ratio = floorArea > 0 ? totalVentArea / floorArea : 0;
+
+    if (ratio < minRatio) {
+      violations.push({
+        rule_id: rule.id,
+        rule,
+        entity_type: "room",
+        entity_id: room.id,
+        entity_name: room.name,
+        severity: rule.severity,
+        message: `${room.name} ventilation opening ratio (${(ratio * 100).toFixed(1)}%) is below required ${(minRatio * 100).toFixed(0)}% of floor area.`,
+        actual_value: `${(ratio * 100).toFixed(1)}% (${totalVentArea.toFixed(2)} sq.m operable / ${floorArea.toFixed(1)} sq.m floor)`,
+        required_value: `≥ ${(minRatio * 100).toFixed(0)}% (1/20th of floor area)`,
+        suggestion: `Add ${((minRatio * floorArea - totalVentArea)).toFixed(2)} sq.m more operable window area to ${room.name}, or provide mechanical ventilation.`,
       });
     }
   }

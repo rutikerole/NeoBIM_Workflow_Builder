@@ -246,7 +246,8 @@ export function generateBOQ(floor: Floor): BOQReport {
 
   // ======== 8. STRUCTURAL (columns, slab) ========
   for (const col of floor.columns) {
-    const heightM = floor.floor_to_floor_height_mm / 1000;
+    // Column height = floor-to-floor minus slab thickness (column sits below slab)
+    const heightM = (floor.floor_to_floor_height_mm - floor.slab_thickness_mm) / 1000;
     let vol: number;
     if (col.type === "circular") {
       const r = ((col.diameter_mm ?? 300) / 2) / 1000;
@@ -285,9 +286,12 @@ export function generateBOQ(floor: Floor): BOQReport {
     const treadM = stair.tread_depth_mm / 1000;
     const riserM = stair.riser_height_mm / 1000;
     const waistThick = 0.15; // 150mm waist slab
-    // Step triangle + inclined waist slab (corrected from horizontal projection)
-    const inclineLen = Math.sqrt(treadM * treadM + riserM * riserM);
-    const vol = stair.num_risers * widthM * (treadM * riserM / 2 + inclineLen * waistThick);
+    // Step triangles: each step is half a rectangle (tread × riser)
+    const stepVol = stair.num_risers * widthM * (treadM * riserM / 2);
+    // Waist slab: runs along the total horizontal projection
+    const totalRun = stair.num_risers * treadM;
+    const waistVol = totalRun * waistThick * widthM;
+    const vol = stepVol + waistVol;
 
     items.push({
       sno: ++sno,

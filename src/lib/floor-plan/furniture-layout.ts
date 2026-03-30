@@ -7,6 +7,7 @@
 
 import type { Floor, Room, Wall, Door, FurnitureInstance, Point, RoomType } from "@/types/floor-plan-cad";
 import { wallLength, lineDirection, addPoints, scalePoint } from "./geometry";
+import { getCatalogItem } from "./furniture-catalog";
 
 function genId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -24,22 +25,32 @@ interface FurnitureSpec {
   offsetFromWall?: number; // mm from wall face (default: 50)
 }
 
+/** Select bed size based on room area */
+function selectBedCatalogId(roomType: RoomType, areaSqm: number): string {
+  if (roomType === "master_bedroom") {
+    return areaSqm >= 14 ? "bed-king" : "bed-queen";
+  }
+  if (areaSqm < 10) return "bed-single";
+  if (areaSqm < 14) return "bed-queen";
+  return "bed-queen";
+}
+
 const ROOM_FURNITURE: Partial<Record<RoomType, FurnitureSpec[]>> = {
   master_bedroom: [
-    { catalogId: "bed-king",    priority: 10, wallPlacement: "anchor" },
+    { catalogId: "bed-king",    priority: 10, wallPlacement: "anchor" }, // swapped adaptively below
     { catalogId: "nightstand",  priority: 8,  wallPlacement: "anchor", offsetFromWall: 0 },
     { catalogId: "wardrobe",    priority: 9,  wallPlacement: "opposite" },
     { catalogId: "dresser",     priority: 5,  wallPlacement: "adjacent", minRoomArea: 14 },
     { catalogId: "armchair",    priority: 3,  wallPlacement: "adjacent", minRoomArea: 16 },
   ],
   bedroom: [
-    { catalogId: "bed-queen",   priority: 10, wallPlacement: "anchor" },
+    { catalogId: "bed-queen",   priority: 10, wallPlacement: "anchor" }, // swapped adaptively below
     { catalogId: "nightstand",  priority: 7,  wallPlacement: "anchor", offsetFromWall: 0 },
     { catalogId: "wardrobe",    priority: 9,  wallPlacement: "opposite" },
     { catalogId: "desk-study",  priority: 5,  wallPlacement: "adjacent", minRoomArea: 11 },
   ],
   guest_bedroom: [
-    { catalogId: "bed-queen",   priority: 10, wallPlacement: "anchor" },
+    { catalogId: "bed-queen",   priority: 10, wallPlacement: "anchor" }, // swapped adaptively below
     { catalogId: "nightstand",  priority: 7,  wallPlacement: "anchor", offsetFromWall: 0 },
     { catalogId: "wardrobe",    priority: 8,  wallPlacement: "opposite" },
   ],
@@ -88,46 +99,15 @@ const ROOM_FURNITURE: Partial<Record<RoomType, FurnitureSpec[]>> = {
 };
 
 // ============================================================
-// CATALOG DIMENSIONS (simplified — matches furniture-catalog.ts)
+// CATALOG DIMENSIONS — sourced from furniture-catalog.ts (single source of truth)
 // ============================================================
 
-const CATALOG_DIMS: Record<string, { width: number; depth: number }> = {
-  "bed-king":        { width: 1950, depth: 2050 },
-  "bed-queen":       { width: 1650, depth: 2050 },
-  "bed-single":      { width: 1000, depth: 2000 },
-  "nightstand":      { width: 500,  depth: 450 },
-  "wardrobe":        { width: 1800, depth: 600 },
-  "dresser":         { width: 1200, depth: 500 },
-  "desk-study":      { width: 1200, depth: 600 },
-  "armchair":        { width: 850,  depth: 850 },
-  "sofa-3seat":      { width: 2200, depth: 900 },
-  "sofa-2seat":      { width: 1600, depth: 900 },
-  "coffee-table":    { width: 1200, depth: 600 },
-  "tv-unit":         { width: 1800, depth: 450 },
-  "side-table":      { width: 500,  depth: 500 },
-  "bookshelf":       { width: 1200, depth: 350 },
-  "dining-table-6":  { width: 1800, depth: 900 },
-  "dining-table-4":  { width: 1200, depth: 800 },
-  "dining-table-round": { width: 1100, depth: 1100 },
-  "dining-chair":    { width: 450,  depth: 450 },
-  "kitchen-counter": { width: 2400, depth: 600 },
-  "sink-kitchen":    { width: 800,  depth: 600 },
-  "stove-4burner":   { width: 600,  depth: 600 },
-  "refrigerator":    { width: 700,  depth: 700 },
-  "kitchen-island":  { width: 1500, depth: 800 },
-  "toilet":          { width: 400,  depth: 700 },
-  "washbasin":       { width: 600,  depth: 450 },
-  "bathtub":         { width: 750,  depth: 1700 },
-  "shower-enclosure": { width: 900, depth: 900 },
-  "vanity-unit":     { width: 900,  depth: 500 },
-  "washing-machine": { width: 600,  depth: 600 },
-  "office-desk":     { width: 1500, depth: 750 },
-  "office-chair":    { width: 550,  depth: 550 },
-  "filing-cabinet":  { width: 450,  depth: 600 },
-  "conference-table": { width: 2400, depth: 1200 },
-  "credenza":        { width: 1500, depth: 450 },
-  "microwave-stand": { width: 600,  depth: 450 },
-};
+function getCatalogDims(catalogId: string): { width: number; depth: number } {
+  const item = getCatalogItem(catalogId);
+  if (item) return { width: item.width_mm, depth: item.depth_mm };
+  // Fallback for unknown items
+  return { width: 600, depth: 600 };
+}
 
 // ============================================================
 // WALL CLASSIFICATION FOR PLACEMENT
@@ -420,21 +400,34 @@ export function layoutRoomFurniture(room: Room, floor: Floor): FurnitureLayoutRe
     .filter((s) => !s.minRoomArea || room.area_sqm >= s.minRoomArea)
     .sort((a, b) => b.priority - a.priority);
 
-  // For dining room: choose table size based on area
-  const adjustedSpecs = applicableSpecs.filter((s) => {
-    if (room.type === "dining_room") {
-      if (s.catalogId === "dining-table-6" && room.area_sqm >= 10) return true;
-      if (s.catalogId === "dining-table-4" && room.area_sqm < 10) return true;
-      if (s.catalogId === "dining-table-6" && room.area_sqm < 10) return false;
-    }
-    return true;
-  });
+  // Adaptive furniture selection based on room area
+  const adjustedSpecs = applicableSpecs
+    .map((s) => {
+      // Adapt bed size to room area
+      if (s.catalogId.startsWith("bed-")) {
+        return { ...s, catalogId: selectBedCatalogId(room.type, room.area_sqm) };
+      }
+      return s;
+    })
+    .filter((s) => {
+      // For dining room: choose table size based on area
+      if (room.type === "dining_room") {
+        if (s.catalogId === "dining-table-6" && room.area_sqm >= 10) return true;
+        if (s.catalogId === "dining-table-4" && room.area_sqm < 10) return true;
+        if (s.catalogId === "dining-table-6" && room.area_sqm < 10) return false;
+      }
+      // For living room: use 2-seat sofa in small rooms
+      if (room.type === "living_room" && s.catalogId === "sofa-3seat" && room.area_sqm < 15) {
+        s = { ...s, catalogId: "sofa-2seat" };
+      }
+      return true;
+    });
 
   // Track placed rectangles for overlap checking
   const placedRects: Array<{ x: number; y: number; w: number; d: number }> = [];
 
   for (const spec of adjustedSpecs) {
-    const dims = CATALOG_DIMS[spec.catalogId];
+    const dims = getCatalogDims(spec.catalogId);
     if (!dims) continue;
 
     // Skip if furniture larger than room interior
@@ -546,7 +539,7 @@ export function layoutRoomFurniture(room: Room, floor: Floor): FurnitureLayoutRe
   // Remove any furniture that ended up in a door swing zone or outside room
   const validated: FurnitureInstance[] = [];
   for (const fi of furniture) {
-    const dims = CATALOG_DIMS[fi.catalog_id];
+    const dims = getCatalogDims(fi.catalog_id);
     if (!dims) { validated.push(fi); continue; }
 
     // Final room boundary check

@@ -14,7 +14,7 @@ interface NorthArrowRendererProps {
  * Screen-fixed north arrow — top-right of canvas.
  * Click to rotate in 45° increments.
  */
-export function NorthArrowRenderer({ viewport, northAngleDeg }: NorthArrowRendererProps) {
+export const NorthArrowRenderer = React.memo(function NorthArrowRenderer({ viewport, northAngleDeg }: NorthArrowRendererProps) {
   // Position: top-right, offset from edge
   const cx = viewport.canvasWidth - 40;
   const cy = 52;
@@ -105,4 +105,4 @@ export function NorthArrowRenderer({ viewport, northAngleDeg }: NorthArrowRender
       )}
     </Group>
   );
-}
+});

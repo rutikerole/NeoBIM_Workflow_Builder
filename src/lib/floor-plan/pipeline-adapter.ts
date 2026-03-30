@@ -783,7 +783,9 @@ function convertDoors(
         hinge_point: hinge,
         arc_radius_mm: widthMm,
         arc_start_angle_deg: swingDir === "left" ? wAngle - 180 : wAngle,
-        arc_end_angle_deg: 90,
+        arc_end_angle_deg: swingDir === "left"
+          ? wAngle - 180 + (opensTo === "inside" ? 90 : -90)
+          : wAngle + (opensTo === "inside" ? 90 : -90),
         leaf_end_point: leafEnd,
       },
       connects_rooms: (gd.connectsRooms?.map((rn) => roomIdMap.get(rn) ?? "") ?? [
@@ -1050,7 +1052,8 @@ function findRoomByPromptContext(
 
     // Check which room name appears in this context
     for (const room of rooms) {
-      const roomWords = room.name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const KEEP_SHORT = new Set(["wc", "ac", "tv", "hob"]);
+      const roomWords = room.name.toLowerCase().split(/\s+/).filter(w => w.length > 3 || KEEP_SHORT.has(w));
       if (roomWords.some(w => context.includes(w)) && room.area_sqm >= 3) {
         return room;
       }

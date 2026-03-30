@@ -114,7 +114,7 @@ function StairItem({
         x={midX - 10}
         y={midY - 6}
         text="UP"
-        fontSize={Math.max(8, 10 * zoom * 10)}
+        fontSize={Math.max(8, Math.min(16, 100 * viewport.zoom))}
         fill={strokeColor}
         fontStyle="bold"
       />

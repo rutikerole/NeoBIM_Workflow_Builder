@@ -141,10 +141,10 @@ const CORRIDOR_RULES: BuildingCodeRule[] = [
     code_ref: "NBC 2016, Clause 8.5.2",
     category: "corridor",
     title: "Corridor Minimum Width (Commercial)",
-    description: "Corridors in commercial/public buildings shall have a minimum width of 1.5 m.",
+    description: "Corridors in commercial/public buildings shall have a minimum width of 2.0 m.",
     severity: "error",
     room_types: ["corridor", "lobby"],
-    parameters: { min_width_mm: 1500, project_types: "commercial,institutional" },
+    parameters: { min_width_mm: 2000, project_types: "commercial,institutional" },
   },
 ];
 
@@ -387,6 +387,16 @@ const ENHANCED_RULES: BuildingCodeRule[] = [
     severity: "warning",
     room_types: [],
     parameters: { min_width_mm: 1000 },
+  },
+  {
+    id: "NBC-ST-006",
+    code_ref: "NBC 2016, Clause 8.6.2",
+    category: "stair",
+    title: "Stair Comfort Formula (2R+T)",
+    description: "The sum of twice the riser height plus tread depth should be between 550-650mm for comfortable use.",
+    severity: "warning",
+    room_types: [],
+    parameters: { min_formula: 550, max_formula: 650 },
   },
   {
     id: "NBC-AC-003",
