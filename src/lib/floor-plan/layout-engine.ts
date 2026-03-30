@@ -143,7 +143,35 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
     console.warn(`[STAGE-2] Room count mismatch after recovery: input=${inputCount}, output=${result.length}`);
   }
 
+  // ── Dimension accuracy check (diagnostic) ──
+  checkDimensionAccuracy(result, rooms);
+
   return result;
+}
+
+/**
+ * Check how well BSP-allocated dimensions match user-specified preferred dimensions.
+ * Diagnostic only — logs warnings but doesn't modify layout.
+ */
+function checkDimensionAccuracy(placed: PlacedRoom[], specs: RoomSpec[]): void {
+  for (const room of placed) {
+    const spec = specs.find(s => s.name === room.name);
+    if (!spec?.preferredWidth || !spec?.preferredDepth) continue;
+
+    // Check both orientations (BSP might rotate the room)
+    const w1 = Math.abs(room.width - spec.preferredWidth) / spec.preferredWidth;
+    const d1 = Math.abs(room.depth - spec.preferredDepth) / spec.preferredDepth;
+    const w2 = Math.abs(room.width - spec.preferredDepth) / spec.preferredDepth;
+    const d2 = Math.abs(room.depth - spec.preferredWidth) / spec.preferredWidth;
+
+    const bestMatch = Math.min(Math.max(w1, d1), Math.max(w2, d2));
+    if (bestMatch > 0.3) {
+      console.warn(
+        `[DIM-CHECK] ${room.name}: wanted ${spec.preferredWidth.toFixed(1)}x${spec.preferredDepth.toFixed(1)}m, ` +
+        `got ${room.width.toFixed(1)}x${room.depth.toFixed(1)}m (${Math.round(bestMatch * 100)}% off)`
+      );
+    }
+  }
 }
 
 // ── Post-BSP swap optimization ──────────────────────────────────────────────

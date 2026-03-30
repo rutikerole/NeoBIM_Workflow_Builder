@@ -23,6 +23,8 @@ export interface RoomSpec {
   adjacentTo: string[]; // names of rooms that MUST share a wall with this room
   preferNear: string[]; // names of rooms that SHOULD be nearby (soft constraint)
   floor?: number;       // 0=ground, 1=first, 2=second (multi-floor buildings)
+  preferredWidth?: number;  // meters — user-specified width (e.g., "22 feet" → 6.7m)
+  preferredDepth?: number;  // meters — user-specified depth
 }
 
 export interface AdjacencyRequirement {
@@ -73,9 +75,12 @@ CRITICAL RULES — ROOM COMPLETENESS (MOST IMPORTANT):
 8. "BHK" = bedrooms + hall + kitchen. "3BHK" = 3 bedrooms + living/hall + kitchen
 
 USER-SPECIFIED DIMENSIONS:
-- If the user specifies exact dimensions like "20x15 feet" or "6x5 feet", CONVERT to meters (1 foot = 0.3048m) and use those EXACT dimensions for areaSqm
-- Example: "20x15 feet" = 6.1 x 4.6m = 28 sqm. Use areaSqm: 28
+- If the user specifies exact dimensions like "20x15 feet" or "6x5 feet", CONVERT to meters (1 foot = 0.3048m)
+- Set "preferredWidth" and "preferredDepth" in meters in the room output
+- Set areaSqm = preferredWidth * preferredDepth
+- Example: "20x15 feet" = 6.1 x 4.6m → preferredWidth: 6.1, preferredDepth: 4.6, areaSqm: 28
 - Do NOT override user-specified sizes with your own estimates
+- These are HARD preferences — the layout engine will try to match them within 20%
 
 ESSENTIAL ROOMS TO ADD (if user didn't mention them):
 - Residential: kitchen (if missing), at least 1 bathroom, living area, corridor (if 5+ rooms per floor)
@@ -150,6 +155,8 @@ OUTPUT THIS EXACT JSON STRUCTURE:
       "name": "Living Room",
       "type": "living",
       "areaSqm": 25,
+      "preferredWidth": 5.5,
+      "preferredDepth": 4.5,
       "zone": "public",
       "mustHaveExteriorWall": true,
       "adjacentTo": ["Dining Room", "Foyer"],
@@ -257,6 +264,13 @@ export async function programRooms(
     if (!Array.isArray(room.preferNear)) room.preferNear = [];
     if (room.floor !== undefined && room.floor !== null) {
       room.floor = Math.max(0, Math.floor(Number(room.floor) || 0));
+    }
+    // Preserve user-specified dimensions from AI output
+    if (room.preferredWidth && room.preferredWidth > 0) {
+      room.preferredWidth = Number(room.preferredWidth);
+    }
+    if (room.preferredDepth && room.preferredDepth > 0) {
+      room.preferredDepth = Number(room.preferredDepth);
     }
   }
 
@@ -468,7 +482,8 @@ function inferRoomSpec(roomName: string, prompt: string, isMultiFloor: boolean):
   const p = prompt.toLowerCase();
 
   // Try to extract user-specified dimensions from prompt
-  const areaSqm = extractDimensionsForRoom(name, p) ?? inferDefaultArea(name);
+  const dims = extractDimensionsForRoom(name, p);
+  const areaSqm = dims?.area ?? inferDefaultArea(name);
   const { type, zone, exterior } = inferRoomTypeAndZone(name);
   const floor = inferFloor(name, p, isMultiFloor);
 
@@ -481,10 +496,12 @@ function inferRoomSpec(roomName: string, prompt: string, isMultiFloor: boolean):
     adjacentTo: [],
     preferNear: [],
     floor,
+    preferredWidth: dims?.width,
+    preferredDepth: dims?.depth,
   };
 }
 
-function extractDimensionsForRoom(roomName: string, prompt: string): number | null {
+function extractDimensionsForRoom(roomName: string, prompt: string): { area: number; width: number; depth: number } | null {
   // Look for patterns like "pooja room 6x5 feet" or "living room 20x15 feet"
   const keywords = roomName.split(/\s+/).filter(w => w.length > 2);
   for (const keyword of keywords) {
@@ -494,9 +511,9 @@ function extractDimensionsForRoom(roomName: string, prompt: string): number | nu
     );
     const match = prompt.match(pattern);
     if (match) {
-      const w = parseFloat(match[1]) * 0.3048; // feet to meters
-      const d = parseFloat(match[2]) * 0.3048;
-      return Math.round(w * d * 10) / 10;
+      const w = Math.round(parseFloat(match[1]) * 0.3048 * 10) / 10;
+      const d = Math.round(parseFloat(match[2]) * 0.3048 * 10) / 10;
+      return { area: Math.round(w * d * 10) / 10, width: w, depth: d };
     }
 
     // Also check for "Xm x Ym" or "X x Y meters"
@@ -506,7 +523,9 @@ function extractDimensionsForRoom(roomName: string, prompt: string): number | nu
     );
     const mMatch = prompt.match(mPattern);
     if (mMatch) {
-      return Math.round(parseFloat(mMatch[1]) * parseFloat(mMatch[2]) * 10) / 10;
+      const w = parseFloat(mMatch[1]);
+      const d = parseFloat(mMatch[2]);
+      return { area: Math.round(w * d * 10) / 10, width: w, depth: d };
     }
   }
   return null;
