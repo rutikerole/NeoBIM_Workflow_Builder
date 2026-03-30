@@ -468,7 +468,7 @@ function createDoor(
     wall_id: wall.id,
     type,
     width_mm: width,
-    height_mm: type === "main_entrance" ? 2100 : 2100,
+    height_mm: type === "main_entrance" ? 2200 : 2100,
     thickness_mm: 45,
     position_along_wall_mm: pos,
     swing_direction: swing.swing,

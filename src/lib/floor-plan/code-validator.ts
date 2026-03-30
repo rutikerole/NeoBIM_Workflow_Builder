@@ -635,8 +635,10 @@ function checkNaturalLightRatio(floor: Floor, violations: CodeViolation[]): numb
     checks++;
     const roomWallIds = new Set(room.wall_ids);
     const roomWindows = floor.windows.filter((w) => roomWallIds.has(w.wall_id));
+    // Apply same frame factor as checkWindows for consistency
+    const FRAME_FACTOR = 0.7;
     const totalWindowArea = roomWindows.reduce(
-      (sum, w) => sum + (w.width_mm * w.height_mm) / 1_000_000, 0
+      (sum, w) => sum + (w.width_mm * w.height_mm * FRAME_FACTOR) / 1_000_000, 0
     );
     const floorArea = room.area_sqm;
     const ratio = floorArea > 0 ? totalWindowArea / floorArea : 0;
@@ -673,13 +675,26 @@ function checkFireEgressDistance(floor: Floor, violations: CodeViolation[]): num
 
   const maxDist = rule.parameters.max_travel_distance_mm as number;
 
-  const exitDoors = floor.doors.filter((d) => d.type === "main_entrance" || d.type === "fire_rated");
+  const exitDoors = floor.doors.filter(
+    (d) => d.type === "main_entrance" || d.type === "fire_rated" || d.type === "service_entrance"
+  );
   if (exitDoors.length === 0) return 0;
 
-  // Build room adjacency graph from doors for BFS path distance
+  // Build room adjacency graph from doors for BFS path distance.
+  // Also compute door positions on walls so we can measure door-to-door distances
+  // (more accurate than centroid-to-centroid for fire code compliance).
   const doorConnections = new Map<string, Set<string>>();
   for (const room of floor.rooms) doorConnections.set(room.id, new Set());
+
+  // Map each door → its world-space position (for distance calculation)
+  const doorPositions = new Map<string, { x: number; y: number }>();
   for (const door of floor.doors) {
+    const wall = floor.walls.find((w) => w.id === door.wall_id);
+    if (wall) {
+      const dir = lineDirection(wall.centerline);
+      const pos = addPoints(wall.centerline.start, scalePoint(dir, door.position_along_wall_mm + door.width_mm / 2));
+      doorPositions.set(door.id, pos);
+    }
     const [a, b] = door.connects_rooms;
     if (a && b) {
       doorConnections.get(a)?.add(b);
@@ -695,21 +710,64 @@ function checkFireEgressDistance(floor: Floor, violations: CodeViolation[]): num
     }
   }
 
-  // Room centroids for distance calculation
-  const centroids = new Map<string, { x: number; y: number }>();
+  // Room farthest-corner distances (more conservative than centroids)
+  // For each room, compute the maximum distance from the room's farthest
+  // point to the nearest door connecting this room to another.
+  const roomMaxInternalDist = new Map<string, number>();
   for (const room of floor.rooms) {
-    centroids.set(room.id, polygonCentroid(room.boundary.points));
+    const roomDoors = floor.doors.filter(d => d.connects_rooms.includes(room.id));
+    if (roomDoors.length === 0) {
+      // No doors → use half-diagonal as estimate
+      const bounds = polygonBounds(room.boundary.points);
+      roomMaxInternalDist.set(room.id, Math.sqrt(bounds.width ** 2 + bounds.height ** 2) / 2);
+      continue;
+    }
+    // Max distance from any room corner to the nearest door of this room
+    let maxDoorDist = 0;
+    for (const pt of room.boundary.points) {
+      let minDist = Infinity;
+      for (const door of roomDoors) {
+        const dp = doorPositions.get(door.id);
+        if (!dp) continue;
+        const d = Math.sqrt((pt.x - dp.x) ** 2 + (pt.y - dp.y) ** 2);
+        if (d < minDist) minDist = d;
+      }
+      if (minDist !== Infinity && minDist > maxDoorDist) maxDoorDist = minDist;
+    }
+    roomMaxInternalDist.set(room.id, maxDoorDist);
   }
 
-  // BFS from each room to nearest exit room, summing centroid-to-centroid distances
+  // For room-to-room transitions, use door-to-door distances where available.
+  // Build a map of inter-room connection distances.
+  const connectionDist = new Map<string, number>();
+  for (const door of floor.doors) {
+    const [a, b] = door.connects_rooms;
+    if (!a || !b) continue;
+    const dp = doorPositions.get(door.id);
+    if (!dp) continue;
+    // Distance from door to the far side of each connected room
+    const key = [a, b].sort().join("-");
+    // Use the internal traversal of each room (door to far corner)
+    const distA = roomMaxInternalDist.get(a) ?? 0;
+    const distB = roomMaxInternalDist.get(b) ?? 0;
+    const existing = connectionDist.get(key);
+    // Use the minimum connection distance if multiple doors exist between rooms
+    const thisDist = distA + distB;
+    if (existing === undefined || thisDist < existing) {
+      connectionDist.set(key, thisDist);
+    }
+  }
+
+  // BFS from each room to nearest exit room using door-based distances
   for (const room of floor.rooms) {
     checks++;
-    if (exitRoomIds.has(room.id)) continue; // Room is directly at an exit
+    if (exitRoomIds.has(room.id)) continue;
 
-    // BFS to find shortest path distance through rooms to an exit room
-    const visited = new Map<string, number>(); // roomId → cumulative distance
-    const queue: Array<{ id: string; dist: number }> = [{ id: room.id, dist: 0 }];
-    visited.set(room.id, 0);
+    const visited = new Map<string, number>();
+    const queue: Array<{ id: string; dist: number }> = [
+      { id: room.id, dist: roomMaxInternalDist.get(room.id) ?? 0 },
+    ];
+    visited.set(room.id, queue[0].dist);
     let minPathDist = Infinity;
 
     while (queue.length > 0) {
@@ -721,11 +779,9 @@ function checkFireEgressDistance(floor: Floor, violations: CodeViolation[]): num
       const neighbors = doorConnections.get(current.id);
       if (!neighbors) continue;
       for (const neighborId of neighbors) {
-        const fromC = centroids.get(current.id);
-        const toC = centroids.get(neighborId);
-        if (!fromC || !toC) continue;
-        const segDist = Math.sqrt((fromC.x - toC.x) ** 2 + (fromC.y - toC.y) ** 2);
-        const newDist = current.dist + segDist;
+        const key = [current.id, neighborId].sort().join("-");
+        const transitionDist = connectionDist.get(key) ?? 3000; // 3m default if unknown
+        const newDist = current.dist + transitionDist;
         if (!visited.has(neighborId) || visited.get(neighborId)! > newDist) {
           visited.set(neighborId, newDist);
           queue.push({ id: neighborId, dist: newDist });
@@ -733,22 +789,19 @@ function checkFireEgressDistance(floor: Floor, violations: CodeViolation[]): num
       }
     }
 
-    // Fallback to straight-line if no path found (disconnected rooms)
+    // Fallback to straight-line × 1.4 (Manhattan factor) if no path found
     if (minPathDist === Infinity) {
-      const centroid = centroids.get(room.id);
-      if (centroid) {
-        const exitPositions: { x: number; y: number }[] = [];
-        for (const door of exitDoors) {
-          const wall = floor.walls.find((w) => w.id === door.wall_id);
-          if (!wall) continue;
-          const dir = lineDirection(wall.centerline);
-          exitPositions.push(addPoints(wall.centerline.start, scalePoint(dir, door.position_along_wall_mm + door.width_mm / 2)));
-        }
-        if (exitPositions.length > 0) {
-          minPathDist = Math.min(...exitPositions.map((ep) =>
-            Math.sqrt((centroid.x - ep.x) ** 2 + (centroid.y - ep.y) ** 2)
-          ));
-        }
+      const centroid = polygonCentroid(room.boundary.points);
+      const exitPositions: { x: number; y: number }[] = [];
+      for (const door of exitDoors) {
+        const dp = doorPositions.get(door.id);
+        if (dp) exitPositions.push(dp);
+      }
+      if (exitPositions.length > 0) {
+        const straightLine = Math.min(...exitPositions.map((ep) =>
+          Math.sqrt((centroid.x - ep.x) ** 2 + (centroid.y - ep.y) ** 2)
+        ));
+        minPathDist = straightLine * 1.4; // Manhattan correction factor
       }
     }
 

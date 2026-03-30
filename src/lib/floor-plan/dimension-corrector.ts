@@ -100,10 +100,10 @@ export function correctDimensions(
         const errorB = (areaB - roomB.targetArea) / roomB.targetArea;
 
         // Adjust if one room is too big AND its neighbor is too small,
-        // OR if one room is significantly oversized (>20% over target) regardless.
-        // Thresholds lowered from 15%/10% to 10%/8% for tighter dimension control.
-        const shouldAdjustAB = (errorA > 0.10 && errorB < -0.08) || (errorA > 0.20 && errorB < 0);
-        const shouldAdjustBA = (errorB > 0.10 && errorA < -0.08) || (errorB > 0.20 && errorA < 0);
+        // OR if one room is significantly oversized (>15% over target) regardless.
+        // Thresholds lowered from 10%/8% to 7%/5% for tighter dimension control.
+        const shouldAdjustAB = (errorA > 0.07 && errorB < -0.05) || (errorA > 0.15 && errorB < 0);
+        const shouldAdjustBA = (errorB > 0.07 && errorA < -0.05) || (errorB > 0.15 && errorA < 0);
 
         if (shouldAdjustAB) {
           const shift = calculateShift(roomA, roomB, boundary, errorA, errorB);

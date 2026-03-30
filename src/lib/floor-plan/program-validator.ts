@@ -78,8 +78,10 @@ export function parsePromptRequirements(prompt: string): ParsedRequirements {
     result.rawBHK = parseInt(bhkMatch[1]);
     result.bedrooms = result.rawBHK;
     // BHK implies: B bedrooms, hall (living), kitchen
-    // Bathrooms: typically B (one per bedroom, or B+1 for master)
-    result.bathrooms = result.rawBHK;
+    // BHK does NOT imply exact bathroom count — only set a minimum.
+    // Indian convention: typically B-1 or B bathrooms, but user may specify differently.
+    // Use null to not enforce — explicit bathroom count overrides below.
+    result.bathrooms = null;
     result.hasLiving = true;
     result.hasKitchen = true;
     result.hasDining = result.rawBHK >= 2;
@@ -207,11 +209,12 @@ function roomExistsInPlan(requiredLabel: string, rooms: Room[]): boolean {
       if (overlap.length >= Math.ceil(requiredWords.length * 0.5)) return true;
     }
 
-    // Synonym matching
+    // Synonym matching — both sides must match a synonym of length > 3
+    // to avoid false positives from short common words like "room"
     for (const synonyms of Object.values(ROOM_SYNONYMS)) {
-      const requiredMatchesGroup = synonyms.some(s => required.includes(s));
-      const roomMatchesGroup = synonyms.some(s => name.includes(s) || type.includes(s));
-      if (requiredMatchesGroup && roomMatchesGroup) return true;
+      const requiredMatch = synonyms.find(s => s.length > 3 && required.includes(s));
+      const roomMatch = synonyms.find(s => s.length > 3 && (name.includes(s) || type.includes(s)));
+      if (requiredMatch && roomMatch) return true;
     }
   }
 

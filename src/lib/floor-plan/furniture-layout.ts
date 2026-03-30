@@ -407,6 +407,10 @@ export function layoutRoomFurniture(room: Room, floor: Floor): FurnitureLayoutRe
       if (s.catalogId.startsWith("bed-")) {
         return { ...s, catalogId: selectBedCatalogId(room.type, room.area_sqm) };
       }
+      // For living room: use 2-seat sofa in small rooms
+      if (room.type === "living_room" && s.catalogId === "sofa-3seat" && room.area_sqm < 15) {
+        return { ...s, catalogId: "sofa-2seat" };
+      }
       return s;
     })
     .filter((s) => {
@@ -415,10 +419,6 @@ export function layoutRoomFurniture(room: Room, floor: Floor): FurnitureLayoutRe
         if (s.catalogId === "dining-table-6" && room.area_sqm >= 10) return true;
         if (s.catalogId === "dining-table-4" && room.area_sqm < 10) return true;
         if (s.catalogId === "dining-table-6" && room.area_sqm < 10) return false;
-      }
-      // For living room: use 2-seat sofa in small rooms
-      if (room.type === "living_room" && s.catalogId === "sofa-3seat" && room.area_sqm < 15) {
-        s = { ...s, catalogId: "sofa-2seat" };
       }
       return true;
     });

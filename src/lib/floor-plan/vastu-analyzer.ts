@@ -237,12 +237,15 @@ export function analyzeVastuCompliance(
     );
     if (matchingRules.length === 0) continue;
 
-    // Pick the most specific rule — longest matching room_type string wins
-    // "master_bedroom" (14 chars) > "bedroom" (7 chars)
+    // Pick the most specific rule using a priority system:
+    // Higher penalty_points → more important rule takes precedence.
+    // Among equal penalties, prefer rules with fewer room_types (more specific).
+    // This avoids the fragile "string length = specificity" heuristic.
     const bestRule = matchingRules.sort((a, b) => {
-      const aSpec = Math.max(...a.room_types.filter(t => t === room.type).map(t => t.length), 0);
-      const bSpec = Math.max(...b.room_types.filter(t => t === room.type).map(t => t.length), 0);
-      return bSpec - aSpec;
+      // 1. Higher penalty = more important rule
+      if (a.penalty_points !== b.penalty_points) return b.penalty_points - a.penalty_points;
+      // 2. Fewer room_types = more specific rule
+      return a.room_types.length - b.room_types.length;
     })[0];
 
     const dir = getRoomDirectionWithRotation(room, floor, angleRad, midX, midY);
