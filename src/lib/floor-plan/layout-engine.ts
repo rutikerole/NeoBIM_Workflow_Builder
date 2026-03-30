@@ -144,14 +144,26 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
     }
   }
 
-  // Skip zoning if footprint too shallow for corridor + two minimum-height zones
-  const minZoneHeight = MIN_HABITABLE * 2 + CORRIDOR_DEPTH;
+  // ── Fixed-room pre-placement ──
+  // Rooms with user-specified "exactly" dimensions are placed FIRST.
+  // BSP only fills the remaining space with flex rooms.
+  const fixedRooms = rooms.filter(r => r.preferredWidth && r.preferredDepth &&
+    r.preferredWidth > 0 && r.preferredDepth > 0);
+
   let result: PlacedRoom[];
-  if (!useZones || fpH < minZoneHeight) {
-    result = bspSubdivide(rooms, { x: 0, y: 0, w: fpW, h: fpH }, program.adjacency);
+
+  if (fixedRooms.length >= 2) {
+    // Use fixed-room pre-placement + BSP for remaining space
+    try {
+      result = layoutWithFixedRooms(rooms, fpW, fpH, program.adjacency, program.isVastuRequested);
+      console.log(`[LAYOUT] Fixed-room placement: ${fixedRooms.length} fixed + ${rooms.length - fixedRooms.length} flex`);
+    } catch (err) {
+      console.warn("[LAYOUT] Fixed-room placement failed, falling back to BSP:", err);
+      // Fall through to normal BSP
+      result = fallbackBSP(rooms, useZones, cls, fpW, fpH, program.adjacency);
+    }
   } else {
-    // Zone-based layout with corridor
-    result = layoutWithZones(cls, fpW, fpH, program.adjacency);
+    result = fallbackBSP(rooms, useZones, cls, fpW, fpH, program.adjacency);
   }
 
   // ── Post-BSP room size validation ──
@@ -225,6 +237,271 @@ function checkDimensionAccuracy(placed: PlacedRoom[], specs: RoomSpec[]): void {
       );
     }
   }
+}
+
+// ── Fallback to standard BSP (no fixed rooms) ──────────────────────────────
+
+function fallbackBSP(
+  rooms: RoomSpec[], useZones: boolean, cls: ReturnType<typeof classifyRooms>,
+  fpW: number, fpH: number, adjacency: AdjacencyRequirement[],
+): PlacedRoom[] {
+  const minZoneHeight = MIN_HABITABLE * 2 + CORRIDOR_DEPTH;
+  if (!useZones || fpH < minZoneHeight) {
+    return bspSubdivide(rooms, { x: 0, y: 0, w: fpW, h: fpH }, adjacency);
+  }
+  return layoutWithZones(cls, fpW, fpH, adjacency);
+}
+
+// ── Fixed-room pre-placement + BSP for remaining ───────────────────────────
+
+/**
+ * Place rooms with user-specified dimensions FIRST, then BSP fills the rest.
+ *
+ * Strategy:
+ * 1. Sort fixed rooms by area (largest first)
+ * 2. Place each using edge-aligned greedy packing with Vastu preference
+ * 3. Find remaining free rectangles via grid scan
+ * 4. BSP subdivides flex rooms into the largest free rectangle
+ */
+function layoutWithFixedRooms(
+  allRooms: RoomSpec[],
+  fpW: number,
+  fpH: number,
+  adjacency: AdjacencyRequirement[],
+  vastuRequested?: boolean,
+): PlacedRoom[] {
+  const fixed = allRooms.filter(r => r.preferredWidth && r.preferredDepth &&
+    r.preferredWidth > 0 && r.preferredDepth > 0);
+  const flex = allRooms.filter(r => !fixed.includes(r));
+
+  // Sort fixed rooms by area descending (largest first = hardest to place)
+  const sortedFixed = [...fixed].sort((a, b) =>
+    (b.preferredWidth! * b.preferredDepth!) - (a.preferredWidth! * a.preferredDepth!)
+  );
+
+  const placed: PlacedRoom[] = [];
+  const occupied: Rect[] = [];
+  const step = GRID; // 0.1m placement grid
+
+  for (const room of sortedFixed) {
+    const rw = grid(room.preferredWidth!);
+    const rd = grid(room.preferredDepth!);
+
+    // Try both orientations
+    const orientations = [
+      { w: rw, d: rd },
+      { w: rd, d: rw },
+    ];
+
+    let bestPos: { x: number; y: number; w: number; d: number } | null = null;
+    let bestScore = -Infinity;
+
+    for (const { w, d } of orientations) {
+      if (w > fpW || d > fpH) continue;
+
+      // Scan positions at grid resolution (coarser step for speed)
+      const scanStep = Math.max(step, 0.3);
+      for (let y = 0; y <= fpH - d + 0.01; y += scanStep) {
+        for (let x = 0; x <= fpW - w + 0.01; x += scanStep) {
+          const gx = grid(x);
+          const gy = grid(y);
+
+          // Check overlap with occupied
+          const overlaps = occupied.some(r =>
+            gx < r.x + r.w - 0.05 && gx + w > r.x + 0.05 &&
+            gy < r.y + r.h - 0.05 && gy + d > r.y + 0.05
+          );
+          if (overlaps) continue;
+
+          // Score: prefer edges, corners, and Vastu-correct positions
+          let score = 0;
+
+          // Edge bonuses (rooms against building edges are more realistic)
+          if (gx < step) score += 3;
+          if (gx + w > fpW - step) score += 3;
+          if (gy < step) score += 3;
+          if (gy + d > fpH - step) score += 3;
+
+          // Corner bonus
+          if ((gx < step || gx + w > fpW - step) && (gy < step || gy + d > fpH - step)) score += 2;
+
+          // Adjacency to already-placed rooms (touching = good)
+          for (const occ of occupied) {
+            const touchH = Math.abs(gx + w - occ.x) < 0.15 || Math.abs(occ.x + occ.w - gx) < 0.15;
+            const touchV = Math.abs(gy + d - occ.y) < 0.15 || Math.abs(occ.y + occ.h - gy) < 0.15;
+            const overlapH = gx < occ.x + occ.w - 0.1 && gx + w > occ.x + 0.1;
+            const overlapV = gy < occ.y + occ.h - 0.1 && gy + d > occ.y + 0.1;
+            if ((touchH && overlapV) || (touchV && overlapH)) score += 2;
+          }
+
+          // Vastu preference scoring
+          if (vastuRequested) {
+            const nameLower = room.name.toLowerCase();
+            const typeLower = (room.type || "").toLowerCase();
+            const cx = gx + w / 2;
+            const cy = gy + d / 2;
+            // Kitchen in SE (high y, high x in Y-down coords)
+            if (typeLower.includes("kitchen") || nameLower.includes("kitchen")) {
+              if (cx > fpW / 2 && cy > fpH / 2) score += 8;
+            }
+            // Pooja in NE (low y, high x)
+            if (nameLower.includes("pooja") || nameLower.includes("puja") || nameLower.includes("prayer")) {
+              if (cx > fpW / 2 && cy < fpH / 2) score += 8;
+            }
+            // Master bedroom in SW (high y, low x)
+            if (nameLower.includes("master")) {
+              if (cx < fpW / 2 && cy > fpH / 2) score += 8;
+            }
+            // Living/entrance near north edge (low y)
+            if (typeLower.includes("living") || nameLower.includes("living")) {
+              if (cy < fpH / 2) score += 4;
+            }
+          }
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestPos = { x: gx, y: gy, w, d };
+          }
+        }
+      }
+    }
+
+    if (bestPos) {
+      placed.push({
+        name: room.name,
+        type: room.type,
+        x: bestPos.x,
+        y: bestPos.y,
+        width: bestPos.w,
+        depth: bestPos.d,
+        area: grid(bestPos.w * bestPos.d),
+      });
+      occupied.push({ x: bestPos.x, y: bestPos.y, w: bestPos.w, h: bestPos.d });
+    } else {
+      // Can't fit with exact dimensions — demote to flex
+      flex.push(room);
+      console.warn(`[FIXED-PLACE] ${room.name}: can't fit ${rw}x${rd}m, demoting to flex`);
+    }
+  }
+
+  // Find free rectangular regions for BSP
+  if (flex.length > 0) {
+    const freeRects = findFreeRectangles(fpW, fpH, occupied);
+    if (freeRects.length > 0) {
+      // Sort flex rooms by area descending
+      flex.sort((a, b) => b.areaSqm - a.areaSqm);
+
+      // Distribute flex rooms across free rects proportionally
+      const totalFreeArea = freeRects.reduce((s, r) => s + r.w * r.h, 0);
+      let flexIdx = 0;
+
+      for (const freeRect of freeRects) {
+        if (flexIdx >= flex.length) break;
+        const rectArea = freeRect.w * freeRect.h;
+        if (rectArea < 2) continue; // Too small for a room
+
+        // How many flex rooms fit in this rect (proportional to area)
+        const roomCount = Math.max(1, Math.round(flex.length * rectArea / totalFreeArea));
+        const roomsForRect = flex.slice(flexIdx, flexIdx + roomCount);
+        flexIdx += roomCount;
+
+        if (roomsForRect.length > 0) {
+          const bspResult = bspSubdivide(roomsForRect, freeRect, adjacency);
+          placed.push(...bspResult);
+        }
+      }
+
+      // Any remaining flex rooms go in the largest free rect
+      if (flexIdx < flex.length) {
+        const remaining = flex.slice(flexIdx);
+        const bspResult = bspSubdivide(remaining, freeRects[0], adjacency);
+        placed.push(...bspResult);
+      }
+    } else {
+      // No free space — append below the footprint
+      console.warn("[FIXED-PLACE] No free space for flex rooms, appending below footprint");
+      const maxY = Math.max(...occupied.map(r => r.y + r.h), fpH);
+      const bspResult = bspSubdivide(flex, { x: 0, y: maxY, w: fpW, h: fpH * 0.5 }, adjacency);
+      placed.push(...bspResult);
+    }
+  }
+
+  return placed;
+}
+
+/**
+ * Find the largest contiguous free rectangles in the footprint.
+ * Uses a grid-based flood-fill approach.
+ */
+function findFreeRectangles(fpW: number, fpH: number, occupied: Rect[]): Rect[] {
+  const cellSize = 0.3; // 300mm grid cells
+  const gridW = Math.ceil(fpW / cellSize);
+  const gridH = Math.ceil(fpH / cellSize);
+
+  // Mark occupied cells
+  const grid2d: boolean[][] = [];
+  for (let y = 0; y < gridH; y++) {
+    grid2d[y] = new Array(gridW).fill(false);
+  }
+  for (const r of occupied) {
+    const x1 = Math.floor(r.x / cellSize);
+    const y1 = Math.floor(r.y / cellSize);
+    const x2 = Math.ceil((r.x + r.w) / cellSize);
+    const y2 = Math.ceil((r.y + r.h) / cellSize);
+    for (let y = Math.max(0, y1); y < Math.min(y2, gridH); y++) {
+      for (let x = Math.max(0, x1); x < Math.min(x2, gridW); x++) {
+        grid2d[y][x] = true;
+      }
+    }
+  }
+
+  // Flood-fill to find connected free regions
+  const visited: boolean[][] = [];
+  for (let y = 0; y < gridH; y++) {
+    visited[y] = new Array(gridW).fill(false);
+  }
+
+  const freeRects: Rect[] = [];
+
+  for (let y = 0; y < gridH; y++) {
+    for (let x = 0; x < gridW; x++) {
+      if (grid2d[y][x] || visited[y][x]) continue;
+
+      // BFS to find connected free region bounding box
+      let minX = x, maxX = x, minY = y, maxY = y;
+      const queue: [number, number][] = [[x, y]];
+      visited[y][x] = true;
+
+      while (queue.length > 0) {
+        const [cx, cy] = queue.shift()!;
+        minX = Math.min(minX, cx);
+        maxX = Math.max(maxX, cx);
+        minY = Math.min(minY, cy);
+        maxY = Math.max(maxY, cy);
+
+        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]] as [number, number][]) {
+          if (nx >= 0 && nx < gridW && ny >= 0 && ny < gridH && !grid2d[ny][nx] && !visited[ny][nx]) {
+            visited[ny][nx] = true;
+            queue.push([nx, ny]);
+          }
+        }
+      }
+
+      const rectW = grid((maxX - minX + 1) * cellSize);
+      const rectH = grid((maxY - minY + 1) * cellSize);
+      if (rectW >= MIN_HABITABLE && rectH >= MIN_HABITABLE) {
+        freeRects.push({
+          x: grid(minX * cellSize),
+          y: grid(minY * cellSize),
+          w: rectW,
+          h: rectH,
+        });
+      }
+    }
+  }
+
+  // Sort by area descending
+  return freeRects.sort((a, b) => (b.w * b.h) - (a.w * a.h));
 }
 
 // ── Post-BSP swap optimization ──────────────────────────────────────────────
