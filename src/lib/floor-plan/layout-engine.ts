@@ -127,12 +127,175 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
     result = layoutWithZones(cls, fpW, fpH, program.adjacency);
   }
 
+  // ── Post-BSP swap optimization ──
+  // Try swapping similarly-sized rooms to improve adjacency satisfaction
+  if (program.adjacency.length > 0 && result.length >= 4) {
+    result = optimizeLayoutSwaps(result, program.adjacency);
+  }
+
   // ── Room count validation ──
   // RULE: rooms_in == rooms_out. If BSP lost any rooms, force-place them.
   result = validateAndRecoverRooms(rooms, result, fpW, fpH);
 
   if (result.length !== inputCount) {
     console.warn(`[STAGE-2] Room count mismatch after recovery: input=${inputCount}, output=${result.length}`);
+  }
+
+  return result;
+}
+
+// ── Post-BSP swap optimization ──────────────────────────────────────────────
+
+/**
+ * Improve adjacency satisfaction by swapping positions of similarly-sized rooms.
+ * Runs up to 50 iterations, swapping pairs that improve the overall score.
+ * Does NOT modify room dimensions — only swaps (x, y) positions.
+ */
+function optimizeLayoutSwaps(
+  rooms: PlacedRoom[],
+  adjacency: AdjacencyRequirement[],
+): PlacedRoom[] {
+  if (rooms.length < 4 || adjacency.length === 0) return rooms;
+
+  let layout = rooms.map(r => ({ ...r }));
+  let bestScore = scoreLayout(layout, adjacency);
+
+  for (let iteration = 0; iteration < 50; iteration++) {
+    let improved = false;
+
+    for (let i = 0; i < layout.length; i++) {
+      for (let j = i + 1; j < layout.length; j++) {
+        const a = layout[i], b = layout[j];
+        // Only swap rooms of similar size (within 50%)
+        const sizeRatio = Math.min(a.area, b.area) / Math.max(a.area, b.area);
+        if (sizeRatio < 0.5) continue;
+        // Don't swap corridors/staircases
+        if (a.type === "hallway" || b.type === "hallway") continue;
+        if (a.type === "staircase" || b.type === "staircase") continue;
+
+        // Swap room identity (name/type) while keeping BSP-assigned positions/dimensions
+        // This preserves perfect tiling while improving logical adjacency
+        const swapped = layout.map(r => ({ ...r }));
+        swapped[i] = { ...a, name: b.name, type: b.type };
+        swapped[j] = { ...b, name: a.name, type: a.type };
+
+        const newScore = scoreLayout(swapped, adjacency);
+        if (newScore > bestScore) {
+          layout = swapped;
+          bestScore = newScore;
+          improved = true;
+        }
+      }
+    }
+
+    if (!improved) break;
+  }
+
+  return layout;
+}
+
+/**
+ * Score a layout for quality. Higher = better.
+ */
+function scoreLayout(rooms: PlacedRoom[], adjacency: AdjacencyRequirement[]): number {
+  const TOL = 0.15; // 150mm tolerance for edge touching
+  let score = 0;
+
+  // 1. ADJACENCY SATISFACTION (weight: 10 per satisfied)
+  for (const req of adjacency) {
+    const a = rooms.find(r => r.name === req.roomA);
+    const b = rooms.find(r => r.name === req.roomB);
+    if (!a || !b) continue;
+
+    if (roomsShareEdge(a, b, TOL)) {
+      score += 10;
+    }
+  }
+
+  // 2. FLOW SEQUENCE: foyer→living→dining→kitchen (weight: 8 per link)
+  const FLOW_TYPES = ["entrance", "living", "dining", "kitchen"];
+  for (let i = 0; i < FLOW_TYPES.length - 1; i++) {
+    const ra = rooms.find(r => r.type === FLOW_TYPES[i]);
+    const rb = rooms.find(r => r.type === FLOW_TYPES[i + 1]);
+    if (ra && rb && roomsShareEdge(ra, rb, TOL)) score += 8;
+  }
+
+  // 3. ASPECT RATIO PENALTY (weight: -3 per room with AR > 2.5)
+  for (const room of rooms) {
+    if (room.type === "hallway") continue;
+    const roomAr = ar(room.width, room.depth);
+    if (roomAr > 2.5) score -= 3;
+  }
+
+  // 4. WET WALL CLUSTERING: bathrooms near each other (weight: 5)
+  const baths = rooms.filter(r => r.type === "bathroom");
+  for (let i = 0; i < baths.length; i++) {
+    for (let j = i + 1; j < baths.length; j++) {
+      if (roomsShareEdge(baths[i], baths[j], TOL)) score += 5;
+    }
+  }
+
+  return score;
+}
+
+/**
+ * Check if two rooms share an edge (adjacent).
+ */
+function roomsShareEdge(a: PlacedRoom, b: PlacedRoom, tol: number): boolean {
+  const shareH =
+    (Math.abs((a.y + a.depth) - b.y) < tol || Math.abs((b.y + b.depth) - a.y) < tol) &&
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > tol;
+  const shareV =
+    (Math.abs((a.x + a.width) - b.x) < tol || Math.abs((b.x + b.width) - a.x) < tol) &&
+    Math.min(a.y + a.depth, b.y + b.depth) - Math.max(a.y, b.y) > tol;
+  return shareH || shareV;
+}
+
+// ── Room proportion refinement ─────────────────────────────────────────────
+
+/**
+ * Fix extreme aspect ratios by adjusting room dimensions.
+ * Only adjusts rooms with AR > 2.5 (except corridors).
+ * Tries to make rooms more square by trading width for depth.
+ */
+function refineRoomProportions(rooms: PlacedRoom[]): PlacedRoom[] {
+  const result = rooms.map(r => ({ ...r }));
+
+  for (const room of result) {
+    if (room.type === "hallway" || room.type === "staircase") continue;
+
+    const roomAr = ar(room.width, room.depth);
+    if (roomAr <= 2.5) continue;
+
+    // Target AR based on room type
+    const maxAr = room.type === "bathroom" ? 2.0 : room.type === "bedroom" ? 1.8 : 2.2;
+    if (roomAr <= maxAr) continue;
+
+    // Try to make more square: shrink the longer dimension, extend the shorter
+    // while keeping area approximately the same
+    const area = room.width * room.depth;
+    const targetAr = Math.min(roomAr, maxAr);
+
+    if (room.width > room.depth) {
+      // Too wide — reduce width, increase depth
+      const newWidth = grid(Math.sqrt(area * targetAr));
+      const newDepth = grid(area / newWidth);
+      // Only adjust if we don't exceed existing bounds
+      if (newWidth < room.width && newDepth > room.depth) {
+        room.width = newWidth;
+        room.depth = newDepth;
+        room.area = grid(newWidth * newDepth);
+      }
+    } else {
+      // Too deep — reduce depth, increase width
+      const newDepth = grid(Math.sqrt(area / targetAr));
+      const newWidth = grid(area / newDepth);
+      if (newDepth < room.depth && newWidth > room.width) {
+        room.width = newWidth;
+        room.depth = newDepth;
+        room.area = grid(newWidth * newDepth);
+      }
+    }
   }
 
   return result;
