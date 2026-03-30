@@ -13,6 +13,8 @@
  */
 
 import type { EnhancedRoomProgram, RoomSpec, AdjacencyRequirement } from "./ai-room-programmer";
+import { correctDimensions } from "./dimension-corrector";
+import type { RoomWithTarget } from "./dimension-corrector";
 
 // ── Output type ──────────────────────────────────────────────────────────────
 
@@ -130,8 +132,8 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   }
 
   // ── Post-BSP room size validation ──
-  // Shrink utility rooms that BSP over-allocated
-  result = validateRoomSizes(result);
+  // Clamp rooms with wildly wrong sizes (>2x or <0.5x target)
+  result = validateRoomSizes(result, rooms);
 
   // ── Post-BSP swap optimization ──
   // Try swapping similarly-sized rooms to improve adjacency satisfaction
@@ -143,6 +145,17 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   if (program.isVastuRequested && result.length >= 4) {
     result = optimizeVastu(result, fpW, fpH);
   }
+
+  // ── Post-BSP dimension correction ──
+  // Adjust shared boundaries to make room sizes closer to targets
+  // Only run for layouts with many rooms where size deviation matters
+  if (rooms.length >= 10) {
+    result = applyDimensionCorrection(result, rooms, fpW, fpH);
+  }
+
+  // ── Corridor hard cap enforcement ──
+  // Cap corridor area regardless of source (AI-specified or BSP-created)
+  result = enforceCorridorCap(result, fpW * fpH);
 
   // ── Room count validation ──
   // RULE: rooms_in == rooms_out. If BSP lost any rooms, force-place them.
@@ -583,14 +596,88 @@ function optimizeVastu(rooms: PlacedRoom[], fpW: number, fpH: number): PlacedRoo
   }
 }
 
+// ── Post-BSP dimension correction wrapper ─────────────────────────────────
+
+/**
+ * Convert PlacedRooms + RoomSpecs into RoomWithTarget, run the dimension
+ * corrector, then convert back to PlacedRoom[].
+ */
+function applyDimensionCorrection(
+  placed: PlacedRoom[],
+  specs: RoomSpec[],
+  fpW: number,
+  fpH: number,
+): PlacedRoom[] {
+  try {
+    const withTargets: RoomWithTarget[] = placed.map(r => {
+      const spec = specs.find(s => s.name === r.name);
+      return {
+        ...r,
+        targetWidth: spec?.preferredWidth,
+        targetDepth: spec?.preferredDepth,
+        targetArea: spec?.areaSqm ?? r.width * r.depth,
+      };
+    });
+
+    const corrected = correctDimensions(withTargets, fpW, fpH);
+
+    // Convert back to PlacedRoom (strip target fields)
+    return corrected.map(r => ({
+      name: r.name,
+      type: r.type,
+      x: r.x,
+      y: r.y,
+      width: r.width,
+      depth: r.depth,
+      area: r.area,
+    }));
+  } catch {
+    return placed;
+  }
+}
+
+// ── Corridor hard cap enforcement ─────────────────────────────────────────
+
+/**
+ * Cap corridor area regardless of how it was created (AI-specified or BSP).
+ * Runs after ALL layout passes so it catches every corridor.
+ */
+function enforceCorridorCap(rooms: PlacedRoom[], totalFloorArea: number): PlacedRoom[] {
+  const maxArea = Math.min(totalFloorArea * 0.06, 12.0);
+
+  for (const room of rooms) {
+    const isCorridor = room.type === "hallway" ||
+      room.name.toLowerCase().includes("corridor") ||
+      room.name.toLowerCase().includes("passage");
+
+    if (!isCorridor) continue;
+
+    const area = room.width * room.depth;
+    if (area <= maxArea * 1.2) continue; // within 20% tolerance
+
+    // Shrink the shorter dimension (usually depth for corridors)
+    if (room.width > room.depth) {
+      room.depth = grid(Math.max(0.9, maxArea / room.width));
+    } else {
+      room.width = grid(Math.max(0.9, maxArea / room.depth));
+    }
+    room.area = grid(room.width * room.depth);
+  }
+
+  return rooms;
+}
+
 // ── Post-BSP room size validation ──────────────────────────────────────────
 
 /**
- * Shrink utility/service rooms that BSP allocated too much space.
- * BSP splits by area ratio, so a tiny room grouped with large rooms
- * can end up with vastly more space than it needs.
+ * Clamp room sizes that are wildly wrong relative to targets.
+ *
+ * Two passes:
+ *   1. HARD CAPS for utility rooms (shoe rack, powder room, etc.) — type-based max
+ *   2. GENERAL CLAMP for all rooms — shrink if >2x target, expand if <0.5x target
  */
-function validateRoomSizes(rooms: PlacedRoom[]): PlacedRoom[] {
+function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[] {
+  // Pass 1: Hard caps for utility rooms (max area by name pattern)
   const MAX_SIZES: Array<{ pattern: RegExp; max: number }> = [
     { pattern: /shoe\s*(?:rack|cabinet|closet|storage)/i, max: 4 },
     { pattern: /powder\s*room/i, max: 4 },
@@ -614,7 +701,6 @@ function validateRoomSizes(rooms: PlacedRoom[]): PlacedRoom[] {
 
     for (const { pattern, max } of MAX_SIZES) {
       if (pattern.test(nameLower) && currentArea > max * 1.5) {
-        // Room is WAY too big for its type — shrink maintaining aspect ratio
         console.warn(`[SIZE-FIX] ${room.name} is ${currentArea.toFixed(1)} sqm, max should be ${max} sqm`);
         const scale = Math.sqrt(max / currentArea);
         room.width = grid(room.width * scale);
@@ -624,6 +710,33 @@ function validateRoomSizes(rooms: PlacedRoom[]): PlacedRoom[] {
       }
     }
   }
+
+  // Pass 2: General clamp — catch rooms at >2x or <0.5x their target
+  if (specs && specs.length > 0) {
+    for (const room of rooms) {
+      if (room.type === "hallway" || room.type === "staircase") continue;
+
+      const spec = specs.find(s => s.name === room.name);
+      if (!spec) continue;
+
+      const actualArea = room.width * room.depth;
+      const targetArea = spec.areaSqm;
+
+      // Room is more than 2x the target — shrink it (safe: creates gaps, no overlaps)
+      if (actualArea > targetArea * 2.0 && targetArea > 2) {
+        console.warn(`[SIZE-CLAMP] ${room.name}: ${actualArea.toFixed(1)} sqm >> target ${targetArea.toFixed(1)} sqm`);
+        const scale = Math.sqrt(targetArea * 1.3 / actualArea); // Allow 30% oversize
+        room.width = grid(room.width * scale);
+        room.depth = grid(room.depth * scale);
+        room.area = grid(room.width * room.depth);
+      }
+
+      // NOTE: rooms that are too SMALL are handled by the dimension corrector
+      // which moves shared boundaries (tile-safe). We do NOT expand rooms here
+      // because expanding in place would overlap with neighbors.
+    }
+  }
+
   return rooms;
 }
 
