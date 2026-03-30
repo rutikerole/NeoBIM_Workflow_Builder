@@ -349,15 +349,20 @@ function scoreLayout(rooms: PlacedRoom[], adjacency: AdjacencyRequirement[]): nu
     }
   }
 
-  // 3. HARD PENALTIES for broken critical adjacencies
-  const kitchen = rooms.find(r => r.type === "kitchen");
-  const dining = rooms.find(r => r.type === "dining");
-  const living = rooms.find(r => r.type === "living");
-  const foyer = rooms.find(r => r.type === "entrance");
+  // 3. HARD ADJACENCY CONSTRAINTS — heavy bonus/penalty for critical pairs
+  const HARD_PAIRS: Array<{ matchA: (r: PlacedRoom) => boolean; matchB: (r: PlacedRoom) => boolean; bonus: number; penalty: number }> = [
+    { matchA: r => r.type === "kitchen", matchB: r => r.type === "dining", bonus: 30, penalty: -50 },
+    { matchA: r => r.name.toLowerCase().includes("drawing"), matchB: r => r.type === "entrance" || r.name.toLowerCase().includes("foyer"), bonus: 30, penalty: -40 },
+    { matchA: r => r.type === "entrance" || r.name.toLowerCase().includes("foyer"), matchB: r => r.type === "living", bonus: 25, penalty: -30 },
+    { matchA: r => r.type === "dining", matchB: r => r.type === "living", bonus: 20, penalty: -25 },
+  ];
 
-  if (kitchen && dining && !roomsShareEdge(kitchen, dining, TOL)) score -= 15;
-  if (dining && living && !roomsShareEdge(dining, living, TOL)) score -= 15;
-  if (foyer && living && !roomsShareEdge(foyer, living, TOL)) score -= 10;
+  for (const { matchA, matchB, bonus, penalty } of HARD_PAIRS) {
+    const a = rooms.find(matchA);
+    const b = rooms.find(matchB);
+    if (!a || !b) continue;
+    score += roomsShareEdge(a, b, TOL) ? bonus : penalty;
+  }
 
   // 4. ASPECT RATIO PENALTY (weight: -3 per room with AR > 2.5)
   for (const room of rooms) {
