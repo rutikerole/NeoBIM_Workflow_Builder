@@ -985,10 +985,10 @@ const ANNOTATION_KEYWORDS: Array<{
   roomTypes: string[];
   text: string;
 }> = [
-  { pattern: /double\s*height/i, roomTypes: ["living_room", "foyer"], text: "Double Height Ceiling" },
+  { pattern: /double\s*height/i, roomTypes: ["living_room", "foyer"], text: "Dbl Height" },
   { pattern: /(?:kitchen\s+)?island/i, roomTypes: ["kitchen"], text: "Kitchen Island" },
-  { pattern: /western\s*(?:style\s*)?(?:toilet|wc|commode)/i, roomTypes: ["bathroom", "wc", "toilet"], text: "Western Style WC" },
-  { pattern: /indian\s*(?:style\s*)?(?:toilet|wc)/i, roomTypes: ["bathroom", "wc", "toilet"], text: "Indian Style WC" },
+  { pattern: /western\s*(?:style\s*)?(?:toilet|wc|commode)/i, roomTypes: ["bathroom", "wc", "toilet"], text: "Western WC" },
+  { pattern: /indian\s*(?:style\s*)?(?:toilet|wc)/i, roomTypes: ["bathroom", "wc", "toilet"], text: "Indian WC" },
   { pattern: /walk[\s-]*in\s*(?:closet|wardrobe)/i, roomTypes: ["bedroom", "master_bedroom", "walk_in_closet", "dressing_room"], text: "Walk-in Closet" },
   { pattern: /french\s*(?:window|door)/i, roomTypes: ["living_room", "bedroom", "master_bedroom", "balcony"], text: "French Window" },
   { pattern: /modular\s*kitchen/i, roomTypes: ["kitchen"], text: "Modular Kitchen" },
@@ -1001,7 +1001,7 @@ const ANNOTATION_KEYWORDS: Array<{
   { pattern: /jacuzzi|hot\s*tub/i, roomTypes: ["bathroom", "master_bedroom"], text: "Jacuzzi" },
   { pattern: /(?:rain\s*)?shower/i, roomTypes: ["bathroom"], text: "Rain Shower" },
   { pattern: /terrace\s*garden/i, roomTypes: ["terrace", "balcony"], text: "Terrace Garden" },
-  { pattern: /sit[\s-]*out|(?:covered\s*)?verandah/i, roomTypes: ["verandah", "balcony"], text: "Sit-out / Verandah" },
+  { pattern: /sit[\s-]*out|(?:covered\s*)?verandah/i, roomTypes: ["verandah", "balcony"], text: "Verandah" },
 ];
 
 /**
@@ -1014,8 +1014,8 @@ function generateSmartAnnotations(floor: Floor, prompt: string): void {
   for (const kw of ANNOTATION_KEYWORDS) {
     if (!kw.pattern.test(p)) continue;
 
-    // Find the first matching room
-    const room = floor.rooms.find(r => kw.roomTypes.includes(r.type));
+    // Find the first matching room (skip small rooms to avoid label overlap)
+    const room = floor.rooms.find(r => kw.roomTypes.includes(r.type) && r.area_sqm >= 6);
     if (!room) continue;
 
     // Avoid duplicate annotations

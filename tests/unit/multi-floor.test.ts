@@ -431,7 +431,7 @@ describe("Multi-Floor Generation", () => {
 
   describe("Smart annotations from prompt", () => {
 
-    it("adds 'Double Height Ceiling' annotation for double height prompt", () => {
+    it("adds 'Dbl Height' annotation for double height prompt", () => {
       const geometry: FloorPlanGeometry = {
         footprint: { width: 10, depth: 8 },
         wallHeight: 3.0,
@@ -442,7 +442,7 @@ describe("Multi-Floor Generation", () => {
       };
 
       const project = convertGeometryToProject(geometry, "Test", "3bhk with double height living room");
-      const ann = project.floors[0].annotations.find(a => a.text === "Double Height Ceiling");
+      const ann = project.floors[0].annotations.find(a => a.text === "Dbl Height");
       expect(ann).toBeDefined();
       expect(ann!.type).toBe("leader");
     });
@@ -464,7 +464,7 @@ describe("Multi-Floor Generation", () => {
       expect(annotations.length).toBeGreaterThanOrEqual(1);
     });
 
-    it("adds 'Western Style WC' for western toilet prompt", () => {
+    it("adds 'Western WC' for western toilet prompt", () => {
       const geometry: FloorPlanGeometry = {
         footprint: { width: 6, depth: 4 },
         wallHeight: 3.0,
@@ -475,7 +475,7 @@ describe("Multi-Floor Generation", () => {
       };
 
       const project = convertGeometryToProject(geometry, "Test", "2bhk with western toilet");
-      const ann = project.floors[0].annotations.find(a => a.text === "Western Style WC");
+      const ann = project.floors[0].annotations.find(a => a.text === "Western WC");
       expect(ann).toBeDefined();
     });
 
