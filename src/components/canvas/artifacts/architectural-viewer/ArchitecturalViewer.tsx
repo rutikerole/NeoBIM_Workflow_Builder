@@ -150,11 +150,14 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
-      powerPreference: "default",
+      powerPreference: "high-performance",
     });
     renderer.setSize(w, h);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.shadowMap.enabled = false;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
     renderer.localClippingEnabled = true;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
@@ -217,11 +220,28 @@ export default function ArchitecturalViewer({ floors, height, footprint, buildin
     const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x556633, 0.4);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xFFEECC, 1.5);
-    sunLight.position.set(25, Math.max(40, bldgHeight * 0.8), 20);
+    const sunLight = new THREE.DirectionalLight(0xFFEECC, 2.0);
+    sunLight.position.set(
+      Math.max(30, approxWidth * 0.8),
+      Math.max(50, bldgHeight * 1.2),
+      Math.max(25, approxWidth * 0.6)
+    );
+    sunLight.castShadow = true;
+    // Shadow camera sized to building bounds
+    const shadowExtent = Math.max(approxWidth, bldgHeight) * 1.2 + 10;
+    sunLight.shadow.camera.left = -shadowExtent;
+    sunLight.shadow.camera.right = shadowExtent;
+    sunLight.shadow.camera.top = shadowExtent;
+    sunLight.shadow.camera.bottom = -shadowExtent;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = shadowExtent * 4;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.bias = -0.0005;
+    sunLight.shadow.normalBias = 0.02;
     scene.add(sunLight);
 
-    const fillLight = new THREE.DirectionalLight(0xAABBDD, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xAABBDD, 0.4);
     fillLight.position.set(-20, Math.max(25, bldgHeight * 0.7), -10);
     scene.add(fillLight);
 

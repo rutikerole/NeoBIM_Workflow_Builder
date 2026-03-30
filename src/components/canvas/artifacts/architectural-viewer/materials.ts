@@ -447,37 +447,123 @@ export function createMaterials(): MaterialLibrary {
   });
   grassTex.repeat.set(20, 20);
 
-  // MeshBasicMaterial — guaranteed to render on all GPUs (no PBR shader dependency)
+  // MeshStandardMaterial — PBR rendering with realistic lighting, shadows, and reflections
   const DS = THREE.DoubleSide;
 
+  // Bump map for concrete/stone surfaces
+  const bumpMap = createBumpMap(0.04);
+  bumpMap.repeat.set(2, 2);
+
   return {
-    herringboneFloor: new THREE.MeshBasicMaterial({ map: herringboneTex, side: DS }),
-    concreteFloor: new THREE.MeshBasicMaterial({ map: concreteTex, side: DS }),
-    tileFloor: new THREE.MeshBasicMaterial({ map: tileTex, side: DS }),
-    marbleFloor: new THREE.MeshBasicMaterial({ map: marbleTex, side: DS }),
-    whiteWall: new THREE.MeshBasicMaterial({ color: 0xF5F0EB, side: DS }),
-    concreteWall: new THREE.MeshBasicMaterial({ map: wallConcreteTex, side: DS }),
-    accentWall: new THREE.MeshBasicMaterial({ map: darkWoodTex, side: DS }),
-    exteriorWall: new THREE.MeshBasicMaterial({ map: brickTex, side: DS }),
-    glass: new THREE.MeshBasicMaterial({ color: 0x88BBDD, transparent: true, opacity: 0.3, side: DS }),
-    darkGlass: new THREE.MeshBasicMaterial({ color: 0x334455, transparent: true, opacity: 0.4, side: DS }),
-    metal: new THREE.MeshBasicMaterial({ color: 0x888888, side: DS }),
-    brushedMetal: new THREE.MeshBasicMaterial({ color: 0xAAAAAA, side: DS }),
-    wood: new THREE.MeshBasicMaterial({ map: woodTex, side: DS }),
-    darkWood: new THREE.MeshBasicMaterial({ map: darkWoodTex, side: DS }),
-    fabric: new THREE.MeshBasicMaterial({ map: fabricTex, side: DS }),
-    fabricDark: new THREE.MeshBasicMaterial({ map: fabricDarkTex, side: DS }),
-    leather: new THREE.MeshBasicMaterial({ color: 0x3A2820, side: DS }),
-    ceiling: new THREE.MeshBasicMaterial({ color: 0xFAFAFA, side: DS }),
-    roofTop: new THREE.MeshBasicMaterial({ color: 0x404040, side: DS }),
-    grass: new THREE.MeshBasicMaterial({ map: grassTex, side: DS }),
-    water: new THREE.MeshBasicMaterial({ color: 0x1A6B8A, transparent: true, opacity: 0.7, side: DS }),
-    emissiveWarm: new THREE.MeshBasicMaterial({ color: 0xFFD080, side: DS }),
-    emissiveCool: new THREE.MeshBasicMaterial({ color: 0xAABBDD, side: DS }),
-    stoneWall: (() => { const t = createStoneTexture(); t.repeat.set(3, 3); return new THREE.MeshBasicMaterial({ map: t, side: DS }); })(),
-    terracottaWall: (() => { const t = createTerracottaTexture(); t.repeat.set(2, 4); return new THREE.MeshBasicMaterial({ map: t, side: DS }); })(),
-    briseSoleilFin: new THREE.MeshBasicMaterial({ color: 0xD0D0D0, side: DS }),
-    spandrelPanel: new THREE.MeshBasicMaterial({ color: 0x2A2A2A, side: DS }),
+    // ─── Floors ──────────────────────────────────────────────────
+    herringboneFloor: new THREE.MeshStandardMaterial({
+      map: herringboneTex, side: DS, roughness: 0.6, metalness: 0.0,
+    }),
+    concreteFloor: new THREE.MeshStandardMaterial({
+      map: concreteTex, side: DS, roughness: 0.85, metalness: 0.0, bumpMap: concreteBump, bumpScale: 0.3,
+    }),
+    tileFloor: new THREE.MeshStandardMaterial({
+      map: tileTex, side: DS, roughness: 0.4, metalness: 0.0,
+    }),
+    marbleFloor: new THREE.MeshStandardMaterial({
+      map: marbleTex, side: DS, roughness: 0.2, metalness: 0.05,
+    }),
+
+    // ─── Walls ───────────────────────────────────────────────────
+    whiteWall: new THREE.MeshStandardMaterial({
+      color: 0xF5F0EB, side: DS, roughness: 0.9, metalness: 0.0,
+    }),
+    concreteWall: new THREE.MeshStandardMaterial({
+      map: wallConcreteTex, side: DS, roughness: 0.8, metalness: 0.0, bumpMap, bumpScale: 0.4,
+    }),
+    accentWall: new THREE.MeshStandardMaterial({
+      map: darkWoodTex, side: DS, roughness: 0.5, metalness: 0.0,
+    }),
+    exteriorWall: new THREE.MeshStandardMaterial({
+      map: brickTex, side: DS, roughness: 0.85, metalness: 0.0,
+    }),
+
+    // ─── Glass (physically-based transparency) ───────────────────
+    glass: new THREE.MeshPhysicalMaterial({
+      color: 0x88CCEE, transparent: true, opacity: 0.25, side: DS,
+      roughness: 0.05, metalness: 0.1, transmission: 0.8,
+      reflectivity: 0.9, ior: 1.5,
+    }),
+    darkGlass: new THREE.MeshPhysicalMaterial({
+      color: 0x223344, transparent: true, opacity: 0.35, side: DS,
+      roughness: 0.05, metalness: 0.15, transmission: 0.6,
+      reflectivity: 0.95, ior: 1.5,
+    }),
+
+    // ─── Metals ──────────────────────────────────────────────────
+    metal: new THREE.MeshStandardMaterial({
+      color: 0x888888, side: DS, roughness: 0.4, metalness: 0.9,
+    }),
+    brushedMetal: new THREE.MeshStandardMaterial({
+      color: 0xBBBBBB, side: DS, roughness: 0.3, metalness: 0.85,
+    }),
+
+    // ─── Wood ────────────────────────────────────────────────────
+    wood: new THREE.MeshStandardMaterial({
+      map: woodTex, side: DS, roughness: 0.55, metalness: 0.0,
+    }),
+    darkWood: new THREE.MeshStandardMaterial({
+      map: darkWoodTex, side: DS, roughness: 0.5, metalness: 0.0,
+    }),
+
+    // ─── Fabrics ─────────────────────────────────────────────────
+    fabric: new THREE.MeshStandardMaterial({
+      map: fabricTex, side: DS, roughness: 0.95, metalness: 0.0,
+    }),
+    fabricDark: new THREE.MeshStandardMaterial({
+      map: fabricDarkTex, side: DS, roughness: 0.95, metalness: 0.0,
+    }),
+    leather: new THREE.MeshStandardMaterial({
+      color: 0x3A2820, side: DS, roughness: 0.6, metalness: 0.0,
+    }),
+
+    // ─── Ceiling & Roof ─────────────────────────────────────────
+    ceiling: new THREE.MeshStandardMaterial({
+      color: 0xFAFAFA, side: DS, roughness: 0.95, metalness: 0.0,
+    }),
+    roofTop: new THREE.MeshStandardMaterial({
+      color: 0x404040, side: DS, roughness: 0.9, metalness: 0.1,
+    }),
+
+    // ─── Environment ─────────────────────────────────────────────
+    grass: new THREE.MeshStandardMaterial({
+      map: grassTex, side: DS, roughness: 0.95, metalness: 0.0,
+    }),
+    water: new THREE.MeshPhysicalMaterial({
+      color: 0x1A6B8A, transparent: true, opacity: 0.7, side: DS,
+      roughness: 0.05, metalness: 0.2, transmission: 0.3,
+    }),
+
+    // ─── Emissive (lights / glow) ────────────────────────────────
+    emissiveWarm: new THREE.MeshStandardMaterial({
+      color: 0xFFD080, side: DS, emissive: 0xFFD080, emissiveIntensity: 0.8,
+      roughness: 0.9, metalness: 0.0,
+    }),
+    emissiveCool: new THREE.MeshStandardMaterial({
+      color: 0xAABBDD, side: DS, emissive: 0xAABBDD, emissiveIntensity: 0.5,
+      roughness: 0.9, metalness: 0.0,
+    }),
+
+    // ─── Facade Materials ────────────────────────────────────────
+    stoneWall: (() => {
+      const t = createStoneTexture(); t.repeat.set(3, 3);
+      return new THREE.MeshStandardMaterial({ map: t, side: DS, roughness: 0.75, metalness: 0.0 });
+    })(),
+    terracottaWall: (() => {
+      const t = createTerracottaTexture(); t.repeat.set(2, 4);
+      return new THREE.MeshStandardMaterial({ map: t, side: DS, roughness: 0.7, metalness: 0.0 });
+    })(),
+    briseSoleilFin: new THREE.MeshStandardMaterial({
+      color: 0xE0E0E0, side: DS, roughness: 0.5, metalness: 0.6,
+    }),
+    spandrelPanel: new THREE.MeshStandardMaterial({
+      color: 0x1A1A1A, side: DS, roughness: 0.3, metalness: 0.8,
+    }),
   };
 }
 

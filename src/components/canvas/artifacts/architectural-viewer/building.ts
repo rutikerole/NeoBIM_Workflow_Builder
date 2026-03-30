@@ -682,6 +682,13 @@ export function buildBuilding(
     obj.userData.originalY = obj.position.y;
   };
 
+  // Enable shadow casting/receiving on all added meshes
+  const addShadowMesh = (mesh: THREE.Mesh, parent: THREE.Object3D, cast = true, receive = true) => {
+    mesh.castShadow = cast;
+    mesh.receiveShadow = receive;
+    parent.add(mesh);
+  };
+
   // Choose exterior wall material based on style
   const extWallMat = (() => {
     switch (style.exteriorMaterial) {
@@ -711,7 +718,7 @@ export function buildBuilding(
       floorMesh.position.set(rx + room.width / 2, baseY + 0.06, rz + room.depth / 2);
 
       tagFloor(floorMesh, floorIdx);
-      buildingGroup.add(floorMesh);
+      addShadowMesh(floorMesh, buildingGroup, false, true);
 
       // ─── Ceiling ────────────────────────────────────────────
       if (room.hasCeiling !== false) {
@@ -939,6 +946,7 @@ export function buildBuilding(
   const groundMesh = new THREE.Mesh(groundGeo, groundMat);
   groundMesh.rotation.x = -Math.PI / 2;
   groundMesh.position.y = -0.01;
+  groundMesh.receiveShadow = true;
 
   scene.add(groundMesh);
 
@@ -1087,6 +1095,14 @@ export function buildBuilding(
   driveMesh.position.set(buildingW / 2 + 2, 0.02, -buildingD / 2 - 5);
 
   scene.add(driveMesh);
+
+  // Enable shadows on all building meshes in one pass
+  buildingGroup.traverse((obj) => {
+    if (obj instanceof THREE.Mesh) {
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    }
+  });
 
   scene.add(buildingGroup);
   scene.add(roomLabels);
