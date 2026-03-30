@@ -275,6 +275,82 @@ export function createFabricTexture(color: string = "#4A5568"): THREE.CanvasText
   });
 }
 
+// ─── Stone Texture ───────────────────────────────────────────────────────────
+
+export function createStoneTexture(): THREE.CanvasTexture {
+  return createCanvasTexture(512, 512, (ctx, w, h) => {
+    ctx.fillStyle = "#C8BCA8";
+    ctx.fillRect(0, 0, w, h);
+
+    // Ashlar block pattern — horizontal courses
+    const courseH = 48;
+    const mortar = 2;
+    for (let row = 0; row < h / courseH + 1; row++) {
+      const y = row * courseH;
+      const offset = row % 2 === 0 ? 0 : courseH * 0.7;
+      const blockW = courseH * 1.4 + Math.random() * 20;
+      for (let col = -1; col < w / blockW + 2; col++) {
+        const x = col * blockW + offset;
+        const shade = 0.88 + Math.random() * 0.24;
+        const c = new THREE.Color("#C8BCA8").multiplyScalar(shade);
+        ctx.fillStyle = `rgb(${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)})`;
+        ctx.fillRect(x + mortar, y + mortar, blockW - mortar * 2, courseH - mortar * 2);
+      }
+    }
+
+    // Noise grain for natural variation
+    const imgData = ctx.getImageData(0, 0, w, h);
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      const px = (i / 4) % w;
+      const py = Math.floor(i / 4 / w);
+      const n = fbmNoise(px * 0.015, py * 0.015, 91, 3);
+      const variation = (n - 0.5) * 20;
+      imgData.data[i] = Math.max(0, Math.min(255, imgData.data[i] + variation));
+      imgData.data[i + 1] = Math.max(0, Math.min(255, imgData.data[i + 1] + variation));
+      imgData.data[i + 2] = Math.max(0, Math.min(255, imgData.data[i + 2] + variation));
+    }
+    ctx.putImageData(imgData, 0, 0);
+  });
+}
+
+// ─── Terracotta Texture ──────────────────────────────────────────────────────
+
+export function createTerracottaTexture(): THREE.CanvasTexture {
+  return createCanvasTexture(512, 512, (ctx, w, h) => {
+    ctx.fillStyle = "#B86B4A";
+    ctx.fillRect(0, 0, w, h);
+
+    // Vertical baguette/panel pattern
+    const panelW = 40;
+    const gap = 4;
+    for (let col = 0; col < w / panelW + 1; col++) {
+      const x = col * panelW;
+      const shade = 0.9 + Math.random() * 0.2;
+      const c = new THREE.Color("#B86B4A").multiplyScalar(shade);
+      ctx.fillStyle = `rgb(${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)})`;
+      ctx.fillRect(x + gap / 2, 0, panelW - gap, h);
+
+      // Subtle edge highlight
+      ctx.strokeStyle = `rgba(255, 200, 160, 0.15)`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + gap / 2, 0, panelW - gap, h);
+    }
+
+    // Clay-like noise
+    const imgData = ctx.getImageData(0, 0, w, h);
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      const px = (i / 4) % w;
+      const py = Math.floor(i / 4 / w);
+      const n = fbmNoise(px * 0.03, py * 0.03, 63, 3);
+      const variation = (n - 0.5) * 25;
+      imgData.data[i] = Math.max(0, Math.min(255, imgData.data[i] + variation));
+      imgData.data[i + 1] = Math.max(0, Math.min(255, imgData.data[i + 1] + variation * 0.7));
+      imgData.data[i + 2] = Math.max(0, Math.min(255, imgData.data[i + 2] + variation * 0.5));
+    }
+    ctx.putImageData(imgData, 0, 0);
+  });
+}
+
 // ─── Material Library ─────────────────────────────────────────────────────────
 
 export interface MaterialLibrary {
@@ -304,6 +380,8 @@ export interface MaterialLibrary {
   emissiveCool: THREE.Material;
   stoneWall: THREE.Material;
   terracottaWall: THREE.Material;
+  briseSoleilFin: THREE.Material;
+  spandrelPanel: THREE.Material;
 }
 
 function createBumpMap(scale = 0.03): THREE.CanvasTexture {
@@ -396,8 +474,10 @@ export function createMaterials(): MaterialLibrary {
     water: new THREE.MeshBasicMaterial({ color: 0x1A6B8A, transparent: true, opacity: 0.7, side: DS }),
     emissiveWarm: new THREE.MeshBasicMaterial({ color: 0xFFD080, side: DS }),
     emissiveCool: new THREE.MeshBasicMaterial({ color: 0xAABBDD, side: DS }),
-    stoneWall: new THREE.MeshBasicMaterial({ color: 0xC8BCA8, side: DS }),
-    terracottaWall: new THREE.MeshBasicMaterial({ color: 0xB86B4A, side: DS }),
+    stoneWall: (() => { const t = createStoneTexture(); t.repeat.set(3, 3); return new THREE.MeshBasicMaterial({ map: t, side: DS }); })(),
+    terracottaWall: (() => { const t = createTerracottaTexture(); t.repeat.set(2, 4); return new THREE.MeshBasicMaterial({ map: t, side: DS }); })(),
+    briseSoleilFin: new THREE.MeshBasicMaterial({ color: 0xD0D0D0, side: DS }),
+    spandrelPanel: new THREE.MeshBasicMaterial({ color: 0x2A2A2A, side: DS }),
   };
 }
 

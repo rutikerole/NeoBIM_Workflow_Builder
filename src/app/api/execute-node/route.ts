@@ -27,6 +27,7 @@ import { reconstructHiFi3D, isMeshyConfigured } from "@/services/meshy-service";
 import { generateMassingGeometry } from "@/services/massing-generator";
 import { generate3DModel, is3DAIConfigured, calculateKPIs, type BuildingRequirements } from "@/services/threedai-studio";
 import { generateIFCFile } from "@/services/ifc-exporter";
+import { parsePromptToStyle } from "@/services/prompt-style-parser";
 import { submitDualWalkthrough, submitDualTextToVideo, submitSingleWalkthrough, submitFloorPlanWalkthrough, buildFloorPlanCombinedPrompt } from "@/services/video-service";
 import {
   logWorkflowStart, logRateLimit, logNodeStart, logNodeSuccess,
@@ -5390,20 +5391,11 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             prompt: massingInput.prompt || massingInput.content,
             _geometry: geometry,
             _raw: rawData,
-            style: {
-              glassHeavy: false,
-              hasRiver: false,
-              hasLake: false,
-              isModern: true,
-              isTower: geometry.floors >= 10,
-              exteriorMaterial: "mixed" as const,
-              environment: "urban" as const,
-              usage: "mixed" as const,
-              typology: geometry.floors >= 15 ? "tower" as const : "generic" as const,
-              facadePattern: "none" as const,
-              floorHeightOverride: geometry.totalHeight / geometry.floors,
-              maxFloorCap: 30,
-            },
+            style: parsePromptToStyle(
+              massingInput.prompt || massingInput.content || "",
+              geometry.floors,
+              geometry.buildingType
+            ),
           },
           metadata: { engine: "massing-generator", real: true },
           createdAt: new Date(),
