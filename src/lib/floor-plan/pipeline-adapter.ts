@@ -204,6 +204,7 @@ export function convertGeometryToProject(
   geometry: FloorPlanGeometry,
   projectName: string = "AI-Generated Floor Plan",
   originalPrompt?: string,
+  facingDirection?: "north" | "south" | "east" | "west",
 ): FloorPlanProject {
   const M = 1000; // meters → mm
   const buildingW = geometry.footprint.width * M;
@@ -319,7 +320,7 @@ export function convertGeometryToProject(
 
   // ---- 5b. Auto-place doors and windows when AI provided none ----
   if (doors.length === 0) {
-    const doorResult = smartPlaceDoors(floor);
+    const doorResult = smartPlaceDoors(floor, facingDirection);
     floor.doors = doorResult.doors;
   }
   if (windows.length === 0) {
@@ -1389,6 +1390,7 @@ export function convertMultiFloorToProject(
   }>,
   projectName: string = "AI-Generated Floor Plan",
   originalPrompt?: string,
+  facingDirection?: "north" | "south" | "east" | "west",
 ): FloorPlanProject {
   if (floorLayouts.length === 0) {
     return convertGeometryToProject(
@@ -1427,7 +1429,7 @@ export function convertMultiFloorToProject(
       })),
     };
 
-    const singleProject = convertGeometryToProject(geometry, projectName, originalPrompt);
+    const singleProject = convertGeometryToProject(geometry, projectName, originalPrompt, facingDirection);
     const floor = singleProject.floors[0];
 
     floor.name = FLOOR_NAMES[fl.level] ?? `Floor ${fl.level}`;

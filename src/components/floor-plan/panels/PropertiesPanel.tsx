@@ -93,15 +93,20 @@ export function PropertiesPanel() {
           <StatRow label="Doors" value={String(floor.doors.length)} />
           <StatRow label="Windows" value={String(floor.windows.length)} />
           {(() => {
-            const carpetArea = project?.metadata?.carpet_area_sqm;
-            const totalArea = floor.rooms.reduce((s, r) => s + r.area_sqm, 0);
-            if (carpetArea && totalArea > 0) {
-              return (
-                <StatRow
-                  label="Efficiency"
-                  value={`${Math.round((carpetArea / totalArea) * 100)}%`}
-                />
-              );
+            // Efficiency = total room area on THIS floor / floor footprint area
+            // Per-floor calculation prevents >100% on multi-floor buildings
+            const roomArea = floor.rooms.reduce((s, r) => s + r.area_sqm, 0);
+            const bounds = floor.boundary?.points;
+            if (bounds && bounds.length >= 3 && roomArea > 0) {
+              const xs = bounds.map((p: { x: number }) => p.x);
+              const ys = bounds.map((p: { y: number }) => p.y);
+              const bw = (Math.max(...xs) - Math.min(...xs)) / 1000; // mm→m
+              const bh = (Math.max(...ys) - Math.min(...ys)) / 1000;
+              const footprint = bw * bh;
+              if (footprint > 0) {
+                const eff = Math.min(100, Math.round((roomArea / footprint) * 100));
+                return <StatRow label="Efficiency" value={`${eff}%`} />;
+              }
             }
             return null;
           })()}

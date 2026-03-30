@@ -1361,7 +1361,7 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
   // Pass 1: Hard caps for rooms (max area by name/type pattern)
   const MAX_SIZES: Array<{ pattern: RegExp; max: number }> = [
     // Very small utility rooms
-    { pattern: /shoe\s*(?:rack|cabinet|closet|storage)|shoe$/i, max: 3 },
+    { pattern: /shoe\s*(?:rack|cabinet|closet|storage)|shoe$/i, max: 2.5 },
     { pattern: /powder\s*room/i, max: 5 },
     { pattern: /linen\s*(?:storage|closet|cupboard)/i, max: 5 },
     { pattern: /coat\s*closet/i, max: 4 },
@@ -1387,7 +1387,7 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
     { pattern: /landing|staircase\s*landing/i, max: 12 },
     { pattern: /staircase|stair/i, max: 15 },
     // Medium rooms
-    { pattern: /balcony|sit.?out|sitout/i, max: 8 },
+    { pattern: /balcony|sit.?out|sitout/i, max: 6 },
     { pattern: /walk.?in\s*(?:wardrobe|closet)/i, max: 10 },
     { pattern: /dressing/i, max: 12 },
     { pattern: /wardrobe/i, max: 10 },
