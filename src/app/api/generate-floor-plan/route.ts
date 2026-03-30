@@ -97,15 +97,20 @@ export async function POST(req: NextRequest) {
     // Primary: AI parsing (GPT-4o-mini) with adjacency + zones
     // Fallback: regex parsing (offline, no API key needed)
     let roomProgram: EnhancedRoomProgram;
+    let stage1Source = "ai";
     try {
       roomProgram = await programRooms(prompt, apiKey);
     } catch (parseErr) {
-      console.warn("[generate-floor-plan] Stage 1 AI failed, using regex fallback:", parseErr);
+      stage1Source = "fallback";
+      const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+      const errStack = parseErr instanceof Error ? parseErr.stack?.split("\n").slice(0, 3).join(" | ") : "";
+      console.error(`[STAGE-1] AI FAILED — using regex fallback. Error: ${errMsg}`);
+      console.error(`[STAGE-1] Stack: ${errStack}`);
       roomProgram = programRoomsFallback(prompt);
     }
 
     // ── Stage 1 Diagnostic ──
-    console.log(`[STAGE-1] Rooms from AI: ${roomProgram.rooms.length}`, roomProgram.rooms.map(r => `${r.name} (floor:${r.floor ?? 0})`));
+    console.log(`[STAGE-1] Source: ${stage1Source}, Rooms: ${roomProgram.rooms.length}`, roomProgram.rooms.map(r => `${r.name} (floor:${r.floor ?? 0})`));
 
     // ── Prompt faithfulness check ──
     const mentionedRooms = extractMentionedRooms(prompt);
@@ -172,6 +177,17 @@ export async function POST(req: NextRequest) {
           break; // Score ground floor only
         }
       }
+      // DIAGNOSTIC — trace room counts at final output
+      const allRoomNames = project.floors.flatMap(f => f.rooms.map(r => r.name));
+      console.log('=== FINAL OUTPUT (multi-floor) ===');
+      console.log('Total rooms:', allRoomNames.length);
+      console.log('Room names:', JSON.stringify(allRoomNames));
+      console.log('Floors:', JSON.stringify(project.floors.map(f => ({
+        level: f.level,
+        rooms: f.rooms.length,
+        names: f.rooms.map(r => r.name)
+      }))));
+
       return NextResponse.json({ project, geometry, svg: null, feedback });
     }
 
@@ -228,6 +244,12 @@ export async function POST(req: NextRequest) {
 
     const project = convertGeometryToProject(geometry, description.projectName, prompt);
     const feedback = buildFeedback(project, prompt);
+
+    // DIAGNOSTIC — trace room counts at final output
+    const allRoomNames = project.floors.flatMap(f => f.rooms.map(r => r.name));
+    console.log('=== FINAL OUTPUT (single-floor) ===');
+    console.log('Total rooms:', allRoomNames.length);
+    console.log('Room names:', JSON.stringify(allRoomNames));
 
     return NextResponse.json({ project, geometry, svg: floorPlan.svg, feedback });
   } catch (err) {

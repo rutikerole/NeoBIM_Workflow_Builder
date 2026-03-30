@@ -178,11 +178,13 @@ export async function programRooms(
   prompt: string,
   userApiKey?: string
 ): Promise<EnhancedRoomProgram> {
-  const client = getClient(userApiKey);
-
   // Estimate complexity — complex prompts need explicit room-count instruction
   const mentionedRooms = extractMentionedRooms(prompt);
   const isComplex = mentionedRooms.length >= 10;
+
+  // Complex prompts need longer timeout — GPT-4o-mini generating 25+ room JSON
+  // can take 30-60s. Default 30s timeout causes fallback to regex.
+  const client = getClient(userApiKey, isComplex ? 90_000 : 45_000);
 
   const userMessage = isComplex
     ? `${prompt}\n\nIMPORTANT: This prompt mentions at least ${mentionedRooms.length} distinct rooms/spaces: ${mentionedRooms.join(", ")}. You MUST include ALL of them as separate rooms in your output. Do NOT merge or skip any.`
@@ -201,7 +203,7 @@ export async function programRooms(
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userMessage },
       ],
-    });
+    }, { timeout: isComplex ? 90_000 : 45_000 });
 
     const content = completion.choices[0]?.message?.content;
     if (!content) throw new Error("AI returned empty response for room program");
@@ -222,7 +224,7 @@ export async function programRooms(
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: retryMessage },
           ],
-        });
+        }, { timeout: 90_000 });
         const content2 = completion2.choices[0]?.message?.content;
         if (content2) {
           raw = JSON.parse(content2) as EnhancedRoomProgram;
