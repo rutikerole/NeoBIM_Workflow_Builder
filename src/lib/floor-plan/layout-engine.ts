@@ -87,8 +87,10 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   }
 
   // When zones are used, corridor eats into footprint — compensate
+  // Cap corridor to 8% of total area (matches layoutWithZones logic)
+  const rawCorridorEstimate = CORRIDOR_DEPTH * Math.sqrt(Math.max(program.totalAreaSqm, roomAreaTotal) * DEFAULT_ASPECT);
   const corridorEstimate = useZones
-    ? CORRIDOR_DEPTH * Math.sqrt(Math.max(program.totalAreaSqm, roomAreaTotal) * DEFAULT_ASPECT)
+    ? Math.min(rawCorridorEstimate, Math.max(program.totalAreaSqm, roomAreaTotal) * 0.08)
     : 0;
 
   let totalArea = Math.max(program.totalAreaSqm, roomAreaTotal + corridorEstimate);
@@ -438,7 +440,25 @@ function layoutWithZones(
   // Compute zone areas
   const publicArea = publicZone.reduce((s, r) => s + r.areaSqm, 0);
   const privateArea = privateZone.reduce((s, r) => s + r.areaSqm, 0);
-  const corridorArea = CORRIDOR_DEPTH * fpW;
+  const floorArea = fpW * fpH;
+
+  // ── Corridor depth calculation with cap ──
+  // Cap corridor area to 8% of floor area (prevents oversized corridors)
+  // Use user-specified corridor area if available, else default to CORRIDOR_DEPTH
+  const MAX_CORRIDOR_RATIO = 0.08;
+  const maxCorridorArea = floorArea * MAX_CORRIDOR_RATIO;
+  const maxCorridorDepth = maxCorridorArea / fpW;
+
+  // If user specified a corridor room with area, respect it
+  const userCorridorArea = corridor?.areaSqm ?? 0;
+  let corridorDepth: number;
+  if (userCorridorArea > 0 && userCorridorArea < maxCorridorArea) {
+    corridorDepth = grid(Math.max(1.0, userCorridorArea / fpW));
+  } else {
+    corridorDepth = grid(Math.min(CORRIDOR_DEPTH, Math.max(1.0, maxCorridorDepth)));
+  }
+
+  const corridorArea = corridorDepth * fpW;
   const usableArea = fpW * fpH - corridorArea;
 
   // Zone depths proportional to area
@@ -449,15 +469,15 @@ function layoutWithZones(
   // Enforce minimums
   if (privateDepth < MIN_HABITABLE) {
     privateDepth = MIN_HABITABLE;
-    publicDepth = grid(fpH - privateDepth - CORRIDOR_DEPTH);
+    publicDepth = grid(fpH - privateDepth - corridorDepth);
   }
   if (publicDepth < MIN_HABITABLE) {
     publicDepth = MIN_HABITABLE;
-    privateDepth = grid(fpH - publicDepth - CORRIDOR_DEPTH);
+    privateDepth = grid(fpH - publicDepth - corridorDepth);
   }
 
   // Absorb rounding error into larger zone
-  const rem = fpH - privateDepth - CORRIDOR_DEPTH - publicDepth;
+  const rem = fpH - privateDepth - corridorDepth - publicDepth;
   if (Math.abs(rem) > 0.01) {
     if (privateDepth >= publicDepth) privateDepth = grid(privateDepth + rem);
     else publicDepth = grid(publicDepth + rem);
@@ -465,8 +485,8 @@ function layoutWithZones(
 
   // Zone rects (Y-down: private top, corridor, public bottom)
   const privateRect: Rect = { x: 0, y: 0, w: fpW, h: privateDepth };
-  const corridorRect: Rect = { x: 0, y: privateDepth, w: fpW, h: CORRIDOR_DEPTH };
-  const publicRect: Rect = { x: 0, y: privateDepth + CORRIDOR_DEPTH, w: fpW, h: publicDepth };
+  const corridorRect: Rect = { x: 0, y: privateDepth, w: fpW, h: corridorDepth };
+  const publicRect: Rect = { x: 0, y: privateDepth + corridorDepth, w: fpW, h: publicDepth };
 
   const result: PlacedRoom[] = [];
 
