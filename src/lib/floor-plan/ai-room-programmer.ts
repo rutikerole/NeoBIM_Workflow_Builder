@@ -50,6 +50,9 @@ export interface EnhancedRoomProgram {
   projectName: string;
   isVastuRequested?: boolean; // true when user asked for vastu/vaastu compliance
   originalPrompt?: string;   // original user prompt (for downstream stages)
+  facingDirection?: "north" | "south" | "east" | "west"; // plot facing direction
+  plotWidthM?: number;       // user-specified plot width in meters
+  plotDepthM?: number;       // user-specified plot depth in meters
 }
 
 // ── System prompt ────────────────────────────────────────────────────────────
@@ -228,9 +231,19 @@ export async function programRooms(
   // ── MULTI-CALL STRATEGY for complex multi-floor prompts ──
   // GPT-4o-mini truncates/merges rooms when asked for 30+.
   // Split into per-floor calls for much higher faithfulness.
+  // ── Pre-parse facing direction and plot dimensions (used by both paths) ──
+  const _facingMatch = prompt.match(/\b(north|south|east|west)\s*[-–]?\s*facing/i);
+  const _parsedFacing = _facingMatch ? _facingMatch[1].toLowerCase() as EnhancedRoomProgram["facingDirection"] : undefined;
+  const _plotMatch = prompt.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|foot)/i);
+  const _plotW = _plotMatch ? Math.round(Math.min(parseFloat(_plotMatch[1]), parseFloat(_plotMatch[2])) * 0.3048 * 10) / 10 : undefined;
+  const _plotD = _plotMatch ? Math.round(Math.max(parseFloat(_plotMatch[1]), parseFloat(_plotMatch[2])) * 0.3048 * 10) / 10 : undefined;
+
   if (isComplex && isMultiFloor) {
     try {
       const result = await programRoomsMultiCall(prompt, mentionedRooms, userApiKey);
+      result.facingDirection = _parsedFacing;
+      result.plotWidthM = _plotW;
+      result.plotDepthM = _plotD;
       console.log(`[STAGE-1-MULTI] Total rooms: ${result.rooms.length}`);
       return result;
     } catch (err) {
@@ -403,7 +416,26 @@ export async function programRooms(
   raw.isVastuRequested = /vastu|vaastu|vastu.?compliant/i.test(prompt);
   raw.originalPrompt = prompt;
 
+  // ── Parse plot facing direction ──
+  const facingMatch = prompt.match(/\b(north|south|east|west)\s*[-–]?\s*facing/i);
+  if (facingMatch) {
+    raw.facingDirection = facingMatch[1].toLowerCase() as EnhancedRoomProgram["facingDirection"];
+  }
+
+  // ── Parse plot dimensions (e.g., "50x80 feet", "15x24 meters") ──
+  const plotMatch = prompt.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|foot)\s*(?:plot|site|land)/i)
+    || prompt.match(/(?:plot|site|land)\s*(?:of\s*)?(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|foot)/i)
+    || prompt.match(/on\s+(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|foot)/i);
+  if (plotMatch) {
+    const d1 = parseFloat(plotMatch[1]) * 0.3048;
+    const d2 = parseFloat(plotMatch[2]) * 0.3048;
+    raw.plotWidthM = Math.round(Math.min(d1, d2) * 10) / 10;  // shorter = width
+    raw.plotDepthM = Math.round(Math.max(d1, d2) * 10) / 10;  // longer = depth
+  }
+
   console.log(`[STAGE-1] Rooms from AI: ${raw.rooms.length}`, raw.rooms.map(r => `${r.name} (floor:${r.floor ?? 0})`));
+  if (raw.facingDirection) console.log(`[STAGE-1] Facing: ${raw.facingDirection}`);
+  if (raw.plotWidthM) console.log(`[STAGE-1] Plot: ${raw.plotWidthM}x${raw.plotDepthM}m`);
 
   return raw;
 }
@@ -780,11 +812,17 @@ export function extractMentionedRooms(prompt: string): string[] {
     { pattern: /mini\s+bar/g, name: "Mini Bar" },
     { pattern: /study\s+room|shared\s+study/g, name: "Study Room" },
     { pattern: /sit[- ]?out|verandah|veranda|porch/g, name: "Verandah" },
+    { pattern: /drawing\s+room/g, name: "Drawing Room" },
+    { pattern: /parents?\s+bed(?:room)?|father'?s?\s+(?:bed)?room|mother'?s?\s+(?:bed)?room/g, name: "Parents Bedroom" },
+    { pattern: /parents?\s+bath(?:room)?/g, name: "Parents Bathroom" },
+    { pattern: /guest\s+toilet|guest\s+wc|half\s+bath/g, name: "Guest Toilet" },
     { pattern: /living\s+room|formal\s+living/g, name: "Living Room" },
     { pattern: /dining\s+(?:room|area)/g, name: "Dining Room" },
     { pattern: /(?:open\s+)?kitchen|wet\s+kitchen|dry\s+kitchen|modular\s+kitchen/g, name: "Kitchen" },
     { pattern: /foyer|entrance\s+(?:hall|area)/g, name: "Foyer" },
     { pattern: /(?:master\s+)?balcony|private\s+balcony/g, name: "Balcony" },
+    { pattern: /terrace(?!\s+garden)/g, name: "Terrace" },
+    { pattern: /parking|car\s*park/g, name: "Parking" },
     { pattern: /(?:internal\s+)?staircase/g, name: "Staircase" },
     { pattern: /linen\s+(?:storage|closet|cupboard)/g, name: "Linen Storage" },
     { pattern: /breakfast\s+(?:bar|nook|area)/g, name: "Breakfast Bar" },
