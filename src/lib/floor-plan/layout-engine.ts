@@ -245,10 +245,14 @@ function prioritySwaps(layout: PlacedRoom[]): PlacedRoom[] {
 
   // Priority 1: Kitchen adjacent to Dining
   forceAdjacency(result, "kitchen", "dining", TOL);
-  // Priority 2: Dining/Living adjacent to Foyer/Entrance
+  // Priority 2: Drawing Room adjacent to Foyer (by name, not type)
+  forceAdjacencyByName(result, "drawing", "foyer", TOL);
+  // Priority 3: Foyer adjacent to Living
   forceAdjacency(result, "living", "entrance", TOL);
-  // Priority 3: Living adjacent to Dining
+  // Priority 4: Living adjacent to Dining
   forceAdjacency(result, "living", "dining", TOL);
+  // Priority 5: Dining adjacent to Living (reverse search if forward failed)
+  forceAdjacency(result, "dining", "living", TOL);
 
   return result;
 }
@@ -284,6 +288,38 @@ function forceAdjacency(
       rooms[k] = { ...candidate, name: roomB.name, type: roomB.type };
       rooms[idxB] = { ...roomB, name: tmpName, type: tmpType };
       return; // Done
+    }
+  }
+}
+
+/**
+ * Force adjacency by room NAME (not type). Useful for "Drawing Room" ↔ "Foyer"
+ * where type-based matching would miss the room.
+ */
+function forceAdjacencyByName(
+  rooms: PlacedRoom[], nameA: string, nameB: string, tol: number,
+): void {
+  const roomA = rooms.find(r => r.name.toLowerCase().includes(nameA));
+  const roomB = rooms.find(r => r.name.toLowerCase().includes(nameB));
+  if (!roomA || !roomB) return;
+  if (roomsShareEdge(roomA, roomB, tol)) return;
+
+  const idxA = rooms.indexOf(roomA);
+  const idxB = rooms.indexOf(roomB);
+
+  for (let k = 0; k < rooms.length; k++) {
+    if (k === idxA || k === idxB) continue;
+    const candidate = rooms[k];
+    if (candidate.type === "hallway" || candidate.type === "staircase") continue;
+
+    if (roomsShareEdge(roomA, candidate, tol)) {
+      const ratio = Math.min(candidate.area, roomB.area) / Math.max(candidate.area, roomB.area);
+      if (ratio < 0.25) continue; // Relaxed threshold for name-based swaps
+
+      const tmpName = candidate.name, tmpType = candidate.type;
+      rooms[k] = { ...candidate, name: roomB.name, type: roomB.type };
+      rooms[idxB] = { ...roomB, name: tmpName, type: tmpType };
+      return;
     }
   }
 }
@@ -556,15 +592,19 @@ function classifyRooms(rooms: RoomSpec[]): ClassifiedRooms {
 
     if (isCorridor) {
       corridor = r;
+    } else if (r.type === "kitchen" || r.type === "dining") {
+      // Kitchen AND Dining MUST be in the same zone (public) for adjacency
+      publicZone.push(r);
+    } else if (name.includes("dining")) {
+      // Catch dining rooms that don't have type "dining"
+      publicZone.push(r);
+    } else if (name.includes("drawing") || name.includes("foyer")) {
+      // Drawing Room and Foyer must be in public zone for entrance flow
+      publicZone.push(r);
     } else if (r.zone === "private" || r.type === "bedroom") {
       privateZone.push(r);
     } else if (r.zone === "service") {
-      // Kitchen → public, bathrooms/utility → private
-      if (r.type === "kitchen") {
-        publicZone.push(r);
-      } else {
-        privateZone.push(r);
-      }
+      privateZone.push(r);
     } else if (r.zone === "circulation") {
       // Non-corridor circulation (lobby, etc.) → public
       publicZone.push(r);
@@ -914,6 +954,48 @@ function vastuSortRooms(rooms: RoomSpec[]): RoomSpec[] {
   });
 }
 
+// ── Critical pair grouping for BSP adjacency ─────────────────────────────────
+
+/**
+ * Ensure critical room pairs are consecutive in BSP input ordering
+ * so BSP naturally places them in adjacent cells.
+ *
+ * Only groups specific pairs, not the entire flow chain, to avoid
+ * disrupting BSP allocation for other rooms.
+ */
+function groupCriticalPairs(rooms: RoomSpec[]): void {
+  // Pair 1: Kitchen + Dining must be consecutive
+  movePairTogether(rooms,
+    r => r.type === "kitchen",
+    r => r.type === "dining" || r.name.toLowerCase().includes("dining"),
+  );
+
+  // Pair 2: Drawing Room + Foyer must be consecutive (if both exist)
+  movePairTogether(rooms,
+    r => r.name.toLowerCase().includes("drawing"),
+    r => r.type === "entrance" || r.name.toLowerCase().includes("foyer"),
+  );
+}
+
+/**
+ * Move roomB right after roomA in the array (if they aren't already adjacent).
+ */
+function movePairTogether(
+  rooms: RoomSpec[],
+  matchA: (r: RoomSpec) => boolean,
+  matchB: (r: RoomSpec) => boolean,
+): void {
+  const idxA = rooms.findIndex(matchA);
+  const idxB = rooms.findIndex(matchB);
+  if (idxA < 0 || idxB < 0) return;
+  if (Math.abs(idxA - idxB) <= 1) return; // Already adjacent
+
+  // Move B right after A
+  const [roomB] = rooms.splice(idxB, 1);
+  const newIdxA = rooms.findIndex(matchA); // Re-find after splice
+  rooms.splice(newIdxA + 1, 0, roomB);
+}
+
 // ── Public zone layout ───────────────────────────────────────────────────────
 
 function layoutPublicZone(
@@ -928,6 +1010,9 @@ function layoutPublicZone(
 
   // Apply soft Vastu ordering when adjacency doesn't dictate order
   const vastuOrdered = vastuSortRooms(ordered);
+
+  // ── Group critical pairs so BSP places them adjacent ──
+  groupCriticalPairs(vastuOrdered);
 
   // Use BSP which naturally produces good tiling
   return bspSubdivide(vastuOrdered, rect, adjacency);
