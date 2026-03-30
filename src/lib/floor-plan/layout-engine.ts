@@ -845,7 +845,7 @@ function applyVastuConstraints(rooms: RoomSpec[], fpW: number, fpH: number): voi
       room.preferredWidth = grid(side);
       room.preferredDepth = grid(area / room.preferredWidth);
     }
-  } catch {
+  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
     // Vastu constraints are best-effort
   }
 }
@@ -981,7 +981,7 @@ function repairBedroomBathroomAdjacency(
     }
 
     return layout;
-  } catch {
+  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
     return rooms;
   }
 }
@@ -1099,7 +1099,7 @@ function optimizeVastu(rooms: PlacedRoom[], fpW: number, fpH: number): PlacedRoo
     }
 
     return layout;
-  } catch {
+  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
     // Vastu optimization is best-effort; never break layout
     return rooms;
   }
@@ -1152,7 +1152,7 @@ function verifyVastuPlacement(
     }
 
     return layout;
-  } catch {
+  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
     return rooms;
   }
 }
@@ -1197,7 +1197,7 @@ function applyDimensionCorrection(
       depth: r.depth,
       area: r.area,
     }));
-  } catch {
+  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
     return placed;
   }
 }
@@ -1289,7 +1289,7 @@ function enforceNBCMinimumDimensions(rooms: PlacedRoom[]): PlacedRoom[] {
       }
     }
     return rooms;
-  } catch {
+  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
     return rooms;
   }
 }
