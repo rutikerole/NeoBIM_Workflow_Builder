@@ -139,6 +139,11 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
     result = optimizeLayoutSwaps(result, program.adjacency);
   }
 
+  // ── Vastu post-optimization (only when requested) ──
+  if (program.isVastuRequested && result.length >= 4) {
+    result = optimizeVastu(result, fpW, fpH);
+  }
+
   // ── Room count validation ──
   // RULE: rooms_in == rooms_out. If BSP lost any rooms, force-place them.
   result = validateAndRecoverRooms(rooms, result, fpW, fpH);
@@ -454,6 +459,128 @@ function refineRoomProportions(rooms: PlacedRoom[]): PlacedRoom[] {
   }
 
   return result;
+}
+
+// ── Vastu post-optimization ───────────────────────────────────────────────
+
+/**
+ * Ideal vastu quadrants for common room types.
+ * Y-down coordinate system: top = North, bottom = South
+ * For Y-down: N = small y, S = large y, W = small x, E = large x.
+ */
+const VASTU_QUADRANTS: Record<string, string> = {
+  kitchen: "SE",
+  pooja: "NE",
+  prayer: "NE",
+  puja: "NE",
+  mandir: "NE",
+  master_bedroom: "SW",
+  parents: "SW",
+  living: "N",
+  drawing: "NE",
+  dining: "W",
+  bathroom: "NW",
+  toilet: "NW",
+  staircase: "SW",
+  servant: "SE",
+  store: "SW",
+  utility: "NW",
+  entrance: "N",
+  foyer: "N",
+};
+
+/**
+ * Get the quadrant of a room based on its center position.
+ * Y-down: y=0 is North (top), y=max is South (bottom).
+ */
+function getQuadrant(room: PlacedRoom, fpW: number, fpH: number): string {
+  const cx = room.x + room.width / 2;
+  const cy = room.y + room.depth / 2;
+  const midX = fpW / 2;
+  const midY = fpH / 2;
+  // Y-down: cy < midY means room is toward top = North
+  const ns = cy < midY ? "N" : "S";
+  const ew = cx < midX ? "W" : "E";
+  return ns + ew;
+}
+
+/**
+ * Score a single room's vastu placement.
+ */
+function vastuRoomScore(room: PlacedRoom, fpW: number, fpH: number): number {
+  const quadrant = getQuadrant(room, fpW, fpH);
+  const nameLower = room.name.toLowerCase();
+  const typeLower = room.type.toLowerCase();
+
+  for (const [key, idealQuadrant] of Object.entries(VASTU_QUADRANTS)) {
+    if (typeLower.includes(key) || nameLower.includes(key)) {
+      if (quadrant === idealQuadrant) return 10;
+      // Partial match: correct N/S direction
+      if (quadrant[0] === idealQuadrant[0]) return 5;
+      // Partial match: correct E/W direction
+      if (quadrant[1] === idealQuadrant[1]) return 3;
+      return 0;
+    }
+  }
+  return 0; // No vastu preference for this room type
+}
+
+/**
+ * Optimize room placement for Vastu compliance by swapping room identities.
+ *
+ * Runs AFTER the adjacency swap optimizer. Uses iterative pairwise swaps
+ * to improve the vastu score without breaking tiling (only swaps identity,
+ * not position).
+ */
+function optimizeVastu(rooms: PlacedRoom[], fpW: number, fpH: number): PlacedRoom[] {
+  try {
+    const layout = rooms.map(r => ({ ...r }));
+
+    for (let iteration = 0; iteration < 50; iteration++) {
+      let improved = false;
+
+      for (let i = 0; i < layout.length; i++) {
+        for (let j = i + 1; j < layout.length; j++) {
+          const roomA = layout[i];
+          const roomB = layout[j];
+
+          // Only swap rooms of similar size (within 50%)
+          const areaA = roomA.width * roomA.depth;
+          const areaB = roomB.width * roomB.depth;
+          if (Math.min(areaA, areaB) / Math.max(areaA, areaB) < 0.5) continue;
+
+          // Don't swap corridors or staircases
+          if (roomA.type === "hallway" || roomB.type === "hallway") continue;
+          if (roomA.type === "staircase" || roomB.type === "staircase") continue;
+
+          // Calculate vastu score before swap
+          const beforeScore = vastuRoomScore(roomA, fpW, fpH) + vastuRoomScore(roomB, fpW, fpH);
+
+          // Swap room identities (keep BSP-assigned positions)
+          const tmpName = roomA.name, tmpType = roomA.type;
+          layout[i] = { ...roomA, name: roomB.name, type: roomB.type };
+          layout[j] = { ...roomB, name: tmpName, type: tmpType };
+
+          const afterScore = vastuRoomScore(layout[i], fpW, fpH) + vastuRoomScore(layout[j], fpW, fpH);
+
+          if (afterScore > beforeScore) {
+            improved = true; // Keep the swap
+          } else {
+            // Revert swap
+            layout[i] = roomA;
+            layout[j] = roomB;
+          }
+        }
+      }
+
+      if (!improved) break;
+    }
+
+    return layout;
+  } catch {
+    // Vastu optimization is best-effort; never break layout
+    return rooms;
+  }
 }
 
 // ── Post-BSP room size validation ──────────────────────────────────────────
