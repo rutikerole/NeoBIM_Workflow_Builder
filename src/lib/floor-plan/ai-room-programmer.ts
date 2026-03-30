@@ -350,7 +350,7 @@ export function extractMentionedRooms(prompt: string): string[] {
     { pattern: /guest\s+bed(?:room)?/g, name: "Guest Bedroom" },
     { pattern: /guest\s+bath(?:room)?/g, name: "Guest Bathroom" },
     { pattern: /servant\s+quarter|servants?\s+room|maid'?s?\s+room/g, name: "Servant Quarter" },
-    { pattern: /servant\s+toilet|maid'?s?\s+(?:bath|toilet)/g, name: "Servant Toilet" },
+    { pattern: /servant\s+toilet|maid'?s?\s+(?:bath|toilet)|servant\s+quarter\s+[\w\s]*?(?:attached|with)\s+[\w\s]*?(?:indian\s+)?toilet/g, name: "Servant Toilet" },
     { pattern: /powder\s+room/g, name: "Powder Room" },
     { pattern: /pooja\s+room|puja\s+room|prayer\s+room|mandir/g, name: "Pooja Room" },
     { pattern: /shoe\s+(?:rack|cabinet|closet|storage)/g, name: "Shoe Rack" },
