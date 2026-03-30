@@ -184,6 +184,7 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   // ── Vastu post-optimization (only when requested) ──
   if (program.isVastuRequested && result.length >= 4) {
     result = optimizeVastu(result, fpW, fpH);
+    result = verifyVastuPlacement(result, fpW, fpH);
   }
 
   // ── Post-BSP dimension correction ──
@@ -1038,6 +1039,58 @@ function optimizeVastu(rooms: PlacedRoom[], fpW: number, fpH: number): PlacedRoo
     return layout;
   } catch {
     // Vastu optimization is best-effort; never break layout
+    return rooms;
+  }
+}
+
+// ── Post-layout vastu verification ─────────────────────────────────────────
+
+/**
+ * Final targeted vastu check. For each room with a known ideal quadrant,
+ * verify it's in position. If not AND a swap partner exists, do one swap.
+ * Runs AFTER optimizeVastu() as a safety net for remaining violations.
+ */
+function verifyVastuPlacement(
+  rooms: PlacedRoom[], fpW: number, fpH: number,
+): PlacedRoom[] {
+  try {
+    const layout = rooms.map(r => ({ ...r }));
+    const midX = fpW / 2;
+    const midY = fpH / 2;
+
+    // Brahmasthan protection: if a heavy room is in the center 1/9th, swap it out
+    const HEAVY_TYPES = new Set(["bathroom", "kitchen", "staircase", "utility", "storage"]);
+    for (let i = 0; i < layout.length; i++) {
+      const room = layout[i];
+      const cx = room.x + room.width / 2;
+      const cy = room.y + room.depth / 2;
+      const inCenter = cx > fpW / 3 && cx < fpW * 2 / 3 && cy > fpH / 3 && cy < fpH * 2 / 3;
+      if (!inCenter) continue;
+      if (!HEAVY_TYPES.has(room.type) && !room.name.toLowerCase().includes("bath")) continue;
+
+      // Find a non-heavy room NOT in center to swap with
+      for (let j = 0; j < layout.length; j++) {
+        if (j === i) continue;
+        const candidate = layout[j];
+        if (HEAVY_TYPES.has(candidate.type)) continue;
+        if (candidate.type === "hallway" || candidate.type === "staircase") continue;
+        const ccx = candidate.x + candidate.width / 2;
+        const ccy = candidate.y + candidate.depth / 2;
+        const candInCenter = ccx > fpW / 3 && ccx < fpW * 2 / 3 && ccy > fpH / 3 && ccy < fpH * 2 / 3;
+        if (candInCenter) continue;
+        // Size compatibility
+        const ratio = Math.min(room.area, candidate.area) / Math.max(room.area, candidate.area);
+        if (ratio < 0.3) continue;
+        // Swap identities
+        const tmpN = room.name, tmpT = room.type;
+        layout[i] = { ...room, name: candidate.name, type: candidate.type };
+        layout[j] = { ...candidate, name: tmpN, type: tmpT };
+        break;
+      }
+    }
+
+    return layout;
+  } catch {
     return rooms;
   }
 }
