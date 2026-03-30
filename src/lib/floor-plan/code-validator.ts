@@ -466,7 +466,9 @@ function checkCeilingHeight(floor: Floor, violations: CodeViolation[]): number {
 
   checks++;
   const minH = rule.parameters.min_height_mm as number;
-  const ceilingHeight = floor.floor_to_floor_height_mm - floor.slab_thickness_mm;
+  // Clear ceiling height = floor-to-floor minus slab thickness minus floor finishes (~50mm)
+  const FLOOR_FINISH_MM = 50;
+  const ceilingHeight = floor.floor_to_floor_height_mm - floor.slab_thickness_mm - FLOOR_FINISH_MM;
 
   if (ceilingHeight < minH) {
     violations.push({
@@ -638,18 +640,20 @@ function checkNaturalLightRatio(floor: Floor, violations: CodeViolation[]): numb
     const ratio = floorArea > 0 ? totalWindowArea / floorArea : 0;
     const minRatio = rule.parameters.min_ratio as number;
 
-    if (ratio < minRatio) {
+    // Only flag if room already passes the minimum 1/10 check (NBC-WV-001)
+    // to avoid double-flagging rooms that fail both
+    if (ratio < minRatio && ratio >= 0.10) {
       violations.push({
         rule_id: rule.id,
         rule,
         entity_type: "room",
         entity_id: room.id,
         entity_name: room.name,
-        severity: rule.severity,
-        message: `${room.name} natural light ratio (${(ratio * 100).toFixed(1)}%) is below recommended 1/6th (16.7%).`,
+        severity: "info",
+        message: `${room.name} meets minimum ventilation (${(ratio * 100).toFixed(1)}%) but is below recommended daylighting 1/6th (16.7%).`,
         actual_value: `${(ratio * 100).toFixed(1)}%`,
-        required_value: `≥ ${(minRatio * 100).toFixed(1)}%`,
-        suggestion: `Add approximately ${((minRatio * floorArea - totalWindowArea)).toFixed(2)} sq.m more window area.`,
+        required_value: `≥ ${(minRatio * 100).toFixed(1)}% (recommended)`,
+        suggestion: `Add approximately ${((minRatio * floorArea - totalWindowArea)).toFixed(2)} sq.m more window area for optimal natural light.`,
       });
     }
   }

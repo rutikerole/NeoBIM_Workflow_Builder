@@ -245,7 +245,7 @@ export async function programRooms(
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userMessage },
       ],
-    }, { timeout: isComplex ? 90_000 : 45_000 });
+    });
 
     const content = completion.choices[0]?.message?.content;
     if (!content) throw new Error("AI returned empty response for room program");
@@ -266,7 +266,7 @@ export async function programRooms(
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: retryMessage },
           ],
-        }, { timeout: 90_000 });
+        });
         const content2 = completion2.choices[0]?.message?.content;
         if (content2) {
           raw = JSON.parse(content2) as EnhancedRoomProgram;
@@ -595,7 +595,7 @@ function inferDefaultArea(name: string): number {
     { pattern: /corridor|hallway/, area: 8 },
     { pattern: /staircase/, area: 12 },
     { pattern: /pooja|prayer|puja|mandir/, area: 3 },
-    { pattern: /utility(?:\s+room)?$/, area: 4 },
+    { pattern: /utility(?:\s+room)?\s*$/, area: 4 },
     { pattern: /utility\s+balcony/, area: 5 },
     { pattern: /servant\s+quarter/, area: 8 },
     { pattern: /servant\s+toilet/, area: 2.5 },
@@ -626,7 +626,7 @@ function inferDefaultArea(name: string): number {
 function inferRoomTypeAndZone(name: string): { type: string; zone: RoomSpec["zone"]; exterior: boolean } {
   const MAPPING: Array<{ pattern: RegExp; type: string; zone: RoomSpec["zone"]; exterior: boolean }> = [
     { pattern: /bed(?:room)?|master\s+bed|kids?\s+bed|guest\s+bed/, type: "bedroom", zone: "private", exterior: true },
-    { pattern: /bath(?:room)?|toilet|powder|wc/, type: "bathroom", zone: "service", exterior: false },
+    { pattern: /bath(?:room)?|toilet|powder|\bwc\b/, type: "bathroom", zone: "service", exterior: false },
     { pattern: /living|lounge|family\s+room|tv\s+lounge/, type: "living", zone: "public", exterior: true },
     { pattern: /dining/, type: "dining", zone: "public", exterior: true },
     { pattern: /kitchen/, type: "kitchen", zone: "service", exterior: true },
@@ -705,9 +705,10 @@ export function programToDescription(program: EnhancedRoomProgram): {
     program: program.rooms.map(r => ({ space: r.name, area_m2: Math.round(r.areaSqm) })),
     programSummary: `${program.projectName} with ${program.rooms.map(r => r.name).join(", ")}`,
     narrative: program.circulationNotes || `AI-generated room program for ${program.buildingType}`,
-    structure: "RCC frame",
-    facade: "Contemporary",
-    sustainabilityFeatures: ["Natural ventilation", "Cross ventilation"],
+    structure: program.totalAreaSqm > 200 || program.numFloors > 1 ? "RCC frame" : "Load bearing masonry",
+    facade: /traditional|heritage|colonial|vernacular/i.test(program.buildingType) ? "Traditional" :
+            /modern|contemporary|minimalist/i.test(program.buildingType) ? "Contemporary" : "Mixed contemporary",
+    sustainabilityFeatures: ["Natural ventilation", "Cross ventilation", "Daylight optimization"],
     estimatedCost: "",
     constructionDuration: "",
     projectName: program.projectName,
@@ -790,7 +791,8 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
   }
 
   // Service zone - bathrooms
-  const numBath = Math.max(1, bhk);
+  // Indian standard: 1 common + attached for master. 3BHK→2-3, 4BHK→3, 5BHK→4
+  const numBath = bhk <= 2 ? bhk : Math.ceil(bhk * 0.75);
   for (let i = 1; i <= numBath; i++) {
     const name = numBath === 1 ? "Bathroom" : `Bathroom ${i}`;
     rooms.push({ name, type: "bathroom", areaSqm: i === 1 ? 5 : 4, zone: "service", mustHaveExteriorWall: false, adjacentTo: [], preferNear: [] });

@@ -246,7 +246,8 @@ export function generateBOQ(floor: Floor): BOQReport {
 
   // ======== 8. STRUCTURAL (columns, slab) ========
   for (const col of floor.columns) {
-    const heightM = floor.floor_to_floor_height_mm / 1000;
+    // Column height = floor-to-floor minus slab thickness (column sits below slab)
+    const heightM = (floor.floor_to_floor_height_mm - floor.slab_thickness_mm) / 1000;
     let vol: number;
     if (col.type === "circular") {
       const r = ((col.diameter_mm ?? 300) / 2) / 1000;

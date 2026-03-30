@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const prompt = body.prompt as string;
 
-    if (!prompt || typeof prompt !== "string") {
+    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
     }
 

@@ -146,16 +146,30 @@ const FurnitureItem = React.memo(function FurnitureItem({
  */
 function parseSimplePath(d: string, scale: number, zoom: number): number[] {
   const points: number[] = [];
-  const commands = d.match(/[MLZ][^MLZ]*/gi);
+  const commands = d.match(/[MLZCAQ][^MLZCAQ]*/gi);
   if (!commands) return points;
 
   for (const cmd of commands) {
     const type = cmd[0].toUpperCase();
     if (type === "Z") continue;
     const nums = cmd.slice(1).trim().split(/[\s,]+/).map(Number);
-    for (let i = 0; i < nums.length; i += 2) {
-      if (i + 1 < nums.length) {
-        points.push(nums[i] * scale * zoom, -nums[i + 1] * scale * zoom);
+
+    if (type === "C") {
+      // Cubic bezier — approximate as line to endpoint (last pair)
+      if (nums.length >= 6) {
+        points.push(nums[4] * scale * zoom, -nums[5] * scale * zoom);
+      }
+    } else if (type === "A") {
+      // Arc — approximate as line to endpoint (last pair)
+      if (nums.length >= 7) {
+        points.push(nums[5] * scale * zoom, -nums[6] * scale * zoom);
+      }
+    } else {
+      // M, L, Q and other coordinate-pair commands
+      for (let i = 0; i < nums.length; i += 2) {
+        if (i + 1 < nums.length) {
+          points.push(nums[i] * scale * zoom, -nums[i + 1] * scale * zoom);
+        }
       }
     }
   }
