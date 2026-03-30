@@ -63,12 +63,14 @@ export function correctDimensions(
   rooms: RoomWithTarget[],
   fpW: number,
   fpH: number,
-  maxIterations = 15,
+  maxIterations?: number,
 ): RoomWithTarget[] {
+  // Use more iterations for complex layouts to reach convergence
+  const iters = maxIterations ?? (rooms.length > 15 ? 25 : 15);
   try {
     const result = rooms.map(r => ({ ...r }));
 
-    for (let iter = 0; iter < maxIterations; iter++) {
+    for (let iter = 0; iter < iters; iter++) {
       let totalAdjustment = 0;
 
       // Find all shared boundaries between adjacent room pairs
@@ -98,9 +100,10 @@ export function correctDimensions(
         const errorB = (areaB - roomB.targetArea) / roomB.targetArea;
 
         // Adjust if one room is too big AND its neighbor is too small,
-        // OR if one room is severely oversized (>25% over target) regardless
-        const shouldAdjustAB = (errorA > 0.15 && errorB < -0.10) || (errorA > 0.25 && errorB < 0);
-        const shouldAdjustBA = (errorB > 0.15 && errorA < -0.10) || (errorB > 0.25 && errorA < 0);
+        // OR if one room is significantly oversized (>20% over target) regardless.
+        // Thresholds lowered from 15%/10% to 10%/8% for tighter dimension control.
+        const shouldAdjustAB = (errorA > 0.10 && errorB < -0.08) || (errorA > 0.20 && errorB < 0);
+        const shouldAdjustBA = (errorB > 0.10 && errorA < -0.08) || (errorB > 0.20 && errorA < 0);
 
         if (shouldAdjustAB) {
           const shift = calculateShift(roomA, roomB, boundary, errorA, errorB);

@@ -1030,6 +1030,30 @@ const ANNOTATION_KEYWORDS: Array<{
   { pattern: /toy\s*storage/i, roomTypes: ["bedroom", "custom"], text: "Toy Storage" },
   { pattern: /bathtub|bath\s*tub/i, roomTypes: ["bathroom"], text: "Bathtub" },
   { pattern: /two[\s-]*wheeler/i, roomTypes: ["custom", "parking"], text: "Two-Wheeler" },
+
+  // ── Luxury / Farmhouse Features ──
+  { pattern: /wrought\s*iron/i, roomTypes: ["staircase", "balcony", "verandah"], text: "Wrought Iron" },
+  { pattern: /clawfoot|claw[\s-]*foot/i, roomTypes: ["bathroom", "master_bedroom"], text: "Clawfoot Tub" },
+  { pattern: /surround\s*sound|7[\.\s]*1/i, roomTypes: ["custom", "living_room"], text: "Surround Sound" },
+  { pattern: /jhula|jhoola/i, roomTypes: ["verandah", "balcony", "living_room"], text: "Jhula Swing" },
+  { pattern: /emergency[\s-]*call|call[\s-]*bell/i, roomTypes: ["bathroom", "bedroom"], text: "Emergency Bell" },
+  { pattern: /rosewood/i, roomTypes: ["bedroom", "master_bedroom", "living_room"], text: "Rosewood" },
+  { pattern: /bunk\s*bed/i, roomTypes: ["bedroom"], text: "Bunk Bed" },
+  { pattern: /window\s*seat/i, roomTypes: ["bedroom", "living_room", "study"], text: "Window Seat" },
+  { pattern: /art[\s-]*corner/i, roomTypes: ["bedroom", "custom"], text: "Art Corner" },
+  { pattern: /herb\s*garden/i, roomTypes: ["kitchen", "balcony", "custom"], text: "Herb Garden" },
+  { pattern: /pergola/i, roomTypes: ["terrace", "balcony", "custom"], text: "Pergola" },
+  { pattern: /raised\s*planter/i, roomTypes: ["terrace", "balcony", "custom"], text: "Raised Planters" },
+  { pattern: /temperature[\s-]*control/i, roomTypes: ["custom", "kitchen"], text: "Temp Controlled" },
+  { pattern: /sound[\s-]*proof/i, roomTypes: ["custom", "bedroom"], text: "Soundproofed" },
+  { pattern: /garden\s*view/i, roomTypes: ["bedroom", "living_room", "dining_room"], text: "Garden View" },
+  { pattern: /sunset\s*view/i, roomTypes: ["bedroom", "living_room", "balcony"], text: "Sunset View" },
+  { pattern: /morning[\s-]*sun/i, roomTypes: ["bedroom", "kitchen", "puja_room"], text: "Morning Sun" },
+  { pattern: /sitar|music[\s-]*corner/i, roomTypes: ["bedroom", "custom"], text: "Music Corner" },
+  { pattern: /telescope|stargazing/i, roomTypes: ["terrace", "balcony"], text: "Stargazing" },
+  { pattern: /hammock/i, roomTypes: ["terrace", "balcony", "verandah"], text: "Hammock" },
+  { pattern: /fire[\s-]*pit/i, roomTypes: ["terrace", "custom"], text: "Fire Pit" },
+  { pattern: /bbq|barbecue/i, roomTypes: ["terrace", "kitchen", "custom"], text: "BBQ Area" },
 ];
 
 /**

@@ -163,6 +163,11 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
     result = optimizeLayoutSwaps(result, program.adjacency);
   }
 
+  // ── Bedroom-bathroom adjacency repair ──
+  // After swaps, verify every bedroom's paired bathroom is still adjacent.
+  // If not, swap the drifted bathroom with a room adjacent to the bedroom.
+  result = repairBedroomBathroomAdjacency(result, program.adjacency);
+
   // ── Vastu post-optimization (only when requested) ──
   if (program.isVastuRequested && result.length >= 4) {
     result = optimizeVastu(result, fpW, fpH);
@@ -558,6 +563,97 @@ function vastuRoomScore(room: PlacedRoom, fpW: number, fpH: number): number {
     }
   }
   return 0; // No vastu preference for this room type
+}
+
+/**
+ * After swap optimizations, some bedrooms may have lost their adjacent bathroom.
+ * This function finds such cases and swaps the bathroom next to its paired bedroom.
+ */
+function repairBedroomBathroomAdjacency(
+  rooms: PlacedRoom[],
+  adjacency: AdjacencyRequirement[],
+): PlacedRoom[] {
+  try {
+    const layout = rooms.map(r => ({ ...r }));
+
+    // Find bedroom-bathroom pairs from adjacency requirements
+    const pairs = adjacency.filter(a => {
+      const aIsBed = a.roomA.toLowerCase().includes("bedroom") || a.roomA.toLowerCase().includes("master");
+      const bIsBath = a.roomB.toLowerCase().includes("bath") || a.roomB.toLowerCase().includes("toilet");
+      const aIsBath = a.roomA.toLowerCase().includes("bath") || a.roomA.toLowerCase().includes("toilet");
+      const bIsBed = a.roomB.toLowerCase().includes("bedroom") || a.roomB.toLowerCase().includes("master");
+      return (aIsBed && bIsBath) || (aIsBath && bIsBed);
+    });
+
+    for (const pair of pairs) {
+      const bedName = pair.roomA.toLowerCase().includes("bed") || pair.roomA.toLowerCase().includes("master")
+        ? pair.roomA : pair.roomB;
+      const bathName = bedName === pair.roomA ? pair.roomB : pair.roomA;
+
+      const bedIdx = layout.findIndex(r => r.name === bedName);
+      const bathIdx = layout.findIndex(r => r.name === bathName);
+      if (bedIdx === -1 || bathIdx === -1) continue;
+
+      const bed = layout[bedIdx];
+      const bath = layout[bathIdx];
+
+      // Check if they share an edge (adjacent)
+      const isAdj = areRoomsAdjacent(bed, bath, 0.3);
+      if (isAdj) continue; // Already adjacent, no repair needed
+
+      // Find a room adjacent to the bedroom that we can swap with the bathroom
+      // Prefer rooms of similar size to the bathroom
+      const bathArea = bath.width * bath.depth;
+      let bestSwapIdx = -1;
+      let bestSizeDiff = Infinity;
+
+      for (let i = 0; i < layout.length; i++) {
+        if (i === bedIdx || i === bathIdx) continue;
+        const candidate = layout[i];
+        if (candidate.type === "hallway" || candidate.type === "staircase") continue;
+        // Must be adjacent to the bedroom
+        if (!areRoomsAdjacent(bed, candidate, 0.3)) continue;
+        // Prefer similar size to bathroom
+        const candArea = candidate.width * candidate.depth;
+        const sizeDiff = Math.abs(candArea - bathArea);
+        if (sizeDiff < bestSizeDiff) {
+          bestSizeDiff = sizeDiff;
+          bestSwapIdx = i;
+        }
+      }
+
+      if (bestSwapIdx !== -1) {
+        // Swap identities (name/type) between bathroom and the adjacent room
+        const target = layout[bestSwapIdx];
+        const tmpName = bath.name, tmpType = bath.type;
+        layout[bathIdx] = { ...bath, name: target.name, type: target.type };
+        layout[bestSwapIdx] = { ...target, name: tmpName, type: tmpType };
+      }
+    }
+
+    return layout;
+  } catch {
+    return rooms;
+  }
+}
+
+/** Check if two rooms share an edge within tolerance */
+function areRoomsAdjacent(a: PlacedRoom, b: PlacedRoom, tolerance: number): boolean {
+  // Horizontal adjacency (share vertical edge)
+  const hShared = Math.abs((a.x + a.width) - b.x) < tolerance || Math.abs((b.x + b.width) - a.x) < tolerance;
+  if (hShared) {
+    const yStart = Math.max(a.y, b.y);
+    const yEnd = Math.min(a.y + a.depth, b.y + b.depth);
+    if (yEnd - yStart > 0.3) return true;
+  }
+  // Vertical adjacency (share horizontal edge)
+  const vShared = Math.abs((a.y + a.depth) - b.y) < tolerance || Math.abs((b.y + b.depth) - a.y) < tolerance;
+  if (vShared) {
+    const xStart = Math.max(a.x, b.x);
+    const xEnd = Math.min(a.x + a.width, b.x + b.width);
+    if (xEnd - xStart > 0.3) return true;
+  }
+  return false;
 }
 
 /**
