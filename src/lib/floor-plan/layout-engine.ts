@@ -160,14 +160,15 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   }
 
   // ── Fixed-room pre-placement ──
-  // Rooms with user-specified "exactly" dimensions are placed FIRST.
-  // BSP only fills the remaining space with flex rooms.
-  const fixedRooms = rooms.filter(r => r.preferredWidth && r.preferredDepth &&
+  // Only count rooms as "fixed" if the USER specified exact dimensions
+  // (from the original prompt, NOT from applyVastuConstraints).
+  // We check against program.rooms (pre-vastu) to distinguish.
+  const userFixedRooms = program.rooms.filter(r => r.preferredWidth && r.preferredDepth &&
     r.preferredWidth > 0 && r.preferredDepth > 0);
 
   let result: PlacedRoom[];
 
-  if (fixedRooms.length >= 1) {
+  if (userFixedRooms.length >= 2) {
     // Use fixed-room pre-placement + BSP for remaining space
     try {
       result = layoutWithFixedRooms(rooms, fpW, fpH, program.adjacency, program.isVastuRequested);
@@ -175,7 +176,7 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
       // ── Check if any fixed room got squeezed below 70% of target ──
       // If so, expand footprint and re-run once.
       const undersized = result.filter(r => {
-        const spec = fixedRooms.find(s => s.name === r.name);
+        const spec = userFixedRooms.find(s => s.name === r.name);
         if (!spec?.preferredWidth || !spec?.preferredDepth) return false;
         const target = spec.preferredWidth * spec.preferredDepth;
         return r.width * r.depth < target * 0.70;
@@ -183,8 +184,8 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
 
       if (undersized.length > 0 && !program.plotWidthM) {
         // Only expand auto-calculated footprints (not user-specified plots)
-        const totalFixed = fixedRooms.reduce((s, r) => s + (r.preferredWidth! * r.preferredDepth!), 0);
-        const totalFlex = rooms.filter(r => !fixedRooms.includes(r)).reduce((s, r) => s + r.areaSqm, 0);
+        const totalFixed = userFixedRooms.reduce((s, r) => s + (r.preferredWidth! * r.preferredDepth!), 0);
+        const totalFlex = rooms.filter(r => !userFixedRooms.includes(r)).reduce((s, r) => s + r.areaSqm, 0);
         const needed = (totalFixed + totalFlex) * 1.15;
         if (needed > fpW * fpH) {
           const scale = Math.sqrt(needed / (fpW * fpH));
@@ -195,7 +196,7 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
         }
       }
 
-      console.log(`[LAYOUT] Fixed-room placement: ${fixedRooms.length} fixed + ${rooms.length - fixedRooms.length} flex`);
+      console.log(`[LAYOUT] Fixed-room placement: ${userFixedRooms.length} fixed + ${rooms.length - userFixedRooms.length} flex`);
     } catch (err) {
       console.warn("[LAYOUT] Fixed-room placement failed, falling back to BSP:", err);
       result = fallbackBSP(rooms, useZones, cls, fpW, fpH, program.adjacency);
@@ -1386,8 +1387,6 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
 
       const spec = specs.find(s => s.name === room.name);
       if (!spec) continue;
-      // Never clamp user-specified rooms — their size is intentional
-      if (spec.preferredWidth && spec.preferredDepth) continue;
 
       const actualArea = room.width * room.depth;
       const targetArea = spec.areaSqm;
