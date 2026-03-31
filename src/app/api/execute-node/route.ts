@@ -28,6 +28,9 @@ import { generateMassingGeometry } from "@/services/massing-generator";
 import { generate3DModel, is3DAIConfigured, calculateKPIs, type BuildingRequirements } from "@/services/threedai-studio";
 import { generateIFCFile } from "@/services/ifc-exporter";
 import { parsePromptToStyle } from "@/services/prompt-style-parser";
+import { generateGLB } from "@/services/glb-generator";
+import { extractMetadata } from "@/services/metadata-extractor";
+import { uploadBuildingAssets, isR2Configured } from "@/lib/r2";
 import { submitDualWalkthrough, submitDualTextToVideo, submitSingleWalkthrough, submitFloorPlanWalkthrough, buildFloorPlanCombinedPrompt } from "@/services/video-service";
 import {
   logWorkflowStart, logRateLimit, logNodeStart, logNodeSuccess,
@@ -5375,6 +5378,37 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
         logger.debug("[GN-001] geometry result:", { floors: geometry.floors, height: geometry.totalHeight, footprint: geometry.footprintArea, gfa: geometry.gfa, buildingType: geometry.buildingType });
 
+        // ── Unified BIM Pipeline: Generate GLB + IFC + Metadata from same geometry ──
+        let assetUrls: { glbUrl: string; ifcUrl: string; metadataUrl: string } | null = null;
+        try {
+          const metadata = extractMetadata(geometry);
+          const metadataJson = JSON.stringify(metadata);
+
+          // Generate GLB and IFC in parallel
+          const [glbBuffer, ifcContent] = await Promise.all([
+            generateGLB(geometry),
+            Promise.resolve(generateIFCFile(geometry, {
+              buildingName: geometry.buildingType,
+              projectName: massingInput.content?.slice(0, 80) || geometry.buildingType,
+            })),
+          ]);
+
+          logger.debug("[GN-001] GLB generated:", { sizeKB: Math.round(glbBuffer.length / 1024) });
+          logger.debug("[GN-001] IFC generated:", { sizeKB: Math.round(ifcContent.length / 1024) });
+          logger.debug("[GN-001] Metadata:", { elements: Object.keys(metadata.elements).length, storeys: metadata.storeys.length });
+
+          // Upload all to R2 if configured
+          if (isR2Configured()) {
+            const buildingId = generateId();
+            assetUrls = await uploadBuildingAssets(glbBuffer, ifcContent, metadataJson, buildingId);
+            if (assetUrls) {
+              logger.debug("[GN-001] Uploaded to R2:", { glb: assetUrls.glbUrl.slice(0, 60), ifc: assetUrls.ifcUrl.slice(0, 60) });
+            }
+          }
+        } catch (pipelineErr) {
+          console.warn("[GN-001] BIM pipeline (GLB/IFC/R2) failed, continuing with procedural fallback:", pipelineErr instanceof Error ? pipelineErr.message : pipelineErr);
+        }
+
         artifact = {
           id: generateId(),
           executionId: executionId ?? "local",
@@ -5396,6 +5430,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
               geometry.floors,
               geometry.buildingType
             ),
+            // ── BIM asset URLs (null if R2 not configured → falls back to ArchitecturalViewer) ──
+            glbUrl: assetUrls?.glbUrl ?? null,
+            ifcUrl: assetUrls?.ifcUrl ?? null,
+            metadataUrl: assetUrls?.metadataUrl ?? null,
           },
           metadata: { engine: "massing-generator", real: true },
           createdAt: new Date(),
@@ -5405,9 +5443,32 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
     } else if (catalogueId === "EX-001") {
       // ── IFC Exporter ──────────────────────────────────────────────────
       // Generates a downloadable .ifc file from upstream data.
+      // Path 0: If upstream GN-001 already uploaded IFC to R2, pass through the URL
       // Path A: Real geometry from GN-001 (_geometry with storeys + footprint)
       // Path B: Structured data from TR-001/TR-003 (_raw with ParsedBrief or BuildingDescription)
       // Path C: Basic numeric fields (floors, footprint, buildingType) from any upstream node
+
+      // ── Path 0: Reuse IFC from GN-001 unified pipeline ──
+      const upstreamIfcUrl = inputData?.ifcUrl as string | undefined;
+      if (upstreamIfcUrl && typeof upstreamIfcUrl === "string" && upstreamIfcUrl.startsWith("http")) {
+        logger.debug("[EX-001] Reusing IFC from upstream GN-001:", upstreamIfcUrl.slice(0, 60));
+        artifact = {
+          id: generateId(),
+          executionId: executionId ?? "local",
+          tileInstanceId,
+          type: "file",
+          data: {
+            url: upstreamIfcUrl,
+            filename: `${(inputData?.buildingType as string || "building").toLowerCase().replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}_combined.ifc`,
+            contentType: "application/x-step",
+            label: "IFC Export (from BIM pipeline)",
+            discipline: "all",
+          },
+          metadata: { engine: "ifc-exporter", real: true, reused: true },
+          createdAt: new Date(),
+        };
+      }
+
       const upstreamGeometry = inputData?._geometry as Record<string, unknown> | undefined;
 
       let resolvedBuildingType = "Mixed-Use Building";

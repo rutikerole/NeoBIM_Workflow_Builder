@@ -298,6 +298,70 @@ export async function uploadIFCToR2(
   }
 }
 
+// ─── Building Assets Upload (GLB + IFC + Metadata) ────────────────────────
+
+export interface BuildingAssetUrls {
+  glbUrl: string;
+  ifcUrl: string;
+  metadataUrl: string;
+}
+
+/**
+ * Upload all building assets (GLB model, IFC file, metadata JSON) to R2 in parallel.
+ * Returns public URLs for all three files, or null if R2 is not configured.
+ */
+export async function uploadBuildingAssets(
+  glbBuffer: Buffer,
+  ifcContent: string,
+  metadataJson: string,
+  buildingId: string,
+): Promise<BuildingAssetUrls | null> {
+  const client = getClient();
+  if (!client) return null;
+
+  const now = new Date();
+  const datePath = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
+  const prefix = `buildings/${datePath}/${buildingId}`;
+
+  const ifcBuffer = Buffer.from(ifcContent, "utf-8");
+  const metaBuffer = Buffer.from(metadataJson, "utf-8");
+
+  const uploads = [
+    { key: `${prefix}/model.glb`, body: glbBuffer, contentType: "model/gltf-binary" },
+    { key: `${prefix}/model.ifc`, body: ifcBuffer, contentType: "application/x-step" },
+    { key: `${prefix}/metadata.json`, body: metaBuffer, contentType: "application/json" },
+  ];
+
+  try {
+    await Promise.all(
+      uploads.map((u) =>
+        client.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: u.key,
+            Body: u.body,
+            ContentType: u.contentType,
+            Metadata: { "uploaded-at": now.toISOString(), "building-id": buildingId },
+          }),
+        ),
+      ),
+    );
+
+    const baseUrl = PUBLIC_URL
+      ? PUBLIC_URL
+      : `https://${BUCKET_NAME}.${ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
+    return {
+      glbUrl: `${baseUrl}/${uploads[0].key}`,
+      ifcUrl: `${baseUrl}/${uploads[1].key}`,
+      metadataUrl: `${baseUrl}/${uploads[2].key}`,
+    };
+  } catch (err) {
+    console.error("[R2] Building assets upload failed:", err);
+    return null;
+  }
+}
+
 // ─── Cleanup ───────────────────────────────────────────────────────────────
 
 interface CleanupResult {
