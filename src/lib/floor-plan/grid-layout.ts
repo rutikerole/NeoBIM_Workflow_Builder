@@ -208,91 +208,96 @@ function gridToCoordinates(
   fpW: number,
   fpH: number,
 ): PlacedRoom[] {
-  const CORRIDOR_HEIGHT = 1.2;
+  if (grid.rows <= 0 || grid.cols <= 0 || grid.cells.length === 0) return [];
 
-  // Build a map of room specs by name
+  const CORRIDOR_HEIGHT = 1.2;
+  const MIN_COL_WIDTH = 2.0;
+  const MIN_ROW_HEIGHT = 2.0;
+
   const specMap = new Map(program.rooms.map(r => [r.name, r]));
 
-  // Step 1: Calculate column widths
-  // Each column's width is proportional to the max target area of rooms in it
+  // Clamp cell indices to grid bounds
+  for (const cell of grid.cells) {
+    cell.row = Math.max(0, Math.min(cell.row, grid.rows - 1));
+    cell.col = Math.max(0, Math.min(cell.col, grid.cols - 1));
+    cell.rowSpan = Math.max(1, Math.min(cell.rowSpan, grid.rows - cell.row));
+    cell.colSpan = Math.max(1, Math.min(cell.colSpan, grid.cols - cell.col));
+  }
+
+  // Step 1: Calculate column widths (proportional to room areas)
   const colWeights = new Array(grid.cols).fill(1);
   for (const cell of grid.cells) {
     if (cell.type === "hallway") continue;
     const spec = specMap.get(cell.name);
-    const weight = spec ? Math.sqrt(spec.areaSqm) : 2;
-    const perCol = weight / cell.colSpan;
-    for (let c = cell.col; c < cell.col + cell.colSpan; c++) {
+    const weight = spec ? Math.max(1, Math.sqrt(spec.areaSqm)) : 2;
+    const perCol = weight / Math.max(cell.colSpan, 1);
+    for (let c = cell.col; c < cell.col + cell.colSpan && c < grid.cols; c++) {
       colWeights[c] = Math.max(colWeights[c], perCol);
     }
   }
 
-  // Normalize column widths to sum to fpW
-  const colTotal = colWeights.reduce((s, w) => s + w, 0);
-  const colWidths = colWeights.map(w => snap(w / colTotal * fpW));
-  // Fix rounding: adjust last column
-  const colSum = colWidths.reduce((s, w) => s + w, 0);
-  colWidths[colWidths.length - 1] = snap(colWidths[colWidths.length - 1] + (fpW - colSum));
-
-  // Enforce minimum column width (2.4m for habitable rooms)
+  // Normalize to footprint width, enforce minimums
+  const colTotal = Math.max(colWeights.reduce((s, w) => s + w, 0), 1);
+  const colWidths = colWeights.map(w => snap(Math.max(MIN_COL_WIDTH, w / colTotal * fpW)));
+  // Re-normalize after minimum enforcement
+  const colSum = Math.max(colWidths.reduce((s, w) => s + w, 0), 1);
+  const colScale = fpW / colSum;
   for (let c = 0; c < colWidths.length; c++) {
-    if (colWidths[c] < 2.0) colWidths[c] = 2.0;
+    colWidths[c] = snap(Math.max(MIN_COL_WIDTH, colWidths[c] * colScale));
   }
-  // Re-normalize
-  const colSum2 = colWidths.reduce((s, w) => s + w, 0);
-  const colScale = fpW / colSum2;
-  for (let c = 0; c < colWidths.length; c++) {
-    colWidths[c] = snap(colWidths[c] * colScale);
-  }
+  // Fix last column to absorb rounding
+  const finalColSum = colWidths.slice(0, -1).reduce((s, w) => s + w, 0);
+  colWidths[colWidths.length - 1] = snap(Math.max(MIN_COL_WIDTH, fpW - finalColSum));
 
   // Step 2: Calculate row heights
-  const rowHeights = new Array(grid.rows).fill(0);
+  const rowHeights = new Array(grid.rows).fill(MIN_ROW_HEIGHT);
   for (let r = 0; r < grid.rows; r++) {
     if (r === grid.corridorRow) {
       rowHeights[r] = CORRIDOR_HEIGHT;
       continue;
     }
-
-    // Find rooms in this row and calculate needed height
+    // Find rooms in this row
     const roomsInRow = grid.cells.filter(c =>
       c.row <= r && r < c.row + c.rowSpan && c.type !== "hallway"
     );
-
-    let maxHeight = 2.4; // minimum row height
+    let maxHeight = MIN_ROW_HEIGHT;
     for (const cell of roomsInRow) {
       const spec = specMap.get(cell.name);
       if (!spec) continue;
-      const cellWidth = colWidths.slice(cell.col, cell.col + cell.colSpan)
+      const cellWidth = colWidths.slice(cell.col, Math.min(cell.col + cell.colSpan, grid.cols))
         .reduce((s, w) => s + w, 0);
-      // Height needed to achieve target area
       const neededHeight = spec.areaSqm / Math.max(cellWidth, 1);
       maxHeight = Math.max(maxHeight, neededHeight);
     }
-    rowHeights[r] = snap(Math.min(maxHeight, fpH * 0.45)); // cap at 45% of footprint
+    rowHeights[r] = snap(Math.max(MIN_ROW_HEIGHT, Math.min(maxHeight, fpH * 0.5)));
   }
 
-  // Normalize row heights to sum to fpH
-  const rowTotal = rowHeights.reduce((s, h) => s + h, 0);
-  const rowScale = fpH / rowTotal;
-  for (let r = 0; r < rowHeights.length; r++) {
-    if (r === grid.corridorRow) continue; // keep corridor at 1.2m
-    rowHeights[r] = snap(rowHeights[r] * rowScale);
-  }
-  // Fix: ensure corridor stays at 1.2m, adjust others
+  // Normalize: corridor stays at 1.2m, scale others to fill fpH
+  const corridorH = grid.corridorRow !== undefined ? CORRIDOR_HEIGHT : 0;
   const nonCorridorSum = rowHeights.reduce((s, h, i) => i === grid.corridorRow ? s : s + h, 0);
-  const availableForRooms = fpH - CORRIDOR_HEIGHT;
-  if (grid.corridorRow !== undefined && nonCorridorSum > 0) {
-    const scale2 = availableForRooms / nonCorridorSum;
+  const available = fpH - corridorH;
+  if (nonCorridorSum > 0 && available > 0) {
+    const scale = available / nonCorridorSum;
     for (let r = 0; r < rowHeights.length; r++) {
       if (r === grid.corridorRow) {
         rowHeights[r] = CORRIDOR_HEIGHT;
       } else {
-        rowHeights[r] = snap(rowHeights[r] * scale2);
+        rowHeights[r] = snap(Math.max(MIN_ROW_HEIGHT, rowHeights[r] * scale));
+      }
+    }
+  }
+  // Fix last non-corridor row to absorb rounding
+  const rowSum = rowHeights.reduce((s, h) => s + h, 0);
+  if (Math.abs(rowSum - fpH) > 0.05) {
+    for (let r = rowHeights.length - 1; r >= 0; r--) {
+      if (r !== grid.corridorRow) {
+        rowHeights[r] = snap(Math.max(MIN_ROW_HEIGHT, rowHeights[r] + (fpH - rowSum)));
+        break;
       }
     }
   }
 
-  // Step 3: Convert to coordinates
-  // Pre-compute cumulative positions
+  // Step 3: Cumulative positions
   const colX: number[] = [0];
   for (let c = 0; c < colWidths.length; c++) {
     colX.push(snap(colX[c] + colWidths[c]));
@@ -302,12 +307,15 @@ function gridToCoordinates(
     rowY.push(snap(rowY[r] + rowHeights[r]));
   }
 
+  // Step 4: Generate PlacedRoom[] — with null safety
   const placed: PlacedRoom[] = [];
   for (const cell of grid.cells) {
-    const x = colX[cell.col];
-    const y = rowY[cell.row];
-    const width = snap(colX[cell.col + cell.colSpan] - x);
-    const depth = snap(rowY[cell.row + cell.rowSpan] - y);
+    const endCol = Math.min(cell.col + cell.colSpan, grid.cols);
+    const endRow = Math.min(cell.row + cell.rowSpan, grid.rows);
+    const x = colX[cell.col] ?? 0;
+    const y = rowY[cell.row] ?? 0;
+    const width = snap(Math.max(1.0, (colX[endCol] ?? fpW) - x));
+    const depth = snap(Math.max(1.0, (rowY[endRow] ?? fpH) - y));
 
     placed.push({
       name: cell.name,
@@ -316,6 +324,8 @@ function gridToCoordinates(
       area: snap(width * depth),
     });
   }
+
+  console.log(`[GRID→COORDS] ${placed.length} rooms, colWidths=[${colWidths.map(w => w.toFixed(1)).join(",")}], rowHeights=[${rowHeights.map(h => h.toFixed(1)).join(",")}]`);
 
   return placed;
 }
@@ -373,17 +383,33 @@ export async function generateGridLayout(
     // Convert grid to coordinates
     const placed = gridToCoordinates(grid, program, fpW, fpH);
 
+    if (placed.length === 0) {
+      console.warn("[GRID] gridToCoordinates returned empty");
+      return null;
+    }
+
+    // Sanity check: no room should have null/NaN/zero dimensions
+    const invalid = placed.find(r =>
+      !r.width || !r.depth || !r.area ||
+      isNaN(r.width) || isNaN(r.depth) || isNaN(r.area) ||
+      r.width < 0.5 || r.depth < 0.5
+    );
+    if (invalid) {
+      console.warn(`[GRID] Invalid room dimensions: ${invalid.name} ${invalid.width}×${invalid.depth}`);
+      return null;
+    }
+
     console.log(`[GRID] Placed ${placed.length} rooms:`,
       placed.map(r => `${r.name}: ${r.width.toFixed(1)}×${r.depth.toFixed(1)}=${(r.width * r.depth).toFixed(1)}m²`).join(", ")
     );
 
-    // Verify: check coverage
+    // Check coverage
     const totalArea = placed.reduce((s, r) => s + r.width * r.depth, 0);
     const coverage = totalArea / (fpW * fpH) * 100;
     console.log(`[GRID] Coverage: ${coverage.toFixed(0)}%`);
 
-    if (coverage < 70) {
-      console.warn("[GRID] Coverage too low, falling back");
+    if (coverage < 70 || coverage > 120) {
+      console.warn(`[GRID] Coverage ${coverage.toFixed(0)}% out of range, falling back`);
       return null;
     }
 
