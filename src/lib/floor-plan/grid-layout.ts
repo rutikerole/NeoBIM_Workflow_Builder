@@ -272,7 +272,22 @@ function gridToCoordinates(
     rowHeights[r] = snap(Math.max(MIN_ROW_HEIGHT, Math.min(maxHeight, fpH * 0.5)));
   }
 
-  // Normalize: corridor stays at 1.2m, scale others to fill fpH
+  // Determine minimum height per row based on room types in that row
+  const rowMinHeights = new Array(grid.rows).fill(MIN_ROW_HEIGHT);
+  for (let r = 0; r < grid.rows; r++) {
+    if (r === grid.corridorRow) { rowMinHeights[r] = CORRIDOR_HEIGHT; continue; }
+    const roomsInRow = grid.cells.filter(c => c.row <= r && r < c.row + c.rowSpan);
+    for (const cell of roomsInRow) {
+      const n = cell.name.toLowerCase();
+      const t = cell.type;
+      if (n.includes("bed") || t === "bedroom") rowMinHeights[r] = Math.max(rowMinHeights[r], 2.7);
+      else if (n.includes("living") || t === "living") rowMinHeights[r] = Math.max(rowMinHeights[r], 2.7);
+      else if (n.includes("dining") || t === "dining") rowMinHeights[r] = Math.max(rowMinHeights[r], 2.4);
+      else if (n.includes("kitchen") || t === "kitchen") rowMinHeights[r] = Math.max(rowMinHeights[r], 2.1);
+    }
+  }
+
+  // Normalize: corridor stays at 1.2m, scale others to fill fpH while respecting mins
   const corridorH = grid.corridorRow !== undefined ? CORRIDOR_HEIGHT : 0;
   const nonCorridorSum = rowHeights.reduce((s, h, i) => i === grid.corridorRow ? s : s + h, 0);
   const available = fpH - corridorH;
@@ -282,7 +297,7 @@ function gridToCoordinates(
       if (r === grid.corridorRow) {
         rowHeights[r] = CORRIDOR_HEIGHT;
       } else {
-        rowHeights[r] = snap(Math.max(MIN_ROW_HEIGHT, rowHeights[r] * scale));
+        rowHeights[r] = snap(Math.max(rowMinHeights[r], rowHeights[r] * scale));
       }
     }
   }
@@ -291,7 +306,7 @@ function gridToCoordinates(
   if (Math.abs(rowSum - fpH) > 0.05) {
     for (let r = rowHeights.length - 1; r >= 0; r--) {
       if (r !== grid.corridorRow) {
-        rowHeights[r] = snap(Math.max(MIN_ROW_HEIGHT, rowHeights[r] + (fpH - rowSum)));
+        rowHeights[r] = snap(Math.max(rowMinHeights[r], rowHeights[r] + (fpH - rowSum)));
         break;
       }
     }
