@@ -6,20 +6,21 @@
  * Runs in Node.js (API routes) — no DOM/canvas required for geometry-only export.
  */
 
-// Minimal DOM polyfill for Three.js GLTFExporter (only needed for texture paths we don't hit)
-if (typeof globalThis.document === "undefined") {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).document = {
-    createElement: () => ({ getContext: () => null, width: 0, height: 0 }),
-  };
-}
-if (typeof globalThis.window === "undefined") {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).window = globalThis;
-}
-
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+
+/**
+ * Apply minimal DOM polyfill for GLTFExporter.
+ * Called lazily inside generateGLB() — never at module load time.
+ */
+function ensureDOMPolyfill() {
+  if (typeof globalThis.document === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).document = {
+      createElement: () => ({ getContext: () => null, width: 0, height: 0 }),
+    };
+  }
+}
 import type { MassingGeometry, GeometryElement, Vertex, Face } from "@/types/geometry";
 import { getMaterialForElement } from "@/services/material-mapping";
 import type { PBRMaterialDef } from "@/services/material-mapping";
@@ -206,6 +207,7 @@ function getCachedMaterial(elementType: string): THREE.Material {
  * Each mesh is named by its element ID for click-to-inspect in the viewer.
  */
 export async function generateGLB(geometry: MassingGeometry): Promise<Buffer> {
+  ensureDOMPolyfill();
   materialCache.clear();
 
   const scene = new THREE.Scene();
