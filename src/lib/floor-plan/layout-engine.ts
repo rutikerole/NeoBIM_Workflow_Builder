@@ -1292,6 +1292,15 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
     const currentArea = room.width * room.depth;
     const nameLower = room.name.toLowerCase();
 
+    // Staircase hard cap by TYPE (BSP can inflate staircases beyond name-match threshold)
+    if (room.type === "staircase" && currentArea > 15) {
+      const scale = Math.sqrt(15 / currentArea);
+      room.width = grid(room.width * scale);
+      room.depth = grid(room.depth * scale);
+      room.area = grid(room.width * room.depth);
+      continue;
+    }
+
     for (const { pattern, max } of MAX_SIZES) {
       if (pattern.test(nameLower) && currentArea > max * 1.5) {
         console.warn(`[SIZE-FIX] ${room.name} is ${currentArea.toFixed(1)} sqm, max should be ${max} sqm`);
@@ -2237,6 +2246,18 @@ export function layoutMultiFloor(program: EnhancedRoomProgram): MultiFloorLayout
 
     // Align staircases vertically across floors
     multiFloorAlignStaircases(floors);
+
+    // Cap staircase sizes after alignment (alignment can swap dimensions)
+    for (const f of floors) {
+      for (const r of f.rooms) {
+        if (r.type === "staircase" && r.width * r.depth > 15) {
+          const scale = Math.sqrt(15 / (r.width * r.depth));
+          r.width = grid(r.width * scale);
+          r.depth = grid(r.depth * scale);
+          r.area = grid(r.width * r.depth);
+        }
+      }
+    }
 
     // Final validation: total rooms across all floors
     const totalOutput = floors.reduce((s, f) => s + f.rooms.length, 0);
