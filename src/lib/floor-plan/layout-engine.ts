@@ -1369,104 +1369,179 @@ function enforceCorridorCap(rooms: PlacedRoom[], totalFloorArea: number): Placed
 // ── NBC minimum dimension enforcement ─────────────────────────────────────
 
 /**
- * HARD CONSTRAINT SAFETY NET — enforces NBC area minimums and maximums.
+ * HARD CONSTRAINT SAFETY NET — boundary redistribution between adjacent rooms.
  *
- * Runs as the ABSOLUTE LAST STEP on every layout (BSP, spine, AI, anything).
- * Scales individual rooms that violate area constraints. Does not move
- * boundaries between rooms — just scales the violating room in place.
+ * The ONLY approach that works in tiled BSP layouts: find an UNDERSIZED room
+ * sharing a wall with an OVERSIZED room, and move the shared boundary to
+ * redistribute area. Both rooms benefit — the small one grows, the big one
+ * shrinks toward its target. This is NOT whack-a-mole because we ONLY move
+ * boundaries where BOTH sides improve or stay compliant.
  *
- * This catches: Living Room 6.7m² (needs 9.5m²), Bathroom 15.2m² (max 4.5m²),
- * Master Bedroom 6.6m² (needs 12.0m²), etc.
+ * Also shrinks oversized bathrooms (standalone — doesn't need a neighbor).
  */
 export function enforceHardAreaConstraints(rooms: PlacedRoom[]): PlacedRoom[] {
   try {
-    for (let idx = 0; idx < rooms.length; idx++) {
-      const room = rooms[idx];
-      const n = room.name.toLowerCase();
-      const t = room.type;
+    const TOL = 0.20;
+
+    // Helper: get NBC constraints for a room by name/type
+    function getRoomConstraints(r: PlacedRoom): { minArea: number; maxArea: number } {
+      const n = r.name.toLowerCase();
+      const t = r.type;
+      if (n.includes("master") && (n.includes("bed") || t === "bedroom")) return { minArea: 12.0, maxArea: 25.0 };
+      if (n.includes("bed") || t === "bedroom") return { minArea: 9.5, maxArea: 22.0 };
+      if (n.includes("living") || t === "living") return { minArea: 9.5, maxArea: 30.0 };
+      if (n.includes("dining") || t === "dining") return { minArea: 9.5, maxArea: 20.0 };
+      if (n.includes("kitchen") || t === "kitchen") return { minArea: 5.5, maxArea: 18.0 };
+      if (n.includes("bath") || n.includes("toilet") || n.includes("wc") || t === "bathroom") return { minArea: 2.8, maxArea: 5.0 };
+      if (n.includes("study") || n.includes("office") || t === "office") return { minArea: 6.0, maxArea: 16.0 };
+      if (n.includes("staircase") || t === "staircase") return { minArea: 4.0, maxArea: 15.0 };
+      return { minArea: 0, maxArea: 999 };
+    }
+
+    // Step 1: Shrink oversized bathrooms (standalone — always safe)
+    for (const room of rooms) {
+      const c = getRoomConstraints(room);
       const area = room.width * room.depth;
-
-      let minArea = 0;
-      let maxArea = Infinity;
-      let minDim = 0;
-
-      if (n.includes("master") && (n.includes("bed") || t === "bedroom")) {
-        minArea = 12.0; minDim = 3.0;
-      } else if (n.includes("bed") || t === "bedroom") {
-        minArea = 9.5; minDim = 2.7;
-      } else if (n.includes("living") || t === "living") {
-        minArea = 9.5; minDim = 2.4;
-      } else if (n.includes("dining") || t === "dining") {
-        minArea = 9.5; minDim = 2.4;
-      } else if (n.includes("kitchen") || t === "kitchen") {
-        minArea = 5.5; minDim = 2.1;
-      } else if (n.includes("bath") || n.includes("toilet") || n.includes("wc") || t === "bathroom") {
-        minArea = 2.8; maxArea = 5.0; minDim = 1.2;
-      } else if (n.includes("study") || n.includes("office") || t === "office") {
-        minArea = 6.0; minDim = 2.4;
-      } else if (n.includes("corridor") || n.includes("hallway") || t === "hallway") {
-        minDim = 1.2;
-      }
-
-      const saved = { width: room.width, depth: room.depth, area: room.area };
-
-      // Scale DOWN if area too big (bathrooms) — shrinking never causes overlaps
-      if (maxArea < Infinity && area > maxArea * 1.1) {
-        const scale = Math.sqrt(maxArea * 0.95 / Math.max(area, 0.1));
+      if (c.maxArea < 10 && area > c.maxArea * 1.1) {
+        const scale = Math.sqrt(c.maxArea * 0.95 / Math.max(area, 0.1));
         room.width = grid(room.width * scale);
         room.depth = grid(room.depth * scale);
         room.area = grid(room.width * room.depth);
       }
-
-      // Scale UP if area too small — but ONLY if it won't overlap neighbors
-      // Skip upscaling for bathrooms (they're small by design, don't force them bigger)
-      const isBathType = n.includes("bath") || n.includes("toilet") || n.includes("wc") || t === "bathroom";
-      if (minArea > 0 && !isBathType && room.width * room.depth < minArea * 0.95) {
-        const scale = Math.sqrt(minArea * 1.05 / Math.max(room.width * room.depth, 0.1));
-        const newW = grid(room.width * scale);
-        const newD = grid(room.depth * scale);
-
-        // Check if scaled room overlaps any neighbor
-        let wouldOverlap = false;
-        for (let j = 0; j < rooms.length; j++) {
-          if (j === idx) continue;
-          const other = rooms[j];
-          const ox = Math.min(room.x + newW, other.x + other.width) - Math.max(room.x, other.x);
-          const oy = Math.min(room.y + newD, other.y + other.depth) - Math.max(room.y, other.y);
-          if (ox > 0.15 && oy > 0.15) { wouldOverlap = true; break; }
-        }
-
-        if (!wouldOverlap) {
-          room.width = newW;
-          room.depth = newD;
-          room.area = grid(room.width * room.depth);
-        }
-        // If would overlap, leave room undersized — better than breaking tiling
-      }
-
-      // Enforce minimum dimension (only if won't overlap)
-      if (minDim > 0) {
-        const preW = room.width, preD = room.depth;
-        if (room.width < minDim) room.width = grid(minDim);
-        if (room.depth < minDim) room.depth = grid(minDim);
-        if (room.width !== preW || room.depth !== preD) {
-          // Check overlap
-          let wouldOverlap = false;
-          for (let j = 0; j < rooms.length; j++) {
-            if (j === idx) continue;
-            const other = rooms[j];
-            const ox = Math.min(room.x + room.width, other.x + other.width) - Math.max(room.x, other.x);
-            const oy = Math.min(room.y + room.depth, other.y + other.depth) - Math.max(room.y, other.y);
-            if (ox > 0.15 && oy > 0.15) { wouldOverlap = true; break; }
-          }
-          if (wouldOverlap) {
-            room.width = saved.width;
-            room.depth = saved.depth;
-          }
-          room.area = grid(room.width * room.depth);
-        }
-      }
     }
+
+    // Step 2: Boundary redistribution — fix undersized rooms by taking from oversized neighbors
+    // Run multiple passes (each pass may enable new fixes)
+    for (let pass = 0; pass < 5; pass++) {
+      let anyFixed = false;
+
+      for (let i = 0; i < rooms.length; i++) {
+        const small = rooms[i];
+        const sc = getRoomConstraints(small);
+        const smallArea = small.width * small.depth;
+        if (sc.minArea <= 0 || smallArea >= sc.minArea * 0.95) continue; // room is fine
+
+        // Find an adjacent room that is oversized (or at least has surplus to give)
+        for (let j = 0; j < rooms.length; j++) {
+          if (j === i) continue;
+          const big = rooms[j];
+          const bc = getRoomConstraints(big);
+          const bigArea = big.width * big.depth;
+
+          // The big room must have surplus: its area > its minArea * 1.2
+          // (we don't take from rooms that would become undersized)
+          if (bigArea < bc.minArea * 1.2) continue;
+
+          // Check if they share a boundary
+          // Horizontal boundary: small.y+small.depth ≈ big.y OR big.y+big.depth ≈ small.y
+          const shareBottom = Math.abs((small.y + small.depth) - big.y) < TOL;
+          const shareTop = Math.abs((big.y + big.depth) - small.y) < TOL;
+          const hOverlap = Math.min(small.x + small.width, big.x + big.width) - Math.max(small.x, big.x);
+
+          if ((shareBottom || shareTop) && hOverlap > 0.5) {
+            // Move horizontal boundary: give depth to small, take from big
+            const deficit = sc.minArea - smallArea;
+            // How much depth to move: deficit / overlap_width (approximate)
+            const shiftNeeded = Math.min(deficit / Math.max(hOverlap, 1), big.depth * 0.4);
+            const shift = grid(Math.max(0.2, Math.min(shiftNeeded, 2.0)));
+
+            // Check big won't go below its minimum
+            const bigNewDepth = big.depth - shift;
+            if (bigNewDepth * big.width < bc.minArea * 0.95) continue;
+            if (bigNewDepth < 1.5) continue;
+
+            if (shareBottom) {
+              // Small is above big. Move boundary down = small.depth grows, big.depth shrinks, big.y moves down
+              small.depth = grid(small.depth + shift);
+              big.y = grid(big.y + shift);
+              big.depth = grid(big.depth - shift);
+            } else {
+              // Small is below big. Move boundary up = small grows up, big shrinks
+              small.y = grid(small.y - shift);
+              small.depth = grid(small.depth + shift);
+              big.depth = grid(big.depth - shift);
+            }
+            small.area = grid(small.width * small.depth);
+            big.area = grid(big.width * big.depth);
+            anyFixed = true;
+            break; // Move to next undersized room
+          }
+
+          // Vertical boundary: small.x+small.width ≈ big.x OR big.x+big.width ≈ small.x
+          const shareRight = Math.abs((small.x + small.width) - big.x) < TOL;
+          const shareLeft = Math.abs((big.x + big.width) - small.x) < TOL;
+          const vOverlap = Math.min(small.y + small.depth, big.y + big.depth) - Math.max(small.y, big.y);
+
+          if ((shareRight || shareLeft) && vOverlap > 0.5) {
+            const deficit = sc.minArea - smallArea;
+            const shiftNeeded = Math.min(deficit / Math.max(vOverlap, 1), big.width * 0.4);
+            const shift = grid(Math.max(0.2, Math.min(shiftNeeded, 2.0)));
+
+            const bigNewWidth = big.width - shift;
+            if (bigNewWidth * big.depth < bc.minArea * 0.95) continue;
+            if (bigNewWidth < 1.5) continue;
+
+            if (shareRight) {
+              small.width = grid(small.width + shift);
+              big.x = grid(big.x + shift);
+              big.width = grid(big.width - shift);
+            } else {
+              small.x = grid(small.x - shift);
+              small.width = grid(small.width + shift);
+              big.width = grid(big.width - shift);
+            }
+            small.area = grid(small.width * small.depth);
+            big.area = grid(big.width * big.depth);
+            anyFixed = true;
+            break;
+          }
+        }
+      }
+
+      if (!anyFixed) break;
+    }
+
+    // Step 3: Fix minimum dimensions — reshape narrow rooms (overlap-safe)
+    for (let idx = 0; idx < rooms.length; idx++) {
+      const room = rooms[idx];
+      const n = room.name.toLowerCase();
+      const t = room.type;
+      let minDim = 0;
+      if (n.includes("master") && (n.includes("bed") || t === "bedroom")) minDim = 3.0;
+      else if (n.includes("bed") || t === "bedroom") minDim = 2.7;
+      else if (n.includes("living") || t === "living") minDim = 2.4;
+      else if (n.includes("dining") || t === "dining") minDim = 2.4;
+      else if (n.includes("kitchen") || t === "kitchen") minDim = 2.1;
+      else if (n.includes("bath") || n.includes("toilet") || t === "bathroom") minDim = 1.2;
+      else if (n.includes("corridor") || n.includes("hallway") || t === "hallway") minDim = 1.2;
+      else if (n.includes("study") || n.includes("office") || t === "office") minDim = 2.4;
+
+      if (minDim <= 0) continue;
+      if (Math.min(room.width, room.depth) >= minDim - 0.05) continue;
+
+      const savedW = room.width, savedD = room.depth;
+      const area = room.width * room.depth;
+      if (room.width < room.depth) {
+        room.width = grid(minDim);
+        room.depth = grid(Math.max(minDim, area / room.width));
+      } else {
+        room.depth = grid(minDim);
+        room.width = grid(Math.max(minDim, area / room.depth));
+      }
+
+      // Check overlap — revert if reshaping causes collision
+      let wouldOverlap = false;
+      for (let j = 0; j < rooms.length; j++) {
+        if (j === idx) continue;
+        const other = rooms[j];
+        const ox = Math.min(room.x + room.width, other.x + other.width) - Math.max(room.x, other.x);
+        const oy = Math.min(room.y + room.depth, other.y + other.depth) - Math.max(room.y, other.y);
+        if (ox > 0.15 && oy > 0.15) { wouldOverlap = true; break; }
+      }
+      if (wouldOverlap) { room.width = savedW; room.depth = savedD; }
+      room.area = grid(room.width * room.depth);
+    }
+
     return rooms;
   } catch {
     return rooms;
