@@ -1228,11 +1228,38 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
     circulation: rooms.filter(r => r.zone === "circulation").map(r => r.name),
   };
 
+  // ── Additional rooms from prompt keywords ──
+  // Only add if the user explicitly mentioned them (no false positives on basic prompts)
+  const EXTRA_ROOMS: Array<{ pattern: RegExp; name: string; type: string; area: number; zone: RoomSpec["zone"] }> = [
+    { pattern: /servant\s*quarter|maid\s*room/i, name: "Servant Quarter", type: "bedroom", area: 8, zone: "service" },
+    { pattern: /servant\s*toilet|maid\s*toilet/i, name: "Servant Toilet", type: "bathroom", area: 3, zone: "service" },
+    { pattern: /pooja\s*room|puja\s*room|prayer\s*room/i, name: "Pooja Room", type: "other", area: 4, zone: "private" },
+    { pattern: /walk[\s-]*in\s*(wardrobe|closet)/i, name: "Walk-in Closet", type: "storage", area: 5, zone: "private" },
+    { pattern: /study\s*room|home\s*office/i, name: "Study Room", type: "office", area: 10, zone: "private" },
+    { pattern: /\bparking\b|\bgarage\b/i, name: "Car Parking", type: "other", area: 25, zone: "service" },
+  ];
+  for (const { pattern, name, type, area, zone } of EXTRA_ROOMS) {
+    if (pattern.test(p) && !rooms.some(r => r.name === name)) {
+      rooms.push({ name, type, areaSqm: area, zone, mustHaveExteriorWall: type !== "bathroom" && type !== "storage", adjacentTo: [], preferNear: [] });
+    }
+  }
+
+  // ── Vastu, facing, area overrides ──
+  const isVastuRequested = /vastu|vaastu/i.test(p);
+  const facingMatch = p.match(/\b(north|south|east|west)\s*[-–]?\s*facing/i);
+  const facingDirection = facingMatch ? facingMatch[1].toLowerCase() as EnhancedRoomProgram["facingDirection"] : undefined;
+
+  // Override totalArea if sqft specified
+  const sqftMatch = p.match(/(\d+)\s*(?:sq\s*ft|sqft|sft|square\s*f(?:ee|oo)t)/i);
+  const resolvedArea = sqftMatch ? Math.round(parseInt(sqftMatch[1]) * 0.0929) : totalArea;
+  // Only override if user-specified area is reasonable
+  const finalArea = sqftMatch ? resolvedArea : totalArea;
+
   const projectName = `${bhk}BHK ${buildingType.split(" ").pop()}`;
 
   return {
     buildingType,
-    totalAreaSqm: totalArea,
+    totalAreaSqm: finalArea,
     numFloors,
     rooms,
     adjacency,
@@ -1240,5 +1267,8 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
     entranceRoom: bhk <= 2 ? "Living + Dining Room" : "Living Room",
     circulationNotes: `Entrance leads to ${bhk <= 2 ? "living + dining" : "corridor separating public and private zones"}.`,
     projectName,
+    isVastuRequested,
+    facingDirection,
+    originalPrompt: prompt,
   };
 }
