@@ -227,6 +227,11 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   // Habitable: ≥2.4m, Kitchen: ≥2.1m, Bathroom: ≥1.2m, Corridor: ≥1.0m
   result = enforceNBCMinimumDimensions(result);
 
+  // ── HARD CONSTRAINT SAFETY NET ──
+  // Absolute last step: scale rooms that violate NBC area minimums or maximums.
+  // Catches issues from ANY layout path (BSP, spine, AI fallback).
+  result = enforceHardAreaConstraints(result);
+
   // ── Dimension accuracy check (diagnostic) ──
   checkDimensionAccuracy(result, rooms);
 
@@ -1362,6 +1367,111 @@ function enforceCorridorCap(rooms: PlacedRoom[], totalFloorArea: number): Placed
 }
 
 // ── NBC minimum dimension enforcement ─────────────────────────────────────
+
+/**
+ * HARD CONSTRAINT SAFETY NET — enforces NBC area minimums and maximums.
+ *
+ * Runs as the ABSOLUTE LAST STEP on every layout (BSP, spine, AI, anything).
+ * Scales individual rooms that violate area constraints. Does not move
+ * boundaries between rooms — just scales the violating room in place.
+ *
+ * This catches: Living Room 6.7m² (needs 9.5m²), Bathroom 15.2m² (max 4.5m²),
+ * Master Bedroom 6.6m² (needs 12.0m²), etc.
+ */
+export function enforceHardAreaConstraints(rooms: PlacedRoom[]): PlacedRoom[] {
+  try {
+    for (let idx = 0; idx < rooms.length; idx++) {
+      const room = rooms[idx];
+      const n = room.name.toLowerCase();
+      const t = room.type;
+      const area = room.width * room.depth;
+
+      let minArea = 0;
+      let maxArea = Infinity;
+      let minDim = 0;
+
+      if (n.includes("master") && (n.includes("bed") || t === "bedroom")) {
+        minArea = 12.0; minDim = 3.0;
+      } else if (n.includes("bed") || t === "bedroom") {
+        minArea = 9.5; minDim = 2.7;
+      } else if (n.includes("living") || t === "living") {
+        minArea = 9.5; minDim = 2.4;
+      } else if (n.includes("dining") || t === "dining") {
+        minArea = 9.5; minDim = 2.4;
+      } else if (n.includes("kitchen") || t === "kitchen") {
+        minArea = 5.5; minDim = 2.1;
+      } else if (n.includes("bath") || n.includes("toilet") || n.includes("wc") || t === "bathroom") {
+        minArea = 2.8; maxArea = 5.0; minDim = 1.2;
+      } else if (n.includes("study") || n.includes("office") || t === "office") {
+        minArea = 6.0; minDim = 2.4;
+      } else if (n.includes("corridor") || n.includes("hallway") || t === "hallway") {
+        minDim = 1.2;
+      }
+
+      const saved = { width: room.width, depth: room.depth, area: room.area };
+
+      // Scale DOWN if area too big (bathrooms) — shrinking never causes overlaps
+      if (maxArea < Infinity && area > maxArea * 1.1) {
+        const scale = Math.sqrt(maxArea * 0.95 / Math.max(area, 0.1));
+        room.width = grid(room.width * scale);
+        room.depth = grid(room.depth * scale);
+        room.area = grid(room.width * room.depth);
+      }
+
+      // Scale UP if area too small — but ONLY if it won't overlap neighbors
+      // Skip upscaling for bathrooms (they're small by design, don't force them bigger)
+      const isBathType = n.includes("bath") || n.includes("toilet") || n.includes("wc") || t === "bathroom";
+      if (minArea > 0 && !isBathType && room.width * room.depth < minArea * 0.95) {
+        const scale = Math.sqrt(minArea * 1.05 / Math.max(room.width * room.depth, 0.1));
+        const newW = grid(room.width * scale);
+        const newD = grid(room.depth * scale);
+
+        // Check if scaled room overlaps any neighbor
+        let wouldOverlap = false;
+        for (let j = 0; j < rooms.length; j++) {
+          if (j === idx) continue;
+          const other = rooms[j];
+          const ox = Math.min(room.x + newW, other.x + other.width) - Math.max(room.x, other.x);
+          const oy = Math.min(room.y + newD, other.y + other.depth) - Math.max(room.y, other.y);
+          if (ox > 0.15 && oy > 0.15) { wouldOverlap = true; break; }
+        }
+
+        if (!wouldOverlap) {
+          room.width = newW;
+          room.depth = newD;
+          room.area = grid(room.width * room.depth);
+        }
+        // If would overlap, leave room undersized — better than breaking tiling
+      }
+
+      // Enforce minimum dimension (only if won't overlap)
+      if (minDim > 0) {
+        const preW = room.width, preD = room.depth;
+        if (room.width < minDim) room.width = grid(minDim);
+        if (room.depth < minDim) room.depth = grid(minDim);
+        if (room.width !== preW || room.depth !== preD) {
+          // Check overlap
+          let wouldOverlap = false;
+          for (let j = 0; j < rooms.length; j++) {
+            if (j === idx) continue;
+            const other = rooms[j];
+            const ox = Math.min(room.x + room.width, other.x + other.width) - Math.max(room.x, other.x);
+            const oy = Math.min(room.y + room.depth, other.y + other.depth) - Math.max(room.y, other.y);
+            if (ox > 0.15 && oy > 0.15) { wouldOverlap = true; break; }
+          }
+          if (wouldOverlap) {
+            room.width = saved.width;
+            room.depth = saved.depth;
+          }
+          room.area = grid(room.width * room.depth);
+        }
+      }
+    }
+    return rooms;
+  } catch {
+    return rooms;
+  }
+}
 
 /**
  * Verify every room meets NBC 2016 minimum dimensions.

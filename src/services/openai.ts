@@ -2148,13 +2148,16 @@ export async function generateFloorPlan(
         const aiPlaced = await generateAISpatialLayout(roomProgram, aiFpW, aiFpH, userApiKey);
 
         if (aiPlaced && aiPlaced.length > 0) {
-          console.log(`[generateFloorPlan] AI spatial layout accepted: ${aiPlaced.length} rooms`);
+          // Run hard constraint safety net on AI output too
+          const { enforceHardAreaConstraints } = await import("@/lib/floor-plan/layout-engine");
+          const safePlaced = enforceHardAreaConstraints(aiPlaced);
+          console.log(`[generateFloorPlan] AI spatial layout accepted: ${safePlaced.length} rooms`);
 
-          const fpWidthM = Math.max(...aiPlaced.map(r => r.x + r.width));
-          const fpHeightM = Math.max(...aiPlaced.map(r => r.y + r.depth));
+          const fpWidthM = Math.max(...safePlaced.map(r => r.x + r.width));
+          const fpHeightM = Math.max(...safePlaced.map(r => r.y + r.depth));
           const title = `${typology} — Floor Plan`;
 
-          const posRooms: PositionedRoom[] = aiPlaced.map(r => ({
+          const posRooms: PositionedRoom[] = safePlaced.map(r => ({
             name: r.name, type: r.type, area: r.area,
             x: r.x, y: r.y, width: r.width, depth: r.depth,
           }));
