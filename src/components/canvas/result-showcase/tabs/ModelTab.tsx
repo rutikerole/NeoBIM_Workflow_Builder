@@ -19,6 +19,11 @@ const Building3DViewer = dynamic(
   { ssr: false }
 );
 
+const BIMViewer = dynamic(
+  () => import("../../artifacts/BIMViewer"),
+  { ssr: false }
+);
+
 const FloorPlanEditor = dynamic(
   () => import("../../artifacts/FloorPlanEditor").then(m => ({ default: m.FloorPlanEditor })),
   { ssr: false }
@@ -883,6 +888,23 @@ function ProceduralViewer({ model }: { model: ProceduralModelData }) {
 }
 
 function GlbViewer({ model }: { model: GlbModelData }) {
+  const viewerHeight = typeof window !== "undefined" ? window.innerHeight - 180 : 600;
+
+  // Use BIMViewer when metadata is available (from unified pipeline)
+  if (model.metadataUrl) {
+    return (
+      <div style={{ width: "100%", height: "100%", position: "relative" }}>
+        <BIMViewer
+          glbUrl={model.glbUrl}
+          metadataUrl={model.metadataUrl}
+          ifcUrl={model.ifcUrl}
+          height={viewerHeight}
+        />
+      </div>
+    );
+  }
+
+  // Fallback to basic GLB viewer (for external models without metadata)
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       {model.thumbnailUrl && (
@@ -893,7 +915,7 @@ function GlbViewer({ model }: { model: GlbModelData }) {
       )}
       <Building3DViewer
         glbUrl={model.glbUrl}
-        height={typeof window !== "undefined" ? window.innerHeight - 180 : 600}
+        height={viewerHeight}
       />
     </div>
   );

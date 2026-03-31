@@ -363,6 +363,13 @@ export function generateRoomsForBuilding(
   const footprintW = Math.sqrt(footprint / ratio);
   const footprintD = footprintW * ratio;
 
+  // Podium-tower: wider base for first 2-3 floors, narrower tower above
+  const isPodiumTower = style.typology === "podium-tower" && floors >= 5;
+  const podiumFloors = isPodiumTower ? Math.min(3, Math.floor(floors * 0.2) + 1) : 0;
+  const podiumScale = 1.3; // podium is 30% wider than tower
+  const podiumW = isPodiumTower ? footprintW * podiumScale : footprintW;
+  const podiumD = isPodiumTower ? footprintD * podiumScale : footprintD;
+
   const allRooms: RoomDef[] = [];
   const maxFloors = Math.max(1, Math.min(floors, style.maxFloorCap ?? 30));
 
@@ -375,10 +382,17 @@ export function generateRoomsForBuilding(
   if (maxFloors > 12) detailedFloors.add(Math.floor(maxFloors * 0.75));
 
   for (let f = 0; f < maxFloors; f++) {
+    // Podium floors use wider footprint and commercial usage
+    const floorW = isPodiumTower && f < podiumFloors ? podiumW : footprintW;
+    const floorD = isPodiumTower && f < podiumFloors ? podiumD : footprintD;
+    const floorStyle = isPodiumTower && f < podiumFloors
+      ? { ...style, usage: "commercial" as const }
+      : style;
+
     if (maxFloors <= 12 || detailedFloors.has(f)) {
-      allRooms.push(...generateFloorLayout(f, maxFloors, style, footprintW, footprintD));
+      allRooms.push(...generateFloorLayout(f, maxFloors, floorStyle, floorW, floorD));
     } else {
-      allRooms.push(...generateSimplifiedFloor(f, maxFloors, style, footprintW, footprintD));
+      allRooms.push(...generateSimplifiedFloor(f, maxFloors, floorStyle, floorW, floorD));
     }
   }
 
@@ -448,6 +462,193 @@ function getWallMaterial(type: RoomType, mats: MaterialLibrary, isAccent = false
   }
 }
 
+// ─── Brise-Soleil Facade ─────────────────────────────────────────────────────
+
+function createBriseSoleilFacade(
+  pos: THREE.Vector3,
+  length: number,
+  height: number,
+  isHorizontal: boolean,
+  mats: MaterialLibrary,
+  parent: THREE.Group,
+  wallMat: THREE.Material
+) {
+  const frameHeight = height - 0.24;
+  const finSpacing = 0.4;
+  const finDepth = 0.25;
+  const finThickness = 0.03;
+  const numFins = Math.max(2, Math.floor(frameHeight / finSpacing));
+
+  if (isHorizontal) {
+    // Back wall (recessed glazing)
+    const glassGeo = new THREE.BoxGeometry(length - 0.1, frameHeight, 0.02);
+    const glassMesh = new THREE.Mesh(glassGeo, mats.glass);
+    glassMesh.position.set(pos.x, pos.y, pos.z);
+    parent.add(glassMesh);
+
+    // Spandrel strip at slab level
+    const spandrelGeo = new THREE.BoxGeometry(length - 0.1, 0.3, 0.04);
+    const spandrelMesh = new THREE.Mesh(spandrelGeo, mats.spandrelPanel);
+    spandrelMesh.position.set(pos.x, pos.y - frameHeight / 2 + 0.15, pos.z);
+    parent.add(spandrelMesh);
+
+    // Horizontal fins (louvers)
+    for (let i = 0; i < numFins; i++) {
+      const fy = pos.y - frameHeight / 2 + (i + 0.5) * (frameHeight / numFins);
+      const finGeo = new THREE.BoxGeometry(length, finThickness, finDepth);
+      const finMesh = new THREE.Mesh(finGeo, mats.briseSoleilFin);
+      finMesh.position.set(pos.x, fy, pos.z + finDepth / 2 + 0.02);
+      // Tilt fins 15 degrees for solar shading
+      finMesh.rotation.x = -Math.PI / 12;
+      parent.add(finMesh);
+    }
+
+    // Vertical support mullions (every 1.5m)
+    const mullionCount = Math.max(2, Math.floor(length / 1.5));
+    for (let i = 0; i <= mullionCount; i++) {
+      const mx = pos.x - length / 2 + (i / mullionCount) * length;
+      const mGeo = new THREE.BoxGeometry(0.04, frameHeight, finDepth + 0.04);
+      const mMesh = new THREE.Mesh(mGeo, mats.metal);
+      mMesh.position.set(mx, pos.y, pos.z + finDepth / 2);
+      parent.add(mMesh);
+    }
+  } else {
+    // Same for vertical walls
+    const glassGeo = new THREE.BoxGeometry(0.02, frameHeight, length - 0.1);
+    const glassMesh = new THREE.Mesh(glassGeo, mats.glass);
+    glassMesh.position.set(pos.x, pos.y, pos.z);
+    parent.add(glassMesh);
+
+    const spandrelGeo = new THREE.BoxGeometry(0.04, 0.3, length - 0.1);
+    const spandrelMesh = new THREE.Mesh(spandrelGeo, mats.spandrelPanel);
+    spandrelMesh.position.set(pos.x, pos.y - frameHeight / 2 + 0.15, pos.z);
+    parent.add(spandrelMesh);
+
+    for (let i = 0; i < numFins; i++) {
+      const fy = pos.y - frameHeight / 2 + (i + 0.5) * (frameHeight / numFins);
+      const finGeo = new THREE.BoxGeometry(finDepth, finThickness, length);
+      const finMesh = new THREE.Mesh(finGeo, mats.briseSoleilFin);
+      finMesh.position.set(pos.x + finDepth / 2 + 0.02, fy, pos.z);
+      finMesh.rotation.z = Math.PI / 12;
+      parent.add(finMesh);
+    }
+
+    const mullionCount = Math.max(2, Math.floor(length / 1.5));
+    for (let i = 0; i <= mullionCount; i++) {
+      const mz = pos.z - length / 2 + (i / mullionCount) * length;
+      const mGeo = new THREE.BoxGeometry(finDepth + 0.04, frameHeight, 0.04);
+      const mMesh = new THREE.Mesh(mGeo, mats.metal);
+      mMesh.position.set(pos.x + finDepth / 2, pos.y, mz);
+      parent.add(mMesh);
+    }
+  }
+}
+
+// ─── Ribbon Window Facade ────────────────────────────────────────────────────
+
+function createRibbonWindowFacade(
+  pos: THREE.Vector3,
+  length: number,
+  height: number,
+  thickness: number,
+  isHorizontal: boolean,
+  mats: MaterialLibrary,
+  parent: THREE.Group,
+  wallMat: THREE.Material
+) {
+  const frameHeight = height - 0.12;
+  // Ribbon windows: continuous horizontal glass band with solid wall above and below
+  const ribbonH = frameHeight * 0.4; // 40% of floor height is glass
+  const sillH = frameHeight * 0.3;   // 30% solid below
+  const headerH = frameHeight - ribbonH - sillH; // 30% solid above
+
+  if (isHorizontal) {
+    // Solid wall below (sill zone)
+    if (sillH > 0.1) {
+      const sillGeo = new THREE.BoxGeometry(length, sillH, thickness);
+      const sillMesh = new THREE.Mesh(sillGeo, wallMat);
+      sillMesh.position.set(pos.x, pos.y - frameHeight / 2 + sillH / 2 + 0.06, pos.z);
+      parent.add(sillMesh);
+    }
+
+    // Continuous glass ribbon
+    const glassGeo = new THREE.BoxGeometry(length - 0.05, ribbonH, 0.02);
+    const glassMesh = new THREE.Mesh(glassGeo, mats.glass);
+    glassMesh.position.set(pos.x, pos.y - frameHeight / 2 + sillH + ribbonH / 2 + 0.06, pos.z);
+    parent.add(glassMesh);
+
+    // Thin metal frame at top and bottom of ribbon
+    for (const oy of [0, ribbonH]) {
+      const frameMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(length, 0.03, 0.05),
+        mats.metal
+      );
+      frameMesh.position.set(pos.x, pos.y - frameHeight / 2 + sillH + oy + 0.06, pos.z);
+      parent.add(frameMesh);
+    }
+
+    // Solid wall above (header zone)
+    if (headerH > 0.1) {
+      const headerGeo = new THREE.BoxGeometry(length, headerH, thickness);
+      const headerMesh = new THREE.Mesh(headerGeo, wallMat);
+      headerMesh.position.set(pos.x, pos.y + frameHeight / 2 - headerH / 2 - 0.06, pos.z);
+      parent.add(headerMesh);
+    }
+
+    // Subtle vertical mullion divisions every 2m
+    const divCount = Math.max(1, Math.floor(length / 2));
+    for (let i = 1; i < divCount; i++) {
+      const dx = pos.x - length / 2 + (i / divCount) * length;
+      const divMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, ribbonH, 0.04),
+        mats.metal
+      );
+      divMesh.position.set(dx, pos.y - frameHeight / 2 + sillH + ribbonH / 2 + 0.06, pos.z);
+      parent.add(divMesh);
+    }
+  } else {
+    // Vertical wall version
+    if (sillH > 0.1) {
+      const sillGeo = new THREE.BoxGeometry(thickness, sillH, length);
+      const sillMesh = new THREE.Mesh(sillGeo, wallMat);
+      sillMesh.position.set(pos.x, pos.y - frameHeight / 2 + sillH / 2 + 0.06, pos.z);
+      parent.add(sillMesh);
+    }
+
+    const glassGeo = new THREE.BoxGeometry(0.02, ribbonH, length - 0.05);
+    const glassMesh = new THREE.Mesh(glassGeo, mats.glass);
+    glassMesh.position.set(pos.x, pos.y - frameHeight / 2 + sillH + ribbonH / 2 + 0.06, pos.z);
+    parent.add(glassMesh);
+
+    for (const oy of [0, ribbonH]) {
+      const frameMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, 0.03, length),
+        mats.metal
+      );
+      frameMesh.position.set(pos.x, pos.y - frameHeight / 2 + sillH + oy + 0.06, pos.z);
+      parent.add(frameMesh);
+    }
+
+    if (headerH > 0.1) {
+      const headerGeo = new THREE.BoxGeometry(thickness, headerH, length);
+      const headerMesh = new THREE.Mesh(headerGeo, wallMat);
+      headerMesh.position.set(pos.x, pos.y + frameHeight / 2 - headerH / 2 - 0.06, pos.z);
+      parent.add(headerMesh);
+    }
+
+    const divCount = Math.max(1, Math.floor(length / 2));
+    for (let i = 1; i < divCount; i++) {
+      const dz = pos.z - length / 2 + (i / divCount) * length;
+      const divMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, ribbonH, 0.02),
+        mats.metal
+      );
+      divMesh.position.set(pos.x, pos.y - frameHeight / 2 + sillH + ribbonH / 2 + 0.06, dz);
+      parent.add(divMesh);
+    }
+  }
+}
+
 // ─── Build Full Scene ─────────────────────────────────────────────────────────
 
 export function buildBuilding(
@@ -481,6 +682,13 @@ export function buildBuilding(
     obj.userData.originalY = obj.position.y;
   };
 
+  // Enable shadow casting/receiving on all added meshes
+  const addShadowMesh = (mesh: THREE.Mesh, parent: THREE.Object3D, cast = true, receive = true) => {
+    mesh.castShadow = cast;
+    mesh.receiveShadow = receive;
+    parent.add(mesh);
+  };
+
   // Choose exterior wall material based on style
   const extWallMat = (() => {
     switch (style.exteriorMaterial) {
@@ -510,7 +718,7 @@ export function buildBuilding(
       floorMesh.position.set(rx + room.width / 2, baseY + 0.06, rz + room.depth / 2);
 
       tagFloor(floorMesh, floorIdx);
-      buildingGroup.add(floorMesh);
+      addShadowMesh(floorMesh, buildingGroup, false, true);
 
       // ─── Ceiling ────────────────────────────────────────────
       if (room.hasCeiling !== false) {
@@ -594,8 +802,18 @@ export function buildBuilding(
             glassEligibleTypes.includes(room.type))
         );
 
+        // Facade pattern routing based on style
+        const isBriseSoleil = isExterior && style.facadePattern === "brise-soleil" &&
+          room.type !== "stairs" && room.type !== "closet" && room.type !== "bathroom";
+        const isRibbonWindow = isExterior && style.facadePattern === "ribbon-window" &&
+          room.type !== "stairs" && room.type !== "closet" && room.type !== "bathroom" && wallLen > 2;
+
         if (isGlassWall) {
           createGlassCurtainWall(wallPos, wallLen, floorHeight, isHorizontal, mats, buildingGroup, floorIdx);
+        } else if (isBriseSoleil) {
+          createBriseSoleilFacade(wallPos, wallLen, floorHeight, isHorizontal, mats, buildingGroup, extWallMat);
+        } else if (isRibbonWindow) {
+          createRibbonWindowFacade(wallPos, wallLen, floorHeight, wt, isHorizontal, mats, buildingGroup, extWallMat);
         } else if (hasWindows) {
           createWallWithWindows(wallPos, wallLen, floorHeight, wt, isHorizontal, mats, buildingGroup, extWallMat);
         } else {
@@ -649,6 +867,34 @@ export function buildBuilding(
     }
   }
 
+  // ─── Corner Columns (structural articulation at building edges) ──
+  const bldgHeightFull = config.floors * floorHeight;
+  const cornerColSize = 0.35;
+  const cornerMat = isGlassBuilding ? mats.brushedMetal : mats.concreteWall;
+  const hw = buildingW / 2, hd = buildingD / 2;
+  for (const corner of [
+    { x: -hw - 0.05, z: -hd - 0.05 },
+    { x: hw + 0.05, z: -hd - 0.05 },
+    { x: -hw - 0.05, z: hd + 0.05 },
+    { x: hw + 0.05, z: hd + 0.05 },
+  ]) {
+    const colMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(cornerColSize, bldgHeightFull, cornerColSize),
+      cornerMat
+    );
+    colMesh.position.set(corner.x, bldgHeightFull / 2, corner.z);
+    buildingGroup.add(colMesh);
+  }
+
+  // ─── Building Base / Plinth (ground floor differentiation) ──────
+  const plinthH = 0.4;
+  const plinthMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(buildingW + 0.6, plinthH, buildingD + 0.6),
+    mats.concreteWall
+  );
+  plinthMesh.position.set(0, plinthH / 2, 0);
+  buildingGroup.add(plinthMesh);
+
   // ─── Roof ────────────────────────────────────────────────────────
   const roofGeo = new THREE.BoxGeometry(buildingW + 0.5, 0.2, buildingD + 0.5);
   const roofMesh = new THREE.Mesh(roofGeo, mats.roofTop);
@@ -661,6 +907,10 @@ export function buildBuilding(
   const parapetH = Math.max(0.6, Math.min(1.2, bldgHeight * 0.015 + 0.4));
   const parapetT = 0.1;
   const parapetY = config.floors * floorHeight + 0.2 + parapetH / 2;
+  const parapetMat = isGlassBuilding ? mats.brushedMetal
+    : style.exteriorMaterial === "stone" ? mats.stoneWall
+    : style.exteriorMaterial === "terracotta" ? mats.terracottaWall
+    : mats.concreteWall;
   [
     { w: buildingW + 0.5, d: parapetT, x: 0, z: -(buildingD + 0.5) / 2 },
     { w: buildingW + 0.5, d: parapetT, x: 0, z: (buildingD + 0.5) / 2 },
@@ -668,11 +918,37 @@ export function buildBuilding(
     { w: parapetT, d: buildingD + 0.5, x: (buildingW + 0.5) / 2, z: 0 },
   ].forEach(p => {
     const pGeo = new THREE.BoxGeometry(p.w, parapetH, p.d);
-    const pMesh = new THREE.Mesh(pGeo, isGlassBuilding ? mats.brushedMetal : mats.concreteWall);
+    const pMesh = new THREE.Mesh(pGeo, parapetMat);
     pMesh.position.set(p.x, parapetY, p.z);
 
     buildingGroup.add(pMesh);
   });
+
+  // Rooftop mechanical room (for buildings 5+ floors)
+  if (config.floors >= 5) {
+    const mechW = buildingW * 0.3;
+    const mechD = buildingD * 0.25;
+    const mechH = 2.5;
+    const mechY = config.floors * floorHeight + 0.2 + mechH / 2;
+
+    // Mechanical room enclosure
+    const mechGeo = new THREE.BoxGeometry(mechW, mechH, mechD);
+    const mechMesh = new THREE.Mesh(mechGeo, mats.concreteWall);
+    mechMesh.position.set(buildingW * 0.15, mechY, buildingD * 0.1);
+    buildingGroup.add(mechMesh);
+
+    // Mechanical room roof
+    const mechRoofGeo = new THREE.BoxGeometry(mechW + 0.3, 0.1, mechD + 0.3);
+    const mechRoofMesh = new THREE.Mesh(mechRoofGeo, mats.roofTop);
+    mechRoofMesh.position.set(buildingW * 0.15, mechY + mechH / 2 + 0.05, buildingD * 0.1);
+    buildingGroup.add(mechRoofMesh);
+
+    // Louver vents on mechanical room
+    const ventGeo = new THREE.BoxGeometry(mechW * 0.6, mechH * 0.6, 0.05);
+    const ventMesh = new THREE.Mesh(ventGeo, mats.metal);
+    ventMesh.position.set(buildingW * 0.15, mechY, buildingD * 0.1 - mechD / 2 - 0.03);
+    buildingGroup.add(ventMesh);
+  }
 
   // ─── Stairs geometry ─────────────────────────────────────────────
   const stairsRooms = rooms.filter(r => r.type === "stairs");
@@ -680,12 +956,25 @@ export function buildBuilding(
     buildStairs(sr, centerX, centerZ, floorHeight, mats, buildingGroup);
   }
 
-  // ─── Ground plane ────────────────────────────────────────────────
+  // ─── Ground plane (adapts to environment) ────────────────────────
   const groundSize = Math.max(120, buildingW * 4, buildingD * 4, bldgHeight * 2);
   const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize);
-  const groundMesh = new THREE.Mesh(groundGeo, mats.grass);
+  const groundMat = (() => {
+    switch (style.environment) {
+      case "urban": return mats.concreteFloor;
+      case "desert": return new THREE.MeshBasicMaterial({
+        color: 0xC4A55A, side: THREE.DoubleSide
+      });
+      case "coastal": return new THREE.MeshBasicMaterial({
+        color: 0xD4C8A0, side: THREE.DoubleSide
+      });
+      default: return mats.grass;
+    }
+  })();
+  const groundMesh = new THREE.Mesh(groundGeo, groundMat);
   groundMesh.rotation.x = -Math.PI / 2;
   groundMesh.position.y = -0.01;
+  groundMesh.receiveShadow = true;
 
   scene.add(groundMesh);
 
@@ -798,12 +1087,50 @@ export function buildBuilding(
     scene.add(cap);
   }
 
+  // ─── Plaza / Hardscape around building ───────────────────────
+  if (style.environment === "urban" || style.environment === "campus") {
+    // Urban plaza surrounding building
+    const plazaMargin = 4;
+    const plazaGeo = new THREE.BoxGeometry(buildingW + plazaMargin * 2, 0.06, buildingD + plazaMargin * 2);
+    const plazaMesh = new THREE.Mesh(plazaGeo, mats.concreteFloor);
+    plazaMesh.position.set(0, 0.03, 0);
+    scene.add(plazaMesh);
+
+    // Road in front of the building
+    const roadGeo = new THREE.BoxGeometry(buildingW * 2 + 20, 0.04, 8);
+    const roadMat = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide });
+    const roadMesh = new THREE.Mesh(roadGeo, roadMat);
+    roadMesh.position.set(0, 0.02, -buildingD / 2 - plazaMargin - 6);
+    scene.add(roadMesh);
+
+    // Road markings
+    const markingMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, side: THREE.DoubleSide });
+    const centerLineGeo = new THREE.BoxGeometry(buildingW * 2 + 20, 0.05, 0.12);
+    const centerLine = new THREE.Mesh(centerLineGeo, markingMat);
+    centerLine.position.set(0, 0.045, -buildingD / 2 - plazaMargin - 6);
+    scene.add(centerLine);
+
+    // Sidewalk curb
+    const curbGeo = new THREE.BoxGeometry(buildingW * 2 + 20, 0.15, 0.2);
+    const curbMesh = new THREE.Mesh(curbGeo, mats.concreteFloor);
+    curbMesh.position.set(0, 0.075, -buildingD / 2 - plazaMargin - 2);
+    scene.add(curbMesh);
+  }
+
   // ─── Driveway ────────────────────────────────────────────────
   const driveGeo = new THREE.BoxGeometry(5, 0.04, 10);
   const driveMesh = new THREE.Mesh(driveGeo, mats.concreteFloor);
   driveMesh.position.set(buildingW / 2 + 2, 0.02, -buildingD / 2 - 5);
 
   scene.add(driveMesh);
+
+  // Enable shadows on all building meshes in one pass
+  buildingGroup.traverse((obj) => {
+    if (obj instanceof THREE.Mesh) {
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    }
+  });
 
   scene.add(buildingGroup);
   scene.add(roomLabels);
@@ -1139,7 +1466,7 @@ function createGlassCurtainWall(
   }
 }
 
-// ─── Wall with Window Openings ────────────────────────────────────────────────
+// ─── Wall with Window Openings (AEC-quality) ─────────────────────────────────
 
 function createWallWithWindows(
   pos: THREE.Vector3,
@@ -1151,89 +1478,171 @@ function createWallWithWindows(
   parent: THREE.Group,
   wallMat: THREE.Material
 ) {
-  const winW = 1.2, winH = 1.4, sillH = 0.9;
-  const numWindows = Math.max(1, Math.floor(length / 2.5));
+  // AEC-standard window proportions
+  const winW = 1.6, winH = 1.8, sillH = 0.85;
+  const numWindows = Math.max(1, Math.floor(length / 2.8));
+  const recessDepth = 0.12; // Windows recessed into wall for shadow depth
+  const frameT = 0.04;     // Frame profile thickness
+  const frameD = 0.08;     // Frame profile depth
+  const frameHeight = height - 0.12;
 
+  // ── Floor slab edge band (the horizontal line that makes it look real) ──
+  const slabEdgeH = 0.18;
   if (isHorizontal) {
-    const belowGeo = new THREE.BoxGeometry(length, sillH, thickness);
-    const belowMesh = new THREE.Mesh(belowGeo, wallMat);
-    belowMesh.position.set(pos.x, pos.y - height / 2 + sillH / 2 + 0.06, pos.z);
+    const slabEdge = new THREE.Mesh(
+      new THREE.BoxGeometry(length + 0.04, slabEdgeH, thickness + 0.03),
+      mats.concreteWall
+    );
+    slabEdge.position.set(pos.x, pos.y - frameHeight / 2 + slabEdgeH / 2, pos.z);
+    parent.add(slabEdge);
+  } else {
+    const slabEdge = new THREE.Mesh(
+      new THREE.BoxGeometry(thickness + 0.03, slabEdgeH, length + 0.04),
+      mats.concreteWall
+    );
+    slabEdge.position.set(pos.x, pos.y - frameHeight / 2 + slabEdgeH / 2, pos.z);
+    parent.add(slabEdge);
+  }
 
-    parent.add(belowMesh);
+  // ── Solid wall below windows (sill zone) ──
+  const sillWallH = sillH - slabEdgeH;
+  if (sillWallH > 0.05) {
+    if (isHorizontal) {
+      const sillGeo = new THREE.BoxGeometry(length, sillWallH, thickness);
+      const sillMesh = new THREE.Mesh(sillGeo, wallMat);
+      sillMesh.position.set(pos.x, pos.y - frameHeight / 2 + slabEdgeH + sillWallH / 2, pos.z);
+      parent.add(sillMesh);
+    } else {
+      const sillGeo = new THREE.BoxGeometry(thickness, sillWallH, length);
+      const sillMesh = new THREE.Mesh(sillGeo, wallMat);
+      sillMesh.position.set(pos.x, pos.y - frameHeight / 2 + slabEdgeH + sillWallH / 2, pos.z);
+      parent.add(sillMesh);
+    }
+  }
 
-    const aboveH = height - sillH - winH - 0.12;
-    if (aboveH > 0.1) {
+  // ── Solid wall above windows (lintel/header zone) ──
+  const aboveH = frameHeight - sillH - winH;
+  if (aboveH > 0.05) {
+    if (isHorizontal) {
       const aboveGeo = new THREE.BoxGeometry(length, aboveH, thickness);
       const aboveMesh = new THREE.Mesh(aboveGeo, wallMat);
-      aboveMesh.position.set(pos.x, pos.y + height / 2 - aboveH / 2 - 0.06, pos.z);
-
+      aboveMesh.position.set(pos.x, pos.y + frameHeight / 2 - aboveH / 2, pos.z);
+      parent.add(aboveMesh);
+    } else {
+      const aboveGeo = new THREE.BoxGeometry(thickness, aboveH, length);
+      const aboveMesh = new THREE.Mesh(aboveGeo, wallMat);
+      aboveMesh.position.set(pos.x, pos.y + frameHeight / 2 - aboveH / 2, pos.z);
       parent.add(aboveMesh);
     }
+  }
 
-    const spacing = length / (numWindows + 1);
-    for (let i = 0; i <= numWindows; i++) {
-      const pierX = pos.x - length / 2 + i * spacing;
-      const pierW = spacing - winW;
-      if (pierW > 0.1) {
+  // ── Window piers (vertical wall strips between windows) + windows ──
+  const spacing = length / (numWindows + 1);
+  const winCenterY = pos.y - frameHeight / 2 + sillH + winH / 2;
+  const nDir = isHorizontal ? pos.z : pos.x; // normal direction coordinate
+
+  for (let i = 0; i <= numWindows; i++) {
+    const pierW = spacing - winW;
+    if (pierW > 0.08) {
+      if (isHorizontal) {
+        const pierX = pos.x - length / 2 + i * spacing;
         const pierGeo = new THREE.BoxGeometry(pierW, winH, thickness);
         const pierMesh = new THREE.Mesh(pierGeo, wallMat);
-        pierMesh.position.set(pierX + pierW / 2, pos.y - height / 2 + sillH + winH / 2 + 0.06, pos.z);
-
+        pierMesh.position.set(pierX + pierW / 2, winCenterY, pos.z);
+        parent.add(pierMesh);
+      } else {
+        const pierZ = pos.z - length / 2 + i * spacing;
+        const pierGeo = new THREE.BoxGeometry(thickness, winH, pierW);
+        const pierMesh = new THREE.Mesh(pierGeo, wallMat);
+        pierMesh.position.set(pos.x, winCenterY, pierZ + pierW / 2);
         parent.add(pierMesh);
       }
     }
+  }
 
-    for (let i = 1; i <= numWindows; i++) {
-      const wx = pos.x - length / 2 + i * spacing - winW / 2;
+  // ── Windows with recessed glass + proper frames ──
+  for (let i = 1; i <= numWindows; i++) {
+    if (isHorizontal) {
+      const wx = pos.x - length / 2 + i * spacing;
+
+      // Recessed glass pane (set back from wall face for shadow)
       const glassMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(winW, winH, 0.02),
+        new THREE.BoxGeometry(winW - frameT * 2, winH - frameT * 2, 0.01),
         mats.glass
       );
-      glassMesh.position.set(wx + winW / 2, pos.y - height / 2 + sillH + winH / 2 + 0.06, pos.z);
+      glassMesh.position.set(wx, winCenterY, pos.z - recessDepth * Math.sign(nDir || 1));
       parent.add(glassMesh);
 
-      for (const fy of [-winH / 2, winH / 2]) {
-        const fMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(winW + 0.06, 0.03, 0.06),
-          mats.metal
-        );
-        fMesh.position.set(wx + winW / 2, pos.y - height / 2 + sillH + winH / 2 + 0.06 + fy, pos.z);
-        parent.add(fMesh);
-      }
-      for (const fx of [-winW / 2, winW / 2]) {
-        const fMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(0.03, winH + 0.06, 0.06),
-          mats.metal
-        );
-        fMesh.position.set(wx + winW / 2 + fx, pos.y - height / 2 + sillH + winH / 2 + 0.06, pos.z);
-        parent.add(fMesh);
-      }
-    }
-  } else {
-    const belowGeo = new THREE.BoxGeometry(thickness, sillH, length);
-    const belowMesh = new THREE.Mesh(belowGeo, wallMat);
-    belowMesh.position.set(pos.x, pos.y - height / 2 + sillH / 2 + 0.06, pos.z);
+      // Window reveal / recess walls (top, bottom, left, right) — creates depth shadow
+      const revealMat = mats.concreteWall;
+      // Top reveal
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(winW, frameT, recessDepth), revealMat
+      ), { position: new THREE.Vector3(wx, winCenterY + winH / 2 - frameT / 2, pos.z - recessDepth / 2) }));
+      // Bottom reveal (sill projection)
+      const sillMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(winW + 0.06, 0.04, recessDepth + 0.06), mats.brushedMetal
+      );
+      sillMesh.position.set(wx, winCenterY - winH / 2 + 0.02, pos.z - recessDepth / 2);
+      parent.add(sillMesh);
 
-    parent.add(belowMesh);
+      // Metal frame (4 sides) — visible profile around glass
+      // Top frame
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(winW, frameT, frameD), mats.metal
+      ), { position: new THREE.Vector3(wx, winCenterY + winH / 2 - frameT / 2, pos.z - recessDepth) }));
+      // Bottom frame
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(winW, frameT, frameD), mats.metal
+      ), { position: new THREE.Vector3(wx, winCenterY - winH / 2 + frameT / 2, pos.z - recessDepth) }));
+      // Left frame
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(frameT, winH, frameD), mats.metal
+      ), { position: new THREE.Vector3(wx - winW / 2 + frameT / 2, winCenterY, pos.z - recessDepth) }));
+      // Right frame
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(frameT, winH, frameD), mats.metal
+      ), { position: new THREE.Vector3(wx + winW / 2 - frameT / 2, winCenterY, pos.z - recessDepth) }));
+      // Center mullion (horizontal)
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(winW - frameT * 2, 0.03, frameD), mats.metal
+      ), { position: new THREE.Vector3(wx, winCenterY + 0.1, pos.z - recessDepth) }));
 
-    const aboveH = height - sillH - winH - 0.12;
-    if (aboveH > 0.1) {
-      const aboveGeo = new THREE.BoxGeometry(thickness, aboveH, length);
-      const aboveMesh = new THREE.Mesh(aboveGeo, wallMat);
-      aboveMesh.position.set(pos.x, pos.y + height / 2 - aboveH / 2 - 0.06, pos.z);
-
-      parent.add(aboveMesh);
-    }
-
-    const spacing = length / (numWindows + 1);
-    for (let i = 1; i <= numWindows; i++) {
+    } else {
       const wz = pos.z - length / 2 + i * spacing;
+
+      // Recessed glass
       const glassMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.02, winH, winW),
+        new THREE.BoxGeometry(0.01, winH - frameT * 2, winW - frameT * 2),
         mats.glass
       );
-      glassMesh.position.set(pos.x, pos.y - height / 2 + sillH + winH / 2 + 0.06, wz);
+      glassMesh.position.set(pos.x - recessDepth * Math.sign(nDir || 1), winCenterY, wz);
       parent.add(glassMesh);
+
+      // Sill projection
+      const sillMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(recessDepth + 0.06, 0.04, winW + 0.06), mats.brushedMetal
+      );
+      sillMesh.position.set(pos.x - recessDepth / 2, winCenterY - winH / 2 + 0.02, wz);
+      parent.add(sillMesh);
+
+      // Metal frames
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(frameD, frameT, winW), mats.metal
+      ), { position: new THREE.Vector3(pos.x - recessDepth, winCenterY + winH / 2 - frameT / 2, wz) }));
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(frameD, frameT, winW), mats.metal
+      ), { position: new THREE.Vector3(pos.x - recessDepth, winCenterY - winH / 2 + frameT / 2, wz) }));
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(frameD, winH, frameT), mats.metal
+      ), { position: new THREE.Vector3(pos.x - recessDepth, winCenterY, wz - winW / 2 + frameT / 2) }));
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(frameD, winH, frameT), mats.metal
+      ), { position: new THREE.Vector3(pos.x - recessDepth, winCenterY, wz + winW / 2 - frameT / 2) }));
+      // Center mullion
+      parent.add(Object.assign(new THREE.Mesh(
+        new THREE.BoxGeometry(frameD, 0.03, winW - frameT * 2), mats.metal
+      ), { position: new THREE.Vector3(pos.x - recessDepth, winCenterY + 0.1, wz) }));
     }
   }
 }

@@ -64,6 +64,8 @@ export interface ProceduralModelData {
 export interface GlbModelData {
   kind: "glb";
   glbUrl: string;
+  metadataUrl?: string;
+  ifcUrl?: string;
   thumbnailUrl?: string;
   polycount?: number;
   topology?: string;
@@ -328,6 +330,8 @@ export function useShowcaseData(): ShowcaseData {
         model3dData = {
           kind: "glb",
           glbUrl: d.glbUrl as string,
+          metadataUrl: d.metadataUrl as string | undefined,
+          ifcUrl: d.ifcUrl as string | undefined,
           thumbnailUrl: d.thumbnailUrl as string | undefined,
           polycount: d.polycount as number | undefined,
           topology: d.topology as string | undefined,
