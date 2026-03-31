@@ -38,6 +38,36 @@ function ensureServerPolyfill() {
       createElementNS: () => ({ getContext: () => null, width: 0, height: 0, style: {} }),
     };
   }
+  // GLTFExporter binary mode uses FileReader to convert Blob → ArrayBuffer
+  if (typeof globalThis.FileReader === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).FileReader = class FileReader extends EventTarget {
+      result: ArrayBuffer | null = null;
+      error: Error | null = null;
+      readyState = 0;
+      onload: ((ev: Event) => void) | null = null;
+      onerror: ((ev: Event) => void) | null = null;
+      onloadend: ((ev: Event) => void) | null = null;
+      readAsArrayBuffer(blob: Blob) {
+        blob.arrayBuffer().then((buf) => {
+          this.result = buf;
+          this.readyState = 2;
+          const evt = new Event("load");
+          if (this.onload) this.onload(evt);
+          if (this.onloadend) this.onloadend(evt);
+        }).catch((err) => {
+          this.error = err;
+          this.readyState = 2;
+          const evt = new Event("error");
+          if (this.onerror) this.onerror(evt);
+          if (this.onloadend) this.onloadend(evt);
+        });
+      }
+      readAsDataURL() { /* unused by GLTFExporter binary mode */ }
+      readAsText() { /* unused by GLTFExporter binary mode */ }
+      abort() { /* noop */ }
+    };
+  }
 }
 
 /**
@@ -235,6 +265,81 @@ export async function generateGLB(geometry: MassingGeometry): Promise<Buffer> {
   groundMesh.position.y = -0.01;
   groundMesh.name = "ground-plane";
   scene.add(groundMesh);
+
+  // ─── Landscaping: Procedural Trees ──────────────────────────────────────────
+  const bldgW = bb.max.x - bb.min.x;
+  const bldgD = bb.max.y - bb.min.y;
+  const bldgRadius = Math.max(bldgW, bldgD) / 2;
+  const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x2D6B1E, roughness: 0.85, metalness: 0.0 });
+  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x5C3A1E, roughness: 0.8, metalness: 0.0 });
+  const treeGroup = new THREE.Group();
+  treeGroup.name = "landscaping";
+
+  // Place trees in a ring around the building
+  const treeRingRadius = bldgRadius + 6 + Math.random() * 4;
+  const numTrees = Math.max(8, Math.min(24, Math.floor(bldgRadius * 1.2)));
+  for (let t = 0; t < numTrees; t++) {
+    const angle = (t / numTrees) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+    const dist = treeRingRadius + (Math.random() - 0.5) * 4;
+    const tx = Math.cos(angle) * dist;
+    const tz = Math.sin(angle) * dist;
+    const treeH = 4 + Math.random() * 5;
+    const crownR = 1.5 + Math.random() * 2;
+    const trunkH = treeH * 0.4;
+
+    // Trunk (cylinder)
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.18, trunkH, 6),
+      trunkMaterial
+    );
+    trunk.position.set(tx, trunkH / 2, tz);
+    trunk.name = `tree-trunk-${t}`;
+    trunk.userData = { elementType: "landscape", discipline: "landscape" };
+    treeGroup.add(trunk);
+
+    // Crown (layered cones for fuller look)
+    for (let c = 0; c < 3; c++) {
+      const coneH = crownR * (1.8 - c * 0.3);
+      const coneR = crownR * (1.0 - c * 0.15);
+      const crown = new THREE.Mesh(
+        new THREE.ConeGeometry(coneR, coneH, 8),
+        treeMaterial
+      );
+      crown.position.set(tx, trunkH + c * coneH * 0.35 + coneH / 2, tz);
+      crown.name = `tree-crown-${t}-${c}`;
+      crown.userData = { elementType: "landscape", discipline: "landscape" };
+      treeGroup.add(crown);
+    }
+  }
+
+  // Scatter a few trees further away
+  for (let t = 0; t < 6; t++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = treeRingRadius + 8 + Math.random() * 10;
+    const tx = Math.cos(angle) * dist;
+    const tz = Math.sin(angle) * dist;
+    const treeH = 3 + Math.random() * 4;
+    const crownR = 1.2 + Math.random() * 1.5;
+
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.1, 0.15, treeH * 0.35, 6),
+      trunkMaterial
+    );
+    trunk.position.set(tx, treeH * 0.35 / 2, tz);
+    trunk.name = `tree-far-trunk-${t}`;
+    trunk.userData = { elementType: "landscape", discipline: "landscape" };
+    treeGroup.add(trunk);
+
+    const crown = new THREE.Mesh(
+      new THREE.SphereGeometry(crownR, 8, 6),
+      treeMaterial
+    );
+    crown.position.set(tx, treeH * 0.35 + crownR * 0.8, tz);
+    crown.name = `tree-far-crown-${t}`;
+    crown.userData = { elementType: "landscape", discipline: "landscape" };
+    treeGroup.add(crown);
+  }
+  scene.add(treeGroup);
 
   // ─── Export to GLB ─────────────────────────────────────────────────────────
 

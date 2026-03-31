@@ -922,7 +922,19 @@ function generateWindowsForWall(
   let sillHeight = 0.9;
   let spacing = 3.0; // center-to-center
 
-  if (/office/i.test(type)) {
+  // ── Curtain wall mode for modern glazed facades ──
+  // These building types get floor-to-ceiling glass panels (curtain wall)
+  const isCurtainWall = /civic|commercial|tower|corporate|tech|futur|modern|mixed[\s-]?use|retail|convention|arena|stadium|terminal|airport/i.test(type);
+
+  if (isCurtainWall) {
+    // Curtain wall: each wall segment becomes mostly glass
+    // One large panel per wall segment, leaving thin mullion strips at edges
+    const mullionWidth = 0.08; // 80mm mullion frame at edges
+    winWidth = Math.max(wallLength - 2 * mullionWidth, wallLength * 0.92);
+    winHeight = floorHeight - 0.35; // floor-to-ceiling minus spandrel
+    sillHeight = 0.15; // minimal sill
+    spacing = wallLength; // one panel per wall segment
+  } else if (/office/i.test(type)) {
     winWidth = 1.8; winHeight = 2.2; sillHeight = 0.8; spacing = 2.7;
   } else if (/residential|apartment/i.test(type)) {
     winWidth = 1.2; winHeight = 1.5; sillHeight = 0.9; spacing = 3.0;
@@ -943,11 +955,11 @@ function generateWindowsForWall(
   if (winHeight < 0.5) return windows;
 
   // Calculate number of windows that fit
-  const edgeMargin = 0.8; // margin from wall corners
+  const edgeMargin = isCurtainWall ? 0.04 : 0.8; // curtain wall: minimal mullion margin
   const usableLength = wallLength - 2 * edgeMargin;
   if (usableLength < winWidth) return windows;
 
-  const numWindows = Math.max(1, Math.floor(usableLength / spacing));
+  const numWindows = isCurtainWall ? 1 : Math.max(1, Math.floor(usableLength / spacing));
   const actualSpacing = usableLength / numWindows;
 
   const dirX = dx / wallLength;
