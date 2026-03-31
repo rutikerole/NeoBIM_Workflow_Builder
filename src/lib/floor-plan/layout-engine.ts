@@ -64,6 +64,31 @@ function ar(w: number, h: number): number {
   return Math.max(w, h) / Math.min(w, h);
 }
 
+// ── Detect user-specified room dimensions in prompt ─────────────────────────
+
+/**
+ * Returns true if the user's prompt contains room-level dimension patterns
+ * like "20x15 feet", "6×4m", "bedroom 5m wide", etc.
+ * Used to decide if the greedy fixed-room packer should be used.
+ * When the AI fills in preferredWidth/preferredDepth on its own (without
+ * user specs), the zone-based layout produces better results.
+ */
+function hasUserSpecifiedDimensions(prompt: string | undefined): boolean {
+  // No prompt available (unit test / programmatic call) — trust preferred dims
+  if (prompt === undefined || prompt === null) return true;
+  // Prompt available but empty — AI likely hallucinated dims
+  if (!prompt.trim()) return false;
+  const p = prompt.toLowerCase();
+  // NxN patterns: "20x15", "20×15", "20 x 15", "20by15"
+  if (/\d+\s*[x×]\s*\d+/.test(p)) return true;
+  if (/\d+\s*by\s*\d+/.test(p)) return true;
+  // "N feet/ft wide/deep/long" or "N meter/m wide/deep/long"
+  if (/\d+\s*(?:feet|ft|foot|meter|metre|m)\s*(?:wide|deep|long|broad)/i.test(p)) return true;
+  // "width N" or "depth N" patterns
+  if (/(?:width|depth|length)\s*(?:of\s*)?\d+/i.test(p)) return true;
+  return false;
+}
+
 // ── Main entry point ─────────────────────────────────────────────────────────
 
 export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
@@ -147,8 +172,25 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   // ── Fixed-room pre-placement ──
   // Rooms with user-specified "exactly" dimensions are placed FIRST.
   // BSP only fills the remaining space with flex rooms.
-  const fixedRooms = rooms.filter(r => r.preferredWidth && r.preferredDepth &&
-    r.preferredWidth > 0 && r.preferredDepth > 0);
+  //
+  // IMPORTANT: Only use greedy packing when the USER actually specified room
+  // dimensions in the prompt (e.g., "bedroom 20x15 feet"). GPT-4o-mini often
+  // fills in preferredWidth/preferredDepth as its own estimates even when the
+  // user didn't ask — those should NOT bypass the zone-based layout.
+  const userSpecifiedDims = hasUserSpecifiedDimensions(program.originalPrompt);
+  const fixedRooms = userSpecifiedDims
+    ? rooms.filter(r => r.preferredWidth && r.preferredDepth &&
+        r.preferredWidth > 0 && r.preferredDepth > 0)
+    : [];
+
+  // If the user didn't specify dimensions, strip AI-estimated preferred dims
+  // so the zone-based layout uses areaSqm (from the AI) as the sizing input
+  if (!userSpecifiedDims) {
+    for (const r of rooms) {
+      delete r.preferredWidth;
+      delete r.preferredDepth;
+    }
+  }
 
   let result: PlacedRoom[];
 
