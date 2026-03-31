@@ -2151,7 +2151,8 @@ export async function generateFloorPlan(
           // Run hard constraint safety net on AI output too
           const { enforceHardAreaConstraints } = await import("@/lib/floor-plan/layout-engine");
           const safePlaced = enforceHardAreaConstraints(aiPlaced);
-          console.log(`[generateFloorPlan] AI spatial layout accepted: ${safePlaced.length} rooms`);
+          console.log(`[generateFloorPlan] ★★★ USING AI SPATIAL LAYOUT ★★★ ${safePlaced.length} rooms`);
+          console.log(`[generateFloorPlan] Room sizes:`, safePlaced.map(r => `${r.name}: ${r.width.toFixed(1)}×${r.depth.toFixed(1)}=${(r.width*r.depth).toFixed(1)}m²`).join(", "));
 
           const fpWidthM = Math.max(...safePlaced.map(r => r.x + r.width));
           const fpHeightM = Math.max(...safePlaced.map(r => r.y + r.depth));
@@ -2188,7 +2189,7 @@ export async function generateFloorPlan(
       }
 
       // ── FALLBACK: Algorithmic layout (BSP/spine) ──────────────────────
-      console.log("[generateFloorPlan] Falling back to algorithmic layout");
+      console.log("[generateFloorPlan] ⚠️ FALLING BACK TO BSP/SPINE (AI spatial failed or unavailable)");
       const { layoutFloorPlan } = await import("@/lib/floor-plan/layout-engine");
       const placed = layoutFloorPlan(roomProgram);
 
