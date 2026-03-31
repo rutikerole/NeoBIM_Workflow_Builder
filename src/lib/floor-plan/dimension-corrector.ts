@@ -154,7 +154,7 @@ export function correctDimensions(
     }
 
     return result;
-  } catch (e) { console.warn("[DIM-CORRECT]", (e as Error)?.message ?? e);
+  } catch {
     // Dimension correction is best-effort — never crash layout
     return rooms;
   }

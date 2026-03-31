@@ -50,9 +50,6 @@ export interface EnhancedRoomProgram {
   projectName: string;
   isVastuRequested?: boolean; // true when user asked for vastu/vaastu compliance
   originalPrompt?: string;   // original user prompt (for downstream stages)
-  facingDirection?: "north" | "south" | "east" | "west"; // plot facing direction
-  plotWidthM?: number;       // user-specified plot width in meters
-  plotDepthM?: number;       // user-specified plot depth in meters
 }
 
 // ── System prompt ────────────────────────────────────────────────────────────
@@ -228,22 +225,12 @@ export async function programRooms(
   const isComplex = mentionedRooms.length >= 15;
   const isMultiFloor = /duplex|first\s*floor|second\s*floor|upper\s*(?:floor|level|storey)|ground\s*floor.*first\s*floor|two.?stor/i.test(prompt);
 
-  // ── Pre-parse facing direction and plot dimensions (used by all paths) ──
-  const _facingMatch = prompt.match(/\b(north|south|east|west)\s*[-–]?\s*facing/i);
-  const _parsedFacing = _facingMatch ? _facingMatch[1].toLowerCase() as EnhancedRoomProgram["facingDirection"] : undefined;
-  const _plotMatch = prompt.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|foot)/i);
-  const _plotW = _plotMatch ? Math.round(Math.min(parseFloat(_plotMatch[1]), parseFloat(_plotMatch[2])) * 0.3048 * 10) / 10 : undefined;
-  const _plotD = _plotMatch ? Math.round(Math.max(parseFloat(_plotMatch[1]), parseFloat(_plotMatch[2])) * 0.3048 * 10) / 10 : undefined;
-
   // ── MULTI-CALL STRATEGY for complex multi-floor prompts ──
   // GPT-4o-mini truncates/merges rooms when asked for 30+.
   // Split into per-floor calls for much higher faithfulness.
   if (isComplex && isMultiFloor) {
     try {
       const result = await programRoomsMultiCall(prompt, mentionedRooms, userApiKey);
-      result.facingDirection = _parsedFacing;
-      result.plotWidthM = _plotW;
-      result.plotDepthM = _plotD;
       console.log(`[STAGE-1-MULTI] Total rooms: ${result.rooms.length}`);
       return result;
     } catch (err) {
@@ -416,19 +403,6 @@ export async function programRooms(
   raw.isVastuRequested = /vastu|vaastu|vastu.?compliant/i.test(prompt);
   raw.originalPrompt = prompt;
 
-  // ── Facing direction ──
-  const facingMatch = prompt.match(/\b(north|south|east|west)\s*[-–]?\s*facing/i);
-  if (facingMatch) {
-    raw.facingDirection = facingMatch[1].toLowerCase() as EnhancedRoomProgram["facingDirection"];
-  }
-  // ── Plot dimensions ──
-  const plotMatch = prompt.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|foot)/i);
-  if (plotMatch) {
-    raw.plotWidthM = Math.round(Math.min(parseFloat(plotMatch[1]), parseFloat(plotMatch[2])) * 0.3048 * 10) / 10;
-    raw.plotDepthM = Math.round(Math.max(parseFloat(plotMatch[1]), parseFloat(plotMatch[2])) * 0.3048 * 10) / 10;
-  }
-
-  if (raw.facingDirection) console.log(`[STAGE-1] Facing: ${raw.facingDirection}`);
   console.log(`[STAGE-1] Rooms from AI: ${raw.rooms.length}`, raw.rooms.map(r => `${r.name} (floor:${r.floor ?? 0})`));
 
   return raw;
@@ -1228,38 +1202,11 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
     circulation: rooms.filter(r => r.zone === "circulation").map(r => r.name),
   };
 
-  // ── Additional rooms from prompt keywords ──
-  // Only add if the user explicitly mentioned them (no false positives on basic prompts)
-  const EXTRA_ROOMS: Array<{ pattern: RegExp; name: string; type: string; area: number; zone: RoomSpec["zone"] }> = [
-    { pattern: /servant\s*quarter|maid\s*room/i, name: "Servant Quarter", type: "bedroom", area: 8, zone: "service" },
-    { pattern: /servant\s*toilet|maid\s*toilet/i, name: "Servant Toilet", type: "bathroom", area: 3, zone: "service" },
-    { pattern: /pooja\s*room|puja\s*room|prayer\s*room/i, name: "Pooja Room", type: "other", area: 4, zone: "private" },
-    { pattern: /walk[\s-]*in\s*(wardrobe|closet)/i, name: "Walk-in Closet", type: "storage", area: 5, zone: "private" },
-    { pattern: /study\s*room|home\s*office/i, name: "Study Room", type: "office", area: 10, zone: "private" },
-    { pattern: /\bparking\b|\bgarage\b/i, name: "Car Parking", type: "other", area: 25, zone: "service" },
-  ];
-  for (const { pattern, name, type, area, zone } of EXTRA_ROOMS) {
-    if (pattern.test(p) && !rooms.some(r => r.name === name)) {
-      rooms.push({ name, type, areaSqm: area, zone, mustHaveExteriorWall: type !== "bathroom" && type !== "storage", adjacentTo: [], preferNear: [] });
-    }
-  }
-
-  // ── Vastu, facing, area overrides ──
-  const isVastuRequested = /vastu|vaastu/i.test(p);
-  const facingMatch = p.match(/\b(north|south|east|west)\s*[-–]?\s*facing/i);
-  const facingDirection = facingMatch ? facingMatch[1].toLowerCase() as EnhancedRoomProgram["facingDirection"] : undefined;
-
-  // Override totalArea if sqft specified
-  const sqftMatch = p.match(/(\d+)\s*(?:sq\s*ft|sqft|sft|square\s*f(?:ee|oo)t)/i);
-  const resolvedArea = sqftMatch ? Math.round(parseInt(sqftMatch[1]) * 0.0929) : totalArea;
-  // Only override if user-specified area is reasonable
-  const finalArea = sqftMatch ? resolvedArea : totalArea;
-
   const projectName = `${bhk}BHK ${buildingType.split(" ").pop()}`;
 
   return {
     buildingType,
-    totalAreaSqm: finalArea,
+    totalAreaSqm: totalArea,
     numFloors,
     rooms,
     adjacency,
@@ -1267,8 +1214,5 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
     entranceRoom: bhk <= 2 ? "Living + Dining Room" : "Living Room",
     circulationNotes: `Entrance leads to ${bhk <= 2 ? "living + dining" : "corridor separating public and private zones"}.`,
     projectName,
-    isVastuRequested,
-    facingDirection,
-    originalPrompt: prompt,
   };
 }

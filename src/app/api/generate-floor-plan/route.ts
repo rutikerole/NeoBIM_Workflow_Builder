@@ -139,7 +139,6 @@ export async function POST(req: NextRequest) {
 
       const project = convertMultiFloorToProject(
         multiFloor.floors, description.projectName, prompt,
-        roomProgram.facingDirection,
       );
 
       // ── Stage 3 Diagnostic ──
@@ -247,7 +246,7 @@ export async function POST(req: NextRequest) {
       rooms,
     };
 
-    const project = convertGeometryToProject(geometry, description.projectName, prompt, roomProgram.facingDirection);
+    const project = convertGeometryToProject(geometry, description.projectName, prompt);
     const feedback = buildFeedback(project, prompt);
 
     // DIAGNOSTIC — trace room counts at final output

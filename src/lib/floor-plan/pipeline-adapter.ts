@@ -204,7 +204,6 @@ export function convertGeometryToProject(
   geometry: FloorPlanGeometry,
   projectName: string = "AI-Generated Floor Plan",
   originalPrompt?: string,
-  facingDirection?: "north" | "south" | "east" | "west",
 ): FloorPlanProject {
   const M = 1000; // meters → mm
   const buildingW = geometry.footprint.width * M;
@@ -320,7 +319,7 @@ export function convertGeometryToProject(
 
   // ---- 5b. Auto-place doors and windows when AI provided none ----
   if (doors.length === 0) {
-    const doorResult = smartPlaceDoors(floor, facingDirection);
+    const doorResult = smartPlaceDoors(floor);
     floor.doors = doorResult.doors;
   }
   if (windows.length === 0) {
@@ -331,7 +330,7 @@ export function convertGeometryToProject(
   // ---- 5b2. Enforce window ratios — add windows to rooms below NBC 10% minimum ----
   try {
     ensureWindowRatios(floor);
-  } catch (e) { console.warn("[PIPELINE]", (e as Error)?.message ?? e);
+  } catch {
     // Non-critical: plan works without extra windows
   }
 
@@ -341,14 +340,14 @@ export function convertGeometryToProject(
     if (furnResult.furniture.length > 0) {
       floor.furniture = furnResult.furniture;
     }
-  } catch (e) { console.warn("[PIPELINE]", (e as Error)?.message ?? e);
+  } catch {
     // Non-critical: floor plan works without furniture
   }
 
   // ---- 5d. Generate staircase geometry for staircase rooms ----
   try {
     generateStaircaseGeometry(floor);
-  } catch (e) { console.warn("[PIPELINE]", (e as Error)?.message ?? e);
+  } catch {
     // Non-critical: floor plan works without stair treads
   }
 
@@ -356,7 +355,7 @@ export function convertGeometryToProject(
   if (originalPrompt) {
     try {
       generateSmartAnnotations(floor, originalPrompt);
-    } catch (e) { console.warn("[PIPELINE]", (e as Error)?.message ?? e);
+    } catch {
       // Non-critical: floor plan works without annotations
     }
   }
@@ -1200,7 +1199,7 @@ function findRoomByPromptContext(
         return room;
       }
     }
-  } catch (e) { console.warn("[PIPELINE]", (e as Error)?.message ?? e);
+  } catch {
     // Non-critical
   }
   return null;
@@ -1390,7 +1389,6 @@ export function convertMultiFloorToProject(
   }>,
   projectName: string = "AI-Generated Floor Plan",
   originalPrompt?: string,
-  facingDirection?: "north" | "south" | "east" | "west",
 ): FloorPlanProject {
   if (floorLayouts.length === 0) {
     return convertGeometryToProject(
@@ -1429,7 +1427,7 @@ export function convertMultiFloorToProject(
       })),
     };
 
-    const singleProject = convertGeometryToProject(geometry, projectName, originalPrompt, facingDirection);
+    const singleProject = convertGeometryToProject(geometry, projectName, originalPrompt);
     const floor = singleProject.floors[0];
 
     floor.name = FLOOR_NAMES[fl.level] ?? `Floor ${fl.level}`;

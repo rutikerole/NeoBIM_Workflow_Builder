@@ -214,10 +214,6 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   // Habitable: ≥2.4m, Kitchen: ≥2.1m, Bathroom: ≥1.2m, Corridor: ≥1.0m
   result = enforceNBCMinimumDimensions(result);
 
-  // ── Room hierarchy enforcement ──
-  // Living room should be the largest room; master should be the largest bedroom.
-  result = enforceRoomHierarchy(result);
-
   // ── Dimension accuracy check (diagnostic) ──
   checkDimensionAccuracy(result, rooms);
 
@@ -1181,44 +1177,6 @@ function enforceCorridorCap(rooms: PlacedRoom[], totalFloorArea: number): Placed
   return rooms;
 }
 
-// ── Room hierarchy enforcement ────────────────────────────────────────────
-
-/**
- * Ensure living room is the largest non-corridor room, and master bedroom
- * is the largest bedroom. Only swaps identities (name/type) — never changes
- * positions or dimensions.
- */
-function enforceRoomHierarchy(rooms: PlacedRoom[]): PlacedRoom[] {
-  try {
-    const layout = rooms.map(r => ({ ...r }));
-
-    // 1. Living room should be largest non-corridor, non-staircase room
-    const living = layout.find(r => r.type === "living" || r.name.toLowerCase().includes("living"));
-    if (living) {
-      const livingArea = living.width * living.depth;
-      const bedrooms = layout.filter(r =>
-        r.type === "bedroom" && r !== living &&
-        !r.name.toLowerCase().includes("master"),
-      );
-      const largest = bedrooms.reduce<PlacedRoom | null>((max, b) => {
-        const area = b.width * b.depth;
-        return !max || area > max.width * max.depth ? b : max;
-      }, null);
-
-      if (largest && largest.width * largest.depth > livingArea * 1.1) {
-        // Swap identities
-        const tmpN = living.name, tmpT = living.type;
-        living.name = largest.name; living.type = largest.type;
-        largest.name = tmpN; largest.type = tmpT;
-      }
-    }
-
-    return layout;
-  } catch {
-    return rooms;
-  }
-}
-
 // ── NBC minimum dimension enforcement ─────────────────────────────────────
 
 /**
@@ -1333,15 +1291,6 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
     if (room.type === "hallway") continue; // Corridors handled by enforceCorridorCap
     const currentArea = room.width * room.depth;
     const nameLower = room.name.toLowerCase();
-
-    // Staircase hard cap by TYPE (BSP can inflate staircases beyond name-match threshold)
-    if (room.type === "staircase" && currentArea > 15) {
-      const scale = Math.sqrt(15 / currentArea);
-      room.width = grid(room.width * scale);
-      room.depth = grid(room.depth * scale);
-      room.area = grid(room.width * room.depth);
-      continue;
-    }
 
     for (const { pattern, max } of MAX_SIZES) {
       if (pattern.test(nameLower) && currentArea > max * 1.5) {
@@ -2288,18 +2237,6 @@ export function layoutMultiFloor(program: EnhancedRoomProgram): MultiFloorLayout
 
     // Align staircases vertically across floors
     multiFloorAlignStaircases(floors);
-
-    // Cap staircase sizes after alignment (alignment can swap dimensions)
-    for (const f of floors) {
-      for (const r of f.rooms) {
-        if (r.type === "staircase" && r.width * r.depth > 15) {
-          const scale = Math.sqrt(15 / (r.width * r.depth));
-          r.width = grid(r.width * scale);
-          r.depth = grid(r.depth * scale);
-          r.area = grid(r.width * r.depth);
-        }
-      }
-    }
 
     // Final validation: total rooms across all floors
     const totalOutput = floors.reduce((s, f) => s + f.rooms.length, 0);
