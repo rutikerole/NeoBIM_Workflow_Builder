@@ -12,7 +12,7 @@ import type {
 } from "@/types/floor-plan-cad";
 import {
   wallLength, lineDirection, perpendicularLeft, addPoints, scalePoint,
-  polygonBounds, polygonCentroid, wallAngle, floorBounds,
+  polygonBounds, polygonCentroid, wallAngle,
 } from "./geometry";
 
 // ============================================================
@@ -282,7 +282,7 @@ export interface DoorPlacementResult {
   issues: PlacementIssue[];
 }
 
-export function smartPlaceDoors(floor: Floor, facingDirection?: "north" | "south" | "east" | "west"): DoorPlacementResult {
+export function smartPlaceDoors(floor: Floor): DoorPlacementResult {
   const graph = buildAdjacencyGraph(floor);
   const doors: Door[] = [];
   const issues: PlacementIssue[] = [];
@@ -298,7 +298,7 @@ export function smartPlaceDoors(floor: Floor, facingDirection?: "north" | "south
     ?? undefined;
 
   if (entranceRoom) {
-    const entranceWall = findEntranceWall(entranceRoom, floor, facingDirection);
+    const entranceWall = findExteriorWallForRoom(entranceRoom, floor);
     if (entranceWall) {
       const doorWidth = 1050;
       const pos = findDoorPosition(entranceWall, doorWidth, usedWallSegments, floor);
@@ -400,47 +400,6 @@ export function smartPlaceDoors(floor: Floor, facingDirection?: "north" | "south
 // ============================================================
 // DOOR PLACEMENT HELPERS
 // ============================================================
-
-/**
- * Find the best exterior wall for the main entrance, considering facing direction.
- * If facingDirection is specified, prefer walls on that edge of the building.
- */
-function findEntranceWall(
-  room: Room, floor: Floor,
-  facingDirection?: "north" | "south" | "east" | "west",
-): Wall | null {
-  try {
-    const roomWallIds = new Set(room.wall_ids);
-    const exteriorWalls = floor.walls.filter(
-      (w) => w.type === "exterior" && (roomWallIds.has(w.id) || w.left_room_id === room.id || w.right_room_id === room.id)
-    );
-    if (exteriorWalls.length === 0) return null;
-    if (!facingDirection || exteriorWalls.length === 1) {
-      return exteriorWalls.sort((a, b) => wallLength(b) - wallLength(a))[0] ?? null;
-    }
-
-    // Compute building bounds to identify which edge each wall is on
-    const bounds = floorBounds(floor.walls, floor.rooms);
-    const TOL = bounds.width * 0.15; // 15% tolerance for edge detection
-
-    const scoredWalls = exteriorWalls.map(w => {
-      const mx = (w.centerline.start.x + w.centerline.end.x) / 2;
-      const my = (w.centerline.start.y + w.centerline.end.y) / 2;
-      let dirScore = 0;
-      // Y-up coords in pipeline-adapter: y=0=bottom(south), y=max=top(north)
-      if (facingDirection === "north" && my > bounds.max.y - TOL) dirScore = 10;
-      if (facingDirection === "south" && my < bounds.min.y + TOL) dirScore = 10;
-      if (facingDirection === "east" && mx > bounds.max.x - TOL) dirScore = 10;
-      if (facingDirection === "west" && mx < bounds.min.x + TOL) dirScore = 10;
-      return { wall: w, score: dirScore + wallLength(w) / 10000 };
-    });
-
-    scoredWalls.sort((a, b) => b.score - a.score);
-    return scoredWalls[0]?.wall ?? null;
-  } catch (e) { console.warn("[PLACEMENT]", (e as Error)?.message ?? e);
-    return findExteriorWallForRoom(room, floor);
-  }
-}
 
 function findExteriorWallForRoom(room: Room, floor: Floor): Wall | null {
   const roomWallIds = new Set(room.wall_ids);
@@ -728,7 +687,7 @@ export function smartPlaceWindows(floor: Floor): WindowPlacementResult {
           }
         }
       }
-    } catch (e) { console.warn("[CROSS-VENT]", (e as Error)?.message ?? e); }
+    } catch { /* cross-vent is best-effort */ }
 
     // Check ventilation compliance — NBC 2016 minimum: 1/10 of floor area
     // (distinct from IS:1038 daylighting target of 1/6 used above for placement)
