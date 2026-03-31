@@ -98,35 +98,27 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
 
   let totalArea = Math.max(program.totalAreaSqm, roomAreaTotal + corridorEstimate);
 
-  // ── Footprint calculation ──
-  // PRIORITY 1: Use user-specified plot dimensions if available
-  // PRIORITY 2: Auto-calculate from total area
-  let fpW: number;
-  let fpH: number;
-
-  if (program.plotWidthM && program.plotDepthM && program.plotWidthM > 2 && program.plotDepthM > 2) {
-    // User specified plot: "50x80 feet" → use those exact dimensions
-    fpW = grid(program.plotWidthM);
-    fpH = grid(program.plotDepthM);
-    console.log(`[LAYOUT] Using user-specified plot: ${fpW}x${fpH}m`);
-  } else {
-    // Auto-calculate footprint from area
-    if (rooms.length >= 10) {
-      const requiredArea = roomAreaTotal + corridorEstimate;
-      if (totalArea < requiredArea) {
-        totalArea = requiredArea * 1.05;
-      }
+  // ── Footprint auto-expansion (only for high room counts) ──
+  // For complex layouts (10+ rooms), ensure footprint has enough room.
+  // Conservative: only expand when room area clearly exceeds footprint.
+  if (rooms.length >= 10) {
+    const requiredArea = roomAreaTotal + corridorEstimate;
+    if (totalArea < requiredArea) {
+      totalArea = requiredArea * 1.05; // 5% margin for wall thickness
     }
-    fpW = grid(Math.sqrt(totalArea * DEFAULT_ASPECT));
-    fpH = grid(totalArea / fpW);
+  }
 
-    if (rooms.length >= 15) {
-      const minFootprint = rooms.length * 4;
-      if (fpW * fpH < minFootprint) {
-        const scale = Math.sqrt(minFootprint / (fpW * fpH));
-        fpW = grid(fpW * scale);
-        fpH = grid(fpH * scale);
-      }
+  let fpW = grid(Math.sqrt(totalArea * DEFAULT_ASPECT));
+  let fpH = grid(totalArea / fpW);
+
+  // For very high room counts (15+), ensure footprint is generous enough
+  // that BSP doesn't create unusably small rooms
+  if (rooms.length >= 15) {
+    const minFootprint = rooms.length * 4; // at least 4 sqm per room on average
+    if (fpW * fpH < minFootprint) {
+      const scale = Math.sqrt(minFootprint / (fpW * fpH));
+      fpW = grid(fpW * scale);
+      fpH = grid(fpH * scale);
     }
   }
 
@@ -152,53 +144,22 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
     }
   }
 
-  // ── Vastu constraint pre-placement ──
-  // For vastu-compliant layouts, assign quadrant positions to critical rooms
-  // BEFORE BSP runs. This is a CONSTRAINT, not an optimization.
-  if (program.isVastuRequested && rooms.length >= 4) {
-    applyVastuConstraints(rooms, fpW, fpH);
-  }
-
   // ── Fixed-room pre-placement ──
-  // Only count rooms as "fixed" if the USER specified exact dimensions
-  // (from the original prompt, NOT from applyVastuConstraints).
-  // We check against program.rooms (pre-vastu) to distinguish.
-  const userFixedRooms = program.rooms.filter(r => r.preferredWidth && r.preferredDepth &&
+  // Rooms with user-specified "exactly" dimensions are placed FIRST.
+  // BSP only fills the remaining space with flex rooms.
+  const fixedRooms = rooms.filter(r => r.preferredWidth && r.preferredDepth &&
     r.preferredWidth > 0 && r.preferredDepth > 0);
 
   let result: PlacedRoom[];
 
-  if (userFixedRooms.length >= 2) {
+  if (fixedRooms.length >= 2) {
     // Use fixed-room pre-placement + BSP for remaining space
     try {
       result = layoutWithFixedRooms(rooms, fpW, fpH, program.adjacency, program.isVastuRequested);
-
-      // ── Check if any fixed room got squeezed below 70% of target ──
-      // If so, expand footprint and re-run once.
-      const undersized = result.filter(r => {
-        const spec = userFixedRooms.find(s => s.name === r.name);
-        if (!spec?.preferredWidth || !spec?.preferredDepth) return false;
-        const target = spec.preferredWidth * spec.preferredDepth;
-        return r.width * r.depth < target * 0.70;
-      });
-
-      if (undersized.length > 0 && !program.plotWidthM) {
-        // Only expand auto-calculated footprints (not user-specified plots)
-        const totalFixed = userFixedRooms.reduce((s, r) => s + (r.preferredWidth! * r.preferredDepth!), 0);
-        const totalFlex = rooms.filter(r => !userFixedRooms.includes(r)).reduce((s, r) => s + r.areaSqm, 0);
-        const needed = (totalFixed + totalFlex) * 1.15;
-        if (needed > fpW * fpH) {
-          const scale = Math.sqrt(needed / (fpW * fpH));
-          fpW = grid(fpW * scale);
-          fpH = grid(fpH * scale);
-          console.log(`[LAYOUT] Expanding footprint to ${fpW}x${fpH}m for ${undersized.length} undersized fixed rooms`);
-          result = layoutWithFixedRooms(rooms, fpW, fpH, program.adjacency, program.isVastuRequested);
-        }
-      }
-
-      console.log(`[LAYOUT] Fixed-room placement: ${userFixedRooms.length} fixed + ${rooms.length - userFixedRooms.length} flex`);
+      console.log(`[LAYOUT] Fixed-room placement: ${fixedRooms.length} fixed + ${rooms.length - fixedRooms.length} flex`);
     } catch (err) {
       console.warn("[LAYOUT] Fixed-room placement failed, falling back to BSP:", err);
+      // Fall through to normal BSP
       result = fallbackBSP(rooms, useZones, cls, fpW, fpH, program.adjacency);
     }
   } else {
@@ -212,7 +173,7 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   // ── Post-BSP swap optimization ──
   // Try swapping similarly-sized rooms to improve adjacency satisfaction
   if (program.adjacency.length > 0 && result.length >= 4) {
-    result = optimizeLayoutSwaps(result, program.adjacency, rooms);
+    result = optimizeLayoutSwaps(result, program.adjacency);
   }
 
   // ── Bedroom-bathroom adjacency repair ──
@@ -300,33 +261,13 @@ function fallbackBSP(
 // ── Fixed-room pre-placement + BSP for remaining ───────────────────────────
 
 /**
- * CONSTRAINT-BASED room placement — replaces greedy grid-scan.
- *
- * Algorithm:
- *   1. Separate fixed (has preferredWidth/Depth) from flex rooms
- *   2. If total fixed area exceeds footprint, scale down proportionally
- *   3. Assign each fixed room a target quadrant (vastu) or "any"
- *   4. Place fixed rooms in quadrant corners, then pack remaining along edges
- *   5. BSP fills remaining free space with flex rooms
- *
- * KEY GUARANTEE: fixed rooms are NEVER demoted to flex. They may shrink
- * up to 20% but always get placed at approximately their target dimensions.
- */
-/**
- * BSP + POST-RESIZE approach for fixed rooms.
+ * Place rooms with user-specified dimensions FIRST, then BSP fills the rest.
  *
  * Strategy:
- *   1. Run standard zone-based BSP layout (classifyRooms → layoutWithZones)
- *      which produces architecturally correct proportions.
- *   2. For vastu-compliant layouts, pre-sort rooms so BSP places them in
- *      correct quadrants (kitchen→SE, master→SW, pooja→NE).
- *   3. AFTER BSP, force-resize each fixed room to its preferred dimensions.
- *      This may make the room smaller than the BSP cell (creating a gap)
- *      which is architecturally fine (walls fill gaps).
- *
- * This approach guarantees ALL fixed rooms get their target dimensions
- * because BSP always creates cells >= MIN_BATHROOM_DIM, and most fixed rooms
- * are larger than that.
+ * 1. Sort fixed rooms by area (largest first)
+ * 2. Place each using edge-aligned greedy packing with Vastu preference
+ * 3. Find remaining free rectangles via grid scan
+ * 4. BSP subdivides flex rooms into the largest free rectangle
  */
 function layoutWithFixedRooms(
   allRooms: RoomSpec[],
@@ -335,105 +276,163 @@ function layoutWithFixedRooms(
   adjacency: AdjacencyRequirement[],
   vastuRequested?: boolean,
 ): PlacedRoom[] {
-  try {
-    // Step 1: Ensure fixed rooms' areaSqm matches their preferred dimensions.
-    // BSP allocates space proportional to areaSqm, so if areaSqm is smaller
-    // than preferredWidth × preferredDepth, the BSP cell will be too small.
-    const sorted = allRooms.map(r => {
-      if (r.preferredWidth && r.preferredDepth) {
-        const fixedArea = r.preferredWidth * r.preferredDepth;
-        if (fixedArea > r.areaSqm) {
-          return { ...r, areaSqm: fixedArea };
+  const fixed = allRooms.filter(r => r.preferredWidth && r.preferredDepth &&
+    r.preferredWidth > 0 && r.preferredDepth > 0);
+  const flex = allRooms.filter(r => !fixed.includes(r));
+
+  // Sort fixed rooms by area descending (largest first = hardest to place)
+  const sortedFixed = [...fixed].sort((a, b) =>
+    (b.preferredWidth! * b.preferredDepth!) - (a.preferredWidth! * a.preferredDepth!)
+  );
+
+  const placed: PlacedRoom[] = [];
+  const occupied: Rect[] = [];
+  const step = GRID; // 0.1m placement grid
+
+  for (const room of sortedFixed) {
+    const rw = grid(room.preferredWidth!);
+    const rd = grid(room.preferredDepth!);
+
+    // Try both orientations
+    const orientations = [
+      { w: rw, d: rd },
+      { w: rd, d: rw },
+    ];
+
+    let bestPos: { x: number; y: number; w: number; d: number } | null = null;
+    let bestScore = -Infinity;
+
+    for (const { w, d } of orientations) {
+      if (w > fpW || d > fpH) continue;
+
+      // Scan positions at grid resolution (coarser step for speed)
+      const scanStep = Math.max(step, 0.3);
+      for (let y = 0; y <= fpH - d + 0.01; y += scanStep) {
+        for (let x = 0; x <= fpW - w + 0.01; x += scanStep) {
+          const gx = grid(x);
+          const gy = grid(y);
+
+          // Check overlap with occupied
+          const overlaps = occupied.some(r =>
+            gx < r.x + r.w - 0.05 && gx + w > r.x + 0.05 &&
+            gy < r.y + r.h - 0.05 && gy + d > r.y + 0.05
+          );
+          if (overlaps) continue;
+
+          // Score: prefer edges, corners, and Vastu-correct positions
+          let score = 0;
+
+          // Edge bonuses (rooms against building edges are more realistic)
+          if (gx < step) score += 3;
+          if (gx + w > fpW - step) score += 3;
+          if (gy < step) score += 3;
+          if (gy + d > fpH - step) score += 3;
+
+          // Corner bonus
+          if ((gx < step || gx + w > fpW - step) && (gy < step || gy + d > fpH - step)) score += 2;
+
+          // Adjacency to already-placed rooms (touching = good)
+          for (const occ of occupied) {
+            const touchH = Math.abs(gx + w - occ.x) < 0.15 || Math.abs(occ.x + occ.w - gx) < 0.15;
+            const touchV = Math.abs(gy + d - occ.y) < 0.15 || Math.abs(occ.y + occ.h - gy) < 0.15;
+            const overlapH = gx < occ.x + occ.w - 0.1 && gx + w > occ.x + 0.1;
+            const overlapV = gy < occ.y + occ.h - 0.1 && gy + d > occ.y + 0.1;
+            if ((touchH && overlapV) || (touchV && overlapH)) score += 2;
+          }
+
+          // Vastu preference scoring
+          if (vastuRequested) {
+            const nameLower = room.name.toLowerCase();
+            const typeLower = (room.type || "").toLowerCase();
+            const cx = gx + w / 2;
+            const cy = gy + d / 2;
+            // Kitchen in SE (high y, high x in Y-down coords)
+            if (typeLower.includes("kitchen") || nameLower.includes("kitchen")) {
+              if (cx > fpW / 2 && cy > fpH / 2) score += 8;
+            }
+            // Pooja in NE (low y, high x)
+            if (nameLower.includes("pooja") || nameLower.includes("puja") || nameLower.includes("prayer")) {
+              if (cx > fpW / 2 && cy < fpH / 2) score += 8;
+            }
+            // Master bedroom in SW (high y, low x)
+            if (nameLower.includes("master")) {
+              if (cx < fpW / 2 && cy > fpH / 2) score += 8;
+            }
+            // Living/entrance near north edge (low y)
+            if (typeLower.includes("living") || nameLower.includes("living")) {
+              if (cy < fpH / 2) score += 4;
+            }
+          }
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestPos = { x: gx, y: gy, w, d };
+          }
         }
       }
-      return { ...r };
-    });
-    if (vastuRequested) {
-      // Within each zone, sort so vastu-target rooms get better positions.
-      // Public zone rooms: foyer→left, living→left, dining→center, kitchen→right(east)
-      // Private zone rooms: master→left(west/SW), children→center, pooja→right(east/NE)
-      sorted.sort((a, b) => {
-        // Primary: zone (public first, then private, then service)
-        const zonePri: Record<string, number> = { public: 0, circulation: 1, service: 2, private: 3 };
-        const zDiff = (zonePri[a.zone] ?? 2) - (zonePri[b.zone] ?? 2);
-        if (zDiff !== 0) return zDiff;
-        // Secondary: vastu east score (lower = more west = placed first)
-        const strip = a.zone === "private" ? "north" : "south";
-        return vastuEastScore(a, strip) - vastuEastScore(b, strip);
+    }
+
+    if (bestPos) {
+      placed.push({
+        name: room.name,
+        type: room.type,
+        x: bestPos.x,
+        y: bestPos.y,
+        width: bestPos.w,
+        depth: bestPos.d,
+        area: grid(bestPos.w * bestPos.d),
       });
+      occupied.push({ x: bestPos.x, y: bestPos.y, w: bestPos.w, h: bestPos.d });
+    } else {
+      // Can't fit with exact dimensions — demote to flex
+      flex.push(room);
+      console.warn(`[FIXED-PLACE] ${room.name}: can't fit ${rw}x${rd}m, demoting to flex`);
     }
+  }
 
-    // Step 2: Run BSP layout on the vastu-sorted room list.
-    // BSP subdivides the footprint into area-proportional cells.
-    // The vastu sort ensures rooms land in approximately correct quadrants.
-    const result = bspSubdivide(sorted, { x: 0, y: 0, w: fpW, h: fpH }, adjacency);
+  // Find free rectangular regions for BSP
+  if (flex.length > 0) {
+    const freeRects = findFreeRectangles(fpW, fpH, occupied);
+    if (freeRects.length > 0) {
+      // Sort flex rooms by area descending
+      flex.sort((a, b) => b.areaSqm - a.areaSqm);
 
-    // Step 3: Force-resize fixed rooms to their preferred dimensions.
-    // BSP gives each room an area-proportional cell. For fixed rooms,
-    // we override the cell dimensions to match user-specified sizes.
-    for (const placed of result) {
-      const spec = allRooms.find(s => s.name === placed.name);
-      if (!spec?.preferredWidth || !spec?.preferredDepth) continue;
+      // Distribute flex rooms across free rects proportionally
+      const totalFreeArea = freeRects.reduce((s, r) => s + r.w * r.h, 0);
+      let flexIdx = 0;
 
-      const prefW = spec.preferredWidth;
-      const prefD = spec.preferredDepth;
+      for (const freeRect of freeRects) {
+        if (flexIdx >= flex.length) break;
+        const rectArea = freeRect.w * freeRect.h;
+        if (rectArea < 2) continue; // Too small for a room
 
-      // Try both orientations — pick the one that best fits the BSP cell
-      const errNormal = Math.max(
-        Math.abs(placed.width - prefW) / prefW,
-        Math.abs(placed.depth - prefD) / prefD,
-      );
-      const errRotated = Math.max(
-        Math.abs(placed.width - prefD) / prefD,
-        Math.abs(placed.depth - prefW) / prefW,
-      );
+        // How many flex rooms fit in this rect (proportional to area)
+        const roomCount = Math.max(1, Math.round(flex.length * rectArea / totalFreeArea));
+        const roomsForRect = flex.slice(flexIdx, flexIdx + roomCount);
+        flexIdx += roomCount;
 
-      if (errNormal <= errRotated) {
-        // Normal orientation — resize to preferred dims, clamped to BSP cell
-        placed.width = grid(Math.min(prefW, Math.max(placed.width, prefW * 0.85)));
-        placed.depth = grid(Math.min(prefD, Math.max(placed.depth, prefD * 0.85)));
-      } else {
-        // Rotated — swap preferred W/D
-        placed.width = grid(Math.min(prefD, Math.max(placed.width, prefD * 0.85)));
-        placed.depth = grid(Math.min(prefW, Math.max(placed.depth, prefW * 0.85)));
+        if (roomsForRect.length > 0) {
+          const bspResult = bspSubdivide(roomsForRect, freeRect, adjacency);
+          placed.push(...bspResult);
+        }
       }
-      placed.area = grid(placed.width * placed.depth);
+
+      // Any remaining flex rooms go in the largest free rect
+      if (flexIdx < flex.length) {
+        const remaining = flex.slice(flexIdx);
+        const bspResult = bspSubdivide(remaining, freeRects[0], adjacency);
+        placed.push(...bspResult);
+      }
+    } else {
+      // No free space — append below the footprint
+      console.warn("[FIXED-PLACE] No free space for flex rooms, appending below footprint");
+      const maxY = Math.max(...occupied.map(r => r.y + r.h), fpH);
+      const bspResult = bspSubdivide(flex, { x: 0, y: maxY, w: fpW, h: fpH * 0.5 }, adjacency);
+      placed.push(...bspResult);
     }
-
-    return result;
-  } catch (err) {
-    console.warn("[LAYOUT] Fixed-room placement failed, falling back to BSP:", err);
-    return bspSubdivide(allRooms, { x: 0, y: 0, w: fpW, h: fpH }, adjacency);
   }
-}
 
-/**
- * Vastu east-preference score for strip ordering.
- * Higher = more east (placed later/right). Lower = more west (placed first/left).
- *
- * Y-down: x=0=West, x=max=East.
- * South strip: kitchen→SE(right), dining→center, living→left
- * North strip: master→SW(left), children→right, bathroom→near bedroom
- */
-function vastuEastScore(r: RoomSpec, strip: "north" | "south"): number {
-  const n = r.name.toLowerCase();
-  const t = (r.type || "").toLowerCase();
-
-  if (strip === "south") {
-    // Public rooms: living/drawing left, dining center, kitchen right(east)
-    if (t === "kitchen" || n.includes("kitchen")) return 90; // Far east (SE)
-    if (t === "dining" || n.includes("dining")) return 70;   // Center-east
-    if (n.includes("parking") || n.includes("servant")) return 80; // East side
-    if (t === "living" || n.includes("living") || n.includes("drawing")) return 10; // Far west
-    if (n.includes("foyer") || n.includes("entrance") || t === "entrance") return 5; // Westmost
-    return 50; // Default: center
-  } else {
-    // Private rooms: master/parents left(SW), children right, bathroom near bedroom
-    if (n.includes("master") || n.includes("parent")) return 10; // Far west (SW)
-    if (t === "bathroom") return 50; // Near bedroom (center, will be adjacent)
-    if (n.includes("pooja") || n.includes("puja")) return 95; // Far east (NE)
-    return 40 + (r.areaSqm > 12 ? 0 : 20); // Larger bedrooms left, smaller right
-  }
+  return placed;
 }
 
 /**
@@ -523,7 +522,6 @@ function findFreeRectangles(fpW: number, fpH: number, occupied: Rect[]): Rect[] 
 function optimizeLayoutSwaps(
   rooms: PlacedRoom[],
   adjacency: AdjacencyRequirement[],
-  allSpecs?: RoomSpec[],
 ): PlacedRoom[] {
   if (rooms.length < 4 || adjacency.length === 0) return rooms;
 
@@ -548,14 +546,6 @@ function optimizeLayoutSwaps(
         // Don't swap corridors/staircases
         if (a.type === "hallway" || b.type === "hallway") continue;
         if (a.type === "staircase" || b.type === "staircase") continue;
-
-        // CRITICAL: Don't swap rooms that have been resized to user-specified
-        // dimensions — swapping would move them to a different-sized cell,
-        // undoing the dimension fix.
-        const aSpec = allSpecs?.find(s => s.name === a.name);
-        const bSpec = allSpecs?.find(s => s.name === b.name);
-        if (aSpec?.preferredWidth && aSpec?.preferredDepth) continue;
-        if (bSpec?.preferredWidth && bSpec?.preferredDepth) continue;
 
         // Swap room identity (name/type) while keeping BSP-assigned positions/dimensions
         const swapped = layout.map(r => ({ ...r }));
@@ -803,54 +793,6 @@ function refineRoomProportions(rooms: PlacedRoom[]): PlacedRoom[] {
   return result;
 }
 
-// ── Vastu CONSTRAINT pre-placement ──────────────────────────────────────
-
-/**
- * Assign preferred dimensions to vastu-critical rooms so they enter the
- * fixed-room pipeline targeted at the correct quadrant.
- *
- * For rooms that DON'T already have user-specified preferredWidth/Depth,
- * compute dimensions from areaSqm and mark them as vastu-targeted.
- *
- * Y-down coordinates: y=0=North(top), y=max=South(bottom), x=0=West, x=max=East
- * SE quadrant: high x, high y. NE: high x, low y. SW: low x, high y.
- */
-function applyVastuConstraints(rooms: RoomSpec[], fpW: number, fpH: number): void {
-  try {
-    // Map room type/name → ideal quadrant
-    const VASTU_TARGET: Array<{
-      match: (r: RoomSpec) => boolean;
-      quadrant: string; // "SE", "NE", "SW", "NW", "N", "E"
-    }> = [
-      { match: r => r.type === "kitchen" || r.name.toLowerCase().includes("kitchen"),
-        quadrant: "SE" },
-      { match: r => r.name.toLowerCase().includes("pooja") || r.name.toLowerCase().includes("puja") ||
-                     r.name.toLowerCase().includes("prayer") || r.name.toLowerCase().includes("mandir"),
-        quadrant: "NE" },
-      { match: r => r.name.toLowerCase().includes("master") && r.type === "bedroom",
-        quadrant: "SW" },
-      { match: r => r.name.toLowerCase().includes("parent") && r.type === "bedroom",
-        quadrant: "SW" },
-    ];
-
-    for (const rule of VASTU_TARGET) {
-      const room = rooms.find(rule.match);
-      if (!room) continue;
-      // If room already has user-specified dimensions, don't override them
-      // — the vastu scoring in layoutWithFixedRooms will handle quadrant preference
-      if (room.preferredWidth && room.preferredDepth) continue;
-
-      // Compute reasonable dimensions from area
-      const area = Math.max(room.areaSqm, 4);
-      const side = Math.sqrt(area * 1.2); // slightly rectangular
-      room.preferredWidth = grid(side);
-      room.preferredDepth = grid(area / room.preferredWidth);
-    }
-  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
-    // Vastu constraints are best-effort
-  }
-}
-
 // ── Vastu post-optimization ───────────────────────────────────────────────
 
 /**
@@ -982,7 +924,7 @@ function repairBedroomBathroomAdjacency(
     }
 
     return layout;
-  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
+  } catch {
     return rooms;
   }
 }
@@ -1100,7 +1042,7 @@ function optimizeVastu(rooms: PlacedRoom[], fpW: number, fpH: number): PlacedRoo
     }
 
     return layout;
-  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
+  } catch {
     // Vastu optimization is best-effort; never break layout
     return rooms;
   }
@@ -1153,7 +1095,7 @@ function verifyVastuPlacement(
     }
 
     return layout;
-  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
+  } catch {
     return rooms;
   }
 }
@@ -1198,7 +1140,7 @@ function applyDimensionCorrection(
       depth: r.depth,
       area: r.area,
     }));
-  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
+  } catch {
     return placed;
   }
 }
@@ -1250,33 +1192,16 @@ function enforceNBCMinimumDimensions(rooms: PlacedRoom[]): PlacedRoom[] {
       const shorter = Math.min(room.width, room.depth);
       if (shorter >= minDim) continue;
 
+      // Save snapshot to revert if expansion creates overlaps
       const saved = { ...room };
-      const area = room.width * room.depth;
-
-      // Strategy 1: Reshape — keep area constant, swap dimensions toward squarer
-      // E.g. a 1.0m × 5.0m kitchen → 2.24m × 2.24m (same area, wider)
-      const newShort = grid(Math.max(minDim, Math.sqrt(area)));
-      const newLong = grid(area / newShort);
-      if (newShort >= minDim && newLong >= minDim) {
-        if (room.width < room.depth) {
-          room.width = newShort;
-          room.depth = newLong;
-        } else {
-          room.width = newLong;
-          room.depth = newShort;
-        }
-        room.area = grid(room.width * room.depth);
+      if (room.width < room.depth) {
+        room.width = grid(Math.max(room.width, minDim));
       } else {
-        // Strategy 2: Simply expand the short side
-        if (room.width < room.depth) {
-          room.width = grid(Math.max(room.width, minDim));
-        } else {
-          room.depth = grid(Math.max(room.depth, minDim));
-        }
-        room.area = grid(room.width * room.depth);
+        room.depth = grid(Math.max(room.depth, minDim));
       }
+      room.area = grid(room.width * room.depth);
 
-      // Check if reshape/expansion created overlaps — revert if so
+      // Check if expansion created overlaps — revert if so
       let overlaps = false;
       for (let j = 0; j < rooms.length; j++) {
         if (j === i) continue;
@@ -1290,7 +1215,7 @@ function enforceNBCMinimumDimensions(rooms: PlacedRoom[]): PlacedRoom[] {
       }
     }
     return rooms;
-  } catch (e) { console.warn("[LAYOUT]", (e as Error)?.message ?? e);
+  } catch {
     return rooms;
   }
 }
@@ -1328,7 +1253,7 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
   // Pass 1: Hard caps for rooms (max area by name/type pattern)
   const MAX_SIZES: Array<{ pattern: RegExp; max: number }> = [
     // Very small utility rooms
-    { pattern: /shoe\s*(?:rack|cabinet|closet|storage)|shoe$/i, max: 2.5 },
+    { pattern: /shoe\s*(?:rack|cabinet|closet|storage)|shoe$/i, max: 5 },
     { pattern: /powder\s*room/i, max: 5 },
     { pattern: /linen\s*(?:storage|closet|cupboard)/i, max: 5 },
     { pattern: /coat\s*closet/i, max: 4 },
@@ -1352,9 +1277,9 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
     { pattern: /foyer|entrance|reception/i, max: 15 },
     { pattern: /corridor|passage/i, max: 15 },
     { pattern: /landing|staircase\s*landing/i, max: 12 },
-    { pattern: /staircase|stair/i, max: 14 },
+    { pattern: /staircase|stair/i, max: 15 },
     // Medium rooms
-    { pattern: /balcony|sit.?out|sitout/i, max: 6 },
+    { pattern: /balcony|sit.?out|sitout/i, max: 15 },
     { pattern: /walk.?in\s*(?:wardrobe|closet)/i, max: 10 },
     { pattern: /dressing/i, max: 12 },
     { pattern: /wardrobe/i, max: 10 },
@@ -1368,7 +1293,7 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
     const nameLower = room.name.toLowerCase();
 
     for (const { pattern, max } of MAX_SIZES) {
-      if (pattern.test(nameLower) && currentArea > max * 1.2) {
+      if (pattern.test(nameLower) && currentArea > max * 1.5) {
         console.warn(`[SIZE-FIX] ${room.name} is ${currentArea.toFixed(1)} sqm, max should be ${max} sqm`);
         const scale = Math.sqrt(max / currentArea);
         room.width = grid(room.width * scale);
@@ -1380,10 +1305,9 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
   }
 
   // Pass 2: General clamp — catch rooms at >2x or <0.5x their target
-  // SKIP rooms with user-specified exact dimensions (preferredWidth + preferredDepth)
   if (specs && specs.length > 0) {
     for (const room of rooms) {
-      if (room.type === "hallway") continue;
+      if (room.type === "hallway") continue; // Corridors handled separately
 
       const spec = specs.find(s => s.name === room.name);
       if (!spec) continue;
@@ -1391,7 +1315,7 @@ function validateRoomSizes(rooms: PlacedRoom[], specs?: RoomSpec[]): PlacedRoom[
       const actualArea = room.width * room.depth;
       const targetArea = spec.areaSqm;
 
-      // Room is more than 2x the target — shrink it
+      // Room is more than 2x the target — shrink it (safe: creates gaps, no overlaps)
       if (actualArea > targetArea * 2.0 && targetArea > 2) {
         console.warn(`[SIZE-CLAMP] ${room.name}: ${actualArea.toFixed(1)} sqm >> target ${targetArea.toFixed(1)} sqm`);
         const scale = Math.sqrt(targetArea * 1.3 / actualArea); // Allow 30% oversize
