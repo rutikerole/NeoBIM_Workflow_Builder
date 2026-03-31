@@ -28,9 +28,8 @@ import { generateMassingGeometry } from "@/services/massing-generator";
 import { generate3DModel, is3DAIConfigured, calculateKPIs, type BuildingRequirements } from "@/services/threedai-studio";
 import { generateIFCFile } from "@/services/ifc-exporter";
 import { parsePromptToStyle } from "@/services/prompt-style-parser";
-import { generateGLB } from "@/services/glb-generator";
+// glb-generator imported dynamically inside GN-001 to avoid DOM polyfill at module load
 import { extractMetadata } from "@/services/metadata-extractor";
-import { uploadBuildingAssets, isR2Configured } from "@/lib/r2";
 import { submitDualWalkthrough, submitDualTextToVideo, submitSingleWalkthrough, submitFloorPlanWalkthrough, buildFloorPlanCombinedPrompt } from "@/services/video-service";
 import {
   logWorkflowStart, logRateLimit, logNodeStart, logNodeSuccess,
@@ -5381,6 +5380,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
         // ── Unified BIM Pipeline: Generate GLB + IFC + Metadata from same geometry ──
         let assetUrls: { glbUrl: string; ifcUrl: string; metadataUrl: string } | null = null;
         try {
+          // Dynamic imports to avoid DOM polyfill at module load time
+          const { generateGLB } = await import("@/services/glb-generator");
+          const { uploadBuildingAssets, isR2Configured: checkR2 } = await import("@/lib/r2");
+
           const metadata = extractMetadata(geometry);
           const metadataJson = JSON.stringify(metadata);
 
@@ -5398,7 +5401,7 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           logger.debug("[GN-001] Metadata:", { elements: Object.keys(metadata.elements).length, storeys: metadata.storeys.length });
 
           // Upload all to R2 if configured
-          if (isR2Configured()) {
+          if (checkR2()) {
             const buildingId = generateId();
             assetUrls = await uploadBuildingAssets(glbBuffer, ifcContent, metadataJson, buildingId);
             if (assetUrls) {
