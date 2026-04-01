@@ -74,7 +74,10 @@ function ensureServerPolyfill() {
  * Generate a binary GLB buffer from MassingGeometry.
  * Each mesh is named by its element ID for click-to-inspect in the viewer.
  */
-export async function generateGLB(geometry: MassingGeometry): Promise<Buffer> {
+export async function generateGLB(
+  geometry: MassingGeometry,
+  materialOverrides?: Record<string, Partial<PBRMaterialDef>>,
+): Promise<Buffer> {
   // Polyfill BEFORE importing Three.js
   ensureServerPolyfill();
 
@@ -117,7 +120,11 @@ export async function generateGLB(geometry: MassingGeometry): Promise<Buffer> {
   function getCachedMaterial(elementType: string): THREEns.Material {
     let mat = materialCache.get(elementType);
     if (!mat) {
-      mat = createMaterial(getMaterialForElement(elementType));
+      const baseDef = getMaterialForElement(elementType);
+      // Apply AI material overrides if available
+      const override = materialOverrides?.[elementType];
+      const finalDef = override ? { ...baseDef, ...override } : baseDef;
+      mat = createMaterial(finalDef);
       materialCache.set(elementType, mat);
     }
     return mat;

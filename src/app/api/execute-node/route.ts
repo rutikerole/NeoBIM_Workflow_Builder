@@ -5500,9 +5500,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
       }
 
       if (!artifact) {
-        // ── FALLBACK 3: Procedural massing generator ──
-        // Triggered when: all AI APIs failed or not configured
-        logger.debug("[GN-001] Using procedural massing generator (fallback)");
+        // ── UNIFIED BIM+AI Pipeline ──
+        // Generates procedural BIM geometry with AI-derived material palette.
+        // Result: ONE model with real BIM elements that LOOKS photorealistic.
+        logger.debug("[GN-001] Using unified BIM+AI pipeline");
 
         const massingInput = {
           floors,
@@ -5520,6 +5521,22 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
 
         logger.debug("[GN-001] geometry result:", { floors: geometry.floors, height: geometry.totalHeight, footprint: geometry.footprintArea, gfa: geometry.gfa, buildingType: geometry.buildingType });
 
+        // ── AI Material Palette: Generate concept render + extract color palette ──
+        let aiThumbnailUrl: string | null = null;
+        let aiPalette: Record<string, Partial<import("@/services/material-mapping").PBRMaterialDef>> | null = null;
+        try {
+          const { generateAIMaterialPalette, paletteToMaterialOverrides } = await import("@/services/ai-material-palette");
+          const { palette, imageUrl } = await generateAIMaterialPalette(
+            textContent || `${buildingType}, ${floors} floors`,
+            buildingType,
+          );
+          aiPalette = paletteToMaterialOverrides(palette);
+          aiThumbnailUrl = imageUrl;
+          logger.debug("[GN-001] AI palette extracted:", { style: palette.style, facade: palette.facadeMaterial, glassTint: palette.glassTint });
+        } catch (paletteErr) {
+          console.warn("[GN-001] AI palette generation failed (non-fatal):", paletteErr instanceof Error ? paletteErr.message : paletteErr);
+        }
+
         // ── Unified BIM Pipeline: Generate GLB + IFC + Metadata from same geometry ──
         let assetUrls: { glbUrl: string; ifcUrl: string; metadataUrl: string } | null = null;
         try {
@@ -5530,9 +5547,9 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
           const metadata = extractMetadata(geometry);
           const metadataJson = JSON.stringify(metadata);
 
-          // Generate GLB and IFC in parallel
+          // Generate GLB (with AI palette if available) and IFC in parallel
           const [glbBuffer, ifcContent] = await Promise.all([
-            generateGLB(geometry),
+            generateGLB(geometry, aiPalette ?? undefined),
             Promise.resolve(generateIFCFile(geometry, {
               buildingName: geometry.buildingType,
               projectName: massingInput.content?.slice(0, 80) || geometry.buildingType,
@@ -5580,8 +5597,10 @@ ${siteData.designImplications.map(d => `• ${d}`).join("\n")}`;
             glbUrl: assetUrls?.glbUrl ?? null,
             ifcUrl: assetUrls?.ifcUrl ?? null,
             metadataUrl: assetUrls?.metadataUrl ?? null,
+            // ── AI concept render thumbnail ──
+            thumbnailUrl: aiThumbnailUrl ?? null,
           },
-          metadata: { engine: "massing-generator", real: true },
+          metadata: { engine: aiPalette ? "bim-ai-hybrid" : "massing-generator", real: true },
           createdAt: new Date(),
         };
       }

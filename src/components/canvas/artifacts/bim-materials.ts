@@ -324,6 +324,8 @@ export interface BIMMaterialLib {
   cableTray: THREE.Material;
   equipment: THREE.Material;
   ground: THREE.Material;
+  mullion: THREE.Material;
+  spandrel: THREE.Material;
   treeCrown: THREE.Material;
   treeTrunk: THREE.Material;
 }
@@ -450,6 +452,16 @@ export function createBIMMaterials(): BIMMaterialLib {
       bumpMap: grassBumpMap, bumpScale: 0.3,
     }),
 
+    // ── Facade Detail ──
+    mullion: new THREE.MeshStandardMaterial({
+      color: 0xC0C0C8, side: DS, roughness: 0.25, metalness: 0.9,
+      envMapIntensity: 1.4,
+    }),
+    spandrel: new THREE.MeshStandardMaterial({
+      color: 0x1A1A22, side: DS, roughness: 0.3, metalness: 0.8,
+      envMapIntensity: 1.0,
+    }),
+
     // ── Landscaping ──
     treeCrown: new THREE.MeshStandardMaterial({
       color: 0x2D6B1E, side: DS, roughness: 0.85, metalness: 0.0,
@@ -482,6 +494,8 @@ export function getMaterialKey(elementType: string, isExterior?: boolean): keyof
     case "pipe":       return "pipe";
     case "cable-tray": return "cableTray";
     case "equipment":  return "equipment";
+    case "mullion":    return "mullion";
+    case "spandrel":   return "spandrel";
     case "landscape":  return "treeCrown";
     default:           return "wall";
   }
