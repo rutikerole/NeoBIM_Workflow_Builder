@@ -50,3 +50,11 @@
 {"id":"6efaeb71-ccba-46cb-8e57-6acb174afdd6","timestamp":"2026-03-31T11:38:48.101Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"node_used","properties":{"catalogueId":"GN-001","nodeLabel":"Massing Generator"}}
 {"id":"b707d4d2-0c92-4ef3-bd69-10120114b04b","timestamp":"2026-03-31T11:38:50.217Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"node_used","properties":{"catalogueId":"EX-001","nodeLabel":"IFC Exporter"}}
 {"id":"3aeee4ce-4771-4632-8f62-066483a32f37","timestamp":"2026-03-31T11:38:50.218Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"workflow_executed","properties":{"nodeCount":4,"catalogueIds":["IN-001","TR-003","GN-001","EX-001"]}}
+{"id":"62712dc7-2209-4206-8a5e-530aa0fc1467","timestamp":"2026-03-31T12:45:24.130Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"user_login"}
+{"id":"f86570cf-e78b-4d4d-a1f4-9b1879360908","timestamp":"2026-03-31T12:45:39.875Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"workflow_created","properties":{"workflowId":"cmnem1889000ekivbyst0uus5"}}
+{"id":"ddff1c78-7619-4e94-9005-e4b4c128226e","timestamp":"2026-03-31T12:45:44.757Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"execution_started","properties":{"executionId":"cmnem1c0p000gkivbarcjierr"}}
+{"id":"ecccb767-3b3d-4283-8288-69ee4a33c537","timestamp":"2026-03-31T12:45:47.209Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"node_used","properties":{"catalogueId":"IN-001","nodeLabel":"Text Prompt"}}
+{"id":"63a51b29-f743-4f0b-b985-dfc0698a5f36","timestamp":"2026-03-31T12:46:05.322Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"node_used","properties":{"catalogueId":"TR-003","nodeLabel":"Design Brief Analyzer"}}
+{"id":"81b1f2f5-e82f-470e-b520-f5d0116df08d","timestamp":"2026-03-31T12:47:38.259Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"node_used","properties":{"catalogueId":"GN-001","nodeLabel":"Massing Generator"}}
+{"id":"fa96bb59-6e37-4e4c-87d5-a0a3dbac1efb","timestamp":"2026-03-31T12:47:40.936Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"node_used","properties":{"catalogueId":"EX-001","nodeLabel":"IFC Exporter"}}
+{"id":"4c10ca28-cb06-4c4b-aa1a-89cf935bbae6","timestamp":"2026-03-31T12:47:40.936Z","userId":"cmmav32p2000004jmbi8nukwf","eventName":"workflow_executed","properties":{"nodeCount":4,"catalogueIds":["IN-001","TR-003","GN-001","EX-001"]}}

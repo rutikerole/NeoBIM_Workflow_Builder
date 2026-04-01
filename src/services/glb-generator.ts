@@ -273,78 +273,107 @@ export async function generateGLB(
   groundMesh.name = "ground-plane";
   scene.add(groundMesh);
 
-  // ─── Landscaping: Procedural Trees ──────────────────────────────────────────
+  // ─── Site Context: Paved Plaza + Road + Curbs ──────────────────────────────
   const bldgW = bb.max.x - bb.min.x;
   const bldgD = bb.max.y - bb.min.y;
   const bldgRadius = Math.max(bldgW, bldgD) / 2;
+  const siteGroup = new THREE.Group();
+  siteGroup.name = "site-context";
+
+  // Paved plaza around building (concrete pavement)
+  const plazaSize = bldgRadius * 3.5;
+  const plazaMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(plazaSize, plazaSize),
+    new THREE.MeshStandardMaterial({ color: 0xC8C0B8, roughness: 0.75, metalness: 0.0 })
+  );
+  plazaMesh.rotation.x = -Math.PI / 2;
+  plazaMesh.position.y = 0.005;
+  plazaMesh.name = "ground-plaza";
+  plazaMesh.receiveShadow = true;
+  plazaMesh.userData = { elementType: "landscape", discipline: "landscape" };
+  siteGroup.add(plazaMesh);
+
+  // Road ring around plaza
+  const roadInner = plazaSize / 2 + 1;
+  const roadOuter = roadInner + 7;
+  const roadMesh = new THREE.Mesh(
+    new THREE.RingGeometry(roadInner, roadOuter, 64),
+    new THREE.MeshStandardMaterial({ color: 0x3A3A3A, roughness: 0.9, metalness: 0.0 })
+  );
+  roadMesh.rotation.x = -Math.PI / 2;
+  roadMesh.position.y = 0.003;
+  roadMesh.name = "ground-road";
+  roadMesh.receiveShadow = true;
+  roadMesh.userData = { elementType: "landscape", discipline: "landscape" };
+  siteGroup.add(roadMesh);
+
+  // Curb edges (inner + outer)
+  const curbMat = new THREE.MeshStandardMaterial({ color: 0xD0CCC4, roughness: 0.7, metalness: 0.0 });
+  for (const radius of [roadInner, roadOuter]) {
+    const curbGeo = new THREE.TorusGeometry(radius, 0.08, 4, 64);
+    const curb = new THREE.Mesh(curbGeo, curbMat);
+    curb.rotation.x = -Math.PI / 2;
+    curb.position.y = 0.08;
+    curb.name = `curb-${radius === roadInner ? "inner" : "outer"}`;
+    curb.userData = { elementType: "landscape", discipline: "landscape" };
+    siteGroup.add(curb);
+  }
+  scene.add(siteGroup);
+
+  // ─── Landscaping: Natural Trees (sphere crowns, not cones) ────────────────
   const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x2D6B1E, roughness: 0.85, metalness: 0.0 });
+  const treeDarkMat = new THREE.MeshStandardMaterial({ color: 0x1F5014, roughness: 0.88, metalness: 0.0 });
   const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x5C3A1E, roughness: 0.8, metalness: 0.0 });
   const treeGroup = new THREE.Group();
   treeGroup.name = "landscaping";
 
-  // Place trees in a ring around the building
   const treeRingRadius = bldgRadius + 6 + Math.random() * 4;
   const numTrees = Math.max(8, Math.min(24, Math.floor(bldgRadius * 1.2)));
-  for (let t = 0; t < numTrees; t++) {
-    const angle = (t / numTrees) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
-    const dist = treeRingRadius + (Math.random() - 0.5) * 4;
-    const tx = Math.cos(angle) * dist;
-    const tz = Math.sin(angle) * dist;
-    const treeH = 4 + Math.random() * 5;
-    const crownR = 1.5 + Math.random() * 2;
-    const trunkH = treeH * 0.4;
 
-    // Trunk (cylinder)
+  function addTree(tx: number, tz: number, treeH: number, crownR: number, idx: string) {
+    const trunkH = treeH * 0.4;
+    // Trunk — tapered cylinder (thicker at base)
     const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.18, trunkH, 6),
+      new THREE.CylinderGeometry(0.08, 0.18, trunkH, 8),
       trunkMaterial
     );
     trunk.position.set(tx, trunkH / 2, tz);
-    trunk.name = `tree-trunk-${t}`;
+    trunk.castShadow = true;
+    trunk.name = `tree-trunk-${idx}`;
     trunk.userData = { elementType: "landscape", discipline: "landscape" };
     treeGroup.add(trunk);
 
-    // Crown (layered cones for fuller look)
-    for (let c = 0; c < 3; c++) {
-      const coneH = crownR * (1.8 - c * 0.3);
-      const coneR = crownR * (1.0 - c * 0.15);
+    // Crown — 2-3 overlapping spheres for natural canopy shape
+    const crownParts = 2 + Math.floor(Math.random() * 2);
+    for (let c = 0; c < crownParts; c++) {
+      const r = crownR * (0.7 + Math.random() * 0.4);
+      const ox = (Math.random() - 0.5) * crownR * 0.4;
+      const oz = (Math.random() - 0.5) * crownR * 0.4;
+      const oy = c * crownR * 0.3;
       const crown = new THREE.Mesh(
-        new THREE.ConeGeometry(coneR, coneH, 8),
-        treeMaterial
+        new THREE.SphereGeometry(r, 10, 8),
+        c === 0 ? treeDarkMat : treeMaterial
       );
-      crown.position.set(tx, trunkH + c * coneH * 0.35 + coneH / 2, tz);
-      crown.name = `tree-crown-${t}-${c}`;
+      crown.position.set(tx + ox, trunkH + crownR * 0.6 + oy, tz + oz);
+      crown.castShadow = true;
+      crown.name = `tree-crown-${idx}-${c}`;
       crown.userData = { elementType: "landscape", discipline: "landscape" };
       treeGroup.add(crown);
     }
   }
 
-  // Scatter a few trees further away
-  for (let t = 0; t < 6; t++) {
+  // Ring of trees around building
+  for (let t = 0; t < numTrees; t++) {
+    const angle = (t / numTrees) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+    const dist = treeRingRadius + (Math.random() - 0.5) * 4;
+    addTree(Math.cos(angle) * dist, Math.sin(angle) * dist, 5 + Math.random() * 5, 1.8 + Math.random() * 2, `r${t}`);
+  }
+
+  // Scattered trees beyond road
+  for (let t = 0; t < 8; t++) {
     const angle = Math.random() * Math.PI * 2;
-    const dist = treeRingRadius + 8 + Math.random() * 10;
-    const tx = Math.cos(angle) * dist;
-    const tz = Math.sin(angle) * dist;
-    const treeH = 3 + Math.random() * 4;
-    const crownR = 1.2 + Math.random() * 1.5;
-
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 0.15, treeH * 0.35, 6),
-      trunkMaterial
-    );
-    trunk.position.set(tx, treeH * 0.35 / 2, tz);
-    trunk.name = `tree-far-trunk-${t}`;
-    trunk.userData = { elementType: "landscape", discipline: "landscape" };
-    treeGroup.add(trunk);
-
-    const crown = new THREE.Mesh(
-      new THREE.SphereGeometry(crownR, 8, 6),
-      treeMaterial
-    );
-    crown.position.set(tx, treeH * 0.35 + crownR * 0.8, tz);
-    crown.name = `tree-far-crown-${t}`;
-    crown.userData = { elementType: "landscape", discipline: "landscape" };
-    treeGroup.add(crown);
+    const dist = roadOuter + 3 + Math.random() * 12;
+    addTree(Math.cos(angle) * dist, Math.sin(angle) * dist, 4 + Math.random() * 4, 1.5 + Math.random() * 1.5, `f${t}`);
   }
   scene.add(treeGroup);
 
