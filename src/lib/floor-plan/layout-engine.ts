@@ -94,13 +94,19 @@ function hasUserSpecifiedDimensions(prompt: string | undefined): boolean {
   // Prompt available but empty — AI likely hallucinated dims
   if (!prompt.trim()) return false;
   const p = prompt.toLowerCase();
-  // NxN patterns: "20x15", "20×15", "20 x 15", "20by15"
-  if (/\d+\s*[x×]\s*\d+/.test(p)) return true;
-  if (/\d+\s*by\s*\d+/.test(p)) return true;
-  // "N feet/ft wide/deep/long" or "N meter/m wide/deep/long"
-  if (/\d+\s*(?:feet|ft|foot|meter|metre|m)\s*(?:wide|deep|long|broad)/i.test(p)) return true;
-  // "width N" or "depth N" patterns
-  if (/(?:width|depth|length)\s*(?:of\s*)?\d+/i.test(p)) return true;
+
+  // Exclude PLOT dimensions ("30x50 feet plot", "40x60 site") —
+  // these are plot sizes, not individual room sizes.
+  // Only match room-level dimensions like "bedroom 20x15 feet" or "kitchen 12x10"
+  const stripped = p.replace(/\d+\s*[x×]\s*\d+\s*(?:feet|ft|foot|m|meter|metre|sq)?\s*(?:plot|site|land|area|ground|floor\s*area)/gi, "");
+
+  // NxN patterns (after stripping plot dims)
+  if (/(?:room|bedroom|kitchen|living|bath|study|office|hall|dining)\s*\w*\s*\d+\s*[x×]\s*\d+/i.test(stripped)) return true;
+  if (/\d+\s*[x×]\s*\d+\s*(?:feet|ft|foot|meter|metre|m)\s*(?:room|bedroom|kitchen|living)/i.test(stripped)) return true;
+  // "bedroom 20x15 feet" pattern
+  if (/\d+\s*[x×]\s*\d+\s*(?:feet|ft|foot|meter|metre|m)/i.test(stripped) && !/\d+\s*[x×]\s*\d+\s*(?:feet|ft|foot|meter|metre|m)?\s*(?:plot|site|land)/i.test(p)) return true;
+  // "N feet wide" or "N meter deep" (room-specific)
+  if (/\d+\s*(?:feet|ft|foot|meter|metre|m)\s*(?:wide|deep|long|broad)/i.test(stripped)) return true;
   return false;
 }
 
