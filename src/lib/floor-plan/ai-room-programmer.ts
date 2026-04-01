@@ -11,6 +11,7 @@
  */
 
 import { getClient } from "@/services/openai";
+import { applyDeterministicSizing, extractTotalAreaSqm } from "./room-sizer";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -343,6 +344,21 @@ export async function programRooms(
   if (missingRooms.length > 0) {
     console.warn(`[programRooms] AI missed ${missingRooms.length} rooms from prompt: ${missingRooms.map(r => r.name).join(", ")}`);
     raw.rooms.push(...missingRooms);
+  }
+
+  // ── Deterministic room sizing ──
+  // Override AI-estimated areas with formula-based sizing.
+  // AI decides WHAT rooms, formulas decide HOW BIG.
+  {
+    const promptArea = extractTotalAreaSqm(prompt);
+    const aiTotal = raw.totalAreaSqm && raw.totalAreaSqm > 0
+      ? raw.totalAreaSqm
+      : raw.rooms.reduce((s, r) => s + r.areaSqm, 0);
+    const targetArea = promptArea ?? aiTotal;
+    if (targetArea > 0) {
+      applyDeterministicSizing(raw.rooms, targetArea, prompt);
+      console.log(`[ROOM-SIZER] Applied deterministic sizing: ${raw.rooms.length} rooms, target=${targetArea.toFixed(0)} sqm`);
+    }
   }
 
   // Ensure adjacency is valid
@@ -1194,6 +1210,9 @@ export function programRoomsFallback(prompt: string): EnhancedRoomProgram {
       });
     }
   }
+
+  // ── Deterministic sizing (same formulas as AI path) ──
+  applyDeterministicSizing(rooms, totalArea, prompt);
 
   const zones = {
     public: rooms.filter(r => r.zone === "public").map(r => r.name),
