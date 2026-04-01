@@ -484,8 +484,12 @@ export default function BIMViewer({ glbUrl, metadataUrl, ifcUrl, height = 500 }:
       }
     );
 
-    // ═══ Click handler (element selection) ═══
+    // ═══ Click handler (element selection — only for BIM models with metadata) ═══
     const onClick = (event: MouseEvent) => {
+      // Skip click-to-inspect for AI-generated models without BIM metadata
+      // (they only have generic mesh names like "texture_pbr_v128", not real BIM elements)
+      if (!metadataUrl) return;
+
       const rect = renderer.domElement.getBoundingClientRect();
       mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
