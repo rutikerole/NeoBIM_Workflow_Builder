@@ -419,34 +419,85 @@ function findDoorPosition(
 ): number | null {
   const wLen = wallLength(wall);
   const MIN_FROM_CORNER = 200;
+  const MIN_GAP = 100;           // minimum gap between door edge and any element
+  const SWEEP_STEP = 50;         // 50mm sweep resolution
+  const IDEAL_CORNER_DIST = 300; // preferred distance from corners
+  const WINDOW_CLEARANCE = 400;  // preferred clearance from windows
+
   const minPos = MIN_FROM_CORNER;
   const maxPos = wLen - doorWidth - MIN_FROM_CORNER;
   if (maxPos < minPos) return null;
 
-  // Check against existing used segments on this wall
+  // Collect all existing obstacles on this wall
   const used = usedSegments.get(wall.id) ?? [];
-
-  // Also check existing doors/windows on this wall
-  const existingOnWall: Array<{ start: number; end: number }> = [
-    ...floor.doors.filter((d) => d.wall_id === wall.id).map((d) => ({ start: d.position_along_wall_mm, end: d.position_along_wall_mm + d.width_mm })),
-    ...floor.windows.filter((w) => w.wall_id === wall.id).map((w) => ({ start: w.position_along_wall_mm, end: w.position_along_wall_mm + w.width_mm })),
-    ...used,
+  const existingOnWall: Array<{ start: number; end: number; isWindow?: boolean }> = [
+    ...floor.doors.filter((d) => d.wall_id === wall.id).map((d) => ({
+      start: d.position_along_wall_mm, end: d.position_along_wall_mm + d.width_mm,
+    })),
+    ...floor.windows.filter((w) => w.wall_id === wall.id).map((w) => ({
+      start: w.position_along_wall_mm, end: w.position_along_wall_mm + w.width_mm, isWindow: true,
+    })),
+    ...used.map((s) => ({ ...s })),
   ];
 
-  // Try preferred position: 200mm from start
-  const candidates = [minPos, maxPos, (minPos + maxPos) / 2];
-  for (const candidate of candidates) {
-    const doorStart = candidate;
-    const doorEnd = candidate + doorWidth;
+  // Full wall sweep: evaluate every valid position and pick the best-scoring one
+  let bestPos: number | null = null;
+  let bestScore = -Infinity;
+
+  for (let pos = minPos; pos <= maxPos; pos += SWEEP_STEP) {
+    const doorStart = pos;
+    const doorEnd = pos + doorWidth;
+
+    // Hard constraint: must not overlap any existing element (with MIN_GAP clearance)
     const fits = existingOnWall.every(
-      (seg) => doorEnd + 100 <= seg.start || doorStart >= seg.end + 100
+      (seg) => doorEnd + MIN_GAP <= seg.start || doorStart >= seg.end + MIN_GAP
     );
-    if (fits && doorStart >= minPos && doorEnd <= wLen - MIN_FROM_CORNER) {
-      return candidate;
+    if (!fits) continue;
+
+    // Scoring: higher is better
+    let score = 0;
+
+    // 1. Corner distance: prefer 300mm+, penalize <200mm (already excluded), reward center-ish
+    const distFromStart = doorStart;
+    const distFromEnd = wLen - doorEnd;
+    const minCornerDist = Math.min(distFromStart, distFromEnd);
+    if (minCornerDist >= IDEAL_CORNER_DIST) score += 10;
+    else score += (minCornerDist / IDEAL_CORNER_DIST) * 10;
+
+    // 2. Window clearance: prefer distance from windows
+    for (const seg of existingOnWall) {
+      if (!seg.isWindow) continue;
+      const gapToWindow = Math.min(
+        Math.abs(doorStart - seg.end),
+        Math.abs(doorEnd - seg.start)
+      );
+      if (gapToWindow >= WINDOW_CLEARANCE) score += 5;
+      else score += (gapToWindow / WINDOW_CLEARANCE) * 5;
+    }
+
+    // 3. Door-to-door spacing: maximize distance from other doors
+    for (const seg of existingOnWall) {
+      if (seg.isWindow) continue;
+      const gapToDoor = Math.min(
+        Math.abs(doorStart - seg.end),
+        Math.abs(doorEnd - seg.start)
+      );
+      score += Math.min(gapToDoor / 1000, 3); // up to 3 points for 1m+ spacing
+    }
+
+    // 4. Centering preference: slight bias toward wall center (natural circulation flow)
+    const wallCenter = wLen / 2;
+    const doorCenter = doorStart + doorWidth / 2;
+    const centerDeviation = Math.abs(doorCenter - wallCenter) / (wLen / 2);
+    score += (1 - centerDeviation) * 4; // up to 4 points for perfect centering
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestPos = pos;
     }
   }
 
-  return null;
+  return bestPos;
 }
 
 function markUsed(wallId: string, pos: number, width: number, map: Map<string, Array<{ start: number; end: number }>>) {

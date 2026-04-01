@@ -53,6 +53,61 @@ const MIN_STRIP_WIDTH = 2.8;    // minimum strip width for bedroom-bath pairs
 const DEFAULT_ASPECT = 1.33;    // footprint width:depth ratio
 const MAX_ROOM_AR = 2.8;        // max aspect ratio for non-corridor rooms
 
+/**
+ * Furniture-aware minimum dimension per room type (meters).
+ * Derived from furniture catalog dimensions + clearances + 600mm circulation.
+ * These ensure every room can physically fit its essential furniture.
+ */
+const MIN_DIM_BY_TYPE: Record<string, number> = {
+  master_bedroom: 3.6,   // king bed(2050) + wardrobe(600) + clearance(800)
+  bedroom: 3.0,          // queen bed(2050) + wardrobe(600) + clearance(350)
+  guest_bedroom: 2.8,    // single bed(1900) + wardrobe(600) + clearance(300)
+  living_room: 3.2,      // sofa(900) + coffee table + circulation
+  dining_room: 2.8,      // table(900) + chair circulation(800) each side
+  kitchen: 2.2,          // counter(600) + working aisle(1000) + gap(600)
+  bathroom: 1.5,         // toilet(700) + front clearance(600) + wall(200)
+  toilet: 1.2,           // toilet + basin side-by-side
+  wc: 1.2,
+  study: 2.4,            // desk(750) + chair rollback(900) + gap
+  home_office: 2.4,
+  office: 2.4,
+  utility: 1.5,
+  laundry: 1.5,
+  store_room: 1.2,
+  pantry: 1.2,
+  puja_room: 1.8,        // mandir(600) + sitting(1200)
+  balcony: 1.2,
+  verandah: 1.5,
+  hallway: 1.0,          // residential corridor
+  staircase: 0.9,
+  entrance: 2.0,
+  foyer: 2.0,
+};
+
+/** Get the furniture-aware minimum dimension for a room type/name. */
+function getMinDimForType(type: string, name: string): number {
+  const t = type.toLowerCase();
+  const n = name.toLowerCase();
+  // Direct type match
+  if (MIN_DIM_BY_TYPE[t] !== undefined) return MIN_DIM_BY_TYPE[t];
+  // Name-based fallback for common patterns
+  if (n.includes("master") && n.includes("bed")) return MIN_DIM_BY_TYPE.master_bedroom;
+  if (n.includes("bedroom") || n.includes("bed room")) return MIN_DIM_BY_TYPE.bedroom;
+  if (n.includes("living")) return MIN_DIM_BY_TYPE.living_room;
+  if (n.includes("kitchen")) return MIN_DIM_BY_TYPE.kitchen;
+  if (n.includes("dining")) return MIN_DIM_BY_TYPE.dining_room;
+  if (n.includes("bath")) return MIN_DIM_BY_TYPE.bathroom;
+  if (n.includes("toilet") || n.includes("wc")) return MIN_DIM_BY_TYPE.toilet;
+  if (n.includes("corridor") || n.includes("passage")) return MIN_DIM_BY_TYPE.hallway;
+  if (n.includes("puja") || n.includes("pooja") || n.includes("prayer")) return MIN_DIM_BY_TYPE.puja_room;
+  if (n.includes("study") || n.includes("office")) return MIN_DIM_BY_TYPE.study;
+  if (n.includes("utility") || n.includes("store")) return MIN_DIM_BY_TYPE.utility;
+  if (n.includes("balcony")) return MIN_DIM_BY_TYPE.balcony;
+  if (n.includes("stair")) return MIN_DIM_BY_TYPE.staircase;
+  // Fallback to general habitable minimum
+  return MIN_HABITABLE;
+}
+
 // ── Grid snap ────────────────────────────────────────────────────────────────
 
 function grid(v: number): number {
@@ -227,6 +282,8 @@ export function layoutFloorPlan(program: EnhancedRoomProgram): PlacedRoom[] {
   if (program.isVastuRequested && result.length >= 4) {
     result = optimizeVastu(result, fpW, fpH);
     result = verifyVastuPlacement(result, fpW, fpH);
+    // Re-repair adjacency after Vastu — Vastu swaps can break bedroom-bathroom pairs
+    result = repairBedroomBathroomAdjacency(result, program.adjacency);
   }
 
   // ── Post-BSP dimension correction ──
@@ -1264,22 +1321,10 @@ function enforceNBCMinimumDimensions(rooms: PlacedRoom[]): PlacedRoom[] {
 
 /**
  * NBC 2016 minimum dimension by room type.
+ * Delegates to getMinDimForType() which has furniture-aware minimums.
  */
 function getNBCMinDimension(type: string, name: string): number {
-  const n = name.toLowerCase();
-  const t = type.toLowerCase();
-  // Corridors: 1.0m residential
-  if (t === "hallway" || n.includes("corridor") || n.includes("passage")) return 1.0;
-  // Bathrooms: 1.2m
-  if (t === "bathroom" || n.includes("bath") || n.includes("toilet") || n.includes("wc")) return 1.2;
-  // Kitchen: 2.1m (NBC requires ≥1.8m, but 2.1m is practical minimum)
-  if (t === "kitchen" || n.includes("kitchen")) return 2.1;
-  // Staircases: 0.9m
-  if (t === "staircase" || n.includes("staircase")) return 0.9;
-  // Small utility/service rooms: 1.5m
-  if (t === "utility" || t === "storage" || n.includes("utility") || n.includes("store")) return 1.5;
-  // Habitable rooms: 2.4m
-  return 2.4;
+  return getMinDimForType(type, name);
 }
 
 // ── Post-BSP room size validation ──────────────────────────────────────────
@@ -1544,15 +1589,16 @@ function layoutWithZones(
   );
 
   // Estimate depth needed for bedroom-bath pairs:
-  // bedroom needs sqrt(area / target_ar) depth, bathroom needs MIN_BATHROOM_DIM
-  // Use target AR ~1.5 for bedrooms (slightly rectangular, conservative)
+  // Zone must be deep enough for the LARGEST bedroom-bathroom pair (vertical strips).
+  // Use max bedroom depth (not average) to prevent the largest bedroom from being truncated.
   const BEDROOM_TARGET_AR = 1.5;
-  let geometricDepth = 5.0; // absolute minimum for any private zone with bedrooms
+  const MIN_BATH_DEPTH = 1.5;    // practical minimum bathroom depth
+  const MIN_ZONE_FLOOR = 4.0;    // lowered from 5.0 for small plans (2BHK)
+  let geometricDepth = MIN_ZONE_FLOOR;
   if (privateBedrooms.length > 0) {
     const bedDepths = privateBedrooms.map(b => Math.sqrt(b.areaSqm / BEDROOM_TARGET_AR));
-    const avgBedDepth = bedDepths.reduce((s, d) => s + d, 0) / bedDepths.length;
-    const bathDepth = Math.max(MIN_BATHROOM_DIM, 1.5);
-    geometricDepth = Math.max(avgBedDepth + bathDepth, 5.0);
+    const maxBedDepth = Math.max(...bedDepths);
+    geometricDepth = Math.max(maxBedDepth + MIN_BATH_DEPTH, MIN_ZONE_FLOOR);
   }
 
   // Also consider area demand: private zone must hold all private rooms
@@ -1940,12 +1986,19 @@ function bspSubdivide(
 
 function splitTwo(a: RoomSpec, b: RoomSpec, rect: Rect): PlacedRoom[] {
   const ratio = a.areaSqm / (a.areaSqm + b.areaSqm);
-  const minFloor = MIN_BATHROOM_DIM; // 1.2m hard floor for any room dimension
+  // Use furniture-aware minimums per room type instead of universal 1.2m
+  const minA = getMinDimForType(a.type, a.name);
+  const minB = getMinDimForType(b.type, b.name);
+  const minFloor = Math.min(minA, minB); // hard floor for BSP feasibility
 
   // Horizontal split (with dimension clamping to prevent sub-minimum rooms)
   let hAh = grid(rect.h * ratio);
   let hBh = grid(rect.h - hAh);
-  if (hBh < minFloor && rect.h >= minFloor * 2) {
+  if (hBh < minB && rect.h >= minB + minA) {
+    hBh = grid(minB); hAh = grid(rect.h - hBh);
+  } else if (hAh < minA && rect.h >= minA + minB) {
+    hAh = grid(minA); hBh = grid(rect.h - hAh);
+  } else if (hBh < minFloor && rect.h >= minFloor * 2) {
     hBh = grid(minFloor); hAh = grid(rect.h - hBh);
   } else if (hAh < minFloor && rect.h >= minFloor * 2) {
     hAh = grid(minFloor); hBh = grid(rect.h - hAh);
@@ -1955,7 +2008,11 @@ function splitTwo(a: RoomSpec, b: RoomSpec, rect: Rect): PlacedRoom[] {
   // Vertical split (with dimension clamping)
   let vAw = grid(rect.w * ratio);
   let vBw = grid(rect.w - vAw);
-  if (vBw < minFloor && rect.w >= minFloor * 2) {
+  if (vBw < minB && rect.w >= minB + minA) {
+    vBw = grid(minB); vAw = grid(rect.w - vBw);
+  } else if (vAw < minA && rect.w >= minA + minB) {
+    vAw = grid(minA); vBw = grid(rect.w - vAw);
+  } else if (vBw < minFloor && rect.w >= minFloor * 2) {
     vBw = grid(minFloor); vAw = grid(rect.w - vBw);
   } else if (vAw < minFloor && rect.w >= minFloor * 2) {
     vAw = grid(minFloor); vBw = grid(rect.w - vAw);
