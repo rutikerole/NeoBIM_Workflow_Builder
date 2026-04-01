@@ -183,7 +183,7 @@ export default function BIMViewer({ glbUrl, metadataUrl, ifcUrl, height = 500 }:
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.4;
+    renderer.toneMappingExposure = 1.1; // Cooler, more cinematic (was 1.4)
     renderer.localClippingEnabled = true;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
@@ -269,16 +269,16 @@ export default function BIMViewer({ glbUrl, metadataUrl, ifcUrl, height = 500 }:
     const sunLight = new THREE.DirectionalLight(0xFFEECC, 2.5);
     sunLight.position.set(50, 80, 40);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 4096;
-    sunLight.shadow.mapSize.height = 4096;
+    sunLight.shadow.mapSize.width = 8192;
+    sunLight.shadow.mapSize.height = 8192;
     sunLight.shadow.camera.left = -80;
     sunLight.shadow.camera.right = 80;
     sunLight.shadow.camera.top = 80;
     sunLight.shadow.camera.bottom = -80;
     sunLight.shadow.camera.near = 0.5;
     sunLight.shadow.camera.far = 300;
-    sunLight.shadow.bias = -0.0003;
-    sunLight.shadow.normalBias = 0.015;
+    sunLight.shadow.bias = -0.0001;      // Tighter for 8K shadow map
+    sunLight.shadow.normalBias = 0.02;
     sunLight.shadow.radius = 2;
     scene.add(sunLight);
 
@@ -308,9 +308,9 @@ export default function BIMViewer({ glbUrl, metadataUrl, ifcUrl, height = 500 }:
 
     // 2. SSAO — Screen Space Ambient Occlusion for contact shadows and depth
     const ssaoPass = new SSAOPass(scene, camera, w, h);
-    ssaoPass.kernelRadius = 0.8;
-    ssaoPass.minDistance = 0.001;
-    ssaoPass.maxDistance = 0.15;
+    ssaoPass.kernelRadius = 1.6;      // Wider catch for corners (was 0.8)
+    ssaoPass.minDistance = 0.0005;     // Finer detail (was 0.001)
+    ssaoPass.maxDistance = 0.3;        // Deeper shadow reach (was 0.15)
     ssaoPass.output = SSAOPass.OUTPUT.Default;
     composer.addPass(ssaoPass);
 
@@ -422,6 +422,17 @@ export default function BIMViewer({ glbUrl, metadataUrl, ifcUrl, height = 500 }:
           groundMesh.name = "ground-plane";
           scene.add(groundMesh);
         }
+
+        // ═══ Contact Shadow Plane (soft ground shadow beneath building) ═══
+        const shadowPlane = new THREE.Mesh(
+          new THREE.PlaneGeometry(maxDim * 5, maxDim * 5),
+          new THREE.ShadowMaterial({ opacity: 0.25, color: 0x000000 })
+        );
+        shadowPlane.rotation.x = -Math.PI / 2;
+        shadowPlane.position.y = box.min.y - 0.01;
+        shadowPlane.receiveShadow = true;
+        shadowPlane.name = "contact-shadow";
+        scene.add(shadowPlane);
 
         // ═══ Fit camera to model ═══
         // For small AI-generated models, get closer; for large BIM models, keep some distance
