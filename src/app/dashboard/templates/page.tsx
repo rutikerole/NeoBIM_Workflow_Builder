@@ -81,6 +81,7 @@ const TEMPLATE_PREVIEWS: Record<string, { type: "video"; url: string; start: num
   "wf-04": { type: "video", url: `${R2}/ifc-exporter.mp4`, start: 120 },
   "wf-09": { type: "image", url: `/boq-cost-estimate-preview.png` },
   "wf-01": { type: "image", url: `/floor-plan-editor-preview.png` },
+  "wf-12": { type: "svg", output: "clash" },
   "wf-08": { type: "video", url: `${R2}/pdf-to-3d-model.mp4`, start: 2 },
   "wf-06": { type: "video", url: `${R2}/floor-plan-to-video-render.mp4`, start: 2 },
   "wf-05": { type: "video", url: `${R2}/interactive-3d-model.mp4`, start: 8 },
@@ -164,6 +165,43 @@ function OutputPreviewSVG({ output, color }: { output: string; color: string }) 
           <circle cx="95" cy="55" r="5" fill="rgba(239,68,68,0.15)" stroke="rgba(239,68,68,0.3)" strokeWidth="0.8" />
           <line x1="95" y1="50" x2="95" y2="42" stroke="rgba(239,68,68,0.3)" strokeWidth="0.8" />
           <text x="100" y="112" textAnchor="middle" fill="rgba(16,185,129,0.3)" fontSize="8" fontFamily="monospace">SITE ANALYSIS</text>
+        </svg>
+      );
+    case "clash":
+      return (
+        <svg viewBox="0 0 200 120" fill="none" style={{ width: "100%", height: "100%" }}>
+          {/* Structural beam (horizontal) */}
+          <rect x="25" y="42" width="150" height="12" rx="1.5" fill={`rgba(${rgb},0.08)`} stroke={`rgba(${rgb},0.2)`} strokeWidth="0.8" />
+          <line x1="25" y1="48" x2="175" y2="48" stroke={`rgba(${rgb},0.1)`} strokeWidth="0.3" strokeDasharray="4 2" />
+          {/* MEP duct (vertical, crossing beam) */}
+          <rect x="88" y="15" width="14" height="85" rx="1.5" fill="rgba(245,158,11,0.08)" stroke="rgba(245,158,11,0.2)" strokeWidth="0.8" />
+          <line x1="95" y1="15" x2="95" y2="100" stroke="rgba(245,158,11,0.1)" strokeWidth="0.3" strokeDasharray="4 2" />
+          {/* Pipe (diagonal, crossing both) */}
+          <line x1="40" y1="85" x2="160" y2="25" stroke="rgba(139,92,246,0.2)" strokeWidth="6" strokeLinecap="round" />
+          <line x1="40" y1="85" x2="160" y2="25" stroke="rgba(139,92,246,0.08)" strokeWidth="4" strokeLinecap="round" />
+          {/* Clash point 1 — beam × duct intersection */}
+          <circle cx="95" cy="48" r="10" fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.5)" strokeWidth="1" />
+          <circle cx="95" cy="48" r="10" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="3">
+            <animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" />
+          </circle>
+          <line x1="91" y1="44" x2="99" y2="52" stroke="rgba(239,68,68,0.7)" strokeWidth="1.2" strokeLinecap="round" />
+          <line x1="99" y1="44" x2="91" y2="52" stroke="rgba(239,68,68,0.7)" strokeWidth="1.2" strokeLinecap="round" />
+          {/* Clash point 2 — pipe × beam */}
+          <circle cx="128" cy="40" r="7" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.45)" strokeWidth="0.8" />
+          <circle cx="128" cy="40" r="7" fill="none" stroke="rgba(245,158,11,0.2)" strokeWidth="2.5">
+            <animate attributeName="r" values="7;10;7" dur="2.5s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="1;0.3;1" dur="2.5s" repeatCount="indefinite" />
+          </circle>
+          <text x="128" y="43" textAnchor="middle" fill="rgba(245,158,11,0.7)" fontSize="8" fontWeight="bold">!</text>
+          {/* Clash point 3 — pipe × duct */}
+          <circle cx="75" cy="62" r="6" fill="rgba(139,92,246,0.1)" stroke="rgba(139,92,246,0.4)" strokeWidth="0.8" />
+          <text x="75" y="65" textAnchor="middle" fill="rgba(139,92,246,0.6)" fontSize="7" fontWeight="bold">!</text>
+          {/* Labels */}
+          <text x="30" y="38" fill={`rgba(${rgb},0.35)`} fontSize="5.5" fontFamily="monospace">STRUCTURAL</text>
+          <text x="105" y="22" fill="rgba(245,158,11,0.35)" fontSize="5.5" fontFamily="monospace">MEP</text>
+          <text x="145" y="20" fill="rgba(139,92,246,0.35)" fontSize="5.5" fontFamily="monospace">PIPE</text>
+          <text x="100" y="114" textAnchor="middle" fill={`rgba(${rgb},0.3)`} fontSize="8" fontFamily="monospace">CLASH DETECTION</text>
         </svg>
       );
     default:
