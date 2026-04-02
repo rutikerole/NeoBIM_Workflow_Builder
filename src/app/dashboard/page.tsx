@@ -52,7 +52,7 @@ const R2 = "https://pub-27d9a7371b6d47ff94fee1a3228f1720.r2.dev/workflow-demos";
 const DEMO_VIDEOS = [
   { id: "dv-4", url: `/videos/img-to-renovation.mp4`, previewStart: 0, color: "#F59E0B", rgb: "245,158,11" },
   { id: "dv-3", url: `${R2}/3d-model-preview.mp4`, previewStart: 0, color: "#10B981", rgb: "16,185,129" },
-  { id: "dv-1", url: `${R2}/text-to-concept-building.mp4`, previewStart: 2, color: "#4F8AFF", rgb: "79,138,255" },
+  { id: "dv-1", url: `${R2}/text-to-concept-building.mp4`, previewStart: 132, color: "#4F8AFF", rgb: "79,138,255" },
   { id: "dv-2", url: `${R2}/floor-plan-demo.mp4`, previewStart: 0, color: "#8B5CF6", rgb: "139,92,246" },
 ];
 
@@ -427,12 +427,10 @@ export default function DashboardPage() {
                     }}>
                       {vc.duration}
                     </div>
-                    {/* Gradient edge toward content */}
-                    <div style={{ position: "absolute", top: 0, [isReversed ? "left" : "right"]: 0, bottom: 0, width: "35%", background: `linear-gradient(${isReversed ? "90deg" : "270deg"}, transparent, rgba(10,12,20,0.98))`, pointerEvents: "none" }} />
                   </div>
 
                   {/* Content side */}
-                  <div style={{ direction: "ltr", padding: "40px 40px", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
+                  <div style={{ direction: "ltr", padding: "40px 40px", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", background: "rgba(10,12,20,0.98)" }}>
                     {/* Category badge */}
                     <div style={{
                       display: "inline-flex", alignItems: "center", gap: 5, alignSelf: "flex-start",
