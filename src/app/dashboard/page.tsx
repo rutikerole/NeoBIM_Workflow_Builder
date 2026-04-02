@@ -168,9 +168,7 @@ export default function DashboardPage() {
   // ── Video card data ──
   const videoCards = [
     { ...DEMO_VIDEOS[0], titleKey: "landing.demoVideo4Title" as TranslationKey, subKey: "landing.demoVideo4Subtitle" as TranslationKey, nodes: ["landing.demoVideo4Node1" as TranslationKey, "landing.demoVideo4Node2" as TranslationKey, "landing.demoVideo4Node3" as TranslationKey], duration: "0:45" },
-    { ...DEMO_VIDEOS[1], titleKey: "landing.demoVideo3Title" as TranslationKey, subKey: "landing.demoVideo3Subtitle" as TranslationKey, nodes: ["landing.demoVideo3Node1" as TranslationKey, "landing.demoVideo3Node2" as TranslationKey, "landing.demoVideo3Node3" as TranslationKey], duration: "1:45" },
     { ...DEMO_VIDEOS[2], titleKey: "landing.demoVideo1Title" as TranslationKey, subKey: "landing.demoVideo1Subtitle" as TranslationKey, nodes: ["landing.demoVideo1Node1" as TranslationKey, "landing.demoVideo1Node2" as TranslationKey, "landing.demoVideo1Node3" as TranslationKey], duration: "1:32" },
-    { ...DEMO_VIDEOS[3], titleKey: "landing.demoVideo2Title" as TranslationKey, subKey: "landing.demoVideo2Subtitle" as TranslationKey, nodes: ["landing.demoVideo2Node1" as TranslationKey, "landing.demoVideo2Node2" as TranslationKey, "landing.demoVideo2Node3" as TranslationKey], duration: "2:45" },
   ];
 
   // ── Scroll tracking for 3D world ──
