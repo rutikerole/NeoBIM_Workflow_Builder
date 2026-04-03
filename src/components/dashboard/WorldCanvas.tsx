@@ -74,7 +74,7 @@ function CameraController() {
     camera.position.x += (tx - camera.position.x) * 0.025;
     camera.position.y += (ty - camera.position.y) * 0.025;
     camera.position.z += (tz - camera.position.z) * 0.025;
-    camera.lookAt(0, 1, 0);
+    camera.lookAt(0, 2, 0);
   });
 
   return null;
@@ -535,12 +535,12 @@ function GroundGrid() {
       {/* Main grid */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[30, 30, 60, 60]} />
-        <meshBasicMaterial color="#1a2a45" wireframe transparent opacity={0.04} />
+        <meshBasicMaterial color="#1a2a45" wireframe transparent opacity={0.025} />
       </mesh>
       {/* Inner detail grid — floor plan feel */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
         <planeGeometry args={[10, 10, 20, 20]} />
-        <meshBasicMaterial color="#06b6d4" wireframe transparent opacity={0.02} />
+        <meshBasicMaterial color="#06b6d4" wireframe transparent opacity={0.008} />
       </mesh>
     </group>
   );
@@ -572,7 +572,7 @@ function Scene({ isMobile }: { isMobile: boolean }) {
       <NodeConstellation />
       {!isMobile && (
         <EffectComposer>
-          <Bloom intensity={0.7} luminanceThreshold={0.15} luminanceSmoothing={0.85} mipmapBlur />
+          <Bloom intensity={0.5} luminanceThreshold={0.3} luminanceSmoothing={0.85} mipmapBlur />
           <Vignette eskil={false} offset={0.1} darkness={0.8} />
         </EffectComposer>
       )}

@@ -196,7 +196,7 @@ export default function DashboardPage() {
   return (
     <div style={{ height: "100%", overflow: "hidden", position: "relative" }}>
       {/* ═══ PERSISTENT 3D WORLD — Behind all content ═══ */}
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+      <div aria-hidden style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 0 }}>
         <Suspense fallback={<div style={{ width: "100%", height: "100%", background: "#07070D" }} />}>
           <WorldCanvas />
         </Suspense>
@@ -210,15 +210,16 @@ export default function DashboardPage() {
             ═══════════════════════════════════════════════════════════════ */}
         <motion.section
           ref={heroRef}
-          style={{ position: "relative", minHeight: "82vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", overflow: "hidden", opacity: heroOpacity, scale: heroScale }}
+          style={{ position: "relative", height: "100%", overflow: "hidden", opacity: heroOpacity, scale: heroScale }}
         >
 
           {/* Depth separation — dark vignette behind text */}
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 55% 45% at 50% 48%, rgba(7,7,13,0.55) 0%, transparent 75%)", pointerEvents: "none", zIndex: 1 }} />
 
-          {/* ── Holographic text overlay ── */}
+          {/* ── Content block — absolute centered ── */}
           <div style={{
-            position: "relative", zIndex: 2, textAlign: "center", maxWidth: 720,
+            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            zIndex: 2, textAlign: "center", maxWidth: 720, width: "90%",
             padding: "48px 40px", borderRadius: 24,
             background: "rgba(10,12,20,0.15)",
             backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
@@ -325,7 +326,7 @@ export default function DashboardPage() {
             </motion.div>
           </div>
 
-          {/* Scroll indicator */}
+          {/* ── Scroll indicator — absolute bottom ── */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -344,7 +345,7 @@ export default function DashboardPage() {
         {/* ═══════════════════════════════════════════════════════════════
             FEATURE SHOWCASE — Full-width cinematic sections
             ═══════════════════════════════════════════════════════════════ */}
-        <section style={{ position: "relative", padding: "100px 0 60px", background: "linear-gradient(180deg, rgba(7,7,13,0.85) 0%, rgba(7,7,13,0.6) 50%, rgba(7,7,13,0.85) 100%)", backdropFilter: "blur(4px)" }}>
+        <section style={{ position: "relative", padding: "48px 0 60px", background: "linear-gradient(180deg, rgba(7,7,13,0.85) 0%, rgba(7,7,13,0.6) 50%, rgba(7,7,13,0.85) 100%)", backdropFilter: "blur(4px)" }}>
           {/* Section header */}
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}

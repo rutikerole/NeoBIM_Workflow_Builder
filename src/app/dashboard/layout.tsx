@@ -15,9 +15,11 @@ export default function DashboardLayout({
     <div className="flex h-screen overflow-hidden" style={{ minHeight: "-webkit-fill-available", background: "#0a0c10" }}>
       <Sidebar />
       <ErrorBoundary>
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden" style={{ transition: "flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}>
           <Header />
-          {children}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {children}
+          </div>
         </div>
       </ErrorBoundary>
       <CommandPaletteLoader />
