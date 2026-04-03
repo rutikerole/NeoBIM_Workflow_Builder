@@ -49,7 +49,12 @@ export type AuditAction =
   | "FEEDBACK_STATUS_CHANGED"
   | "DATA_EXPORTED"
   | "ROADMAP_GENERATED"
-  | "ROADMAP_TASK_UPDATED";
+  | "ROADMAP_TASK_UPDATED"
+  | "SUPPORT_VIEW"
+  | "SUPPORT_REPLY"
+  | "SUPPORT_STATUS_CHANGE"
+  | "SUPPORT_ASSIGN"
+  | "SUPPORT_RESOLVE";
 
 /** Log an admin action to the audit trail */
 export async function logAudit(

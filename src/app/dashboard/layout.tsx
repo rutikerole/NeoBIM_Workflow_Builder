@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPaletteLoader } from "@/components/ui/CommandPaletteLoader";
 import { OnboardingModal } from "@/components/dashboard/OnboardingModal";
 import { PendingReferralClaimer } from "@/components/referral/PendingReferralClaimer";
+import { SupportChatLoader } from "@/components/support/SupportChatLoader";
 
 export default function DashboardLayout({
   children,
@@ -25,6 +26,7 @@ export default function DashboardLayout({
       <CommandPaletteLoader />
       <OnboardingModal />
       <PendingReferralClaimer />
+      <SupportChatLoader />
     </div>
   );
 }

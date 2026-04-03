@@ -5,9 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquare, ChevronDown, ChevronLeft, ChevronRight,
   Bug, Lightbulb, Sparkles, X, ExternalLink, Image as ImageIcon,
-  Loader2, Inbox, Clock, CheckCircle2, Download,
+  Loader2, Inbox, Clock, CheckCircle2, Download, MessagesSquare, BarChart3, Reply,
 } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+import dynamic from "next/dynamic";
+
+const SupportConversations = dynamic(() => import("@/components/admin/SupportConversations"), { ssr: false, loading: () => <div style={{ padding: 40, textAlign: "center", color: "#6B7280" }}>Loading conversations…</div> });
+const SupportAnalytics = dynamic(() => import("@/components/admin/SupportAnalytics"), { ssr: false, loading: () => <div style={{ padding: 40, textAlign: "center", color: "#6B7280" }}>Loading analytics…</div> });
+const SupportQuickReplies = dynamic(() => import("@/components/admin/SupportQuickReplies"), { ssr: false, loading: () => <div style={{ padding: 40, textAlign: "center", color: "#6B7280" }}>Loading quick replies…</div> });
 
 // ─── Types ──────────────────────────────────────────────────────────────
 type FeedbackType = "BUG" | "FEATURE" | "SUGGESTION";
@@ -975,7 +980,63 @@ function FeedbackDetail({
 }
 
 // ─── Page ───────────────────────────────────────────────────────────────
+// ─── Tab Wrapper ────────────────────────────────────────────────────────────
+
+const SUPPORT_TABS = [
+  { key: "feedback", label: "Feedback", icon: MessageSquare },
+  { key: "conversations", label: "Conversations", icon: MessagesSquare },
+  { key: "analytics", label: "Analytics", icon: BarChart3 },
+  { key: "quickReplies", label: "Quick Replies", icon: Reply },
+] as const;
+
+type SupportTab = (typeof SUPPORT_TABS)[number]["key"];
+
 export default function AdminSupportPage() {
+  const [activeTab, setActiveTab] = useState<SupportTab>("feedback");
+
+  return (
+    <div className="admin-support-page" style={{ padding: "24px 20px 32px" }}>
+      {/* Tab bar */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 0 }}>
+        {SUPPORT_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "10px 16px",
+                fontSize: 13, fontWeight: isActive ? 600 : 500,
+                color: isActive ? "#F0F0F5" : "#6B7280",
+                background: "transparent",
+                border: "none",
+                borderBottom: isActive ? "2px solid #4F8AFF" : "2px solid transparent",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                marginBottom: -1,
+              }}
+            >
+              <Icon size={14} style={{ opacity: isActive ? 1 : 0.5 }} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === "feedback" && <FeedbackTab />}
+      {activeTab === "conversations" && <SupportConversations />}
+      {activeTab === "analytics" && <SupportAnalytics />}
+      {activeTab === "quickReplies" && <SupportQuickReplies />}
+    </div>
+  );
+}
+
+// ─── Feedback Tab (original admin support content) ──────────────────────────
+
+function FeedbackTab() {
   const { t } = useLocale();
   const [data, setData] = useState<FeedbackResponse | null>(null);
   const [loading, setLoading] = useState(true);

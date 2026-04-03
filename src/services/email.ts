@@ -169,3 +169,101 @@ export async function sendPlanChangedEmail(
     html: planChangedEmail(name, oldPlan, newPlan, type),
   });
 }
+
+// ── Support Chat Emails ──────────────────────────────────────────────────────
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://buildflow.app';
+
+function supportEmailWrapper(title: string, body: string): string {
+  return `<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#0A0A14;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <div style="max-width:560px;margin:0 auto;background:#111120;border-radius:12px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;">
+      <div style="padding:20px 24px;background:linear-gradient(135deg,rgba(79,138,255,0.1),rgba(99,102,241,0.05));border-bottom:1px solid rgba(255,255,255,0.06);">
+        <div style="font-size:16px;font-weight:700;color:#F0F0F5;">${escapeHtml(title)}</div>
+      </div>
+      <div style="padding:24px;">${body}</div>
+      <div style="padding:16px 24px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+        <span style="font-size:11px;color:#6B7280;">BuildFlow — AEC Workflow Automation</span>
+      </div>
+    </div>
+  </body></html>`;
+}
+
+export async function sendSupportEscalationEmail(data: {
+  userName: string;
+  userEmail: string;
+  userPlan: string;
+  subject: string;
+  summary: string;
+  conversationId: string;
+  firstMessages: Array<{ role: string; content: string }>;
+}): Promise<void> {
+  const messagesHtml = data.firstMessages
+    .map((m) => `<div style="margin-bottom:8px;"><span style="color:${m.role === 'USER' ? '#4F8AFF' : '#34D399'};font-weight:600;font-size:12px;">${escapeHtml(m.role)}:</span> <span style="color:#D1D5DB;font-size:13px;">${escapeHtml(m.content)}</span></div>`)
+    .join('');
+
+  const body = `
+    <p style="color:#D1D5DB;font-size:14px;line-height:1.6;margin:0 0 16px;">A user has escalated a support conversation.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+      <tr><td style="padding:6px 0;color:#9898B0;font-size:12px;font-weight:600;">User</td><td style="padding:6px 0;color:#F0F0F5;font-size:13px;">${escapeHtml(data.userName)} (${escapeHtml(data.userEmail)})</td></tr>
+      <tr><td style="padding:6px 0;color:#9898B0;font-size:12px;font-weight:600;">Plan</td><td style="padding:6px 0;color:#F0F0F5;font-size:13px;">${escapeHtml(data.userPlan)}</td></tr>
+      <tr><td style="padding:6px 0;color:#9898B0;font-size:12px;font-weight:600;">Subject</td><td style="padding:6px 0;color:#F0F0F5;font-size:13px;">${escapeHtml(data.subject)}</td></tr>
+    </table>
+    <div style="background:#0A0A14;border-radius:8px;padding:12px;margin-bottom:16px;">
+      <div style="color:#9898B0;font-size:11px;font-weight:600;margin-bottom:8px;">SUMMARY</div>
+      <p style="color:#D1D5DB;font-size:13px;line-height:1.5;margin:0;">${escapeHtml(data.summary)}</p>
+    </div>
+    <div style="background:#0A0A14;border-radius:8px;padding:12px;margin-bottom:16px;">
+      <div style="color:#9898B0;font-size:11px;font-weight:600;margin-bottom:8px;">CONVERSATION PREVIEW</div>
+      ${messagesHtml}
+    </div>
+    <a href="${APP_URL}/admin/support?conversation=${data.conversationId}" style="display:inline-block;background:#4F8AFF;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">View in Dashboard</a>`;
+
+  await sendEmail({
+    to: TEAM_NOTIFICATION_EMAIL,
+    subject: `[BuildFlow Support] Escalation from ${data.userName}: ${data.subject}`,
+    html: supportEmailWrapper('Support Escalation', body),
+  });
+}
+
+export async function sendSupportAdminReplyEmail(data: {
+  userName: string;
+  userEmail: string;
+  replyContent: string;
+  conversationId: string;
+  subject: string;
+}): Promise<void> {
+  const body = `
+    <p style="color:#D1D5DB;font-size:14px;line-height:1.6;margin:0 0 16px;">Hi ${escapeHtml(data.userName)},</p>
+    <p style="color:#D1D5DB;font-size:14px;line-height:1.6;margin:0 0 16px;">Our team has replied to your support question: <strong style="color:#F0F0F5;">"${escapeHtml(data.subject)}"</strong></p>
+    <div style="background:#0A0A14;border-radius:8px;padding:16px;margin-bottom:16px;border-left:3px solid #4F8AFF;">
+      <p style="color:#F0F0F5;font-size:13px;line-height:1.6;margin:0;white-space:pre-wrap;">${escapeHtml(data.replyContent)}</p>
+    </div>
+    <a href="${APP_URL}/dashboard?support_conversation=${data.conversationId}" style="display:inline-block;background:#4F8AFF;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">Continue Conversation</a>
+    <p style="color:#6B7280;font-size:12px;line-height:1.5;margin:16px 0 0;">If you have more questions, just reply in the chat.</p>`;
+
+  await sendEmail({
+    to: data.userEmail,
+    subject: `BuildFlow Support: Reply to "${data.subject}"`,
+    html: supportEmailWrapper('Support Reply', body),
+  });
+}
+
+export async function sendSupportResolvedEmail(data: {
+  userName: string;
+  userEmail: string;
+  subject: string;
+  conversationId: string;
+}): Promise<void> {
+  const body = `
+    <p style="color:#D1D5DB;font-size:14px;line-height:1.6;margin:0 0 16px;">Hi ${escapeHtml(data.userName)},</p>
+    <p style="color:#D1D5DB;font-size:14px;line-height:1.6;margin:0 0 16px;">Your support question <strong style="color:#F0F0F5;">"${escapeHtml(data.subject)}"</strong> has been resolved.</p>
+    <p style="color:#D1D5DB;font-size:14px;line-height:1.6;margin:0 0 16px;">We'd love to hear how we did! Please rate your experience.</p>
+    <a href="${APP_URL}/dashboard?support_conversation=${data.conversationId}&rate=true" style="display:inline-block;background:#4F8AFF;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">Rate Your Experience</a>
+    <p style="color:#6B7280;font-size:12px;line-height:1.5;margin:16px 0 0;">If you need more help, start a new conversation anytime.</p>`;
+
+  await sendEmail({
+    to: data.userEmail,
+    subject: `Resolved: ${data.subject} — BuildFlow Support`,
+    html: supportEmailWrapper('Question Resolved', body),
+  });
+}

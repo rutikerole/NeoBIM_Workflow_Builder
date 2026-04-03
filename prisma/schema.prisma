@@ -43,6 +43,7 @@ model User {
   workflows       Workflow[]
   referralsSent     Referral[]  @relation("ReferralsSent")
   referralsReceived Referral[]  @relation("ReferralReceived")
+  supportConversations SupportConversation[]
 
   @@map("users")
 }
@@ -503,4 +504,101 @@ model BOQAnalytics {
   @@index([state, buildingType])
   @@index([createdAt])
   @@map("boq_analytics")
+}
+
+// ─── AI Support Chat System ──────────────────────────────────────
+
+enum SupportStatus {
+  ACTIVE
+  ESCALATED
+  ADMIN_REPLIED
+  RESOLVED
+  CLOSED
+}
+
+enum MessageRole {
+  USER
+  AI
+  ADMIN
+  SYSTEM
+}
+
+enum SupportCategory {
+  GENERAL
+  WORKFLOW_HELP
+  NODE_EXECUTION
+  BILLING
+  BUG_REPORT
+  FEATURE_REQUEST
+  IFC_PARSING
+  COST_ESTIMATION
+  THREE_D_GENERATION
+  ACCOUNT
+  TECHNICAL
+}
+
+model SupportConversation {
+  id             String            @id @default(cuid())
+  userId         String
+  status         SupportStatus     @default(ACTIVE)
+  category       SupportCategory   @default(GENERAL)
+  subject        String?
+  summary        String?
+  priority       Int               @default(0)
+  escalatedAt    DateTime?
+  resolvedAt     DateTime?
+  resolvedBy     String?
+  assignedTo     String?
+  satisfaction   Int?
+  feedbackNote   String?
+  pageContext    String?
+  userPlan       String?
+  messageCount   Int               @default(0)
+  lastMessageAt  DateTime          @default(now())
+  metadata       Json              @default("{}")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages       SupportMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([lastMessageAt])
+  @@index([assignedTo])
+  @@map("support_conversations")
+}
+
+model SupportMessage {
+  id              String          @id @default(cuid())
+  conversationId  String
+  role            MessageRole
+  content         String
+  metadata        Json            @default("{}")
+  isInternal      Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+
+  conversation    SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([role])
+  @@index([createdAt])
+  @@map("support_messages")
+}
+
+model SupportQuickReply {
+  id          String          @id @default(cuid())
+  title       String
+  content     String
+  category    SupportCategory @default(GENERAL)
+  usageCount  Int             @default(0)
+  createdBy   String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([category])
+  @@map("support_quick_replies")
 }
