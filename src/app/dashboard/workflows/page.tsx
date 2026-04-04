@@ -57,6 +57,7 @@ export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const typeLabels = useMemo(() => ({
     pdf: t('workflows.typePdfReports'),
@@ -74,17 +75,11 @@ export default function WorkflowsPage() {
 
   const handleNewWorkflow = useCallback(() => {
     if (isAtLimit) {
-      toast.error(t('workflows.freeLimitToast').replace('{max}', String(maxWorkflows)), {
-        action: {
-          label: t('workflows.upgrade'),
-          onClick: () => router.push("/dashboard/billing"),
-        },
-        duration: 6000,
-      });
+      setShowLimitModal(true);
       return;
     }
     router.push("/dashboard/workflows/new");
-  }, [isAtLimit, maxWorkflows, router, t]);
+  }, [isAtLimit, router]);
 
   const load = useCallback(async () => {
     try {
@@ -251,66 +246,110 @@ export default function WorkflowsPage() {
             <div style={{ fontSize: 13, color: "#5C5C78" }}>{t('workflows.loading')}</div>
           </div>
         ) : workflows.length === 0 ? (
-          /* ── Empty State ──────────────────────────────────────────────── */
+          /* ── Empty State — Creative ─────────────────────────────────── */
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col items-center justify-center py-16 text-center"
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              textAlign: "center", padding: "48px 32px",
+              background: "rgba(12,12,22,0.5)",
+              border: "1px solid rgba(255,255,255,0.04)",
+              borderRadius: 24, position: "relative", overflow: "hidden",
+            }}
           >
+            {/* Background grid */}
             <div style={{
-              width: 72, height: 72, borderRadius: 20,
-              background: "rgba(0,245,255,0.05)",
-              border: "1px solid rgba(0,245,255,0.12)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              marginBottom: 20,
-            }}>
-              <FolderOpen size={28} style={{ color: "rgba(0,245,255,0.4)" }} strokeWidth={1.2} />
+              position: "absolute", inset: 0,
+              backgroundImage: "linear-gradient(rgba(0,245,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(0,245,255,0.015) 1px, transparent 1px)",
+              backgroundSize: "40px 40px", pointerEvents: "none",
+              maskImage: "radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, transparent 70%)",
+              WebkitMaskImage: "radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, transparent 70%)",
+            }} />
+
+            {/* Animated mascot */}
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+              style={{ fontSize: 64, lineHeight: 1, marginBottom: 8, position: "relative", zIndex: 1 }}
+            >
+              🐹
+            </motion.div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 20, position: "relative", zIndex: 1 }}>
+              {["🏗️", "✨", "📐", "✨", "🏗️"].map((s, i) => (
+                <motion.span
+                  key={i}
+                  animate={{ opacity: [0.3, 0.7, 0.3], scale: [0.9, 1.1, 0.9] }}
+                  transition={{ repeat: Infinity, duration: 2.5, delay: i * 0.3 }}
+                  style={{ fontSize: 14 }}
+                >{s}</motion.span>
+              ))}
             </div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F0F0F5", marginBottom: 6 }}>
-              {t('workflows.emptyTitle')}
+
+            <h3 style={{
+              fontSize: 22, fontWeight: 800, color: "#F0F0F5", marginBottom: 8,
+              letterSpacing: "-0.03em", position: "relative", zIndex: 1,
+            }}>
+              Your canvas is suspiciously clean
             </h3>
-            <p style={{ fontSize: 13, color: "#5C5C78", maxWidth: 400, lineHeight: 1.6, marginBottom: 24 }}>
-              {t('workflows.emptyDesc')}
+            <p style={{
+              fontSize: 14, color: "#7C7C96", maxWidth: 400, lineHeight: 1.7,
+              marginBottom: 28, marginLeft: "auto", marginRight: "auto",
+              position: "relative", zIndex: 1,
+            }}>
+              No workflows yet? That&apos;s like an architect with an empty desk. Let&apos;s fix that — start from scratch or grab a template.
             </p>
-            <div className="flex items-center gap-3 mb-8">
+
+            <div className="flex items-center justify-center gap-3 mb-8" style={{ position: "relative", zIndex: 1 }}>
               <button
                 onClick={handleNewWorkflow}
                 style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  padding: "9px 20px", borderRadius: 10,
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "12px 24px", borderRadius: 14,
                   background: "linear-gradient(135deg, #00F5FF 0%, #0EA5E9 100%)",
-                  color: "#0a0c10", fontSize: 13, fontWeight: 700,
+                  color: "#0a0c10", fontSize: 14, fontWeight: 700,
                   border: "none", cursor: "pointer",
-                  boxShadow: "0 0 16px rgba(0,245,255,0.15)",
+                  boxShadow: "0 6px 24px rgba(0,245,255,0.2)",
                   transition: "all 0.2s ease",
                 }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 24px rgba(0,245,255,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 16px rgba(0,245,255,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 10px 32px rgba(0,245,255,0.35)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(0,245,255,0.2)"; e.currentTarget.style.transform = "translateY(0)"; }}
               >
-                <Plus size={14} strokeWidth={2.5} />
+                <Plus size={15} strokeWidth={2.5} />
                 {t('workflows.newWorkflow')}
               </button>
               <Link
                 href="/dashboard/templates"
-                className="flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-4 py-2.5 text-sm font-medium text-[#F0F0F5] hover:border-[rgba(0,245,255,0.15)] hover:bg-[rgba(0,245,255,0.03)] transition-all"
-                style={{ textDecoration: "none" }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "12px 24px", borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.03)",
+                  color: "#F0F0F5", fontSize: 14, fontWeight: 600,
+                  textDecoration: "none", transition: "all 0.2s ease",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.2)"; e.currentTarget.style.background = "rgba(0,245,255,0.04)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
               >
                 {t('workflows.browseTemplates')}
-                <ArrowRight size={13} />
+                <ArrowRight size={14} />
               </Link>
             </div>
 
             {/* Quick-start template suggestions */}
-            <div style={{ width: "100%", maxWidth: 640 }}>
-              <p style={{ fontSize: 11, color: "#5C5C78", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 12 }}>
+            <div style={{ width: "100%", maxWidth: 640, margin: "0 auto", position: "relative", zIndex: 1 }}>
+              <p style={{
+                fontSize: 10, color: "rgba(0,245,255,0.4)", textTransform: "uppercase",
+                letterSpacing: "2px", fontWeight: 700, marginBottom: 14,
+                fontFamily: "var(--font-jetbrains, monospace)",
+              }}>
                 {t('workflows.popularStartingPoints')}
               </p>
               <div className="workflows-page-templates" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 {[
-                  { label: t('workflows.tplBrief3d'), desc: t('workflows.tplBrief3dDesc'), icon: <Box size={16} className="text-[#8B5CF6]" />, color: "#8B5CF6", rgb: "139,92,246" },
-                  { label: t('workflows.tplBriefRender'), desc: t('workflows.tplBriefRenderDesc'), icon: <ImageIcon size={16} className="text-[#10B981]" />, color: "#10B981", rgb: "16,185,129" },
-                  { label: t('workflows.tplBriefPipeline'), desc: t('workflows.tplBriefPipelineDesc'), icon: <Sparkles size={16} className="text-[#F59E0B]" />, color: "#F59E0B", rgb: "245,158,11" },
+                  { label: t('workflows.tplBrief3d'), desc: t('workflows.tplBrief3dDesc'), icon: <Box size={16} className="text-[#8B5CF6]" />, color: "#8B5CF6", rgb: "139,92,246", emoji: "🧊" },
+                  { label: t('workflows.tplBriefRender'), desc: t('workflows.tplBriefRenderDesc'), icon: <ImageIcon size={16} className="text-[#10B981]" />, color: "#10B981", rgb: "16,185,129", emoji: "🎨" },
+                  { label: t('workflows.tplBriefPipeline'), desc: t('workflows.tplBriefPipelineDesc'), icon: <Sparkles size={16} className="text-[#F59E0B]" />, color: "#F59E0B", rgb: "245,158,11", emoji: "⚡" },
                 ].map((tpl, i) => (
                   <Link
                     key={i}
@@ -319,22 +358,30 @@ export default function WorkflowsPage() {
                       display: "block",
                       background: "rgba(255,255,255,0.02)",
                       border: "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 10,
-                      padding: "14px 12px",
+                      borderRadius: 14,
+                      padding: "16px 14px",
                       textAlign: "left",
                       textDecoration: "none",
-                      transition: "all 0.15s ease",
+                      transition: "all 0.2s ease",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = `rgba(${tpl.rgb},0.25)`; e.currentTarget.style.background = `rgba(${tpl.rgb},0.03)`; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = `rgba(${tpl.rgb},0.3)`; e.currentTarget.style.background = `rgba(${tpl.rgb},0.04)`; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.transform = "translateY(0)"; }}
                   >
-                    <div style={{ marginBottom: 8 }}>{tpl.icon}</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#E0E0EA", marginBottom: 4 }}>{tpl.label}</div>
-                    <div style={{ fontSize: 10, color: "#5C5C78", lineHeight: 1.4 }}>{tpl.desc}</div>
+                    <div style={{ fontSize: 22, marginBottom: 8 }}>{tpl.emoji}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#E0E0EA", marginBottom: 4 }}>{tpl.label}</div>
+                    <div style={{ fontSize: 10, color: "#5C5C78", lineHeight: 1.5 }}>{tpl.desc}</div>
                   </Link>
                 ))}
               </div>
             </div>
+
+            {/* Fun footer */}
+            <p style={{
+              fontSize: 11, color: "#2A2A3A", marginTop: 28, position: "relative", zIndex: 1,
+              fontFamily: "var(--font-jetbrains, monospace)",
+            }}>
+              Every great building started with an empty canvas
+            </p>
           </motion.div>
         ) : (
           /* ── Workflow List ────────────────────────────────────────────── */
@@ -491,6 +538,146 @@ export default function WorkflowsPage() {
           </div>
         )}
       </main>
+
+      {/* ── Workflow Limit Modal — Creative ── */}
+      <AnimatePresence>
+        {showLimitModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLimitModal(false)}
+              style={{
+                position: "fixed", inset: 0,
+                background: "rgba(0,0,0,0.7)",
+                backdropFilter: "blur(8px)",
+                zIndex: 9990,
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                position: "fixed", inset: 0, zIndex: 9991,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                pointerEvents: "none", padding: 16,
+              }}
+            >
+              <div style={{
+                width: "100%", maxWidth: 460, borderRadius: 24, overflow: "hidden",
+                background: "linear-gradient(180deg, #111125 0%, #0A0A18 100%)",
+                border: "1px solid rgba(6,182,212,0.15)",
+                boxShadow: "0 32px 100px rgba(0,0,0,0.7), 0 0 60px rgba(6,182,212,0.05)",
+                pointerEvents: "auto",
+              }}>
+                {/* Top gradient bar */}
+                <div style={{ height: 3, background: "linear-gradient(90deg, #06B6D4, #8B5CF6, #06B6D4)" }} />
+
+                {/* Illustration area */}
+                <div style={{
+                  padding: "36px 32px 16px", textAlign: "center",
+                  background: "radial-gradient(ellipse at 50% 80%, rgba(6,182,212,0.06) 0%, transparent 70%)",
+                }}>
+                  <motion.div
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                    style={{ fontSize: 56, lineHeight: 1, marginBottom: 8 }}
+                  >
+                    🐙
+                  </motion.div>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 16 }}>
+                    {["✨", "⭐", "💎", "⭐", "✨"].map((s, i) => (
+                      <motion.span
+                        key={i}
+                        animate={{ opacity: [0.3, 0.8, 0.3], scale: [0.8, 1.15, 0.8] }}
+                        transition={{ repeat: Infinity, duration: 2, delay: i * 0.25 }}
+                        style={{ fontSize: 12 }}
+                      >{s}</motion.span>
+                    ))}
+                  </div>
+
+                  <h2 style={{
+                    fontSize: 22, fontWeight: 800, color: "#F0F2F8",
+                    letterSpacing: "-0.03em", margin: "0 0 8px", lineHeight: 1.3,
+                  }}>
+                    {maxWorkflows} workflows? That&apos;s adorable!
+                  </h2>
+                  <p style={{
+                    fontSize: 13, color: "#9898B0", lineHeight: 1.6, margin: 0,
+                    maxWidth: 360, marginLeft: "auto", marginRight: "auto",
+                  }}>
+                    You&apos;ve filled up your {maxWorkflows} workflow slots on the{" "}
+                    <strong style={{ color: "#06B6D4" }}>{userRole === "FREE" ? "Free" : userRole === "MINI" ? "Mini" : "Starter"}</strong> plan.
+                    Time to level up and build without limits.
+                  </p>
+                </div>
+
+                <div style={{ padding: "0 32px 24px" }}>
+                  {/* What you get */}
+                  <div style={{
+                    background: "rgba(6,182,212,0.04)",
+                    border: "1px solid rgba(6,182,212,0.1)",
+                    borderRadius: 14, padding: "14px 18px",
+                    margin: "16px 0 20px",
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#06B6D4", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10 }}>
+                      Upgrade perks
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {[
+                        { icon: "♾️", text: "Unlimited workflows (Pro)" },
+                        { icon: "⚡", text: "Up to 100 runs per month" },
+                        { icon: "🎬", text: "AI video walkthroughs" },
+                        { icon: "🧊", text: "3D model generation" },
+                      ].map((f, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 15 }}>{f.icon}</span>
+                          <span style={{ fontSize: 12.5, color: "#C0C0D8" }}>{f.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CTA */}
+                  <button
+                    onClick={() => { setShowLimitModal(false); router.push("/dashboard/billing"); }}
+                    style={{
+                      width: "100%", padding: "14px 24px", borderRadius: 14,
+                      background: "linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)",
+                      color: "#fff", fontSize: 15, fontWeight: 800, border: "none",
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                      boxShadow: "0 8px 32px rgba(6,182,212,0.25)",
+                      transition: "all 0.2s ease", letterSpacing: "-0.01em",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 12px 40px rgba(6,182,212,0.35)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(6,182,212,0.25)"; }}
+                  >
+                    <Zap size={18} />
+                    Upgrade & Build Unlimited
+                    <ArrowRight size={16} />
+                  </button>
+
+                  <button
+                    onClick={() => setShowLimitModal(false)}
+                    style={{
+                      width: "100%", marginTop: 10, padding: "10px", borderRadius: 12,
+                      background: "transparent", border: "none",
+                      color: "#44445A", fontSize: 12, cursor: "pointer", transition: "color 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "#9898B0"; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "#44445A"; }}
+                  >
+                    I&apos;ll manage with {maxWorkflows} for now
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

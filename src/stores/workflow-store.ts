@@ -353,9 +353,10 @@ export const useWorkflowStore = create<WorkflowState>()(
         console.error("Save failed:", err);
         // Detect workflow limit error (403) and show upgrade prompt
         if (err instanceof ApiError && err.status === 403) {
-          toast.error("Workflow limit reached — upgrade to Pro for unlimited workflows.", {
+          toast("🐙 You've hit your workflow limit!", {
+            description: "Upgrade your plan for unlimited workflows and more power.",
             action: {
-              label: "Upgrade",
+              label: "Upgrade Plan",
               onClick: () => { window.location.href = "/dashboard/billing"; },
             },
             duration: 6000,

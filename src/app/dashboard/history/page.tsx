@@ -437,91 +437,89 @@ function EmptyState() {
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2, duration: 0.6 }}
+      transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       style={{
-        textAlign: "center", padding: "80px 32px",
+        textAlign: "center", padding: "60px 32px",
         background: "rgba(12,12,22,0.5)",
         border: "1px solid rgba(255,255,255,0.04)",
-        borderRadius: 20, position: "relative", overflow: "hidden",
+        borderRadius: 24, position: "relative", overflow: "hidden",
       }}
     >
-      {/* Animated schematic — building wireframe dissolving into nodes */}
-      <svg width="320" height="120" viewBox="0 0 320 120" style={{ margin: "0 auto 32px", display: "block" }}>
-        {/* Building outline — drawn on */}
-        <motion.path
-          d="M80 100 L80 40 L160 20 L240 40 L240 100"
-          fill="none" stroke="#1B4FFF" strokeWidth={1}
-          strokeLinecap="round" strokeLinejoin="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 0.25 }}
-          transition={{ duration: 2, ease: "easeInOut" }}
-        />
-        {/* Floor lines */}
-        {[60, 80].map((y, i) => (
-          <motion.line key={y} x1="80" y1={y} x2="240" y2={y}
-            stroke="#1B4FFF" strokeWidth={0.5} strokeDasharray="4 4"
-            initial={{ opacity: 0 }} animate={{ opacity: 0.15 }}
-            transition={{ delay: 1.5 + i * 0.3, duration: 0.8 }} />
-        ))}
-        {/* Nodes — appearing at structural points */}
-        {[
-          { cx: 80, cy: 100, color: "#1B4FFF", delay: 2.0 },
-          { cx: 160, cy: 20, color: "#8B5CF6", delay: 2.2 },
-          { cx: 240, cy: 100, color: "#10B981", delay: 2.4 },
-          { cx: 80, cy: 40, color: "#F59E0B", delay: 2.6 },
-          { cx: 240, cy: 40, color: "#1B4FFF", delay: 2.8 },
-        ].map((n, i) => (
-          <g key={i}>
-            <motion.circle cx={n.cx} cy={n.cy} r={12}
-              fill="none" stroke={n.color} strokeWidth={0.8}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 0.2 }}
-              transition={{ delay: n.delay, duration: 0.5, type: "spring" }}
-              style={{ transformOrigin: `${n.cx}px ${n.cy}px` }} />
-            <motion.circle cx={n.cx} cy={n.cy} r={3}
-              fill={n.color}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 0.6 }}
-              transition={{ delay: n.delay + 0.15, duration: 0.3 }}
-              style={{ transformOrigin: `${n.cx}px ${n.cy}px` }} />
-          </g>
-        ))}
-        {/* Data flow lines between nodes */}
-        {[
-          { d: "M93 100 L148 25", delay: 3.0, color: "#1B4FFF" },
-          { d: "M172 25 L227 100", delay: 3.2, color: "#8B5CF6" },
-          { d: "M93 42 L227 42", delay: 3.4, color: "#10B981" },
-        ].map((l, i) => (
-          <motion.path key={i} d={l.d}
-            fill="none" stroke={l.color} strokeWidth={0.8}
-            strokeDasharray="3 5"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 0.2 }}
-            transition={{ delay: l.delay, duration: 1 }} />
-        ))}
-      </svg>
+      {/* Subtle grid background */}
+      <div style={{
+        position: "absolute", inset: 0,
+        backgroundImage: "linear-gradient(rgba(79,138,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(79,138,255,0.015) 1px, transparent 1px)",
+        backgroundSize: "40px 40px", pointerEvents: "none",
+        maskImage: "radial-gradient(ellipse at center, rgba(0,0,0,0.25) 0%, transparent 65%)",
+        WebkitMaskImage: "radial-gradient(ellipse at center, rgba(0,0,0,0.25) 0%, transparent 65%)",
+      }} />
 
-      <div style={{ fontSize: 10, letterSpacing: 4, color: "rgba(255,255,255,0.15)", textTransform: "uppercase", marginBottom: 10, fontFamily: "var(--font-jetbrains), monospace" }}>
+      {/* Animated mascot */}
+      <motion.div
+        animate={{ y: [0, -10, 0] }}
+        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+        style={{ fontSize: 60, lineHeight: 1, marginBottom: 8, position: "relative", zIndex: 1 }}
+      >
+        🔬
+      </motion.div>
+
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 20, position: "relative", zIndex: 1 }}>
+        {["🧪", "⚗️", "📊"].map((s, i) => (
+          <motion.span
+            key={i}
+            animate={{ opacity: [0.3, 0.7, 0.3], scale: [0.9, 1.1, 0.9] }}
+            transition={{ repeat: Infinity, duration: 2.5, delay: i * 0.4 }}
+            style={{ fontSize: 16 }}
+          >{s}</motion.span>
+        ))}
+      </div>
+
+      <div style={{
+        fontSize: 10, letterSpacing: "3px", color: "rgba(79,138,255,0.3)", textTransform: "uppercase",
+        marginBottom: 12, fontFamily: "var(--font-jetbrains), monospace", fontWeight: 700,
+        position: "relative", zIndex: 1,
+      }}>
         {t('history.noMissionsLogged')}
       </div>
-      <div style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", maxWidth: 340, margin: "0 auto 24px", lineHeight: 1.7 }}>
-        {t('history.noExecutionsDesc')}
-      </div>
+
+      <h3 style={{
+        fontSize: 22, fontWeight: 800, color: "#F0F0F5", marginBottom: 8,
+        letterSpacing: "-0.03em", position: "relative", zIndex: 1,
+      }}>
+        No experiments logged yet
+      </h3>
+      <p style={{
+        fontSize: 14, color: "#7C7C96", maxWidth: 380, margin: "0 auto 28px", lineHeight: 1.7,
+        position: "relative", zIndex: 1,
+      }}>
+        Your lab is empty! Run a workflow and watch the results roll in. Every execution gets logged here with full artifacts.
+      </p>
+
       <motion.button
-        whileHover={{ scale: 1.03 }}
+        whileHover={{ scale: 1.03, y: -2 }}
         whileTap={{ scale: 0.98 }}
         onClick={() => router.push('/dashboard/canvas')}
         style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          padding: "12px 24px", borderRadius: 12,
-          border: "1px solid rgba(79,138,255,0.3)",
-          background: "rgba(79,138,255,0.06)",
-          color: "#4F8AFF", fontSize: 13, fontWeight: 600,
-          cursor: "pointer", transition: "all 200ms ease",
+          display: "inline-flex", alignItems: "center", gap: 10,
+          padding: "13px 28px", borderRadius: 14,
+          background: "linear-gradient(135deg, #4F8AFF 0%, #6366F1 100%)",
+          color: "#fff", fontSize: 14, fontWeight: 700,
+          border: "none", cursor: "pointer",
+          boxShadow: "0 6px 24px rgba(79,138,255,0.2)",
+          transition: "all 200ms ease",
+          position: "relative", zIndex: 1,
         }}
       >
-        <ArrowRight size={14} /> {t('history.launchFirstWorkflow')}
+        <ArrowRight size={15} /> {t('history.launchFirstWorkflow')}
       </motion.button>
+
+      {/* Fun footer */}
+      <p style={{
+        fontSize: 11, color: "#2A2A3A", marginTop: 32, position: "relative", zIndex: 1,
+        fontFamily: "var(--font-jetbrains), monospace",
+      }}>
+        Science awaits. Your first workflow is just a click away.
+      </p>
     </motion.div>
   );
 }
