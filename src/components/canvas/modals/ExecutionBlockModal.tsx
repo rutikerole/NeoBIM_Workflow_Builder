@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, X, Zap, Mail, ShieldCheck, Crown, Rocket } from "lucide-react";
+import { ArrowRight, X, Zap, Mail, ShieldCheck, Crown } from "lucide-react";
 import Link from "next/link";
 
 interface RateLimitInfo {
